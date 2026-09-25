@@ -1,4 +1,4 @@
-# Admin console (87 cases)
+# Admin console (109 cases)
 
 Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs, exports, content and settings.
 
@@ -14,14 +14,16 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 1. Open /login.
 2. Enter Admin A's email and password and click 'Sign in to workspace'.
-3. Watch the redirect and the top bar.
-4. Open the user menu, then Profile (/profile).
+3. In DevTools > Network, inspect the body of the POST /auth/login request.
+4. Watch the redirect, the top bar and the area above the page content.
+5. Open the user menu, then Profile (/profile).
+6. As another admin, open /audit and search 'admin_login'.
 
-**Expect:** You are redirected to / (Dashboard). The KPI tiles load without error banners. The top bar shows Admin A's first name. The Profile header chip reads 'Administrator'. localStorage holds uf_admin_tokens, uf_admin_user and uf_admin_token.
+**Expect:** The login request carries audience 'admin'. You are redirected to / (Dashboard) and the KPI tiles load without error banners. Because Admin A has no authenticator MFA, a warning banner shows above the content: 'Protect this administrator account: turn on authenticator app sign-in. A stolen password alone would give full access to donor data and payouts.' with a 'Turn on' button (see ADMIN-N002). The top bar shows Admin A's first name. The Profile header chip reads 'Administrator'. localStorage holds uf_admin_tokens, uf_admin_user (role 'admin') and uf_admin_token, plus the uf_admin_tokens:received timestamp key. The audit log has an info entry 'auth.admin_login.succeeded' with the text 'Administrator signed in to the staff console'.
 
 **Needs:** None
 
-**Source:** `apps/admin/src/pages/LoginPage.tsx`, `apps/admin/src/context/AuthContext.tsx`, `apps/api/src/application/use-cases/LoginUserUseCase.ts`
+**Source:** `apps/admin/src/pages/LoginPage.tsx`, `apps/admin/src/context/AuthContext.tsx`, `apps/admin/src/components/layout/AdminMfaPrompt.tsx`, `apps/api/src/application/use-cases/LoginUserUseCase.ts`, `packages/ui/src/browserSession.ts`
 
 ## ADMIN-002 · P0 · Invalid credentials give a generic error, and login is rate limited
 
@@ -150,39 +152,42 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 *Surfaces:* admin, api  ·  *Type:* security/permission
 
-**Before:** Production console (read-only check).
+**Before:** Production console (read-only check). An engineer with a local checkout for the seed-script check. Atlas read access.
 
 **Steps:**
 
-1. On production /login try admin@ujimora.com / Admin2026! (the seed-dev.mjs credentials).
-2. In Users, filter Role = admin and review every admin account.
-3. Confirm each real admin has a strong unique password and MFA enabled (policy, not enforced by code).
+1. On production /login try admin@ujimora.com / Admin2026! (the old seed-dev.mjs credentials).
+2. Ask engineering to run apps/api/scripts/seed-dev.mjs with NODE_ENV=production, then with a mongodb+srv:// MONGODB_URI, then against a local database without SEED_ADMIN_PASSWORD set.
+3. In Users, filter Role = admin and review every admin account. In Atlas, search for admin@ujimora.com, amara2@ujimora.com and any *@ujimora.dev accounts.
+4. Sign in as each real admin and note whether the MFA warning banner appears.
 
-**Expect:** The seed credentials fail. The admin list contains only named, authorised staff; no test or seed accounts. MFA status is recorded for every admin. Sign-off note: MFA is optional in code (MongoMfa.verifyLogin only applies when enabled), so enforcement is procedural.
+**Expect:** The seed credentials fail. The seed script exits with an error before connecting when NODE_ENV=production or the URI is mongodb+srv or any host other than localhost/127.0.0.1/::1 (unless SEED_ALLOW_REMOTE=I_UNDERSTAND_THIS_WIPES_DATA is set). Against a local database it creates no admin unless SEED_ADMIN_PASSWORD is set; the literal password is no longer in the script. The admin list contains only named, authorised staff and no seed or test accounts. Each admin without authenticator MFA sees the 'Protect this administrator account…' banner on every page; record MFA status for every admin. Known open issue I028: admin MFA is still optional in code (the banner is only a reminder), so enforcement remains procedural.
 
-**Needs:** Production access
+**Needs:** Production access, engineering support
 
-**Source:** `apps/api/scripts/seed-dev.mjs`, `apps/admin/src/pages/UsersPage.tsx`, `docs/compliance/STAFF_ACCESS.md`
+**Source:** `apps/api/scripts/seed-dev.mjs`, `apps/api/scripts/seedGuard.mjs`, `apps/admin/src/components/layout/AdminMfaPrompt.tsx`, `apps/admin/src/pages/UsersPage.tsx`, `docs/compliance/STAFF_ACCESS.md`
 
-## ADMIN-012 · P0 · Non-admin account signing in to the admin console
+## ADMIN-012 · P0 · Non-admin accounts are refused at staff-console sign-in
 
 *Surfaces:* admin, api  ·  *Type:* security/permission
 
-**Before:** Regular user U1 (role=user) and organisation user O1 (role=organization) with known passwords.
+**Before:** Regular user U1 (role=user) and organisation user O1 (role=organization) with known passwords. A non-admin U2 with authenticator MFA enabled. U1 also signed in on the member web app. Postman or curl.
 
 **Steps:**
 
-1. On the admin /login, sign in as U1.
-2. Look at the Dashboard KPI tiles, the sidebar and the notification bell.
-3. Visit /campaigns, /payouts, /donations, /users, /settings, /roles and /audit.
-4. On any page that renders, try every action button (Approve, Export and so on).
-5. Repeat as O1.
+1. On the admin /login, sign in as U1 with the correct password.
+2. Check the URL and the uf_admin_* keys in localStorage.
+3. Repeat as O1, and as U2 (password, then authenticator code).
+4. API: POST /api/v1/auth/login with U1's credentials and audience 'admin'; then without audience; then with audience 'staff'.
+5. With U1's member access token, call GET /api/v1/analytics/overview and GET /api/v1/rbac/me.
+6. Plant a non-admin session: copy U1's web tokens into uf_admin_token and uf_admin_tokens, set uf_admin_user to U1's user JSON (role 'user'), and reload /campaigns.
+7. As Admin A, open /audit and search 'admin_console'.
 
-**Expect:** Target behaviour: non-staff are refused at login or immediately after sign-in, and see no platform data. Known risk: login accepts any role. The Dashboard calls /analytics/overview, which is not admin-gated, and may show platform totals. The sidebar shows every section. Every admin API call must return 403 and pages must show errors or 'Access denied'. No PII, payout destinations or KYC data may render, and no mutation may succeed. Export must fail at the /users/:id authorisation check. Record any page that shows data as a P0 defect.
+**Expect:** The login page shows 'This account does not have staff access.' and stays on /login. Nothing is written to uf_admin_*, and no Dashboard, sidebar or platform data renders. For U2 the refusal comes only after the code is checked. API: with audience 'admin' the response is 403 'This account does not have staff access.' with no tokens in the body; without audience the member login still returns 200; audience 'staff' returns 400 'Validation failed'. /analytics/overview returns 403 'Insufficient permissions'. /rbac/me returns 200 with permissions [] and roleName ''. The planted session counts as signed out and redirects to /login. The audit log has warning entries 'auth.admin_console.refused' ('Staff console sign-in refused: account is not an administrator') for U1, O1 and U2. Any page that shows platform data to a non-admin is a P0 defect.
 
 **Needs:** None
 
-**Source:** `apps/admin/src/pages/LoginPage.tsx`, `apps/admin/src/components/AuthGuard.tsx`, `apps/admin/src/router.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/analyticsRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/rbacRoutes.ts`
+**Source:** `apps/admin/src/context/AuthContext.tsx`, `apps/admin/src/components/AuthGuard.tsx`, `apps/api/src/application/use-cases/LoginUserUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/authRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/analyticsRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/rbacRoutes.ts`
 
 ## ADMIN-013 · P0 · API authorisation sweep: every admin endpoint rejects logged-out and non-admin callers
 
@@ -225,19 +230,21 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 *Surfaces:* admin, api  ·  *Type:* functional
 
-**Before:** Staging DB with a known fixture: N users (one soft-deleted), campaigns in each status, settled donations of known GHS amounts (including one with a platform tip), K pending KYC, one KYC approved today and one rejected today, P pending campaign reports.
+**Before:** Staging DB with a known fixture: N users (one soft-deleted), campaigns in each status, settled GHS donations of known amounts (one with a platform tip, one partly refunded through the refund tools, one guest donation), K pending KYC, one KYC approved today and one rejected today (UTC), P pending campaign reports and D open disputes.
 
 **Steps:**
 
 1. Open the Dashboard (/).
-2. Compare Total Raised, Active Campaigns, Total Users, Pending Disputes, Pending KYC, KYC Approved Today and KYC Rejected Today with hand-calculated values.
-3. Open Overview and check average donation, conversion % and monthly growth %.
+2. Compare 'Net raised (GH₵, after refunds)', 'Active Campaigns', 'Total Users', 'Pending campaign reports', 'Pending KYC', 'KYC Approved Today' and 'KYC Rejected Today' with hand-calculated values.
+3. Check the Donations and Disputes navigation tiles.
+4. Open Overview and check average donation, conversion % and monthly growth %.
+5. Export the Overview as CSV.
 
-**Expect:** Total Users excludes deleted users. Active Campaigns equals the count with status=active. Total Raised equals the sum of Donation.amount; confirm tips are excluded and amounts are formatted as 'GH₵ x'. Average donation is rounded to 2 decimal places. Conversion = distinct donors / users × 100. Pending Disputes currently counts pending campaign reports (ReportModel), not the Disputes collection; decide whether the label is correct. All values match the fixture exactly.
+**Expect:** Total Users excludes deleted users. Active Campaigns equals the count with status=active. 'Net raised (GH₵, after refunds)' equals the sum of GHS (and legacy no-currency) Donation.amount minus the provider refunds recorded on the payments, with tips excluded, shown as 'GH₵ x'. Average donation equals net GHS raised divided by the number of GHS donations, rounded to 2 dp. Conversion equals distinct donor accounts (guest donations excluded) divided by users × 100. 'Pending campaign reports' equals P (pending campaign reports), not the Disputes collection. The Disputes navigation tile shows no count (description 'open disputes'); the Donations tile says 'net raised (GH₵, after refunds)'. The Overview export headers read 'Net raised (GHS, after refunds)' and 'Pending campaign reports'. All values match the fixture exactly.
 
 **Needs:** DB fixtures
 
-**Source:** `apps/admin/src/pages/DashboardPage.tsx`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoAnalyticsRepository.ts`
+**Source:** `apps/admin/src/pages/DashboardPage.tsx`, `apps/admin/src/pages/OverviewPage.tsx`, `apps/admin/src/lib/exports/tables.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoAnalyticsRepository.ts`
 
 ## ADMIN-026 · P0 · Approve a pending campaign with attestations and evidence
 
@@ -316,7 +323,7 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 **Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoCampaignReview.ts`, `apps/admin/src/components/CampaignReviewPanel.tsx`
 
-## ADMIN-032 · P0 · Campaign tier thresholds and auto-approve settings
+## ADMIN-032 · P0 · Campaign tier thresholds and auto-approve settings save all-or-nothing
 
 *Surfaces:* admin, api, web  ·  *Type:* compliance
 
@@ -326,12 +333,13 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 1. Enter thresholds out of order (for example 50000, 10000, ...) and check that Save is disabled.
 2. Enter an invalid alert email and check that Save is disabled.
-3. Set the auto-approve tier to 2 and thresholds to 10000, 50000, 250000, 1000000, then Save.
+3. Set the auto-approve tier to 2 and thresholds to 10000, 50000, 250000, 1000000, then Save. Watch the Network tab.
 4. Create a GHS 40,000 campaign (tier 2) and a GHS 60,000 campaign (tier 3) as a verified user.
-5. Simulate a network drop after the first PUT during Save (DevTools offline mid-save), then reload Settings.
-6. Check GET /admin/commercial-config/:key/history.
+5. Change the values again, set DevTools offline (or block PUT /admin/commercial-config) and click Save. Go back online and reload Settings.
+6. API: PUT /api/v1/admin/commercial-config with non-ascending thresholds, with the same key twice, and with an empty changes list.
+7. Check GET /admin/commercial-config/:key/history for the tier and each threshold.
 
-**Expect:** Save is disabled for invalid input. After saving, the tier-2 campaign goes live immediately and the tier-3 campaign goes to pending_review. Existing campaigns are unaffected. Known risk: Save sends 6 sequential PUTs, so an interrupted save can leave the tier and thresholds partly updated. The page must show an error, and the reloaded values must reveal the partial state. History records who, when, the reason and the value for each key.
+**Expect:** Save is disabled for invalid input. Save sends exactly one PUT /admin/commercial-config with a changes list of the six keys (tier, four thresholds, alert email) and the reason 'Campaign review settings updated from platform settings'. The success message reads 'Saved. New campaigns use these rules, and held ones are announced to <email>. Anything already waiting still needs approving.' (or the 'alerts are off' variant for a blank email). The tier-2 campaign goes live immediately and the tier-3 campaign goes to pending_review; existing campaigns are unaffected. The interrupted save shows an error and, after reload, every setting still has its previous value: nothing is partly updated. The API refuses bad batches with 400 and writes nothing: 'Tier thresholds must be positive and strictly ascending.', 'Each setting may appear only once.', 'changes must list between 1 and 25 settings.' History shows one row per key with the same effective time, the actor, the reason and the value.
 
 **Needs:** None
 
@@ -454,7 +462,7 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 *Surfaces:* admin, api, email, web  ·  *Type:* functional
 
-**Before:** Paystack test secret key, test transfer balance funded, webhook pointed at staging. Campaign owner U1 has a verified bank or MoMo recipient and GHS 1,000 cleared available balance. U1 requests a standard payout of GHS 500. PAYOUT_DUAL_APPROVAL_AMOUNT=0.
+**Before:** Paystack test secret key, test transfer balance funded, webhook pointed at staging. Campaign owner U1 has a verified email, a current approved identity KYC (not expired, no renewal pending), and a bank or MoMo recipient that U1 registered under the same Paystack mode (test) as the API. The campaign is active or funded, not blocked, has no open dispute, and has GHS 1,000 cleared available balance. U1 requests a standard payout of GHS 500. Admin A is neither the campaign owner nor the requester. PAYOUT_DUAL_APPROVAL_AMOUNT=0.
 
 **Steps:**
 
@@ -464,11 +472,11 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 4. Wait for the transfer.success webhook and refresh.
 5. Check the campaign balance, ledger or journal, U1's web cashout history, and the audit log.
 
-**Expect:** Approve is disabled until the recipient is loaded and the note is at least 20 characters. After approval the notice reads 'Payout approved; the transfer is initiating.' and the status is PROCESSING, with a Paystack reference in Technical details. After the webhook the chip shows 'Completed' (PAID). The campaign available balance drops by the gross amount. Fee and Net on the card match the fee rule (0 for standard). The net sent equals the Paystack transfer amount in pesewas. U1 sees the completed payout. The audit log shows 'Approve' on payouts with the payout, campaign and amount.
+**Expect:** Approve is disabled until the recipient is loaded and the note is at least 20 characters. After approval the notice reads 'Payout approved; the transfer is initiating.' and the status is PROCESSING, with a Paystack reference in Technical details. After the webhook the chip shows 'Completed' (PAID). The campaign available balance drops by the gross amount. Fee and Net on the card match the fee rule (0 for standard). The net sent equals the Paystack transfer amount in pesewas. U1 sees the completed payout. The audit log shows 'Approve' on payouts with the payout, campaign and amount. If any precondition is not met (owner KYC, campaign state, approver identity, recipient mode) the approval is refused instead; see ADMIN-N009 and ADMIN-N010.
 
 **Needs:** Paystack test keys and webhook
 
-**Source:** `apps/admin/src/pages/PayoutsPage.tsx`, `apps/api/src/application/use-cases/ApprovePayoutUseCase.ts`, `apps/api/src/application/use-cases/HandlePayoutWebhookUseCase.ts`
+**Source:** `apps/admin/src/pages/PayoutsPage.tsx`, `apps/api/src/application/use-cases/ApprovePayoutUseCase.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoManualPayoutApproval.ts`, `apps/api/src/application/use-cases/HandlePayoutWebhookUseCase.ts`
 
 ## ADMIN-045 · P0 · Payout fee and net accuracy across payout types
 
@@ -493,20 +501,20 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 *Surfaces:* admin, api  ·  *Type:* security/permission
 
-**Before:** PAYOUT_DUAL_APPROVAL_AMOUNT=1000 on staging. Payout of GHS 1,500 pending. Admins A and B.
+**Before:** PAYOUT_DUAL_APPROVAL_AMOUNT=1000 on staging. Payout of GHS 1,500 pending on a campaign owned by neither admin. Admins A and B.
 
 **Steps:**
 
 1. Admin A reviews the destination, adds a note and clicks Approve.
 2. Admin A clicks 'Give 2nd approval' on the same payout.
 3. Admin B reviews the destination, adds a note and clicks 'Give 2nd approval'.
-4. Record the production value of PAYOUT_DUAL_APPROVAL_AMOUNT (render.yaml ships 0, which disables this).
+4. Read the production API startup logs and record the production value of PAYOUT_DUAL_APPROVAL_AMOUNT.
 
-**Expect:** After A: 'First approval recorded — a second admin must approve.' The status stays PENDING with a '1st approval: <A>' detail and the info alert. A's second attempt returns 409 'A second, different admin must approve this high-value payout'. B's approval initiates the transfer (PROCESSING). The owner must sign off on the production threshold before launch.
+**Expect:** After A: 'First approval recorded — a second admin must approve.' The status stays PENDING with a '1st approval: <A>' detail and the maker-checker info alert. A's second attempt returns 409 'A second, different admin must approve this high-value payout'. B's approval initiates the transfer (PROCESSING). While production runs with 0, the API logs at startup: 'PAYOUT_DUAL_APPROVAL_AMOUNT is 0: every campaign and beneficiary payout needs only one admin approval (maker-checker is off). …' The owner must sign off on the production threshold before launch. Known open issue I029: render.yaml still ships 0 as an accepted risk (recorded in docs/compliance/STAFF_ACCESS.md), so maker-checker stays off in production until a threshold is set.
 
 **Needs:** Two admin accounts, Paystack test keys
 
-**Source:** `apps/api/src/application/use-cases/ApprovePayoutUseCase.ts`, `apps/admin/src/pages/PayoutsPage.tsx`, `apps/api/src/infrastructure/config/index.ts`, `render.yaml`
+**Source:** `apps/api/src/application/use-cases/ApprovePayoutUseCase.ts`, `apps/admin/src/pages/PayoutsPage.tsx`, `apps/api/src/infrastructure/config/payoutControls.ts`, `apps/api/src/infrastructure/config/index.ts`, `render.yaml`, `docs/compliance/STAFF_ACCESS.md`
 
 ## ADMIN-047 · P0 · Payout approval guardrails and batching
 
@@ -601,46 +609,51 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 **Source:** `apps/admin/src/components/AutomaticPayoutSettings.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/automaticPayoutRoutes.ts`, `apps/api/src/infrastructure/adapters/outbound/payments/AutomaticPayoutService.ts`
 
-## ADMIN-053 · P0 · Beneficiary (split) payout approval
+## ADMIN-053 · P0 · Beneficiary (split) payout approval with destination review note
 
 *Surfaces:* admin, api  ·  *Type:* functional
 
-**Before:** SPLIT_PROCEEDS_ENABLED=true. Campaign with an active split. A beneficiary has a registered recipient and requested a GHS 400 payout. Paystack test keys.
+**Before:** SPLIT_PROCEEDS_ENABLED=true. Campaign with an active split. A beneficiary has a registered recipient and requested a GHS 400 payout. Paystack test keys. Admins A and B, neither the campaign owner nor the beneficiary.
 
 **Steps:**
 
-1. Open /payouts?view=beneficiary.
-2. Click Approve before KYC is verified.
-3. Click 'Verify KYC', then Approve.
-4. With the dual threshold at or below 400, repeat with admins A then B.
-5. Set SPLIT_PROCEEDS_ENABLED=false and open the view.
+1. Open /payouts?view=beneficiary and find the PENDING card. Check the Approve button.
+2. Click 'Review payout destination' and read the destination alert.
+3. Via API, POST /beneficiary-payouts/:id/approve with a valid reviewNote before KYC is verified.
+4. Click 'Verify KYC'.
+5. Type a destination review note under 20 characters, then one of 20 or more, and click Approve.
+6. Via API, POST /beneficiary-payouts/:id/approve with {} on another pending payout.
+7. With the dual threshold at or below 400, repeat with Admin A then Admin B, each reviewing the destination and writing a note.
+8. Replace the beneficiary's destination after a request, then click 'Review payout destination' again.
+9. Set SPLIT_PROCEEDS_ENABLED=false and open the view.
 
-**Expect:** Approving before KYC returns 422 'Beneficiary KYC must be verified before payout'. After 'Beneficiary KYC verified.', approval reserves the beneficiary and campaign balances and initiates the transfer. Maker-checker behaves as in ADMIN-046. Destination replaced after the request: 409. With the flag off, the queue shows an error or empty state, not a crash. Note: unlike campaign payouts, this flow collects no destination review note; decide whether that is acceptable.
+**Expect:** Approve stays disabled until the destination is loaded, KYC is verified and the note has at least 20 characters. The alert reads '<Mobile money|Bank> account <number> · <bank code> · name on request: <name> · GHS. KYC is not verified for this destination. The name on the request is not proof of ownership.' The API refuses approval before verification with 422 'Beneficiary KYC must be verified before payout'. 'Verify KYC' shows only while unverified; afterwards the notice 'Beneficiary KYC verified.' appears and the alert says 'KYC verified <time>. A changed destination resets verification.' Approval shows 'Beneficiary payout approved; the transfer is initiating.', reserves the beneficiary and campaign balances, and stores the note on the payout; the destination route never returns the recipient code. An approval without a note returns 400 'Validation failed'. Maker-checker: A gets 'First approval recorded — a second admin must approve.', B completes it and both notes are stored. A replaced destination returns 409 'Payout destination was replaced; create a new payout request.' With the flag off, the queue shows an error or empty state, not a crash. Known open issue I029: the production threshold is 0, so one approver is enough.
 
 **Needs:** SPLIT_PROCEEDS_ENABLED, Paystack test keys
 
-**Source:** `apps/admin/src/pages/PayoutsPage.tsx`, `apps/api/src/application/use-cases/BeneficiaryPayoutUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/beneficiaryPayoutRoutes.ts`
+**Source:** `apps/admin/src/pages/PayoutsPage.tsx`, `apps/api/src/application/use-cases/BeneficiaryPayoutUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/beneficiaryPayoutRoutes.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoBeneficiaryPayoutAuthorization.ts`
 
-## ADMIN-056 · P0 · Admin-initiated refund: full, partial, idempotency and rounding (API only)
+## ADMIN-056 · P0 · Admin-initiated refund from the Payments page: full, partial, idempotency and rounding
 
 *Surfaces:* admin, api, web  ·  *Type:* functional
 
-**Before:** Settled Paystack test donation intent I of GHS 100.00 with a recorded platform fee, funds still pending (not paid out). Admin token. There is no admin UI; use POST /api/v1/admin/payments/:intentId/refund.
+**Before:** Settled Paystack test contribution I of GHS 100.00 with a recorded platform fee, funds still pending (not paid out). A second settled contribution on a campaign whose funds were already paid out. A third fresh settled contribution for the API idempotency check. Paystack test keys.
 
 **Steps:**
 
-1. POST a partial refund {amount: 33.33} with Idempotency-Key k1.
-2. Repeat the same request with k1.
-3. POST {amount: 70} with key k2 (more than the remaining 66.67).
-4. POST a full refund of the remainder with k3.
-5. On a donation whose funds were already paid out, POST a refund.
-6. Check the Paystack refund, intent status, campaign pending balance, compensating journal and web donor history.
+1. Open Finance > Payments (/payments), search I's Paystack reference, click 'View timeline', then 'Refund payment'.
+2. In the dialog enter 150 and read the helper. Enter 33.33, try to submit without the checkbox, then tick 'I have checked this refund is approved and the amount is correct.' and double-click the Refund button.
+3. Reopen the dialog, enter 70 and submit.
+4. Reopen the dialog and refund the remaining 66.67.
+5. Via API, POST /api/v1/admin/payments/<third>/refund {amount: 10, idempotencyKey: 'k1'} twice.
+6. Refund the paid-out contribution from the Payments page.
+7. Check the Paystack refund, contribution status, campaign pending balance, compensating journal and the donor's web history.
 
-**Expect:** Partial: status PARTIALLY_REFUNDED. Beneficiary net, platform fee and processor fee are split in proportion, sum exactly to 33.33, and rounding goes to the processor-fee leg. The repeated k1 returns 409 and no second provider refund. Over-refund: 409 'would exceed the refundable amount'. Remainder: REFUNDED. Already disbursed: 409 '…manual clawback is required'. Original settlement journals are unchanged. Known gap: there is no admin UI to start refunds or search payments; staff need a documented procedure.
+**Expect:** The dialog warns that the refund cannot be undone, that only the campaign amount (not a separate platform tip) is refunded, and that funds already paid out cannot be refunded here. The submit button stays disabled until the amount is above 0 and at most 100 and the box is ticked; 150 shows 'Enter an amount above 0 and up to 100'; 33.33 shows 'Partial refund'. The double-click sends one request and shows 'Refund of GH₵33.33 confirmed by the provider (reference …).' Status becomes PARTIALLY_REFUNDED; beneficiary net, platform fee and processor fee are split in proportion and sum exactly to 33.33, with rounding on the processor-fee leg. The 70 refund returns 409 'This refund was already processed or would exceed the refundable amount'. The remainder makes the status REFUNDED and the 'Refund payment' button disappears. The repeated k1 call returns 409 and Paystack shows only one refund. The paid-out contribution returns 409 'These funds appear already disbursed; a manual clawback is required'. If Paystack is still processing, the dialog says 'The provider is still processing this refund. Follow it in Refund recovery; do not submit it again.' Original settlement journals are unchanged. Known open issue I036: refunds have no maker-checker, and there are still no console buttons for re-verify or reconciliation sweeps, or admin views for creator tips and withdrawals.
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/adminPaymentsRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/http/controllers/AdminPaymentsController.ts`, `apps/api/src/application/use-cases/ProcessRefundUseCase.ts`, `docs/compliance/REFUNDS_AND_FEES.md`
+**Source:** `apps/admin/src/pages/PaymentsPage.tsx`, `apps/admin/src/components/payments/RefundDialog.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminPaymentsRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/http/controllers/AdminPaymentsController.ts`, `apps/api/src/application/use-cases/ProcessRefundUseCase.ts`, `docs/compliance/REFUNDS_AND_FEES.md`
 
 ## ADMIN-057 · P0 · Refund recovery queue after an uncertain provider outcome
 
@@ -661,41 +674,49 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 **Source:** `apps/admin/src/pages/RefundOperationsPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminPaymentsRoutes.ts`, `docs/compliance/REFUND_RECOVERY.md`
 
-## ADMIN-058 · P0 · Donor refund requests reach staff
+## ADMIN-058 · P0 · Donor refund requests reach the staff Refund requests queue
 
 *Surfaces:* admin, api, web  ·  *Type:* compliance
 
-**Before:** Donor D1 with a settled donation.
+**Before:** Donor D1 with two settled Paystack donations (funds not paid out) and refund activity alerts turned on. Admin A.
 
 **Steps:**
 
-1. As D1 on web, open the refund request page and submit a request (reason and description).
-2. Confirm D1 sees it under My Refunds.
-3. As Admin A, look for the request anywhere in the console (Refund recovery, Donations, Disputes, bell).
+1. As D1 on web, open the refund request page for the first donation and submit a request (reason and description). Confirm D1 sees it under My Refunds.
+2. As Admin A, check the bell ('Donor refund requests') and open Finance > Refund requests (/refund-requests).
+3. Read the card: amount, status chip, payment chip, donor, campaign, reason and the payment reference. Click 'View payment timeline' and return.
+4. Type a staff note under 20 characters and check the buttons. Then type 20 or more characters and click 'Approve and mark processing'.
+5. Switch the Status filter to Processing. Click 'Refund payment', complete the refund dialog, then add a note and click 'Mark refunded'.
+6. As D1, check My Refunds and the in-app notifications.
+7. Have D1 request a refund for the second donation; as Admin A decline it with a note.
+8. Open /audit and search 'refund_request'.
 
-**Expect:** Target: staff can find, triage and answer every donor refund request. Known gap: refund intake (RefundModel via POST /refunds) has no admin list or action-center count, so requests are invisible to staff. Block launch until there is a queue or a documented manual procedure with an SLA, and the refund policy on marketing matches it.
+**Expect:** The request appears in the pending view as 'Awaiting review' with the net amount in its currency, 'Payment succeeded', the donor's name and email, the campaign, the reason and description, and 'Payment <id> via paystack · reference …'. The bell count includes it. Buttons are disabled until the note has 20 characters. 'Approve and mark processing' shows 'Request marked processing. The donor is notified of the new status.' 'Mark refunded' is enabled only after the linked payment shows the refund, and then shows 'Request marked refunded. …'. Decline shows 'Request marked declined or failed. …'. D1 sees the status move to processing, then completed (and failed for the declined one) and gets 'Your refund is …' activity notices; the staff note stays internal. The bell count drops once requests are refunded or declined. The audit log has refund_request.processing (info), refund_request.completed and refund_request.failed (warning) entries.
 
-**Needs:** None
+**Needs:** Paystack test keys
 
-**Source:** `apps/web/src/pages/RefundRequestPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/refundRoutes.ts`, `apps/api/src/application/use-cases/RequestRefundUseCase.ts`, `apps/admin/src/router.tsx`
+**Source:** `apps/web/src/pages/RefundRequestPage.tsx`, `apps/web/src/pages/MyRefundsPage.tsx`, `apps/admin/src/pages/RefundRequestsPage.tsx`, `apps/admin/src/components/payments/RefundDialog.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminRefundRequestRoutes.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoRefundRepository.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoActivityAlerts.ts`
 
-## ADMIN-059 · P0 · User 'Report campaign' submissions reach a staff queue
+## ADMIN-059 · P0 · User 'Report campaign' submissions reach the Campaign reports queue
 
-*Surfaces:* admin, api, web  ·  *Type:* compliance
+*Surfaces:* admin, android, api, ios, web  ·  *Type:* compliance
 
-**Before:** Active campaign C. Signed-in user U5.
+**Before:** Active campaign C. Signed-in user U5 on web and U6 in the iOS or Android app. Admins A and B.
 
 **Steps:**
 
-1. As U5, open C on web and submit a report via 'Report campaign'.
-2. As Admin A, note the Dashboard 'Pending Disputes' count and check /disputes, /safety-reports and the bell.
-3. Try GET /api/v1/reports (admin API).
+1. As U5 on web, report C with reason 'Fraud or scam' and details. As U6 in the app, report C with another reason, for example 'Intellectual property / copyright' on web or any native reason.
+2. As Admin A, check the bell ('Campaign reports from supporters'), the Dashboard 'Pending campaign reports' tile and Trust & Safety > Campaign reports (/campaign-reports) with Status 'pending'.
+3. On U5's report, type a note under 20 characters and check the buttons. Open the campaign, block it, return and click 'Mark reviewed' with a note of 20 or more characters describing the block.
+4. Have Admin B open U6's report in another tab. Admin A dismisses it with a note; then Admin B tries to mark it reviewed.
+5. Switch Status to 'reviewed' and 'dismissed', and export CSV.
+6. Check U5's in-app notifications and /audit (search 'campaign_report').
 
-**Expect:** Target: campaign reports are listed and actionable in the console with timely handling (Apple guideline 1.2 and Google Play UGC policy). Known gap: reports go to ReportModel, which only increments the Dashboard 'Pending Disputes' tile and the Reports fraud metrics. There is no admin page for them. /disputes reads a separate collection that no user flow writes to. Record as a launch blocker unless handled another way.
+**Expect:** Both reports appear, including the one filed in the app. Each card shows a reason chip (fraud and illegal activity in red), a 'Campaign <status>' chip, the linked campaign title and reporter ID, and the description or 'No details were given.' An info alert says marking a report does not change the campaign. Buttons stay disabled below 20 characters (the API returns 400 'Validation failed'). 'Mark reviewed' shows 'Report marked reviewed.' and Dismiss shows 'Report dismissed.'; decided reports move to their view with 'Reviewed|Dismissed <time> by <admin id>' and the notes. Admin B's late decision gets 409 'Report has already been reviewed'. The bell and Dashboard counts drop. The export has ID, Campaign, Campaign ID, Reason, Status, Reporter, Created (UTC) and Review notes. U5 receives the in-app notice 'We reviewed your report'. The audit log has campaign_report.reviewed and campaign_report.dismissed entries. Watch: the admin reason map has no label for the new 'intellectual_property' and 'privacy' reasons, so the chip may show the raw value; log a cosmetic defect if so. No email alert is sent for new reports (skipped by design).
 
 **Needs:** None
 
-**Source:** `apps/web/src/components/campaigns/ReportCampaignDialog.tsx`, `apps/api/src/application/use-cases/ReportCampaignUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminReportRoutes.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoAnalyticsRepository.ts`
+**Source:** `apps/web/src/components/campaigns/ReportCampaignDialog.tsx`, `apps/admin/src/pages/CampaignReportsPage.tsx`, `apps/api/src/application/use-cases/ReviewReportUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminReportRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/http/controllers/AdminReportController.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoAdminReportRepository.ts`
 
 ## ADMIN-061 · P0 · Publication, donor-message and tip-message reviews
 
@@ -738,45 +759,49 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 ## ADMIN-064 · P0 · Data-rights requests: access, correction and complaint
 
-*Surfaces:* admin, android, api, ios, web  ·  *Type:* compliance
+*Surfaces:* admin, android, api, email, ios, web  ·  *Type:* compliance
 
-**Before:** U6 submits an access request and a complaint from web or mobile Settings. U7 submits a request and then closes their account.
+**Before:** U6 submits an access request and a complaint from web or mobile Settings. U7 submits a request and then closes their account. Email provider configured.
 
 **Steps:**
 
 1. Open /privacy-requests, section 'Data access, corrections and complaints', filter 'Open and in review'.
 2. On U6's request, enter evidence shorter than 20 characters and check that the buttons are disabled.
 3. 'Save review progress' with valid evidence. Then 'Publish response to requester' with a response of 20 or more characters.
-4. As U6, view the response in Settings.
-5. For U7 choose 'Publish in account Settings'. Then switch to 'Record verified external delivery…' with a reference of 20 or more characters.
+4. As U6, view the response in Settings and check U6's email inbox.
+5. For U7 choose 'Publish in account Settings'. Then switch to 'Record verified external delivery…' with a reference of 20 or more characters. Check U7's inbox.
 6. Submit the same request from two tabs.
 7. Click 'Load review history' and switch the filter to Responded.
 
-**Expect:** The 30-day target date is shown. in_review is saved. The response appears in U6's Settings and can be downloaded. For the closed account, 'account' delivery returns 409 ('This account is closed…'), while external delivery with a reference succeeds. The second tab gets 409 'Request changed or was already answered'. History shows actor, action and evidence. The response is not editable after it is sent.
+**Expect:** The 30-day target date is shown. in_review is saved. The response appears in U6's Settings and can be downloaded. U6 receives an email 'Your Ujimora privacy request has a response' with the request reference and a link to Settings; the response text is not in the email. For the closed account, 'account' delivery returns 409 ('This account is closed…'), while external delivery with a reference succeeds and sends no email. The second tab gets 409 'Request changed or was already answered'. History shows actor, action and evidence. The response is not editable after it is sent.
 
-**Needs:** None
+**Needs:** Email provider (Resend)
 
-**Source:** `apps/admin/src/components/DataRightsQueue.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/dataRightsRoutes.ts`, `docs/compliance/DATA_RIGHTS.md`
+**Source:** `apps/admin/src/components/DataRightsQueue.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/dataRightsRoutes.ts`, `apps/api/src/infrastructure/adapters/outbound/AccountEmails.ts`, `docs/compliance/DATA_RIGHTS.md`
 
-## ADMIN-065 · P0 · Account deletion and retention review queue
+## ADMIN-065 · P0 · Account deletion: balance check, step-up and retention review queue
 
 *Surfaces:* admin, android, api, ios, web  ·  *Type:* compliance
 
-**Before:** U8 has a campaign, donations and a wallet balance. U8 deletes their account in the iOS app, and U9 deletes on web.
+**Before:** U8 has an active campaign, donations and a GHS 20 wallet balance, and uses the iOS app. U9 has no balances or open payouts, uses web and has authenticator MFA on. Both know their passwords.
 
 **Steps:**
 
-1. Open /privacy-requests, section 'Account deletion and retention'. Check status chips and the 'Operational profile data removed…' text.
-2. Click 'Retry pending cleanup'.
-3. Save review notes shorter than 20 characters, then with a past 'Next review date', then valid notes with a future date.
-4. Edit the same request in two tabs.
-5. As U8, try to sign in on mobile and web.
+1. As U8 in the iOS app, open Settings and start account deletion.
+2. Via API as U8, DELETE /api/v1/profile with the correct password.
+3. Have U8 move the wallet balance out (and settle any campaign balance or open payout), then delete in the app with the password.
+4. As U9 on web, submit deletion without a password, then with the password and an authenticator code; double-click the confirm button.
+5. Open /privacy-requests, section 'Account deletion and retention'. Check status chips and the 'Operational profile data removed…' text.
+6. Click 'Retry pending cleanup'.
+7. Save review notes shorter than 20 characters, then with a past 'Next review date', then valid notes with a future date.
+8. Edit the same request in two tabs.
+9. As U8, try to sign in on mobile and web. As Admin, open U8's former campaign in /campaigns.
 
-**Expect:** The request appears with the contact email and account ID. Retry runs the erasure sweep. Invalid notes or dates are refused (400 'Set a future review date'). A valid save increments the revision and writes a 'privacy.retention_review' audit entry. A stale tab gets 409. U8 cannot sign in. Financial records and donation totals are preserved while identity is removed.
+**Expect:** While U8 holds money, the app shows the closure check ('Your account can’t be closed yet. First withdraw or resolve: GHS 20.00 in your Ujimora wallet… If you can’t, contact support@ujimora.com…') and offers no delete action; the API returns 409 with the same text and nothing is erased. Deletion without a password returns 400 'Enter your current password to delete your account. If you are not asked for it, update the Ujimora app or delete your account from Settings at app.ujimora.com.' The double-click sends one DELETE. Once balances are clear, both requests appear with the contact email and account ID. Retry runs the erasure sweep. Invalid notes or dates are refused (400 'Set a future review date'). A valid save increments the revision and writes a 'privacy.retention_review' audit entry. A stale tab gets 409. U8 cannot sign in. U8's active campaign is now 'expired' (a pending_review one returns to 'draft'). Financial records and donation totals are preserved while identity is removed. Known open issue I084: the KYC retention job and Paystack transfer-recipient deletion are still not automated.
 
 **Needs:** None
 
-**Source:** `apps/admin/src/pages/PrivacyRequestsPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/privacyRequestRoutes.ts`, `docs/compliance/ACCOUNT_CLOSURE_AUDIT.md`
+**Source:** `apps/admin/src/pages/PrivacyRequestsPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/privacyRequestRoutes.ts`, `apps/api/src/application/use-cases/DeleteAccountUseCase.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoAccountClosureCheck.ts`, `apps/web/src/components/account/DeleteAccountDialog.tsx`, `docs/compliance/ACCOUNT_CLOSURE_AUDIT.md`
 
 ## ADMIN-066 · P0 · Store billing recovery queue and audited retry
 
@@ -797,24 +822,27 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 **Source:** `apps/admin/src/pages/StoreBillingPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/storeBillingAdminRoutes.ts`, `apps/api/src/infrastructure/config/storeBilling.ts`, `docs/compliance/STORE_BILLING.md`
 
-## ADMIN-068 · P0 · Edit plan pricing and limits and check every surface
+## ADMIN-068 · P0 · Edit plan pricing, limits and visibility and check every surface
 
 *Surfaces:* admin, android, api, ios, marketing, web  ·  *Type:* cross-platform
 
-**Before:** Plans page (/plans). Paystack test keys. Store sandbox products mapped for Pro.
+**Before:** Plans page (/plans). Paystack test keys. Store sandbox products mapped for Pro. An existing Starter subscriber.
 
 **Steps:**
 
-1. Edit Pro: monthly price 79 → 89, platform fee 5 → 4.5, maxCampaignGoal -1 (unlimited). Try fee 101 and accent colour 'blue'.
+1. Read the info alert on /plans. Edit Pro: monthly price 79 → 89 (read the field helper), platform fee 5 → 4.5, maxCampaignGoal -1 (unlimited). Try fee 101 and accent colour 'blue'.
 2. Save and check ujimora.com/pricing (/plans/public) and the web upgrade page. Complete a web Paystack checkout.
 3. Open the iOS and Android subscription screens.
-4. Set 'active' or 'isPublic' to false on a plan and check marketing and web.
+4. In Edit for Starter, turn off Public (read the note), save, and check marketing and web. Open web /subscription?tier=starter and POST a Starter checkout via the API. Then do the same with Active off.
+5. Set Pro's yearly price to 0 and check web.
+6. Toggle Popular, change Sort order and Accent colour; check marketing.
+7. Read the feature and limit labels in the edit dialog.
 
-**Expect:** Invalid values are rejected ('Must be a hex colour', fee maximum 100). After saving, marketing and web show GHS 89 and Paystack charges 89.00 exactly (8900 pesewas). The new fee applies to new donations. Native shows the store's localised displayPrice (no GHS web price and no Paystack link). Inactive or non-public plans disappear from pricing. Any plan export keeps -1 as 'unlimited'.
+**Expect:** The alert says prices apply to web (Paystack) checkout only and store products must be updated in App Store Connect and Google Play Console; price fields say 'Web checkout price. Update store products separately.' Invalid values are rejected ('Must be a hex colour', fee maximum 100). After saving, marketing and web show GHS 89 and Paystack charges 89.00 (8900 pesewas); the new fee applies to new donations. Native shows the store's localised displayPrice (no GHS web price, no Paystack link) and does not change until the store product does. The edit dialog now has Sort order, Accent colour and Active, Public and Popular switches, with the note that turning off Active or Public hides the plan from new purchases without cancelling existing subscribers. The hidden plan disappears from pricing and signup; a direct purchase gets 403 'This plan is arranged through our sales team. Contact sales@ujimora.com.'; the existing Starter subscriber keeps the plan. A yearly price of 0 makes web show that cycle as not offered, and the API refuses it with 400 'That billing cycle is not available for this plan'. Popular, order and accent show on marketing. Unbuilt features are labelled '(not built — hidden from members)', 'escrowSupport' is labelled 'Split proceeds', and team members read 'Organization team seats (incl. owner)'. Any plan export keeps -1 as 'unlimited'.
 
 **Needs:** Paystack test keys, store sandbox
 
-**Source:** `apps/admin/src/pages/ManagePlansPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/planRoutes.ts`, `apps/mobile/src/screens/SubscriptionScreen.native.tsx`, `apps/marketing/src/pages/PricingPage.tsx`
+**Source:** `apps/admin/src/pages/ManagePlansPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/planRoutes.ts`, `apps/api/src/application/use-cases/CreateSubscriptionCheckoutUseCase.ts`, `apps/mobile/src/screens/SubscriptionScreen.native.tsx`, `apps/marketing/src/pages/PricingPage.tsx`, `docs/compliance/STORE_BILLING.md`
 
 ## ADMIN-071 · P0 · Coupon discount accuracy and redemption counting at checkout
 
@@ -825,16 +853,16 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 **Steps:**
 
 1. On the web subscription checkout, preview and pay with each coupon on monthly and yearly plans.
-2. Abandon one checkout that used ONEUSE, then retry.
+2. Start a checkout with ONEUSE and abandon it at Paystack. Immediately start another checkout. Then make the abandoned checkout older than one hour (wait, or age it in the DB) and start again.
 3. Replay the charge.success webhook for a coupon payment.
 4. Apply the donation coupon to a GHS 100 donation and check the fee breakdown.
 5. Try to use a coupon in the iOS or Android subscription flow.
 
-**Expect:** PCT20CAP on GHS 89 gives a GHS 15 discount (cap), not 17.80. FIXED10 subtracts 10 and never goes below 0. MIN100 is refused under 100. ONEUSE is refused on second use, but an abandoned checkout does not consume it. NEWONLY and EMAILONLY are enforced. EXPIRED and INACTIVE are refused. The redemption count in /coupons increments exactly once per settled payment, even after a webhook replay. The donation coupon waives the platform fee so the campaign receives more. Native IAP has no coupon entry.
+**Expect:** PCT20CAP on GHS 89 gives a GHS 15 discount (cap), not 17.80. FIXED10 subtracts 10 and never goes below 0. MIN100 is refused under 100. ONEUSE is refused on a second paid use. Retrying within an hour of the abandoned ONEUSE checkout returns 409 'You already have a plan payment in progress. Finish it in the payment window, or check its status on your subscription page, before starting another.' Once the abandoned checkout is over an hour old, a new checkout expires it and releases its coupon seat (the 24-hour reconciliation sweep does the same), so ONEUSE can be used. NEWONLY and EMAILONLY are enforced. EXPIRED and INACTIVE are refused. The redemption count in /coupons increments exactly once per settled payment, even after a webhook replay. The donation coupon waives the platform fee so the campaign receives more. Native IAP has no coupon entry.
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/api/src/application/use-cases/PreviewCouponUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/couponRoutes.ts`, `apps/admin/src/pages/CouponsPage.tsx`
+**Source:** `apps/api/src/application/use-cases/PreviewCouponUseCase.ts`, `apps/api/src/application/use-cases/CreateSubscriptionCheckoutUseCase.ts`, `apps/api/src/application/services/SubscriptionCheckoutResolver.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/couponRoutes.ts`, `apps/admin/src/pages/CouponsPage.tsx`
 
 ## ADMIN-073 · P0 · Commercial config: early cashout surcharge and referral discount
 
@@ -895,21 +923,148 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 *Surfaces:* admin, api  ·  *Type:* functional
 
-**Before:** Production admin (admin.ujimora.com on Vercel) and API (api.ujimora.com on Render).
+**Before:** Production admin (admin.ujimora.com on Vercel) and API (api.ujimora.com on Render). Access to Render logs and settings.
 
 **Steps:**
 
 1. Load admin.ujimora.com over HTTPS, and try http:// to confirm the redirect.
-2. In DevTools, confirm /api/v1/* calls go through the Vercel rewrite to api.ujimora.com with no CORS errors. Check CORS_ORIGINS includes https://admin.ujimora.com.
-3. Reload deep links such as /payouts?view=all and /content/blog/new.
-4. Check response headers on /admin/* queue endpoints (Cache-Control private, no-store).
-5. Confirm the 'View donor site' link goes to https://app.ujimora.com.
+2. In DevTools > Network, confirm console API calls go directly to https://api.ujimora.com/api/v1/... with a successful CORS preflight and no CORS errors.
+3. Reload deep links such as /payouts?view=all, /content/blog/new, /campaign-reports and /refund-requests.
+4. Check the response headers on the console HTML, and try to load the console inside an iframe on another origin.
+5. Check response headers on /admin/* queue endpoints.
+6. Call https://api.ujimora.com/health and /health/ready, and check Render's health check path.
+7. Read the API startup logs in Render.
+8. Confirm the 'View donor site' link goes to https://app.ujimora.com.
 
-**Expect:** Everything loads over HTTPS. There are no CORS or mixed-content errors. Deep links load. Admin data responses are not cacheable. The production env has the intended PAYOUT_DUAL_APPROVAL_AMOUNT, REVIEW_ALERT_EMAIL, ADMIN_WEB_URL and MFA_ENCRYPTION_KEY values.
+**Expect:** Everything loads over HTTPS with no CORS or mixed-content errors. API requests go to the API origin (VITE_API_URL=https://api.ujimora.com/api/v1), with Access-Control-Allow-Origin https://admin.ujimora.com. Deep links load. The console HTML carries X-Frame-Options DENY, Content-Security-Policy frame-ancestors 'none', X-Content-Type-Options nosniff and Referrer-Policy strict-origin-when-cross-origin, and the iframe is refused. Admin data responses are Cache-Control private, no-store. /health returns 200 {status: 'ok'}; /health/ready returns 200 {status: 'ok'} with Cache-Control no-store (503 'unavailable' if MongoDB is unreachable), and Render's healthCheckPath is /health/ready. The startup logs show no disabled-capability error for account email or MFA, and the API only boots with CORS_ORIGINS set (it refuses to start in production with 'CORS_ORIGINS is required in production'). The PAYOUT_DUAL_APPROVAL_AMOUNT warning appears while the value is 0. Record the production PAYOUT_DUAL_APPROVAL_AMOUNT, REVIEW_ALERT_EMAIL, ADMIN_WEB_URL and MFA_ENCRYPTION_KEY status. Known open issues I003 and I035: the Render free plan sleeps when idle (cold starts) and there is no error tracking or alerting beyond logs; put an uptime monitor on /health/ready.
 
 **Needs:** Production access
 
-**Source:** `apps/admin/vercel.json`, `apps/admin/.env.production`, `render.yaml`, `apps/api/src/infrastructure/config/index.ts`
+**Source:** `apps/admin/vercel.json`, `apps/admin/.env.production`, `render.yaml`, `apps/api/src/app.ts`, `apps/api/src/infrastructure/config/index.ts`, `apps/api/src/infrastructure/config/capabilities.ts`, `apps/api/src/infrastructure/config/payoutControls.ts`
+
+## ADMIN-N003 · P0 · Signing out revokes the session on the server
+
+*Surfaces:* admin, api  ·  *Type:* security/permission
+
+**Before:** Admin A signed in on browsers X and Y. Postman or curl.
+
+**Steps:**
+
+1. In X, copy refreshToken from uf_admin_tokens in localStorage.
+2. In X, open the user menu and click Sign out. Watch the Network tab.
+3. POST /api/v1/auth/refresh with the copied refresh token.
+4. In Y, keep working for more than 16 minutes so its access token refreshes.
+5. POST /api/v1/auth/logout with a random string as refreshToken, and with an empty body.
+6. Sign in again in X, go offline in DevTools and sign out.
+
+**Expect:** Sign out sends POST /auth/logout with the refresh token, then clears local storage. The copied refresh token now gets 401 'Invalid or expired refresh token'. Y keeps refreshing and working normally. /auth/logout answers 200 'Signed out' for a garbage token (it reveals nothing), and 400 'Validation failed' for an empty body. The offline sign-out still completes locally. Note: an access token copied before sign-out keeps working until it expires (up to 15 minutes). Known open issue I031: refresh tokens are not rotated with reuse detection, and tokens are still kept in localStorage.
+
+**Needs:** None
+
+**Source:** `apps/admin/src/context/AuthContext.tsx`, `packages/ui/src/browserSession.ts`, `apps/api/src/infrastructure/adapters/inbound/http/controllers/AuthController.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/authRoutes.ts`
+
+## ADMIN-N005 · P0 · Authorisation sweep for admin endpoints added in the launch fixes
+
+*Surfaces:* api  ·  *Type:* security/permission
+
+**Before:** Postman or curl collection. No token; U1 (member) and O1 (organisation) access tokens; valid IDs for fixtures in each queue.
+
+**Steps:**
+
+1. Without Authorization, call: GET /reports; PUT /reports/:id/review; GET /admin/refund-requests; PATCH /admin/refund-requests/:id; GET /admin/activity-deliveries; PATCH /admin/activity-deliveries/:id; POST /payouts/:id/reject; POST /payouts/stuck/campaign/:id/resolve; POST /affiliates/payouts/:id/reject; GET /beneficiary-payouts/:id/recipient; POST /admin/users/:id/close; GET /admin/payments/provider-events; POST /admin/payments/provider-events/:id/acknowledge; POST /admin/reconciliation/topups; GET /admin/safety-reports/restrictions; POST /admin/safety-reports/restrictions/:userId; POST /admin/safety-reports/restrictions/:userId/restore; PUT /admin/commercial-config (batch body); GET /analytics/overview.
+2. Repeat each call with U1's and O1's tokens, using valid bodies.
+3. With U1's token, call GET /rbac/me and GET /users/<Admin A id>/public.
+4. Check the DB and /audit after the run.
+
+**Expect:** Every call returns 401 without a token and 403 'Insufficient permissions' with U1's or O1's token. /rbac/me returns 200 with permissions [] and roleName ''. The public profile has no role field. Nothing changes: reports and refund requests stay pending, payouts stay PENDING, no restriction or account closure happens and config is unchanged. Refused mutations are logged as warnings. Queue responses carry Cache-Control private, no-store.
+
+**Needs:** None
+
+**Source:** `apps/api/src/app.ts`, `apps/api/src/infrastructure/adapters/inbound/middleware/requireRole.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminRefundRequestRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminActivityDeliveryRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminAccountClosureRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/payoutRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminPaymentsRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/safetyReportRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/rbacRoutes.ts`
+
+## ADMIN-N007 · P0 · Refund request status guardrails
+
+*Surfaces:* admin, api, web  ·  *Type:* recovery/idempotency
+
+**Before:** Pending refund requests: R1 linked to a settled Paystack payment; R2 whose donation has no linked payment (for example a wallet or legacy donation); R3. The ID of a refund operation that belongs to a different payment. Admins A and B.
+
+**Steps:**
+
+1. On R1 type a 20+ character note and check 'Mark refunded'. Via API, PATCH /admin/refund-requests/R1 {status: 'completed', staffNote}.
+2. PATCH R1 with a refundOperationId from the other payment.
+3. Refund R1's payment with 'Refund payment', then click 'Mark refunded'. Via API, PATCH R1 back to 'processing'.
+4. Open R2.
+5. Open R3 in two tabs as Admin A and Admin B. A declines it; then B clicks 'Approve and mark processing'.
+6. Via API, PATCH R3 with a 10-character staffNote, and with status 'pending'.
+7. As the donor, request a refund for R1's donation again.
+
+**Expect:** 'Mark refunded' stays disabled until the payment shows REFUNDED or PARTIALLY_REFUNDED; the API returns 409 'Refund the contribution first. A request can be completed only after its payment shows a refund.' The foreign operation returns 400 'That refund operation does not belong to this donation'. After the refund, completion succeeds, and moving back returns 409 'A completed refund request cannot be marked processing'. R2 says 'No linked payment was found for this donation. It cannot be refunded or marked refunded here; escalate it to the payments team or decline it with a note.' and has no Refund button. B's late action gets 409 ('A failed refund request cannot be marked processing', or 'This refund request changed. Refresh and try again.' if both writes race). The short note and the 'pending' status return 400 'Validation failed'. The repeat donor request returns 409 'Refund already requested for this donation'. Each accepted change writes exactly one refund_request.<status> audit entry.
+
+**Needs:** Paystack test keys, two admin accounts
+
+**Source:** `apps/admin/src/pages/RefundRequestsPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminRefundRequestRoutes.ts`, `apps/api/src/domain/ports/outbound/RefundRepositoryPort.ts`, `apps/api/src/application/use-cases/RequestRefundUseCase.ts`
+
+## ADMIN-N008 · P0 · Reject a pending campaign payout request; owner cancellation
+
+*Surfaces:* admin, api, web  ·  *Type:* functional
+
+**Before:** Campaign owner U1 with two PENDING payout requests (P1, P2) and cleared funds. Admins A and B. U1 on web with withdrawal activity alerts on.
+
+**Steps:**
+
+1. On /payouts, on P1 click 'Reject request'. Type a reason under 20 characters, then click 'Keep request'. Reopen and enter a reason of 20 or more characters, then click 'Reject payout'.
+2. Check P1's card, Paystack transfers and the campaign balances (available and pending).
+3. Via API, POST /payouts/P1/approve with a valid note.
+4. Have Admin A and Admin B reject P2 at the same moment.
+5. As U1 on web, open the payout history and check P1's status and reason, and the notifications.
+6. As U1, create a new request P3 and cancel it from the web payout history (confirm the dialog). Check P3's card in the admin console.
+7. Check /audit for payout.rejected and payout.cancelled.
+
+**Expect:** 'Reject payout' is disabled below 20 characters; the helper says the reason is shown to the organizer and that the cleared funds return to the campaign's pending balance with nothing transferred. After rejection the notice reads 'Payout request rejected. The organizer can see the reason; no transfer was sent.', the chip reads 'Rejected' with a 'Rejection reason' detail, no Paystack transfer exists, and the cleared amount (capped at what is available) moves back to pending. Approving afterwards returns 409 'Payout cannot be approved in state FAILED'. Of the concurrent rejects one succeeds and the other gets 409 'Payout is no longer pending; refresh before trying again.', with funds returned once. U1 sees the reason and a 'Your withdrawal is rejected' notice. P3 shows 'Cancelled by organizer' with a 'Cancellation note', and U1 can request again. Both actions are audited.
+
+**Needs:** Two admin accounts
+
+**Source:** `apps/admin/src/pages/PayoutsPage.tsx`, `apps/api/src/application/use-cases/ClosePendingPayoutUseCase.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPayoutClosureTransaction.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/payoutRoutes.ts`, `apps/web/src/components/campaigns/PayoutHistoryCard.tsx`
+
+## ADMIN-N009 · P0 · Admins cannot approve payouts to themselves or from their own campaigns
+
+*Surfaces:* admin, api  ·  *Type:* security/permission
+
+**Before:** Admin A also owns campaign CA (current KYC, verified email, cleared funds) and has requested payout PA. Admin A is an affiliate with a pending affiliate payout FA. With SPLIT_PROCEEDS_ENABLED=true: beneficiary payout BA names Admin A as beneficiary, and beneficiary payout BC comes from Admin A's campaign. Admin B. DB access.
+
+**Steps:**
+
+1. As A, open PA, review the destination, add a note and click Approve. Repeat via the API.
+2. As B, approve PA.
+3. As A, approve FA on /affiliates.
+4. As A, approve BA and BC in the beneficiary view (after reviewing the destination and writing a note).
+5. Delete the campaign of another pending beneficiary payout in the DB and approve it as B.
+6. Check that no review, first approval or transfer was recorded for the refused attempts.
+
+**Expect:** A's approval of PA returns 403 'Another administrator must approve payouts from your own campaign or request.' and records nothing. B's approval proceeds normally. FA returns 403 'Another administrator must approve your own affiliate payout.' BA returns 403 'Another administrator must approve a payout to you.' BC returns 403 'Another administrator must approve payouts from your own campaign or request.' The payout whose campaign is gone returns 409 'This payout's campaign could not be found; review it again before approving.' No transfer is created for any refused attempt. Automatic (system) approvals are not affected.
+
+**Needs:** Two admin accounts, SPLIT_PROCEEDS_ENABLED, DB access
+
+**Source:** `apps/api/src/application/use-cases/ApprovePayoutUseCase.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoManualPayoutApproval.ts`, `apps/api/src/application/use-cases/ApproveAffiliatePayoutUseCase.ts`, `apps/api/src/application/use-cases/BeneficiaryPayoutUseCase.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoBeneficiaryPayoutAuthorization.ts`
+
+## ADMIN-N010 · P0 · Payout approval gates: blocked campaign, open dispute, lapsed owner KYC, wrong-mode recipient
+
+*Surfaces:* admin, api, web  ·  *Type:* compliance
+
+**Before:** PENDING campaign payouts prepared, each on a different campaign: (a) campaign blocked after the request; (b) campaign with an open dispute (Paystack charge.dispute.create); (c) owner's identity KYC expired (expiryDate in the past) or a renewal pending; (d) owner's email not verified; (e) recipient tagged recipientMode 'live' while the API uses a test key; (f) Ujimora Wallet payout whose owner KYC has lapsed. Paystack test keys.
+
+**Steps:**
+
+1. Approve each payout with a valid destination review note.
+2. As each owner, try to request another payout on web.
+3. Check campaign balances and Paystack transfers after each attempt.
+4. Restore each condition (unblock, resolve the dispute, renew KYC, verify email, re-add the account) and approve again.
+
+**Expect:** (a) 409 'This campaign is under review; payouts are paused'. (b) 409 'This campaign has an unresolved dispute; payouts are paused until it is resolved.' (c), (d) and (f) 409 'The account holder’s identity verification is missing, expired or under renewal. It must be current before funds can be paid out.' (e) 409 'This payout destination was registered in Paystack test mode. The owner must add the account again before it can be paid.' (or the equivalent for the other mode). Nothing is reserved, no transfer is created, and each payout stays PENDING (staff can still reject it, see ADMIN-N008). The owners' new payout requests are refused in the same states. Once the condition is fixed, approval succeeds.
+
+**Needs:** Paystack test keys and webhook tooling, DB access
+
+**Source:** `apps/api/src/application/use-cases/ApprovePayoutUseCase.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoManualPayoutApproval.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPayoutEligibility.ts`, `apps/api/src/domain/services/currentKycEvidence.ts`, `apps/api/src/domain/value-objects/PaystackMode.ts`, `apps/api/src/application/use-cases/RequestPayoutUseCase.ts`
 
 ## ADMIN-006 · P1 · MFA behaviour when MFA_ENCRYPTION_KEY is missing or rotated
 
@@ -931,27 +1086,29 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 **Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoMfa.ts`, `apps/api/src/app.ts`
 
-## ADMIN-008 · P1 · Change password from Profile > Security
+## ADMIN-008 · P1 · Change password from Profile > Security keeps this console signed in
 
-*Surfaces:* admin, api  ·  *Type:* negative/edge
+*Surfaces:* admin, api, email  ·  *Type:* negative/edge
 
 **Before:** Admin A signed in on browsers X and Y.
 
 **Steps:**
 
 1. In X open /profile, then the Security tab.
-2. Enter a new password shorter than 8 characters. Then enter mismatching confirm values.
+2. Enter a new password shorter than 8 characters. Then enter mismatching confirm values. Then leave the current password empty.
 3. Enter a wrong current password with a valid new pair.
-4. Enter the correct current password and a valid new password, then click 'Update Password'.
-5. In X, go to another page (for example Campaigns). In Y, click anything.
+4. Enter the correct current password and a valid new password, then click 'Update Password'. Note uf_admin_tokens in localStorage before and after.
+5. In X, go to another page (for example Campaigns), then reload the browser tab.
+6. In Y, click anything.
+7. Sign out in X and sign in with the old password, then with the new one.
 
-**Expect:** Client validation shows 'Password must be at least 8 characters' and 'Passwords do not match'. A wrong current password shows the API error in a snackbar. On success the snackbar reads 'Password changed successfully'. Y is signed out. Check X: the page does not store the tokens the API returns, so X is likely bounced to /login on its next call. Decide whether that is acceptable or file a bug. The strength meter reflects length, case, digits and symbols.
+**Expect:** Client validation shows 'Password must be at least 8 characters', 'Passwords do not match' and 'Current password is required'. A wrong current password shows the API error in a snackbar and nothing changes. On success the snackbar reads 'Password changed successfully' and the fields clear. X stays signed in: the page stores the fresh token pair that PUT /auth/change-password returns (uf_admin_tokens changes), so Campaigns loads and the reload stays in the console with no bounce to /login. Y is signed out on its next call (401, then /login) because authVersion rotated. The old password fails and the new one works. The strength meter reflects length, case, digits and symbols.
 
 **Needs:** None
 
-**Source:** `apps/admin/src/pages/AdminProfilePage.tsx`, `apps/api/src/application/use-cases/ChangePasswordUseCase.ts`
+**Source:** `apps/admin/src/pages/AdminProfilePage.tsx`, `apps/admin/src/context/AuthContext.tsx`, `apps/api/src/application/use-cases/ChangePasswordUseCase.ts`
 
-## ADMIN-010 · P1 · Pages that use raw fetch survive an expired access token
+## ADMIN-010 · P1 · Contact Inbox and Testimonials use the shared session and show load errors
 
 *Surfaces:* admin, api  ·  *Type:* negative/edge
 
@@ -960,11 +1117,13 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 **Steps:**
 
 1. Close all console tabs for more than 16 minutes but under 60 minutes, so the stored access token has expired.
-2. Open a new tab directly at /contact-submissions.
+2. Open a new tab directly at /contact-submissions and watch the Network tab.
 3. Repeat with /testimonials.
-4. Throttle or kill the API and reload /contact-submissions.
+4. Stop the API (or block the API origin in DevTools) and reload /contact-submissions, then /testimonials.
+5. Restore the API and click Retry on each page.
+6. Block PATCH /contact/:id/status and DELETE /testimonials/:id in DevTools, then try to update a submission's status and delete a testimonial.
 
-**Expect:** Submissions and stats load (the token should be refreshed first). Watch for this known risk: these pages call fetch('/api/v1/...') directly with the stored token, so they may silently show an empty inbox or zero stats on 401. When the API is down, the page should show an error, not an empty 'no submissions' state. File a defect if it shows empty.
+**Expect:** Both pages go through the shared admin API client: the token is refreshed first (POST /auth/refresh), then the list and stats load from the configured VITE_API_URL. With the API down, each page shows a red error alert with the error message and a Retry button, and the stat tiles show '—'. Neither page shows the empty 'no submissions' or 'no testimonials' state on a failure. Retry loads the data once the API is back. A failed status update or delete shows the error in the snackbar. A 401 that cannot be renewed sends you to /login. The testimonial edit and remove icon buttons have accessible names.
 
 **Needs:** None
 
@@ -974,54 +1133,55 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 *Surfaces:* admin  ·  *Type:* negative/edge
 
-**Before:** Admin A. U1 (non-admin).
+**Before:** Admin A. DevTools request blocking available.
 
 **Steps:**
 
 1. Logged out, open /campaigns/<id> directly.
-2. Sign in as Admin A and check where you land.
-3. As U1, open /roles, /settings and /audit directly.
-4. As Admin A, open /does-not-exist and /campaigns/000000000000000000000000.
-5. Reload a deep link such as /kyc-review in production (SPA rewrite).
+2. Sign in as Admin A.
+3. In DevTools, block requests to /api/v1/rbac/me. Open a new tab at /roles, then /settings, /audit and /.
+4. Remove the block and reload.
+5. As Admin A, open /does-not-exist and /campaigns/000000000000000000000000.
+6. Reload a deep link such as /kyc-review in production (SPA rewrite).
 
-**Expect:** Logged-out visitors are redirected to /login. Pages outside the user's permissions show 'Access denied' / 'You don't have permission to view this page.' with a 'Back to dashboard' button. An unknown route shows the NotFound page. A missing campaign shows the 'Campaign couldn't load' or not-found state. A deep-link reload serves the SPA (vercel.json rewrite), not a 404.
+**Expect:** Logged-out visitors are redirected to /login. While permissions cannot be loaded, every guarded page, including the Dashboard index route (which now requires Analytics read), shows 'Access denied' / 'You don’t have permission to view this page.' with a 'Back to dashboard' button, and no data renders. After the block is removed the pages load normally. Member and organisation accounts never reach these pages because they are refused at sign-in (ADMIN-012). An unknown route shows the NotFound page. A missing campaign shows the 'Campaign couldn't load' or not-found state. A deep-link reload serves the SPA (vercel.json rewrite), not a 404.
 
 **Needs:** None
 
-**Source:** `apps/admin/src/router.tsx`, `apps/admin/src/components/PermissionDenied.tsx`, `apps/admin/src/pages/NotFoundPage.tsx`, `apps/admin/vercel.json`
+**Source:** `apps/admin/src/router.tsx`, `apps/admin/src/context/AdminPermissionContext.tsx`, `apps/admin/src/components/PermissionDenied.tsx`, `apps/admin/src/pages/NotFoundPage.tsx`, `apps/admin/vercel.json`
 
 ## ADMIN-018 · P1 · Refunds and failed payments in analytics totals
 
 *Surfaces:* admin, api  ·  *Type:* functional
 
-**Before:** A settled GHS 200 donation on campaign C. Paystack test keys.
+**Before:** A settled GHS 200 donation on campaign C, funds not yet paid out. Paystack test keys.
 
 **Steps:**
 
-1. Note Total Raised, the campaign's raised amount and the Donations page total.
-2. Fully refund the donation (see ADMIN-056).
+1. Note Dashboard 'Net raised (GH₵, after refunds)', campaign C's raised amount and balance, the Reports figures and the Donations page header.
+2. Fully refund the donation from /payments (see ADMIN-056).
 3. Reload the Dashboard, Overview, Reports, Campaigns and Donations pages.
 4. Abandon a Paystack checkout (never paid) and reload again.
 
-**Expect:** Abandoned or failed payments never appear in any total. After a refund, check each surface against the agreed finance policy. Donation documents have no status field, so Dashboard, Reports and the Donations page may still include refunded amounts while the campaign balance drops. Record any mismatch between the campaign raised amount and the platform Total Raised as a defect, or document it as intentional gross figures.
+**Expect:** Abandoned or failed payments never appear in any total. After the refund, Dashboard and Overview 'Net raised' drop by GHS 200, and the Reports monthly trend (in the month the payment was created), category and geography totals drop by 200. The Donations page header still includes the 200 and says so ('… gross (refunds not deducted)'). The campaign balance drops by the refunded net. If the campaign's raised amount still includes the refund, record it against the documented gross/net policy.
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/api/src/infrastructure/database/models/DonationModel.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoAnalyticsRepository.ts`, `apps/api/src/application/use-cases/ProcessRefundUseCase.ts`
+**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoAnalyticsRepository.ts`, `apps/admin/src/pages/DonationsPage.tsx`, `apps/admin/src/pages/ReportsPage.tsx`, `apps/api/src/application/use-cases/ProcessRefundUseCase.ts`
 
 ## ADMIN-019 · P1 · Reports and Overview charts and month boundaries
 
 *Surfaces:* admin, api  ·  *Type:* functional
 
-**Before:** Donations dated across the last 9 months, including one at 23:59 UTC on the last day of a month. Campaigns in 3 categories. Users with and without a country.
+**Before:** GHS donations dated across the last 9 months, including one at 23:59 UTC on the last day of a month, one refunded GHS donation and one non-GHS (for example USD) donation. Campaigns in 3 categories. Users with and without a country.
 
 **Steps:**
 
-1. Open /reports and /overview.
+1. Open /reports and /overview. Read the Reports page introduction.
 2. Check the Monthly Donation Trends (9 months), Donations by Category, Geographic Distribution (top 10, 'Unspecified' for a missing country) and Fraud signals (Pending Reports, Flagged Campaigns, Report Rate, Avg Review Time).
 3. Export Reports as XLSX and compare the worksheets.
 
-**Expect:** Months are grouped by UTC (Ghana is UTC+0) and the edge donation falls in the correct month. Months with no data show 0. Category names are de-underscored. Guest donors count as 'Unspecified'. The export has one sheet per section and the numbers match the screen.
+**Expect:** The introduction says 'Amounts are GHS donations net of refunds; other currencies are left out.' Months are grouped by UTC (Ghana is UTC+0) and the edge donation falls in the correct month. Months with no data show 0. Only GHS donations (and legacy rows with no currency) are counted, net of refunds; a refund reduces the month in which its payment was created. The USD donation does not appear in any chart. Category names are de-underscored. Guest donors count as 'Unspecified'. The export has one sheet per section and the numbers match the screen.
 
 **Needs:** DB fixtures
 
@@ -1031,54 +1191,56 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 *Surfaces:* admin, api  ·  *Type:* negative/edge
 
-**Before:** At least one non-GHS settled donation (for example a USD diaspora donation via Flutterwave, or a seeded row) plus GHS donations.
+**Before:** At least one non-GHS settled donation (for example a USD diaspora donation through Flutterwave, or a seeded row) plus GHS donations.
 
 **Steps:**
 
-1. Open /donations and read the header 'N donations · GH₵ X total'.
-2. Check Dashboard Total Raised and the Reports category and geography sums.
-3. Export Donations to CSV and confirm there is a Currency column on each row.
+1. Open /donations and read the header.
+2. Check Dashboard 'Net raised (GH₵, after refunds)' and call GET /api/v1/analytics/overview (totalRaised, totalRaisedByCurrency).
+3. Check the Reports category and geography sums and the Reports introduction.
+4. Export Donations to CSV and confirm there is a Currency column on each row.
 
-**Expect:** No surface adds USD amounts to GHS amounts under a GH₵ label. Known risk: the Donations header and the analytics aggregations sum raw amounts regardless of currency. Record a defect if mixed; expected behaviour is a per-currency breakdown or conversion with a disclosed rate. The CSV keeps the currency per row.
+**Expect:** The Donations header totals each currency separately, each formatted in its own currency and joined with ' · ', followed by 'gross (refunds not deducted)'. USD is never added into a GH₵ figure. Dashboard Net raised shows the GHS figure only; the overview API returns totalRaised (net GHS) and totalRaisedByCurrency with a separate USD entry. Reports use GHS only and say other currencies are left out. The CSV keeps the currency on every row.
 
 **Needs:** Flutterwave keys (pending) or seeded USD donation
 
-**Source:** `apps/admin/src/pages/DonationsPage.tsx`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoAnalyticsRepository.ts`
+**Source:** `apps/admin/src/pages/DonationsPage.tsx`, `apps/admin/src/lib/money.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoAnalyticsRepository.ts`
 
-## ADMIN-021 · P1 · Subscriptions revenue stats and inert action buttons
+## ADMIN-021 · P1 · Subscriptions revenue estimates use live plan prices, with no dead action buttons
 
 *Surfaces:* admin, api  ·  *Type:* functional
 
-**Before:** Active paid subscriptions: web Paystack monthly and yearly, and one App Store or Play subscription. Plan prices edited in /plans so they differ from the code seed values.
+**Before:** Active paid subscriptions: web Paystack monthly and yearly, one App Store or Play subscription, one web plan whose paid period has ended, and one App Review/TestFlight sandbox store purchase. Plan prices edited in /plans so they differ from the code seed, and one plan renamed.
 
 **Steps:**
 
-1. Open /subscriptions and note the monthly revenue and revenue-by-tier figures.
-2. Recalculate using the current DB plan prices (and the store net where relevant).
-3. Click 'View' on a row, then 'Tier', then 'Cancel'.
+1. Open /subscriptions and read the header stats, the info alert and the revenue-by-tier panel.
+2. Recalculate by hand: live DB list prices for web-billed paid subscriptions that are active and inside their paid period (yearly price ÷ 12).
+3. Check the tier chips and the Tier filter for the renamed plan.
+4. On a row, look for action buttons and click 'View'.
 
-**Expect:** Revenue should reflect actual prices. Known risk: the page uses the code seed prices (SUBSCRIPTION_PLANS), not DB-edited prices or amounts actually charged; file a defect if they differ. 'View' opens /users/:id. 'Tier' and 'Cancel' have no handlers: they should be hidden or work. Admins must not be offered a cancel for store subscriptions (Apple and Google require cancellation through the store).
+**Expect:** The header shows 'Total Subscribers', 'Estimated MRR (list price)', 'Free or lapsed' and 'Paying now'. MRR and revenue by tier use live DB list prices for web-billed, active, in-period, non-sandbox subscriptions and match your calculation. Store-billed subscribers count toward 'Paying now' but are not priced; the info alert says '<n> paying subscriber(s) … billed by the App Store or Google Play and not priced here.' and 'Change or cancel a subscription through its billing provider; this console has no subscription controls.' The lapsed web plan shows status 'expired' and counts as 'Free or lapsed'. The sandbox purchase never counts as paying. The renamed plan shows its live name. Each row has only 'View', which opens /users/:id; there are no 'Tier' or 'Cancel' buttons. Discounts are not reflected (list price estimate, not money collected).
 
 **Needs:** Paystack test keys, store sandbox
 
-**Source:** `apps/admin/src/pages/SubscriptionsPage.tsx`
+**Source:** `apps/admin/src/pages/SubscriptionsPage.tsx`, `apps/admin/src/lib/subscriptionMetrics.ts`, `apps/admin/src/lib/subscriptionRevenue.ts`, `apps/api/src/domain/services/subscriptionStatus.ts`
 
 ## ADMIN-023 · P1 · Action center counts and deep links for every work queue
 
 *Surfaces:* admin, api, web  ·  *Type:* functional
 
-**Before:** Admin A. Test users able to create one item in each queue.
+**Before:** Admin A. Test users able to create one item in each queue. Paystack webhook tooling. DB access for one fixture.
 
 **Steps:**
 
-1. Create: a pending-review campaign, a KYC submission, a campaign payout request, a contact form message, a safety report, a publication review, a donor-message review, a tip-message review, a data-rights request, an account deletion, a stuck refund operation and a store billing issue.
+1. Create: a pending-review campaign, a KYC submission, a campaign payout request, a beneficiary payout request (split on), a contact form message, a safety report, a publication review, a donor-message review, a tip-message review, a data-rights request, an account deletion, a stuck refund operation, a store billing issue, a campaign report, a donor refund request, a Paystack charge.dispute.create on a campaign donation, and a parked activity email (DB row in activity alert deliveries with status 'review' and channel 'email').
 2. Watch the bell badge and sidebar counts (they poll every 30 s and on window focus).
 3. Click each item in the bell's 'Needs attention' inbox.
 4. Resolve each item.
 
-**Expect:** Counts increase for each queue. Links go to /campaigns, /kyc-review, /payouts, /payouts?view=beneficiary, /contact-submissions, /safety-reports, /publication-reviews?queue=donation-content-reviews, /publication-reviews?queue=tip-content-reviews, /privacy-requests, /refund-recovery and /store-billing. Counts decrease after resolution. With nothing pending the bell shows 'Reviews are up to date'.
+**Expect:** GET /admin/action-center lists 18 queues and each count increases. Links go to /campaigns, /kyc-review, /payouts, /payouts?view=beneficiary, /disputes ('Open disputes'), /contact-submissions, /safety-reports, /publication-reviews, /publication-reviews?queue=donation-content-reviews, /publication-reviews?queue=tip-content-reviews, /privacy-requests, /refund-recovery, /store-billing, /campaign-reports ('Campaign reports from supporters'), /refund-requests ('Donor refund requests') and /activity-email-review ('Activity emails needing a delivery check'). Counts drop after resolution: a refund request stays counted while pending or processing and drops when refunded or declined; a rejected payout request drops out of 'Campaign payouts'. With nothing pending the bell shows 'Reviews are up to date'.
 
-**Needs:** Multiple test accounts
+**Needs:** Multiple test accounts, Paystack webhook tooling, DB access
 
 **Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/adminActionRoutes.ts`, `apps/admin/src/context/AdminActionContext.tsx`, `apps/admin/src/components/layout/Sidebar.tsx`
 
@@ -1268,25 +1430,28 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 **Source:** `apps/admin/src/pages/AffiliatesPage.tsx`, `apps/admin/src/pages/AffiliateDetailPage.tsx`, `apps/api/src/application/use-cases/ApproveAffiliatePayoutUseCase.ts`, `apps/api/src/application/use-cases/SetAffiliateCommissionRateUseCase.ts`
 
-## ADMIN-060 · P1 · Disputes list, detail and resolution
+## ADMIN-060 · P1 · Paystack disputes open cases in the Disputes queue; resolution
 
-*Surfaces:* admin, api  ·  *Type:* functional
+*Surfaces:* admin, api, web  ·  *Type:* functional
 
-**Before:** Seed disputes in open, under_review and resolved states in the DB (no user flow creates them).
+**Before:** Paystack test mode with signed-webhook tooling. A settled campaign donation D on campaign C (reference ref-D). C has a pending campaign payout P (owner KYC current) and would otherwise qualify for automatic payout. Another settled donation D2 on campaign C2. DB access to seed one legacy open dispute.
 
 **Steps:**
 
-1. On /disputes, filter by status and search.
-2. Open an open dispute. Submit with empty notes.
-3. Pick 'resolved' with notes and submit. Try to resolve again via the API.
-4. Pick 'dismissed' on another dispute.
-5. Check whether an open dispute blocks automatic payout for its campaign (ADMIN-052).
+1. Send a signed charge.dispute.create for ref-D (with a dispute id and due date). Replay it and send charge.dispute.remind.
+2. Open /disputes, filter by status and search. Open the case.
+3. As Admin A, try to approve P. As C's owner, request a new payout. Check automatic payout eligibility for C.
+4. Send charge.dispute.resolve for the same case and reload.
+5. On the case, submit with empty notes. Then pick 'resolved' with notes and submit. Try to resolve again via the API.
+6. Approve P again.
+7. Send refund.processed for D2 that no Ujimora refund requested; open /disputes.
+8. On the seeded dispute pick 'dismissed'.
 
-**Expect:** Empty notes show 'Resolution notes are required.' After resolving, the snackbar reads 'Resolution recorded.', the form disappears and resolvedBy and resolvedAt are set. A second resolve returns 409 'Dispute has already been resolved'. Dismissed status displays correctly. An open dispute prevents automatic payout.
+**Expect:** Exactly one dispute exists for the Paystack case despite the replay and reminder; its reporter shows 'Paystack (payment provider)', reason 'Payment dispute (chargeback) raised with Paystack', and a description with the Paystack dispute id, transaction reference, amount, response deadline and the note that automatic payouts stay paused. The bell shows 'Open disputes'. While the case is open or under_review, approving P returns 409 'This campaign has an unresolved dispute; payouts are paused until it is resolved.', the owner's new payout request is refused, and automatic payout reports 'Campaign has an unresolved dispute.' The provider resolve moves the case to under_review (not closed). Empty notes show 'Resolution notes are required.' Resolving shows 'Resolution recorded.', the form disappears and resolvedBy and resolvedAt are set; a second resolve returns 409 'Dispute has already been resolved'. P can then be approved. The unrequested refund opens a 'Refund issued outside Ujimora' case for C2. Dismissed status displays correctly. Known open issue I009: chargebacks do not place automatic holds, clawbacks or ledger reversals; staff must reverse with the refund tools.
 
-**Needs:** DB seed
+**Needs:** Paystack webhook tooling, DB seed
 
-**Source:** `apps/admin/src/pages/DisputesPage.tsx`, `apps/admin/src/pages/DisputeDetailPage.tsx`, `apps/api/src/application/use-cases/ResolveDisputeUseCase.ts`
+**Source:** `apps/admin/src/pages/DisputesPage.tsx`, `apps/admin/src/pages/DisputeDetailPage.tsx`, `apps/api/src/application/use-cases/RecordProviderPaymentEventUseCase.ts`, `apps/api/src/application/use-cases/ResolveDisputeUseCase.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPayoutEligibility.ts`
 
 ## ADMIN-063 · P1 · Safety review concurrency, interrupted actions and live cleanup retry
 
@@ -1311,19 +1476,20 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 *Surfaces:* admin, android, api, ios, web  ·  *Type:* cross-platform
 
-**Before:** Subscriptions: web Paystack, iOS IAP, Android IAP, a cancelled one and a free-tier user. More than 25 rows.
+**Before:** Subscriptions: web Paystack, iOS IAP, Android IAP, a cancelled one, a web plan whose paid period has ended, a sandbox store purchase and a free-tier user. More than 25 rows. One plan renamed in /plans.
 
 **Steps:**
 
-1. Open /subscriptions and filter by tier and status, and search.
-2. Check that each row identifies the billing source and dates.
-3. Page through and export.
+1. Open /subscriptions and filter by tier (including the renamed tier) and by status (including 'expired'), and search.
+2. For each row, check the tier name, status and dates, and whether the billing source is visible.
+3. Page through and export; read the Provider column.
+4. Look for any upgrade, tier-change or cancel control.
 
-**Expect:** All rows load (loadAll pagination). Filters work. Store subscriptions are clearly identified and have no admin cancel or upgrade path; store subscriptions are managed only in the App Store or Google Play. Counts (total, paid, free) are correct.
+**Expect:** All rows load (loadAll pagination). Filters work, and tier names and filter options come from the live plans. A paid web plan past its period shows status 'expired' and counts in 'Free or lapsed'; the sandbox purchase is never counted as paying. Rows have only 'View'; the info alert says to change or cancel through the billing provider, and there is no admin cancel or upgrade path anywhere. The export's Provider column shows web, apple or google for each row. Counts (total, paying, free or lapsed) are correct. Watch: the on-screen rows do not show the billing provider (only the export does); record whether support needs it on screen.
 
 **Needs:** Store sandbox
 
-**Source:** `apps/admin/src/pages/SubscriptionsPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/subscriptionRoutes.ts`
+**Source:** `apps/admin/src/pages/SubscriptionsPage.tsx`, `apps/admin/src/lib/subscriptionMetrics.ts`, `apps/api/src/domain/services/subscriptionStatus.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/subscriptionRoutes.ts`
 
 ## ADMIN-069 · P1 · Create a new plan tier
 
@@ -1363,19 +1529,22 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 **Source:** `apps/admin/src/pages/CreateCouponPage.tsx`, `apps/admin/src/components/coupons/couponForm.ts`, `apps/api/src/application/use-cases/CreateCouponUseCase.ts`
 
-## ADMIN-072 · P1 · Edit, deactivate and delete coupons
+## ADMIN-072 · P1 · Edit and deactivate coupons; used coupons cannot be deleted
 
 *Surfaces:* admin, api  ·  *Type:* negative/edge
 
-**Before:** Coupon USED5 with 5 redemptions and affiliate attribution. Coupon UNUSED.
+**Before:** Coupon USED5 with 5 redemptions and affiliate attribution. Coupon UNUSED with no redemptions or open checkout.
 
 **Steps:**
 
-1. Edit USED5: change the amount and dates, confirm the code field is immutable, and deactivate it.
-2. Delete UNUSED through the confirmation dialog.
-3. Delete USED5. Then check the subscription and affiliate records that reference it and the Reports figures.
+1. Edit USED5: change the amount and dates, and confirm the code field is immutable.
+2. Click delete on USED5 and read the dialog.
+3. Click 'Deactivate' in that dialog. Try the code at checkout.
+4. Via API, DELETE /coupons/<USED5>.
+5. Delete UNUSED through the dialog.
+6. Check the subscription and affiliate records and Reports figures that reference USED5.
 
-**Expect:** Edits persist and a deactivated coupon is refused at checkout immediately. Delete requires confirmation and shows 'Coupon deleted'. Known risk: delete is a hard delete even when redemptions exist; confirm that historical redemptions, affiliate commissions and reports stay intact. If not, prefer deactivation and file a defect.
+**Expect:** Edits persist. The dialog title reads 'Delete or deactivate USED5?' and explains that used coupons can only be deactivated; it says 'This coupon has been redeemed 5 times, so it cannot be deleted.' and the Delete button is disabled. 'Deactivate' shows 'Coupon deactivated' and the code is refused at checkout immediately. The API delete returns 409 'This coupon has been used — deactivate it instead.' UNUSED deletes with 'Coupon deleted'. Historical redemptions, affiliate commission bases (snapshotted on the checkout) and reports for USED5 stay intact.
 
 **Needs:** None
 
@@ -1385,40 +1554,43 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 *Surfaces:* admin, api, web  ·  *Type:* functional
 
-**Before:** Payment provider rows for wallet, gateway and method types (mtn-momo, card). CRYPTO_PAYMENTS_ENABLED=false first; then true with Bitnob sandbox.
+**Before:** Payment provider rows for wallet, gateway (Paystack) and method types (mtn-momo, card). CRYPTO_PAYMENTS_ENABLED=false first; then true with Bitnob sandbox.
 
 **Steps:**
 
-1. On /payment-providers, toggle the wallet off and on. Check that web checkout hides and shows the wallet option.
-2. Try to enable a disabled method row through the API.
-3. With crypto off, check the crypto panel chip.
-4. With crypto on, click 'Refresh availability', choose 'older than 30 minutes' and click 'Reconcile deposits' twice. Include one confirmed sandbox deposit.
+1. On /payment-providers read the page note. Toggle the Ujimora Wallet off and on and check web checkout.
+2. Toggle the Paystack gateway off. Start a new web donation checkout. Then start a wallet top-up and a subscription checkout.
+3. Switch Paystack back on from the console and retry the donation.
+4. Look at a disabled method row (mobile money, card) and try to enable it in the UI and via the API.
+5. With crypto off, check the crypto panel chip.
+6. With crypto on, click 'Refresh availability', choose 'older than 30 minutes' and click 'Reconcile deposits' twice. Include one confirmed sandbox deposit.
 
-**Expect:** Wallet and gateway toggles work, with messages like '<name> enabled' or 'disabled'. A method row returns 409 '…has no integration of its own to enable'. With crypto off, the chip reads 'Not offered at checkout'. With crypto on, assets and networks are listed. Reconcile shows scanned, settled and pending counts. The confirmed deposit is credited once, and the second run does not double-credit. Issues list 'Missing provider reference' or 'Provider unavailable'.
+**Expect:** The page note says the Paystack and Flutterwave switches stop new donation checkouts on that gateway, do not yet affect wallet top-ups, subscriptions, creator tips or payouts, and that the Ujimora Wallet switch hides the wallet option on the website only. Wallet and gateway toggles work both ways with '<name> enabled' or 'disabled'. A disabled gateway shows the chip 'Disabled' and 'New donation checkouts on this gateway are stopped. Switch it on to accept them again.'; the new donation checkout is refused while the top-up and subscription still proceed. Turning it back on restores checkout and the text reads 'Turning this off stops every new donation checkout on this gateway.' Method rows show 'Not available yet' and 'Offered through the gateway checkout; it has no integration of its own to switch on.', their switch is disabled, and the API returns 409 '…has no integration of its own to enable'. With crypto off, the chip reads 'Not offered at checkout'. With crypto on, assets and networks are listed; Reconcile shows scanned, settled and pending counts; the confirmed deposit is credited once and the second run does not double-credit. Known open issue I047: the switches are not enforced for top-ups, subscriptions, tips, payouts or API/Android wallet donations, and the fail-open policy is undecided.
 
 **Needs:** Bitnob sandbox (for crypto)
 
 **Source:** `apps/admin/src/pages/PaymentProvidersPage.tsx`, `apps/admin/src/components/payments/CryptoOperations.tsx`, `apps/api/src/application/use-cases/TogglePaymentProviderUseCase.ts`, `apps/api/src/application/use-cases/ReconcileCryptoUseCase.ts`
 
-## ADMIN-076 · P1 · CMS content blocks update the marketing site
+## ADMIN-076 · P1 · CMS content blocks update the marketing site, with conflict and shape checks
 
 *Surfaces:* admin, api, marketing  ·  *Type:* functional
 
-**Before:** Admin A. ujimora.com staging.
+**Before:** Admin A and Admin B. ujimora.com staging.
 
 **Steps:**
 
 1. Content > Homepage Stats: change a value. Content > FAQ: add a question. Content > About: edit text. Content > Contact Details: change the phone number and a social link.
 2. Leave one page with unsaved edits and check the dirty indicator. Reload to discard.
 3. Save each block and check ujimora.com (Stats section, /help FAQ, /about, /contact and the footer).
-4. Open the same block as Admin A and Admin B, and save different edits.
-5. Put '<script>alert(1)</script>' in an FAQ answer.
+4. Open the FAQ block as Admin A and Admin B. B saves an edit first; then A saves a different edit. A reloads.
+5. Put '<script>alert(1)</script>' in an FAQ answer and save.
+6. Via API, PUT /api/v1/content/faq with data {items: null}, and PUT /content/marketing.stats with data {}.
 
-**Expect:** Saved blocks appear on marketing (after any cache TTL). Unseeded keys show fallbacks and the first save creates them. The FAQ script renders as text only. Known risk: there is no revision check, so the last write wins and Admin A's edit is silently overwritten. Document this or add a conflict warning.
+**Expect:** Saved blocks appear on marketing (after any cache TTL). Unseeded keys show fallbacks and the first save creates them. A's stale save is refused with 409 'This content was changed by someone else since you opened it. Reload the page to see the latest version, then reapply your edits.' and B's content is kept; after reload A sees B's version. The FAQ script renders as text only. The malformed API saves return 400 'The faq content does not have the expected shape.' (or the marketing.stats equivalent) with per-field errors, and the stored block is unchanged, so marketing never blanks.
 
 **Needs:** None
 
-**Source:** `apps/admin/src/hooks/useContentBlock.ts`, `apps/admin/src/pages/content/ContentStatsPage.tsx`, `apps/admin/src/pages/content/ContentFaqPage.tsx`, `apps/admin/src/pages/content/ContentAboutPage.tsx`, `apps/admin/src/pages/content/ContentContactPage.tsx`, `apps/marketing/src/hooks/useContent.ts`
+**Source:** `apps/admin/src/hooks/useContentBlock.ts`, `apps/admin/src/components/content/ContentEditorLayout.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/contentRoutes.ts`, `apps/api/src/application/use-cases/UpsertSiteContentUseCase.ts`, `apps/marketing/src/hooks/useContent.ts`
 
 ## ADMIN-077 · P1 · Blog studio: draft, publish, conflict, unpublish
 
@@ -1461,43 +1633,43 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 **Source:** `apps/admin/src/pages/TestimonialsPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/testimonialRoutes.ts`, `apps/marketing/src/components/sections/TestimonialsSection.tsx`
 
-## ADMIN-079 · P1 · Contact inbox workflow and newsletter subscriber list
+## ADMIN-079 · P1 · Contact inbox workflow, staff alert email and newsletter subscriber list
 
 *Surfaces:* admin, api, email, marketing  ·  *Type:* functional
 
-**Before:** Marketing contact form and newsletter signup (double opt-in) available.
+**Before:** Marketing contact form and newsletter signup (double opt-in) available. Settings 'Send review alerts to' set to a monitored staff inbox. Email provider configured. ADMIN_WEB_URL set.
 
 **Steps:**
 
-1. Submit the ujimora.com contact form. Check Contact Inbox for a 'new' item and the stats.
+1. Submit the ujimora.com contact form with a subject. Check the staff inbox. Check Contact Inbox for a 'new' item and the stats.
 2. Open the item, set status to in_progress with admin notes, then resolved, then archived. Filter by status and type.
-3. Kill the API and reload the inbox.
+3. Kill the API and reload the inbox; restore it and click Retry.
 4. Subscribe to the newsletter but do not confirm; then subscribe and confirm; then unsubscribe. Check /newsletter each time. Export.
 
-**Expect:** The submission appears with its full text. Status changes persist and stats update. The action-center 'New contact messages' count drops. When the API is down the page should show an error; today it silently shows empty (file a defect). The newsletter list shows only confirmed, opted-in subscribers: unconfirmed and unsubscribed addresses are excluded from the screen and the export.
+**Expect:** The staff inbox receives one email 'New contact message — <subject>' with reply-to set to the submitter and a link to <ADMIN_WEB_URL>/contact-submissions; the submitter receives no acknowledgement email (owner decision). The submission appears with its full text. Status changes persist and stats update; the action-center 'New contact messages' count drops. With the API down the page shows a red error alert with Retry and the stats show '—', never an empty inbox. The newsletter list shows only confirmed, opted-in subscribers: unconfirmed and unsubscribed addresses are excluded from the screen and the export.
 
-**Needs:** Email provider (newsletter confirmation)
+**Needs:** Email provider (Resend)
 
-**Source:** `apps/admin/src/pages/ContactSubmissionsPage.tsx`, `apps/admin/src/pages/NewsletterPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/contactRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/newsletterRoutes.ts`
+**Source:** `apps/admin/src/pages/ContactSubmissionsPage.tsx`, `apps/admin/src/pages/NewsletterPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/contactRoutes.ts`, `apps/api/src/infrastructure/adapters/outbound/ResendReviewAlerts.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/newsletterRoutes.ts`
 
 ## ADMIN-081 · P1 · Export formats and fidelity across pages
 
 *Surfaces:* admin  ·  *Type:* functional
 
-**Before:** Data on Campaigns, Users, Donations, Payouts, Audit Log, Privacy, Store billing, Coupons and Subscriptions. Some lists have more than 100 records.
+**Before:** Data on Campaigns, Users, Donations, Payouts, Audit Log, Privacy, Store billing, Coupons, Subscriptions, Campaign reports and Payments. Some lists have more than 100 records. At least one record with Ghanaian letters and the cedi sign in names or titles (for example 'Ɛfua Ɔsei', 'Ŋmɛ', '₵').
 
 **Steps:**
 
 1. On each page apply a filter, then Export in 'Branded PDF', 'Excel (.xlsx)' and 'CSV (.csv)'.
-2. Open the files in Excel, Google Sheets, Numbers and a PDF viewer.
+2. Open the files in Excel, Google Sheets, Numbers and a PDF viewer. Find the record with Ghanaian letters in each.
 3. Start a large export and click Cancel.
 4. Export a page with zero rows.
 
-**Expect:** Filenames look like ujimora-<title>-YYYY-MM-DD.<ext>. Row counts match the filtered on-screen totals, including server pages beyond 100. PDF: Outfit font, logo, watermark, page numbers, headers repeated on each page, wide tables in landscape or field/value layout. XLSX: frozen header, autofilter, typed numbers and dates in UTC, an export-details sheet. CSV: UTF-8 with BOM (Ghanaian characters intact). Cancel produces no file. Empty exports keep headings and a no-records note.
+**Expect:** Filenames look like ujimora-<title>-YYYY-MM-DD.<ext>. Row counts match the filtered on-screen totals, including server pages beyond 100. PDF: the brand header and section headings use Outfit, while table data uses Noto Sans, so ɛ, ɔ, ŋ and ₵ print correctly with no missing-glyph boxes; logo, watermark, page numbers, headers repeated on each page, wide tables in landscape or field/value layout. XLSX: frozen header, autofilter, typed numbers and dates in UTC, an export-details sheet. CSV: UTF-8 with BOM (Ghanaian characters intact). Cancel produces no file. Empty exports keep headings and a no-records note. Emoji and right-to-left text are not supported in PDFs.
 
 **Needs:** None
 
-**Source:** `apps/admin/src/components/ExportMenu.tsx`, `apps/admin/src/lib/exports/pdf.ts`, `apps/admin/src/lib/exports/xlsx.ts`, `apps/admin/src/lib/exports/report.ts`, `docs/compliance/ADMIN_EXPORTS.md`
+**Source:** `apps/admin/src/components/ExportMenu.tsx`, `apps/admin/src/lib/exports/pdf.ts`, `apps/admin/src/lib/exports/xlsx.ts`, `apps/admin/src/lib/exports/report.ts`, `apps/admin/public/fonts/export/NotoSans-Regular.ttf`, `docs/compliance/ADMIN_EXPORTS.md`
 
 ## ADMIN-087 · P1 · An admin changing their own public identity (single-admin deadlock)
 
@@ -1511,17 +1683,265 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 2. Follow 'Open review queue in a new tab' and try to approve your own submission.
 3. With Admin B present, have B approve it, then save the same values again as A.
 
-**Expect:** The first save is held for review ('After approval, save the same version here.'). A cannot approve their own submission (403 'Another administrator must review your content'), so a single-admin deployment cannot change the admin's name unless OpenAI screening passes. After B approves, A's identical save succeeds and the top-bar name updates. Phone and bio save without review.
+**Expect:** The first save is held for review ('After approval, save the same version here.'). A cannot approve their own submission (403 'Another administrator must review your content'). After B approves, A's identical save succeeds and the top-bar name updates. Phone and bio save without review. Known open issue I073: a single-admin deployment still cannot change the admin's name unless OpenAI screening passes, because self-approval is not allowed and no single-admin path exists.
 
 **Needs:** OpenAI (optional), second admin
 
 **Source:** `apps/admin/src/pages/AdminProfilePage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/publicationReviewRoutes.ts`, `docs/compliance/ACCOUNT_PUBLICATION.md`
 
+## ADMIN-N001 · P1 · Staff sign-in attempts are written to the audit log
+
+*Surfaces:* admin, api, web  ·  *Type:* security/permission
+
+**Before:** Admin A with authenticator MFA enabled. Non-admin U1. Admin B to read /audit. Tester knows their public IP.
+
+**Steps:**
+
+1. On the admin /login, sign in as Admin A with a wrong password.
+2. Sign in with the correct password and a wrong authenticator code.
+3. Sign in with the correct password only (first step of the two-step login), then complete it with a valid code.
+4. Sign in to the admin console as U1.
+5. Sign in to the member web app as U1, and as Admin A.
+6. As Admin B, open /audit and search 'auth.'; then inspect the raw AuditLog documents.
+
+**Expect:** Entries (resource 'account-security'): 'auth.admin_login.failed' (warning) 'Administrator sign-in failed: wrong password'; 'auth.admin_login.failed' 'Administrator sign-in failed: authenticator code rejected'; no failure entry for the password-only first step; 'auth.admin_login.succeeded' (info) 'Administrator signed in to the staff console'; 'auth.admin_console.refused' (warning) for U1 at the console. U1's member web sign-in writes nothing, and Admin A's web sign-in writes 'Administrator signed in' without 'to the staff console'. Rows carry the actor ID, a user agent of at most 300 characters and an ip, and never a password or code. Watch: AuthController passes req.ip rather than the resolved client IP, so in production the ip may be Render's proxy address; log a defect if it does not match the tester's public IP. Known open issue I028: there is still no per-account lockout.
+
+**Needs:** Authenticator app
+
+**Source:** `apps/api/src/application/use-cases/LoginUserUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/controllers/AuthController.ts`, `apps/api/src/infrastructure/adapters/inbound/middleware/clientIp.ts`, `apps/admin/src/pages/AuditLogPage.tsx`
+
+## ADMIN-N002 · P1 · Administrator MFA reminder banner
+
+*Surfaces:* admin, api  ·  *Type:* security/permission
+
+**Before:** Admin A with MFA off, Admin B with MFA on. A staging API whose MFA_ENCRYPTION_KEY can be unset, and Admin C with MFA off.
+
+**Steps:**
+
+1. Sign in as Admin A and visit Dashboard, Payouts and Settings.
+2. Click 'Turn on' on the banner.
+3. Enable MFA (as in ADMIN-003) and move to another page without reloading.
+4. Sign in as Admin B and browse.
+5. Restart the API without MFA_ENCRYPTION_KEY and sign in as Admin C.
+
+**Expect:** Admin A sees a warning on every console page: 'Protect this administrator account: turn on authenticator app sign-in. A stolen password alone would give full access to donor data and payouts.' with a 'Turn on' button. The button opens /profile with the Security tab selected, and on /profile the button is hidden. After enabling MFA the banner disappears without a reload. Admin B never sees it. With the key missing, Admin C sees 'Administrator accounts should use authenticator sign-in, but it is not configured on this server yet. Ask engineering to set it up.' The banner never blocks work. Known open issue I028: admin MFA is still optional; nothing forces enrolment.
+
+**Needs:** MFA_ENCRYPTION_KEY, authenticator app
+
+**Source:** `apps/admin/src/components/layout/AdminMfaPrompt.tsx`, `apps/admin/src/components/layout/AdminLayout.tsx`, `apps/admin/src/pages/AdminProfilePage.tsx`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoMfa.ts`
+
+## ADMIN-N004 · P1 · Login and API rate limits apply per client IP, not platform-wide
+
+*Surfaces:* admin, api  ·  *Type:* security/permission
+
+**Before:** Staging deployed like production (API behind Render/Cloudflare, admin built with VITE_API_URL pointing at the API origin). Two testers on different networks (A: office Wi-Fi, B: mobile hotspot). curl.
+
+**Steps:**
+
+1. From network A, send 31 failed POST /api/v1/auth/login requests within 15 minutes, then try the correct password in the admin console.
+2. Immediately sign in from network B with correct credentials.
+3. From network A, repeat a login with X-Forwarded-For, X-Real-IP and True-Client-IP set to new values.
+4. On network A, check in DevTools that console API calls go to the API origin, not the /api/v1 Vercel rewrite.
+5. After the window resets, make an audited admin change from network A (for example save a setting) and check the IP on its /audit entry.
+
+**Expect:** The 31st request from A gets 429 'Too many requests, please try again later' with Retry-After and X-RateLimit headers, and the admin login page shows that message. B signs in normally. Spoofed forwarding headers do not open a new bucket (still 429). Console calls go directly to the API origin. The audit entry records network A's public IP. Known open issues I099 and I028: limiter state is in memory per API instance and resets on restart, and there is no per-account lockout.
+
+**Needs:** Two networks
+
+**Source:** `apps/api/src/infrastructure/adapters/inbound/middleware/clientIp.ts`, `apps/api/src/infrastructure/adapters/inbound/middleware/rateLimiter.ts`, `apps/api/src/infrastructure/adapters/inbound/middleware/auditMutation.ts`, `apps/admin/.env.production`
+
+## ADMIN-N006 · P1 · Payments page: find any contribution and read its timeline
+
+*Surfaces:* admin, api  ·  *Type:* functional
+
+**Before:** Contributions in several states: SUCCEEDED (Paystack), PENDING, FAILED, EXPIRED and PARTIALLY_REFUNDED. A donor email with more than one gift. A pending refund request linked to a settled payment.
+
+**Steps:**
+
+1. Open Finance > Payments (/payments). Search by an exact Paystack reference.
+2. Search by exact donor email; then by campaign ID with Status 'failed'; then by Provider 'wallet'.
+3. Search for a reference that does not exist.
+4. Click 'View timeline' on a result and copy the URL.
+5. Open /payments?ref=<reference> and /payments?id=<contribution id> in new tabs.
+6. Open the timeline of a FAILED payment and of a SUCCEEDED one.
+7. From /refund-requests, click 'View payment timeline'.
+8. Block GET /admin/payments in DevTools and search; then block GET /admin/payments/:id and open a timeline.
+
+**Expect:** Results show the amount in the payment's own currency, a status chip, date, provider, reference and donor email, capped at the 50 most recent ('<n> most recent matches'). No match shows 'No payments match.' with 'Check the reference or email is exact. Only the 50 most recent matches are shown.' The timeline shows the amount (plus the platform tip when present), status, provider and method chips, 'Contribution <id> · Reference <ref or not issued>', a campaign link, the donor email or 'Donor email not recorded', and a list: 'Contribution created', each provider attempt with its status and reference (no raw provider payloads), then 'Last updated: <status>'. ?ref= runs the search at once and ?id= opens the timeline. 'Refund payment' shows only for settled or partly refunded payments; others say 'Only a settled or partly refunded payment can be refunded.' A search failure shows a red alert; a timeline failure shows an alert with Retry.
+
+**Needs:** Paystack test keys
+
+**Source:** `apps/admin/src/pages/PaymentsPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/controllers/AdminPaymentsController.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminPaymentsRoutes.ts`
+
+## ADMIN-N011 · P1 · Resolve a stuck payout by re-checking Paystack
+
+*Surfaces:* admin, api  ·  *Type:* recovery/idempotency
+
+**Before:** Single-transfer Paystack campaign payouts in PROCESSING for more than 24 hours whose reference Paystack cannot confirm (age them in the DB), escalated to NEEDS_REVIEW by the reconciliation sweep or POST /admin/reconciliation/payouts. Prepare one whose Paystack transfer succeeded, one that failed or is unknown to Paystack, and one still pending. A batched payout in NEEDS_REVIEW.
+
+**Steps:**
+
+1. Run POST /api/v1/admin/reconciliation/payouts and open /payouts.
+2. On a NEEDS_REVIEW single-transfer card, read the warning; type under 20 characters in 'What you checked', then 20 or more, and click 'Re-check Paystack and resolve'.
+3. Resolve the succeeded, failed or unknown, and still-pending cases.
+4. Resolve the same payout again via POST /payouts/stuck/campaign/:id/resolve.
+5. Look at the batched NEEDS_REVIEW card.
+6. Check campaign balances, the owner's payout history and /audit.
+
+**Expect:** Only single Paystack transfers escalate, and only after 24 hours; their funds stay reserved. The card says Paystack has not confirmed the transfer for over a day and explains the three outcomes. The button is disabled below 20 characters. A succeeded transfer shows 'Paystack reported success; the payout is now paid.' and settles once. A failed or unknown transfer returns the reserved funds to the campaign exactly once ('Paystack reported failed; the payout is now failed.'). A still-pending transfer shows 409 'Paystack still reports this transfer as "pending". Resolve it once Paystack reaches a final state.' and nothing changes. If Paystack is unreachable: 502 'Paystack could not be reached to confirm this transfer. Try again shortly.' A repeat resolve returns 409 'Only a payout awaiting review can be resolved (this one is PAID).' (or FAILED). The batched card shows the 'Partially settled…' alert and no resolve control. Each resolution writes a 'payout.stuck_resolved' warning audit entry with the note.
+
+**Needs:** Paystack test keys, DB access
+
+**Source:** `apps/admin/src/pages/PayoutsPage.tsx`, `apps/api/src/application/use-cases/ResolveStuckPayoutUseCase.ts`, `apps/api/src/application/use-cases/ReconcilePayoutsUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/payoutRoutes.ts`
+
+## ADMIN-N012 · P1 · Reject an affiliate payout
+
+*Surfaces:* admin, api, web  ·  *Type:* functional
+
+**Before:** Affiliate F with a PENDING affiliate payout (commissions linked) and another PENDING payout F2. Admins A and B.
+
+**Steps:**
+
+1. On /affiliates, click 'Reject' on F's pending payout. Enter a reason under 20 characters, then 20 or more, and click 'Reject payout'.
+2. Check F's affiliate dashboard on web (available balance, commissions).
+3. Approve the rejected payout via the API.
+4. Have Admin A and Admin B reject F2 at the same moment.
+5. Check /audit.
+
+**Expect:** The dialog 'Reject affiliate payout?' says '<amount> returns to the affiliate's available balance. No transfer is sent.' and the button stays disabled below 20 characters. Success shows 'Payout rejected; the funds are back in the affiliate’s available balance', and the row shows the rejected status. F's withdrawable balance rises by the amount and the linked commissions are released; no transfer exists. Approving afterwards returns 409. The concurrent rejects return funds once: one succeeds and the other gets 409. An 'affiliate_payout.rejected' audit entry records the reason.
+
+**Needs:** Two admin accounts
+
+**Source:** `apps/admin/src/pages/AffiliatesPage.tsx`, `apps/api/src/application/use-cases/RejectAffiliatePayoutUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/affiliateRoutes.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPayoutClosureTransaction.ts`
+
+## ADMIN-N014 · P1 · Staff-assisted account closure from the member detail page
+
+*Surfaces:* admin, api, web  ·  *Type:* compliance
+
+**Before:** Member M1 with no balances or open payouts, signed in elsewhere. Member M2 with a GHS 10 wallet balance. Admin A (USERS delete permission) and Admin B.
+
+**Steps:**
+
+1. Open /users/<M1>, find the 'Account closure' panel and click 'Close account'.
+2. Type a note under 20 characters and a different email; then a 20+ character note saying how the request was verified, and M1's email in upper case.
+3. Click 'Close account'.
+4. As M1, click anything in the open session, then try to sign in.
+5. Open /privacy-requests (Account deletion and retention) and /audit.
+6. Repeat for M2.
+7. Open Admin B's detail page. Via API, POST /admin/users/<Admin A>/close as Admin A, and /admin/users/<Admin B>/close; then any closure as U1.
+
+**Expect:** The panel explains it is for holders who cannot sign in, and never to ask for a password or code. The dialog warns 'This signs the member out everywhere and starts erasure of their profile data. It cannot be undone from the console.' and the confirm button stays disabled until the note has 20 characters and the email matches (case-insensitive). Success returns you to /users; M1's session ends (401, then sign-in) and M1 cannot sign in; an erasure request appears in the deletion queue; an 'account.staff_closure' warning audit entry records the note; money records and verification evidence are kept. M2 is refused with 409 and the closure-blocker message, and nothing is erased. Admin detail pages have no closure panel; the API returns 409 'Administrator accounts cannot be closed from the console.' for B, 409 'Close your own account from your profile, not the staff console.' for A's own ID, 400 'The confirmation email does not match this account.' for a wrong email, and 403 for non-admins. Integration defect to confirm (not in triage): on integrate/launch-fixes this route calls DeleteAccountUseCase.execute(id) without a password, while app.ts wires the password step-up (I108) into that use case, so every staff closure will probably fail with 400 'Enter your current password to delete your account…' after the 'account.staff_closure' audit row is already written (M2's refusal also leaves that row). Log it as a P1 defect if you see it. Known open issue I083: there is no staff email-change flow or account-support runbook.
+
+**Needs:** Two admin accounts
+
+**Source:** `apps/admin/src/components/AccountClosureControl.tsx`, `apps/admin/src/pages/UserDetailPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminAccountClosureRoutes.ts`, `apps/api/src/application/use-cases/DeleteAccountUseCase.ts`, `apps/api/src/app.ts`
+
+## ADMIN-N015 · P1 · Restricted users view: direct restriction, lifting and superseded decisions
+
+*Surfaces:* admin, android, api, ios, web  ·  *Type:* compliance
+
+**Before:** Member U1 with an active live session and a comment draft. A pending safety report R1 about U1. Admins A and B.
+
+**Steps:**
+
+1. On /safety-reports, click 'Restricted users'. Enter an invalid account ID, then U1's ID with notes under 20 characters, then 20 or more, and click 'Restrict publishing'.
+2. As U1, try to comment, post an update and donate with a message; open Wallet and Settings. Check U1's live broadcast.
+3. Try to restrict Admin A's own account from Admin A's session.
+4. Lift U1's restriction with notes of 20 or more characters; lift again via the API.
+5. Resolve R1 with 'Restrict publishing'. Then, in the Restricted users view, lift and directly restrict U1 again (a newer decision). Go back to R1 in the resolved view and click 'Restore publishing after appeal'.
+6. Click 'Lift the current restriction anyway'.
+7. Check /audit.
+
+**Expect:** 'Restrict publishing' stays disabled until the ID is a valid 24-character ID and the notes have 20 characters; success shows 'Publishing restricted.' and the list shows U1's name or email, the time, 'direct restriction' and the reason. U1 gets the 403 publishing message but keeps Wallet, Settings and funds, and the live broadcast is stopped. Restricting yourself returns 403 'Another administrator must restrict your account.' Lifting shows 'Publishing restriction lifted. Previously hidden content stays hidden.'; a second lift returns 404 'This account has no active publishing restriction.' Restoring from the older report R1 returns 409 'The current restriction came from a different decision. Review it and confirm before lifting it.' and shows 'Lift the current restriction anyway', which then succeeds with 'Publishing restriction removed. Previously hidden comments and messages remain hidden.' Restriction history is kept, and each restrict and lift is audited.
+
+**Needs:** LiveKit (live stop)
+
+**Source:** `apps/admin/src/components/RestrictedUsersPanel.tsx`, `apps/admin/src/pages/SafetyReportsPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/safetyReportRoutes.ts`, `docs/compliance/MODERATION_OPERATIONS.md`
+
+## ADMIN-N016 · P1 · Safety reviewers cannot decide reports they have a stake in
+
+*Surfaces:* admin, api, web  ·  *Type:* security/permission
+
+**Before:** Admin A also uses a member web session. Reports: R1 filed by Admin A about U1's comment; R2 about a comment Admin A authored; R3 about an update or comment on Admin A's own campaign. Admin B. A soft-deleted comment and a comment on a pending_review campaign.
+
+**Steps:**
+
+1. As Admin A, open /safety-reports and try any decision on R1, R2 and R3.
+2. As Admin B, decide R1, R2 and R3.
+3. As member U2, report the deleted comment and the comment on the non-public campaign.
+4. Hide a comment (through a report) that already had a deletedAt, and check deletedAt in the DB.
+
+**Expect:** Every decision by Admin A returns 403 'Another administrator must review this report.' and changes nothing. Admin B's decisions succeed. Both member reports return 404 'Comment not found'. Hiding keeps the comment's original deletedAt.
+
+**Needs:** Two admin accounts
+
+**Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/safetyReportRoutes.ts`, `apps/admin/src/pages/SafetyReportsPage.tsx`
+
+## ADMIN-N017 · P1 · Staff decisions send in-app notices to affected users
+
+*Surfaces:* admin, android, api, ios, web  ·  *Type:* functional
+
+**Before:** Organiser U1 with two pending campaigns. U2, U3 and U4 with pending identity KYC. U5 filed a campaign report. U6 filed a safety report about U7's comment, and U8 filed another safety report. Admin A.
+
+**Steps:**
+
+1. Approve U1's first campaign, then block it, then return it to review. Reject the second campaign. Use internal notes that say 'INTERNAL-ONLY'.
+2. Approve U2's KYC, reject U3's with an applicant reason, and request more information from U4.
+3. Mark U5's campaign report reviewed. Hide U7's comment from U6's report. Dismiss U8's report.
+4. Repeat one decision (double-click or API retry).
+5. Check each user's in-app inbox on web and mobile, and their email.
+
+**Expect:** U1 receives 'Your campaign is live' ('“<title>” passed review and is now public.'), 'Your campaign has been blocked', 'Your campaign is back in review' and 'Your campaign was not approved', with block and reject notices pointing to support for details or appeal. 'INTERNAL-ONLY' appears in no notice. U2: 'Your identity verification is approved'. U3: 'Your identity verification was not approved' with 'Reason: <applicant reason>'. U4: 'More information needed for your verification'. KYC notices link to /kyc. U5 and U6 receive 'We reviewed your report'. U7 receives 'Your comment was removed' with the support contact. U8 gets the acknowledgement; nobody else is notified for the dismissal. A repeated decision creates no second notice. No decision emails are sent.
+
+**Needs:** None
+
+**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoStaffDecisionNotices.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoCampaignReview.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoKYCWorkflowTransaction.ts`, `apps/api/src/application/use-cases/ReviewReportUseCase.ts`
+
+## ADMIN-N018 · P1 · Admin campaign list reaches older pending campaigns and shows ended ones as expired
+
+*Surfaces:* admin, api, web  ·  *Type:* functional
+
+**Before:** More than 100 campaigns. A pending_review campaign P created before the newest 100. An active campaign E whose end date has just passed. A pending campaign PE whose end date has passed.
+
+**Steps:**
+
+1. Open /campaigns, switch to the Pending tab and search for P.
+2. Wait at least 5 minutes after E's end date, reload /campaigns and open E.
+3. Try to approve PE with valid notes and attestations.
+4. Open E on public web Explore.
+
+**Expect:** P appears in the Pending tab (the console loads every page of /campaigns). E shows status expired within about 5 minutes (background sweep); its money figures are unchanged, and it no longer appears as open on Explore or in the sitemap. Approving PE returns 409 'An expired campaign cannot be approved' and PE stays pending (the sweep never changes pending or blocked campaigns).
+
+**Needs:** Load fixtures
+
+**Source:** `apps/admin/src/hooks/useApiData.ts`, `apps/admin/src/pages/CampaignsPage.tsx`, `apps/api/src/application/use-cases/ExpireEndedCampaignsUseCase.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoCampaignReview.ts`
+
+## ADMIN-N019 · P1 · Provider dispute and refund events, and on-demand top-up reconciliation (API only)
+
+*Surfaces:* admin, api  ·  *Type:* recovery/idempotency
+
+**Before:** Paystack test webhook tooling. A settled creator tip (tip- reference), a settled campaign donation D2 and an intent already REFUNDED. Admin token and U1 token.
+
+**Steps:**
+
+1. Send a signed charge.dispute.create for the tip reference; replay it.
+2. GET /api/v1/admin/payments/provider-events?status=open.
+3. POST /api/v1/admin/payments/provider-events/<id>/acknowledge twice.
+4. Send refund.processed for D2's reference, which no Ujimora refund requested; open /disputes.
+5. Send a redelivered charge.success for the REFUNDED intent.
+6. POST /api/v1/admin/reconciliation/topups as admin, then as U1.
+
+**Expect:** Each unique provider event is stored once (replays add nothing) with kind dispute, subject tip, reference, amount, currency and provider status, and no customer details; the open list shows it. The first acknowledge returns {reviewStatus: 'acknowledged'} and the second returns 404 'Provider event not found or already acknowledged'. The unrequested refund opens a 'Refund issued outside Ujimora' case in /disputes that pauses payouts for D2's campaign. The redelivered charge.success returns 200 with no second journal. The top-up sweep returns 200 with its summary; U1 gets 403. Known open issue I009: non-campaign provider events have no console page, and there are no automatic holds, clawbacks or chargeback ledger reversals.
+
+**Needs:** Paystack webhook tooling
+
+**Source:** `apps/api/src/application/use-cases/RecordProviderPaymentEventUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/controllers/AdminPaymentsController.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminPaymentsRoutes.ts`
+
 ## ADMIN-016 · P2 · Roles page is an accurate read-only reference
 
-*Surfaces:* admin  ·  *Type:* compliance
+*Surfaces:* admin, api  ·  *Type:* compliance
 
-**Before:** Admin A.
+**Before:** Admin A. U1 access token.
 
 **Steps:**
 
@@ -1529,12 +1949,13 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 2. Expand 'Explore permissions' for each role.
 3. Compare with DEFAULT_ROLES in packages/types/src/rbac.ts.
 4. Export as CSV.
+5. Call GET /api/v1/rbac/me as Admin A and as U1.
 
-**Expect:** Five built-in roles are shown (Super Admin, Admin, Moderator, Organization, User) with a 'View only' notice and no edit controls. The matrix matches the source. Sign-off note: only user, organization and admin are assignable (UserRole), and the API enforces admin-only. Restricted Moderator staff are not supported and must not be promised in staffing docs.
+**Expect:** Five built-in roles are shown (Super Admin, Admin, Moderator, Organization, User) with a 'View only' notice and no edit controls. The matrix matches the source. /rbac/me returns the full Admin permission set for Admin A, and an empty permission list with roleName '' for U1, because only administrator accounts hold staff permissions. Known open issue I028: Moderator and Super Admin still cannot be assigned (UserRole is only user, organization or admin) and every admin API only checks requireAdmin, so restricted staff accounts are not possible and must not be promised in staffing docs.
 
 **Needs:** None
 
-**Source:** `apps/admin/src/pages/RolesPage.tsx`, `packages/types/src/rbac.ts`, `packages/types/src/user.ts`, `docs/compliance/STAFF_ACCESS.md`
+**Source:** `apps/admin/src/pages/RolesPage.tsx`, `packages/types/src/rbac.ts`, `packages/types/src/user.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/rbacRoutes.ts`, `docs/compliance/STAFF_ACCESS.md`
 
 ## ADMIN-022 · P2 · Overview and list performance at launch-scale data
 
@@ -1572,23 +1993,25 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 **Source:** `packages/ui/src/components/NotificationBell.tsx`, `apps/admin/src/components/layout/TopBar.tsx`
 
-## ADMIN-039 · P2 · KYC counters agree across Dashboard and KYC Review
+## ADMIN-039 · P2 · KYC counters come from the server and agree across Dashboard and KYC Review
 
 *Surfaces:* admin, api  ·  *Type:* functional
 
-**Before:** Several pending KYCs.
+**Before:** Several pending KYCs and at least one KYC decided earlier today (UTC) by another admin.
 
 **Steps:**
 
-1. Note the Dashboard's Pending KYC, Approved Today and Rejected Today.
-2. Approve one and reject one in /kyc-review, and check the header stats.
-3. Reload both pages.
+1. Note the Dashboard's Pending KYC, KYC Approved Today and KYC Rejected Today.
+2. Open /kyc-review and read the header stats. Open the Status filter.
+3. Approve one, reject one and request more information on a third; watch the header stats after each.
+4. Reload both pages.
+5. If possible, repeat just before and after 00:00 UTC.
 
-**Expect:** The KYC Review header updates immediately from local status. After reload, the Dashboard (/kyc/stats) and KYC Review agree. 'Today' uses local calendar day; confirm the boundary at midnight GMT.
+**Expect:** The KYC Review header shows 'Pending', 'Approved today (UTC)' and 'Rejected today (UTC)' from GET /kyc/stats, so decisions made earlier by other admins are counted; the numbers match the Dashboard. The header refreshes after each approve, reject and information request. The Status filter offers only All Statuses, Pending and In Review. After reload the Dashboard and KYC Review agree. 'Today' is the UTC calendar day and resets at 00:00 UTC.
 
 **Needs:** None
 
-**Source:** `apps/admin/src/pages/KYCReviewPage.tsx`, `apps/admin/src/pages/DashboardPage.tsx`
+**Source:** `apps/admin/src/pages/KYCReviewPage.tsx`, `apps/admin/src/pages/DashboardPage.tsx`, `apps/admin/src/hooks/useApiData.ts`
 
 ## ADMIN-075 · P2 · Settings tabs, personal alerts and appearance
 
@@ -1647,7 +2070,7 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 **Source:** `apps/admin/src/components/layout/AdminLayout.tsx`, `apps/admin/src/components/layout/Sidebar.tsx`, `apps/admin/src/components/layout/TopBar.tsx`, `apps/admin/src/components/Tour.tsx`
 
-## ADMIN-086 · P2 · Top-bar global search
+## ADMIN-086 · P2 · Top bar has no dead search box
 
 *Surfaces:* admin  ·  *Type:* functional
 
@@ -1655,10 +2078,84 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 **Steps:**
 
-1. Type a known campaign title, user email and donation ID into the top-bar 'Search…' box and press Enter.
+1. Look at the top bar at desktop width and at 390 px.
+2. Open the user menu and click 'Replay tour'; step through every tour step.
 
-**Expect:** Target: search returns matching campaigns, users and donations, as the product tour says ('Jump straight to any campaign, user, or donation'). Known risk: the input has no handler and does nothing. Wire it up, or remove it and the tour step before launch.
+**Expect:** There is no 'Search…' input in the top bar at any width. The product tour has no 'Search everything' step; it goes from 'Your sections' to the notification bell step. Global search is not offered; staff use each page's own search and filters.
 
 **Needs:** None
 
 **Source:** `apps/admin/src/components/layout/TopBar.tsx`, `apps/admin/src/components/layout/AdminLayout.tsx`
+
+## ADMIN-N013 · P2 · Activity email checks queue
+
+*Surfaces:* admin, api, email  ·  *Type:* recovery/idempotency
+
+**Before:** At least two activity-alert email rows parked in delivery review (worker status 'review' after an unconfirmed send, or DB fixtures with status 'review' and channel 'email'). Access to the Resend log.
+
+**Steps:**
+
+1. Open Platform > Activity email checks (/activity-email-review) and from the bell ('Activity emails needing a delivery check').
+2. Read a card; look up its idempotency key in the Resend log.
+3. Type a note under 20 characters, then 20 or more. Click 'Mark delivered' on one and 'Give up on this email' on the other.
+4. Open the same row in two tabs and decide it in both.
+5. Look for a re-send option. Check /audit.
+
+**Expect:** Cards show the email title, 'Idempotency key: <key>', the category, first attempt time, attempt count and a link to the recipient account, and never the email address or body. The info alert says to check the provider log and that the page cannot re-send. Buttons are disabled below 20 characters. 'Mark delivered' shows 'Marked delivered.' and 'Give up on this email' shows 'Email given up. It will not be sent.'; the row leaves the list and the bell count drops. The second tab gets 409 'This email is no longer waiting for a delivery check. Refresh the list.' No re-send exists. Audit entries activity_email.delivered and activity_email.suppress record the note.
+
+**Needs:** Email provider (Resend), DB access
+
+**Source:** `apps/admin/src/pages/ActivityEmailReviewPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminActivityDeliveryRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminActionRoutes.ts`
+
+## ADMIN-N020 · P2 · Payout transfer controls have their own per-admin rate limit
+
+*Surfaces:* admin, api  ·  *Type:* negative/edge
+
+**Before:** A payout in PROCESSING (or awaiting Paystack OTP). Admins A and B on the same network. A script that can create donation checkouts from that network.
+
+**Steps:**
+
+1. As Admin A, click 'Check Paystack status' (or call POST /payouts/:id/transfer-control {action: 'refresh'}) 31 times within 15 minutes.
+2. As Admin B, click 'Check Paystack status' once.
+3. Run 60 donation checkout requests from the same network, then have Admin B authorize an OTP.
+
+**Expect:** Admin A's 31st control call returns 429 'Too many requests, please try again later'. Admin B is unaffected because the bucket is per admin. Donor checkout traffic does not use up the payout-control bucket, so B can still enter a time-limited Paystack OTP.
+
+**Needs:** Paystack test keys
+
+**Source:** `apps/api/src/infrastructure/adapters/inbound/middleware/rateLimiter.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/automaticPayoutRoutes.ts`, `apps/admin/src/components/PayoutTransferControls.tsx`
+
+## ADMIN-N021 · P2 · Profile Preferences tab explains staff alerts instead of dead switches
+
+*Surfaces:* admin  ·  *Type:* functional
+
+**Before:** Admin A.
+
+**Steps:**
+
+1. Open /profile and read the page introduction.
+2. Open the Preferences tab.
+
+**Expect:** The introduction reads 'Manage your personal details and password.' The Preferences tab shows no email or push switches and no language picker. It says 'Staff alerts appear in the notification bell at the top of the console.' and 'Email and browser push alerts for staff are not available yet, and the console is in English only. Account security emails, such as password-change notices, are not affected.' There is no Save Preferences button.
+
+**Needs:** None
+
+**Source:** `apps/admin/src/pages/AdminProfilePage.tsx`
+
+## ADMIN-N022 · P2 · Console session survives device clock skew
+
+*Surfaces:* admin, api  ·  *Type:* negative/edge
+
+**Before:** Admin A on a test laptop whose clock can be changed.
+
+**Steps:**
+
+1. Sign in. Set the device clock 20 minutes behind and keep using the console for 20 minutes (past the 15-minute token life).
+2. Set the clock 20 minutes ahead and keep using the console.
+3. With the clock correct, go offline just as a token renewal is due, then click a page.
+
+**Expect:** With the clock behind, the first 401 triggers one forced token refresh and the request is retried, so pages keep loading and you are not signed out. With the clock ahead, the console does not refresh on every request and does not sign you out, because expiry is measured from when this browser received the token. During the offline renewal the page shows 'Unable to renew your session. Check your connection and try again.' and you stay signed in; the session continues once you are back online. The 60-minute idle logout still applies.
+
+**Needs:** None
+
+**Source:** `packages/ui/src/browserSession.ts`, `apps/admin/src/lib/api.ts`

@@ -32,7 +32,9 @@ for (const anonymous of [false, true]) {
     await expect(submit).toBeEnabled()
     await submit.click()
     await expect.poll(() => submissions.length).toBe(1)
-    expect(submissions[0]).toMatchObject({ donorName: 'Public donor', isAnonymous: anonymous })
+    // Without an explicit choice the form leaves isAnonymous unset so the API applies the donor's saved default.
+    expect(submissions[0]).toMatchObject({ donorName: 'Public donor' })
+    expect(submissions[0].isAnonymous ?? false).toBe(anonymous)
     if (anonymous) expect(submissions[0].legalAcceptance).toBeUndefined()
     else expect(submissions[0].legalAcceptance).toEqual({ version: '2026-09-12', acceptedTerms: true, ageConfirmed: true })
     await expect(page.getByText('Fixture checkout unavailable')).toBeVisible()

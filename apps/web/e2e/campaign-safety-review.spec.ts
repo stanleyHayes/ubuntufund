@@ -24,7 +24,6 @@ test('keeps a campaign draft through private safety review and resubmits the exa
   })
   await page.goto('/campaigns/new')
   await page.getByLabel('Campaign title').fill('Test campaign')
-  await page.getByLabel('Short summary').fill('Test description for a campaign')
   await page.getByRole('button', { name: 'Education', exact: true }).click()
   await page.getByRole('button', { name: 'Continue', exact: true }).click()
   await page.getByLabel('Your story').fill('Test campaign story for a new library.')

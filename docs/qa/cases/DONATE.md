@@ -1,4 +1,4 @@
-# Donations & checkout (78 cases)
+# Donations & checkout (92 cases)
 
 Guest and signed-in Paystack donations, iOS website handoff, wallet donations, tips, coupons, anonymity and messages, callbacks, webhooks, receipts, crypto gating.
 
@@ -48,16 +48,16 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 *Surfaces:* api, web  ·  *Type:* functional
 
-**Before:** Donor A signed in on web with a verified account; ACTIVE campaign.
+**Before:** Donor A signed in on web with a verified account; ACTIVE campaign; Paystack test keys.
 
 **Steps:**
 
-1. While signed in, go to /c/<slug>/donate, donate GH₵30 by test card (email must be typed; it is not prefilled).
+1. While signed in, go to /c/<slug>/donate and donate GH₵30 by test card. The email must be typed because it is not prefilled.
 2. Open /donations (My donations).
-3. Sign in again, then in devtools replace the stored access token with an expired/invalid one and make another GH₵10 donation.
+3. Sign in again. In devtools replace the stored access token with an expired or invalid one and make another GH₵10 donation.
 4. Check /donations again after refreshing the session.
 
-**Expect:** The GH₵30 donation appears in My donations with the campaign name, amount GHS 30.00, method Card, status Completed. For the expired-token donation the API silently treats the donor as a guest: payment still succeeds but it does NOT appear in My donations — record this as a known limitation and decide whether the web client should refresh the token before creating the intent.
+**Expect:** The GH₵30 donation appears in My donations with the campaign name, amount GHS 30.00, method Card and status Completed. Requirement: a donation made while the donor believes they are signed in is linked to their account. The client should refresh the token first, or the donor should be told they are giving as a guest. Known open issue I122: the API still treats an expired or invalid token on POST /donation-intents as a guest, so the GH₵10 payment succeeds but does not appear in My donations. Both clients refresh before expiry, so this only happens with clock skew or a revoked session. Record what you observe.
 
 **Needs:** Paystack test keys
 
@@ -67,21 +67,21 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 *Surfaces:* admin, api, web  ·  *Type:* functional
 
-**Before:** Community-plan campaign (3.5%); Paystack test keys; admin token.
+**Before:** Community-plan campaign (3.5%); Paystack test keys; admin token; donor signed in with the 'Donations you make' in-app alert enabled (optional).
 
 **Steps:**
 
-1. Donate GH₵100 with tip GH₵5 on /c/<slug>/donate; button must read 'Donate GH₵105.00'.
-2. Pay in Paystack; note the charged amount on the Paystack test dashboard.
-3. On callback, read the thank-you text.
+1. Donate GH₵100 with a GH₵5 tip on /c/<slug>/donate. The button must read 'Donate GH₵105.00'.
+2. Pay in Paystack and note the charged amount on the Paystack test dashboard.
+3. On the callback page, read the thank-you text.
 4. GET /api/v1/admin/payments?providerRef=<ref> and GET /api/v1/admin/payments/<intentId>.
-5. Check campaign raised total before/after.
+5. Compare the campaign raised total before and after. If alerts are on, read the donor notification.
 
-**Expect:** Paystack charged exactly 105.00 GHS (10500 pesewas). Callback: 'Your GH₵100.00 donation is confirmed' and 'thank you for the extra GH₵5.00 tip'. Campaign raised +100.00 (not 105). Admin view: amount 100, tip 5, platformFeeMinor 350, providerFeeMinor = Paystack fee on the full 105, netCampaignAmountMinor = 10000 - 350 - providerFeeMinor. NOTE: the processor fee on the tip portion is charged to the campaign — confirm with finance that this is the intended policy and disclosed.
+**Expect:** Paystack charges exactly 105.00 GHS (10500 pesewas). The callback shows 'Your GH₵100.00 donation is confirmed' and '… And thank you for the extra GH₵5.00 tip to support Ujimora.' Campaign raised goes up by 100.00, not 105. Admin view: amount 100, tip 5, platformFeeMinor 350, providerFeeMinor = the Paystack fee on the full 105, and netCampaignAmountMinor = 10000 - 350 - providerFeeMinor. The opted-in donor alert adds 'Total charged: GHS 105.00, including a GHS 5.00 optional platform tip.' Known open issue I048: the Paystack fee on the tip portion is still charged to the campaign, and the donor sees no fee breakdown. The policy and disclosure decision is pending, so record the observed providerFeeMinor.
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/api/src/application/services/FeePolicy.ts (computeSettlementFromProvider)`, `apps/web/src/pages/DonateCallbackPage.tsx`, `apps/api/src/infrastructure/adapters/outbound/payments/PaystackGateway.ts`
+**Source:** `apps/api/src/application/services/FeePolicy.ts (computeSettlementFromProvider)`, `apps/web/src/pages/DonateCallbackPage.tsx`, `apps/api/src/infrastructure/adapters/outbound/payments/PaystackGateway.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoActivityAlerts.ts (donorCharge)`
 
 ## DONATE-007 · P0 · Platform fee follows the organizer's plan and the campaign's locked rate
 
@@ -101,24 +101,25 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 **Source:** `apps/api/src/application/services/PlanLimitsService.ts`, `packages/types/src/subscription.ts`, `apps/api/src/application/services/FeePolicy.ts`
 
-## DONATE-008 · P0 · Rounding: odd and >2-decimal amounts reconcile to the pesewa
+## DONATE-008 · P0 · Rounding: odd amounts reconcile to the pesewa and >2-decimal amounts are refused everywhere
 
 *Surfaces:* android, api, web  ·  *Type:* functional
 
-**Before:** Community-plan campaign; Paystack test keys.
+**Before:** Community-plan campaign; Paystack test keys; Android build.
 
 **Steps:**
 
-1. Web: donate 33.33 (fee 3.5% = 1.16655).
-2. Web: type 1.005 and 10.125 in Amount; compare button label to the amount Paystack shows, then pay 10.125.
-3. Android: try entering 10.125 in Amount.
-4. For each settled donation read admin payments minor-unit fields and the campaign raised delta.
+1. Web: donate 33.33 (3.5% fee = 1.16655).
+2. Web: type 1.005, then 10.125, in Amount and read the helper text and button. Then type 10.13 and pay.
+3. Android: enter 10.125 in Amount, then 10,13 (decimal comma).
+4. API: POST /api/v1/donation-intents with amount 10.125, and with amount 10.25 and tip 0.1.
+5. For each settled donation, read the admin payments minor-unit fields and the campaign raised change.
 
-**Expect:** 33.33: platformFeeMinor 117 and net+platform+provider = 3333 exactly. For 10.125 the button label, Paystack charge and credited amount must all agree (e.g. GH₵10.13 / 1013 pesewas) — any 1-pesewa disagreement between label and charge (classic 1.005 case) is a defect; web should restrict input to 2 decimals like Android. Android disables Donate for >2 decimals. Campaign raised equals credited amount, never a 3-decimal value.
+**Expect:** 33.33: platformFeeMinor 117, and net + platform + provider = 3333 exactly. Web 1.005 and 10.125: helper 'Enter an amount greater than zero, with at most 2 decimal places', and the button is disabled ('Continue to payment'), so the label and the charge can never disagree. 10.13: the button reads 'Donate GH₵10.13', Paystack charges 1013 pesewas and raised goes up by 10.13. Android: 10.125 keeps Donate disabled; '10,13' is accepted as 10.13 ('Donate 10.13 GHS'). API: 10.125 returns 400 'Validation failed'; 10.25 with tip 0.1 returns 201. Campaign raised never holds a 3-decimal value.
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/web/src/pages/DonatePage.tsx (parseAmount has no 2dp check)`, `apps/mobile/app/donate/[id].tsx (2dp validation)`, `apps/api/src/domain/value-objects/Money.ts`, `apps/api/src/application/services/FeePolicy.ts`
+**Source:** `apps/web/src/pages/DonatePage.tsx`, `apps/web/src/lib/moneyInput.ts`, `apps/mobile/src/lib/moneyInput.ts`, `apps/mobile/app/donate/[id].tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/donationIntentRoutes.ts (multipleOf 0.01)`, `apps/api/src/application/services/FeePolicy.ts`
 
 ## DONATE-011 · P0 · Declined card shows failure and allows retry without charge
 
@@ -142,20 +143,21 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 *Surfaces:* api, web  ·  *Type:* recovery/idempotency
 
-**Before:** Paystack test keys; network throttling in devtools.
+**Before:** Paystack test keys; devtools network throttling; admin token.
 
 **Steps:**
 
-1. Throttle to Slow 3G, fill the form and double/triple-click 'Donate'.
-2. Count intents created (admin payments search by campaign, last minute).
-3. Complete payment, then press browser Back from the callback to the Paystack page and try to pay again.
-4. Refresh /donate/callback several times after success.
+1. Throttle to Slow 3G, fill in the form and double- or triple-click 'Donate'.
+2. Count the intents created (admin payments search by campaign, last minute) and check that every POST /donation-intents carried the same Idempotency-Key header.
+3. On the Paystack page press browser Back. Re-enter exactly the same details and press Donate again (reload the form first if it is restored stuck on 'Starting secure checkout…').
+4. Complete the payment. Press Back from the callback to the Paystack page and try to pay again.
+5. Refresh /donate/callback several times after success.
 
-**Expect:** Button disables on first click ('Starting secure checkout…'); at most one intent per actual submission. Paying the same Paystack reference twice is impossible or, if Paystack allows it, the second webhook is a no-op (one donation, one journal). Refreshing the callback never creates new records.
+**Expect:** The button disables on the first click ('Starting secure checkout…'). All presses with the same details reuse one Idempotency-Key, so there is one intent, one Paystack initialize and the same uf-<intentId>-<hex> reference and checkout URL each time. Paying the same reference twice is impossible, or if Paystack allows it the second webhook is a no-op: one donation and one journal. Refreshing the callback never creates records.
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/web/src/pages/DonatePage.tsx`, `apps/web/src/lib/fundraising.ts (fresh Idempotency-Key per call)`, `apps/api/src/application/use-cases/SettleDonationUseCase.ts`
+**Source:** `apps/web/src/pages/DonatePage.tsx`, `apps/web/src/lib/checkoutAttempt.ts`, `apps/api/src/application/use-cases/CreateDonationIntentUseCase.ts (replayHostedIntent, markPendingIfCreated)`, `apps/api/src/application/use-cases/SettleDonationUseCase.ts`
 
 ## DONATE-014 · P0 · Forged callback / verify requests cannot confirm or probe payments
 
@@ -180,38 +182,40 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 *Surfaces:* android, api, ios, web  ·  *Type:* functional
 
-**Before:** Campaigns in states: ACTIVE, FUNDED (raised >= goal, end date in future), ACTIVE but endDate in the past, PENDING_REVIEW, BLOCKED, DRAFT.
+**Before:** Campaigns in these states: ACTIVE; FUNDED (raised >= goal, end date in the future); ACTIVE with endDate in the past; PENDING_REVIEW; BLOCKED; DRAFT.
 
 **Steps:**
 
 1. For each campaign open web /c/<slug>, /c/<slug>/donate and /campaigns/<id>.
 2. Open the campaign in Android and iOS and tap the donate button.
 3. Call POST /api/v1/donation-intents for each campaign.
+4. For the past-end-date campaign, wait 5 minutes or more and re-read its status.
 
-**Expect:** FUNDED: donations accepted everywhere ('Goal reached · Still accepting donations' chip on /campaigns/:id). KNOWN BUG TO VERIFY: /c/<slug> (the shared link/QR page) disables the button and says 'Donations closed' for FUNDED because it checks status === ACTIVE only (the same bug was fixed for iOS in 7d2e4a95). Past-end-date ACTIVE, PENDING_REVIEW, BLOCKED, DRAFT: buttons disabled/'Donations closed', /c/<slug>/donate shows 'This campaign isn't accepting donations right now', API returns 400 'Campaign is not accepting donations'.
+**Expect:** FUNDED accepts donations everywhere: /c/<slug> shows an enabled 'Donate now', /campaigns/:id shows the chip 'Goal reached · Still accepting donations', Android and iOS allow donating, and the API returns 201. Past-end-date, PENDING_REVIEW, BLOCKED and DRAFT campaigns (where the page is visible at all) show a disabled 'Donations closed' button. /c/<slug> adds 'This campaign isn't accepting donations right now.', and /c/<slug>/donate shows 'This campaign isn't accepting donations right now.'. Android shows 'This campaign is not accepting donations.' and iOS shows 'This campaign is not accepting donations right now.'. The API returns 400 'Campaign is not accepting donations'. Within about 5 minutes the expiry sweep relabels the ended campaign EXPIRED, and it stays closed.
 
 **Needs:** none
 
-**Source:** `apps/web/src/pages/CampaignPublicPage.tsx (isActive)`, `packages/types/src/campaign.ts (acceptsCampaignDonation)`, `apps/api/src/domain/entities/Campaign.ts (canReceiveDonation)`, `apps/mobile/src/screens/ExternalFundraisingScreen.tsx`
+**Source:** `apps/web/src/pages/CampaignPublicPage.tsx (acceptsCampaignDonation)`, `packages/types/src/campaign.ts (acceptsCampaignDonation)`, `apps/api/src/domain/entities/Campaign.ts (canReceiveDonation)`, `apps/api/src/application/use-cases/ExpireEndedCampaignsUseCase.ts`, `apps/mobile/src/screens/ExternalFundraisingScreen.tsx`, `apps/mobile/app/donate/[id].tsx`
 
 ## DONATE-016 · P0 · Campaign ends or is blocked while donor is on Paystack checkout
 
 *Surfaces:* admin, api, web  ·  *Type:* recovery/idempotency
 
-**Before:** Campaign ending in ~5 minutes (or admin able to block it); Paystack test keys.
+**Before:** A campaign ending in about 5 minutes, or an admin able to block it; Paystack test keys; organizer account with a verified payout account.
 
 **Steps:**
 
 1. Start a GH₵60 donation and stay on the Paystack page.
-2. Let the end date pass (or block the campaign in admin).
-3. Complete payment.
-4. Check intent, campaign raised, campaign balance and admin payments.
+2. Let the end date pass, or block the campaign in admin.
+3. Complete the payment.
+4. Check the intent, campaign raised, campaign balance and admin payments.
+5. For the blocked campaign: as organizer, request a payout. As admin, try to approve a payout that was requested before the block.
 
-**Expect:** Externally verified money is not lost: settlement credits the ledger even though the campaign no longer accepts new donations (design in DONATION_SETTLEMENT_INTEGRITY.md). Confirm ops has a documented refund/hold procedure for donations to blocked campaigns; the donor sees a confirmed state.
+**Expect:** Externally verified money is never lost. Settlement credits the ledger and raised total even though the campaign no longer accepts new donations, and the donor sees the confirmed state. For a BLOCKED campaign, requesting or approving a payout is refused with 409 'This campaign is under review; payouts are paused'. Known open issue I040 (policy part): the refund-or-release procedure for money that reaches a blocked campaign is still an owner decision. Confirm ops has a documented hold or refund runbook.
 
 **Needs:** Paystack test keys
 
-**Source:** `docs/compliance/DONATION_SETTLEMENT_INTEGRITY.md`, `apps/api/src/application/use-cases/HandlePaystackWebhookUseCase.ts`
+**Source:** `docs/compliance/DONATION_SETTLEMENT_INTEGRITY.md`, `apps/api/src/application/use-cases/HandlePaystackWebhookUseCase.ts`, `apps/api/src/application/use-cases/RequestPayoutUseCase.ts`, `apps/api/src/application/use-cases/ApprovePayoutUseCase.ts`
 
 ## DONATE-017 · P0 · Paystack webhook signature enforcement
 
@@ -268,117 +272,127 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 **Source:** `apps/api/src/application/use-cases/HandlePaystackWebhookUseCase.ts (handleChargeSuccess)`, `apps/api/src/application/use-cases/ReconcilePaymentsUseCase.ts`
 
-## DONATE-021 · P0 · Late success after FAILED is not silently lost
+## DONATE-021 · P0 · Late success after FAILED is re-verified and credited exactly once
 
-*Surfaces:* admin, android, api  ·  *Type:* recovery/idempotency
+*Surfaces:* admin, api, web  ·  *Type:* recovery/idempotency
 
-**Before:** Signing capability; intent in PENDING.
+**Before:** Signing capability (PAYSTACK_SECRET_KEY); Paystack test keys; a way to block webhooks; admin token.
 
 **Steps:**
 
-1. Send signed charge.failed for the intent's reference.
-2. Then send signed charge.success (matching amount) for the same reference.
-3. Check intent status, donation records, campaign raised and admin timeline.
+1. Block webhooks. Create a donation and pay it successfully with the test card, so Paystack holds a real success for reference R.
+2. Send a signed charge.failed for R. The intent becomes FAILED, and a callback page open on R shows 'Payment didn't go through'.
+3. Send a signed charge.success for R with the matching amount and currency, or unblock webhooks and resend from the Paystack dashboard.
+4. Replay the same charge.success 3 times.
+5. Negative: for an intent whose checkout was never paid, send a signed charge.failed, then a signed charge.success with the matching amount.
+6. Admin variant: on another paid intent marked FAILED, call POST /api/v1/admin/payments/<id>/reconcile. Reload the donor's /donate/callback?reference=<ref>.
 
-**Expect:** Current code: FAILED intents ignore later charge.success (money taken, campaign not credited, not picked up by reconciliation since it only scans PENDING). This must be treated as a launch risk: confirm whether Paystack can report failed then success on one reference (e.g. MoMo retry in the same checkout, see DONATE-064) and ensure ops can detect and manually credit/refund (search payment attempts with status succeeded on FAILED intents).
+**Expect:** The paid intent is re-verified with Paystack (same reference, status success, amount and currency match) and reopened FAILED → PENDING → SUCCEEDED. Campaign raised goes up exactly once, with one donation and one journal, and the API logs alert 'late_success_credited'. Replays add nothing. For the unpaid intent, the verify does not confirm success: it stays FAILED, nothing is credited, and the log reads 'late paystack success could not be verified — not crediting'. Admin reconcile of a paid FAILED intent returns {outcome:'repaired', status:'SUCCEEDED'}. Reloading the donor's callback re-checks the payment and shows it confirmed.
 
 **Needs:** Paystack test secret key
 
-**Source:** `apps/api/src/application/use-cases/HandlePaystackWebhookUseCase.ts (lines ~264-269, 351-358)`, `apps/api/src/application/use-cases/ReconcilePaymentsUseCase.ts`
+**Source:** `apps/api/src/application/use-cases/HandlePaystackWebhookUseCase.ts (reopenVerifiedLateSuccess)`, `apps/api/src/application/use-cases/ReconcilePaymentsUseCase.ts (reconcileById allowLateSuccess)`, `apps/api/src/application/use-cases/VerifyDonationIntentUseCase.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoDonationIntentRepository.ts (reopenForLateSuccess)`
 
 ## DONATE-022 · P0 · Missed webhook is repaired by callback verify, scheduled sweep, or admin reconcile
 
 *Surfaces:* admin, api, web  ·  *Type:* recovery/idempotency
 
-**Before:** Staging with NODE_ENV=production and PAYMENTS_RECONCILIATION_ENABLED=true; ability to block webhooks (point Paystack test webhook URL elsewhere).
+**Before:** Staging with PAYMENTS_RECONCILIATION_ENABLED not 'false', and either NODE_ENV=production or RECONCILIATION_SCHEDULER_ENABLED=true; a way to block webhooks (point the Paystack test webhook URL elsewhere); admin and non-admin tokens.
 
 **Steps:**
 
 1. Block webhooks. Donation A: pay and stay on /donate/callback.
-2. Donation B: pay then close the tab immediately.
-3. Donation C: pay then close; do not wait for the sweep — call POST /api/v1/admin/payments/<C>/reconcile as admin.
+2. Donation B: pay, then close the tab immediately.
+3. Donation C: pay and close. Without waiting for the sweep, call POST /api/v1/admin/payments/<C>/reconcile as admin.
 4. Wait 35–40 minutes for B.
-5. Call POST /api/v1/admin/reconciliation and read the summary.
+5. Call POST /api/v1/admin/reconciliation and read the summary. Repeat as a non-admin and with no token.
+6. Set RECONCILIATION_SCHEDULER_ENABLED=false, restart, and watch the logs for 10 minutes.
 
-**Expect:** A becomes SUCCEEDED via /verify within the callback's polling window. C returns {outcome:'repaired', status:'SUCCEEDED'}. B is repaired by the 5-minute sweep once older than 30 minutes. Each credited exactly once; summary counts match. Non-admin calling reconcile -> 403.
+**Expect:** A becomes SUCCEEDED through /verify within the callback's polling window. C returns {outcome:'repaired', status:'SUCCEEDED'}. B is repaired by the 5-minute sweep once it is older than 30 minutes. Each is credited exactly once. The summary has scanned, repaired, failed, expired, mismatched, pending, skipped, tipsRepaired, tipsSettled and tipsFailed, and the counts match. Non-admin gets 403 and no token gets 401. With the scheduler flag false, no 'payment reconciliation sweep complete' log appears; only admin-triggered runs happen.
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/api/src/application/use-cases/ReconcilePaymentsUseCase.ts`, `apps/api/src/app.ts (reconciliation timer ~L958)`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminPaymentsRoutes.ts`
+**Source:** `apps/api/src/application/use-cases/ReconcilePaymentsUseCase.ts`, `apps/api/src/app.ts (reconciliation scheduler)`, `apps/api/src/infrastructure/config/index.ts (reconciliationSchedulerEnabled)`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminPaymentsRoutes.ts`
 
 ## DONATE-023 · P0 · Reconciliation sweep is not starved by abandoned checkouts
 
 *Surfaces:* admin, api  ·  *Type:* recovery/idempotency
 
-**Before:** Staging DB; ability to create >100 abandoned Paystack intents (script POST /donation-intents without paying) and backdate or wait 30 min.
+**Before:** Staging with the scheduler on (see DONATE-022); staging DB access; admin token. The donation-intent limit is 60 per 15 minutes per client IP, so create the backlog across windows or IPs, or insert rows directly.
 
 **Steps:**
 
-1. Create 110 abandoned hosted intents and let them age past 30 minutes.
-2. Block webhooks and complete one real payment (intent Z); close the tab.
-3. Wait for two or more sweep cycles (5 min each) after Z is 30 minutes old.
-4. Check Z's status.
+1. Create 150 abandoned hosted Paystack intents and age them past 30 minutes (wait, or backdate updatedAt).
+2. Block webhooks, complete one real payment (intent Z) and close the tab.
+3. Once Z is 30 minutes old, wait for two sweep cycles (5 minutes each), or call POST /api/v1/admin/reconciliation twice with the default limit.
+4. Check Z's status and the reconciledAt field on the backlog rows.
+5. Call POST /api/v1/admin/reconciliation with {limit: 5000}.
 
-**Expect:** Z must be repaired. RISK: findStalePending sorts by updatedAt ascending with limit 100 and reconcileOne does not touch 'pending/abandoned' intents, so the same 100 oldest abandoned rows are re-scanned forever and Z is never reached. If Z stays PENDING this is a launch blocker (paid donations never credited without the webhook).
+**Expect:** Z is repaired (SUCCEEDED, credited once) within two sweeps. Every visited row gets a reconciledAt stamp and moves behind rows not yet checked, so the same 100 rows are no longer re-scanned forever. Backlog rows younger than 24 hours stay PENDING (counted as 'pending'); rows older than 24 hours become EXPIRED ('expired'). A requested limit above 500 is capped at 500 scanned.
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoDonationIntentRepository.ts (findStalePending)`, `apps/api/src/application/use-cases/ReconcilePaymentsUseCase.ts (reconcileOne)`
+**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoDonationIntentRepository.ts (findStalePending, recordReconciliationAttempt)`, `apps/api/src/application/use-cases/ReconcilePaymentsUseCase.ts (MAX_RECONCILE_LIMIT, reconcileStale)`, `apps/api/src/infrastructure/adapters/inbound/middleware/rateLimiter.ts`
 
 ## DONATE-024 · P0 · API sleep/restart during settlement (Render free tier cold start)
 
 *Surfaces:* api, web  ·  *Type:* recovery/idempotency
 
-**Before:** Deployed staging on the same Render plan as prod (render.yaml plan: free).
+**Before:** Deployed staging on the same Render plan as production (render.yaml still has plan: free).
 
 **Steps:**
 
-1. Let the API idle until Render spins it down (15+ min).
+1. Let the API idle until Render spins it down (15 minutes or more).
 2. Complete a Paystack payment so the webhook hits a cold instance.
 3. Separately, restart the API right after a webhook is accepted.
 4. Watch the campaign page SSE/progress and admin payments.
+5. Call GET /health and GET /health/ready during and after the restart.
 
-**Expect:** Donation settles (Paystack retry or callback verify) and is credited once; after restart the boot outbox sweep delivers the pending donation.succeeded realtime event. Note cold-start latency; if webhooks time out repeatedly, move off the free plan before launch (timers for reconciliation/outbox/activity alerts also stop while the instance sleeps).
+**Expect:** The donation settles, through Paystack's retry or the callback verify, and is credited once. After a restart, the boot outbox sweep delivers the pending donation.succeeded realtime event. /health/ready returns 503 until MongoDB answers a ping, while /health stays 200; render.yaml's healthCheckPath is /health/ready. Record cold-start latency. Known open issue I003: the plan is still free, so the instance sleeps and the in-process reconciliation, outbox and activity-alert timers stop while it sleeps. Moving to an always-on plan is an owner decision.
 
 **Needs:** Render deployment; Paystack test keys
 
-**Source:** `render.yaml`, `apps/api/src/main.ts`, `apps/api/src/application/services/OutboxDispatcher.ts`
+**Source:** `render.yaml`, `DEPLOYMENT.md`, `apps/api/src/app.ts (/health/ready)`, `apps/api/src/main.ts`, `apps/api/src/application/services/OutboxDispatcher.ts`
 
-## DONATE-025 · P0 · Public payment-attempts endpoint cannot settle or hijack an intent
+## DONATE-025 · P0 · Removed payment-attempts endpoint cannot settle or hijack an intent
 
 *Surfaces:* api  ·  *Type:* security/permission
 
-**Before:** A PENDING Paystack intent and a CREATED intent (if any) ids; curl without auth.
+**Before:** The id of a PENDING Paystack intent; curl, without auth and with an admin token.
 
 **Steps:**
 
-1. POST /api/v1/donation-intents/<pendingId>/payment-attempts {provider:'paystack', status:'succeeded'}.
-2. POST the same with status 'initiated' and providerRef 'uf-attacker-12345678'.
-3. GET /donation-intents/<pendingId>/public and admin payments view.
+1. POST /api/v1/donation-intents/<pendingId>/payment-attempts {provider:'paystack', status:'succeeded'} without auth.
+2. POST the same with status 'initiated' and providerRef 'uf-attacker-12345678'. Repeat with an admin token.
+3. GET /api/v1/donation-intents/<pendingId>/public and the admin payments timeline for the intent.
+4. Let the real webhook for the intent's reference arrive.
 
-**Expect:** 201 attempt recorded but intent status unchanged (never SUCCEEDED from this endpoint) and providerRef unchanged for a PENDING intent. Webhook for the real reference still settles correctly.
+**Expect:** Every call returns 404, because the route no longer exists (Express 'Cannot POST …'). Intent status and providerRef are unchanged, and the timeline shows only attempts the server recorded, such as 'initiated' at checkout. The real webhook still settles the intent correctly.
 
 **Needs:** none
 
-**Source:** `apps/api/src/application/use-cases/RecordPaymentAttemptUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/donationIntentRoutes.ts`
+**Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/donationIntentRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/http/controllers/DonationIntentController.ts`, `SOCIAL_LIVE_FUNDRAISING.md`
 
 ## DONATE-027 · P0 · Rate limiting keys on the real client IP behind Render's proxy
 
 *Surfaces:* api, web  ·  *Type:* security/permission
 
-**Before:** Deployed staging behind Render; two testers on different networks (e.g. office Wi-Fi and a mobile hotspot).
+**Before:** Deployed staging behind Render (Cloudflare edge); two testers on different networks (for example office Wi-Fi and a mobile hotspot); production-like web build.
 
 **Steps:**
 
-1. Tester 1 sends POST /api/v1/donation-intents and notes the X-RateLimit-Remaining header.
-2. Tester 2 on a different network immediately sends one and notes X-RateLimit-Remaining.
-3. Tester 1 sends 61 intent requests within 15 minutes.
+1. In devtools, confirm web API calls go straight to https://<api-host>/api/v1/..., not through <web>/api/v1.
+2. Tester 1 sends POST /api/v1/donation-intents and notes the X-RateLimit-Remaining header.
+3. Tester 2 on the other network immediately sends one and notes X-RateLimit-Remaining.
+4. Tester 1 sends 61 intent or verify requests within 15 minutes.
+5. Tester 1 repeats with forged X-Forwarded-For, X-Real-IP, True-Client-IP, X-Vercel-Forwarded-For and CF-Connecting-IP headers.
+6. Perform an admin mutation and read the audit-log IP.
 
-**Expect:** Each tester has an independent counter (both start near 59). 61st request from tester 1 -> 429 'Too many requests…' with Retry-After; tester 2 is unaffected. RISK: the API never sets Express 'trust proxy', so req.ip may be the proxy address — if both testers share one counter, the whole platform shares 60 donation writes / 300 API calls per 15 min (launch blocker). Also consider mobile-carrier CGNAT and venue Wi-Fi at live events.
+**Expect:** Each tester has an independent counter, both starting near 59. Tester 1's 61st request returns 429 'Too many requests, please try again later' with Retry-After, and tester 2 is unaffected. Forged headers neither reset nor move tester 1's bucket: the edge overwrites CF-Connecting-IP and X-Forwarded-For is ignored. IPv6 clients on the same /64 share one bucket. POST /donation-intents and /:id/verify share the 60-per-15-minute donation limit. The audit log records the real client IP. Known open issue I099: counters are in memory per instance and reset on restart, so run a single instance. Note the behaviour for shared carrier CGNAT or venue Wi-Fi at live events.
 
 **Needs:** Render deployment
 
-**Source:** `apps/api/src/infrastructure/adapters/inbound/middleware/rateLimiter.ts`, `apps/api/src/app.ts (no trust proxy)`
+**Source:** `apps/api/src/infrastructure/adapters/inbound/middleware/clientIp.ts`, `apps/api/src/infrastructure/adapters/inbound/middleware/rateLimiter.ts`, `apps/web/.env.production (VITE_API_URL)`, `apps/api/src/infrastructure/adapters/inbound/middleware/auditMutation.ts`
 
 ## DONATE-028 · P0 · Idempotency-Key semantics on POST /donation-intents
 
@@ -389,16 +403,18 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 **Steps:**
 
 1. Send the same Paystack request twice with header Idempotency-Key: K1.
-2. Send with K2 (new key).
-3. Wallet: Donor A sends provider=wallet GH₵5 with key W1 twice.
-4. Donor B sends provider=wallet with key W1.
-5. Donor A sends provider=paystack with key W1.
+2. Send K1 again with amount changed (then with a different donorEmail).
+3. Send K1 with the original details as Donor B, and as a guest if K1 was created signed in.
+4. Send a request with K2 (a new key).
+5. Wallet: Donor A sends provider=wallet GH₵5 with key W1, twice.
+6. Donor B sends provider=wallet with key W1.
+7. Donor A sends provider=paystack with key W1.
 
-**Expect:** K1 twice -> same intent id and same reference; K2 -> new intent. W1 twice -> one debit of GH₵5, same SUCCEEDED intent. Donor B with W1 -> 403 'Donation intent belongs to another account'. Different method with W1 -> 409 'Idempotency key belongs to a different payment method'.
+**Expect:** K1 twice returns the same intent id, reference and authorization_url/access_code. Paystack is initialized once, so no second checkout opens. K1 with changed amount, tip, email or coupon returns 409 'This checkout request key was already used for different details.'. K1 from another identity returns the same 409 and never returns the other donor's checkout. K2 creates a new intent. W1 twice produces one GH₵5 debit and the same SUCCEEDED intent. Donor B with W1 gets 403 'Donation intent belongs to another account'. A different method with W1 gets 409 'Idempotency key belongs to a different payment method'.
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/api/src/application/use-cases/CreateDonationIntentUseCase.ts (assertWalletRetry)`, `apps/api/src/infrastructure/adapters/inbound/http/controllers/DonationIntentController.ts`
+**Source:** `apps/api/src/application/use-cases/CreateDonationIntentUseCase.ts (replayHostedIntent, assertWalletRetry)`, `apps/api/src/infrastructure/adapters/inbound/http/controllers/DonationIntentController.ts`
 
 ## DONATE-029 · P0 · Web wallet donation happy path and money accuracy
 
@@ -444,15 +460,17 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 **Steps:**
 
-1. Open the wallet dialog, enter 20, rapidly double-click 'Confirm Donation'.
-2. Throttle network, submit 20, set Offline right after the request leaves, then go online and press Confirm again.
-3. Compare wallet transactions and donation count.
+1. Open the wallet dialog on /campaigns/<id>, enter 20 and rapidly double-click 'Confirm Donation'.
+2. In devtools confirm POST /campaigns/<id>/donate carries an Idempotency-Key header.
+3. Throttle the network and submit 20. Set Offline right after the request leaves so the response is lost, go back online and press Confirm again with the same details.
+4. Change the amount to 21 and confirm.
+5. Compare wallet transactions and the donation count.
 
-**Expect:** Exactly one debit per intended donation. RISK: the legacy POST /campaigns/:id/donate path generates a new random idempotency key per request and the web client sends no Idempotency-Key, so a retry after a lost response can debit twice — if observed, this is a launch blocker for wallet donations.
+**Expect:** Exactly one debit per intended donation. The retry after the lost response reuses the same Idempotency-Key and resolves to the first donation: the snackbar reads 'Your wallet donation was completed.' and there is no second debit. A changed amount gets a new key and debits separately. After a success or a definite refusal (such as low balance), the next donation uses a new key.
 
 **Needs:** none
 
-**Source:** `apps/api/src/application/use-cases/DonateToCampaignUseCase.ts`, `apps/web/src/pages/CampaignDetailPage.tsx`
+**Source:** `apps/api/src/application/use-cases/DonateToCampaignUseCase.ts`, `apps/web/src/pages/CampaignDetailPage.tsx`, `apps/web/src/lib/checkoutAttempt.ts`
 
 ## DONATE-032 · P0 · Android wallet donation with tip; double tap and app kill
 
@@ -603,19 +621,19 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 *Surfaces:* api, web  ·  *Type:* security/permission
 
-**Before:** Donor A with card, MoMo and wallet donations across 2 campaigns; Donor B.
+**Before:** Donor A with card, MoMo and wallet donations across 2 campaigns, some under 30 days old; Donor B.
 
 **Steps:**
 
-1. Open /donations as Donor A; use status and method filters; check totals and 'Request Refund' visibility for a donation <30 days old.
+1. Open /donations as Donor A. Use the status and method filters, check the totals, and read the action column for each recent card, MoMo and wallet donation.
 2. Log out and open /donations.
-3. As Donor B call GET /api/v1/donations/<DonorA donation id> and GET /api/v1/donations/mine.
+3. As Donor B, call GET /api/v1/donations/<Donor A donation id> and GET /api/v1/donations/mine.
 
-**Expect:** All Donor A donations listed with correct amount, GHS currency, method and campaign link; totals correct. Logged out -> redirect to login. Donor B gets 404 for A's donation and only sees own list.
+**Expect:** All of Donor A's donations are listed with the correct amount, GHS currency, method and campaign link, and the totals are correct. 'Request Refund' appears only on completed card or MoMo donations under 30 days old with no open request. Wallet donations show 'Wallet gift: contact support@ujimora.com for a refund' instead. Logged out, /donations redirects to login. Donor B gets 404 for A's donation and sees only their own list.
 
 **Needs:** none
 
-**Source:** `apps/web/src/pages/MyDonationsPage.tsx`, `apps/api/src/application/use-cases/GetDonationUseCase.ts`, `apps/api/src/application/use-cases/ListMyDonationsUseCase.ts`
+**Source:** `apps/web/src/pages/MyDonationsPage.tsx`, `apps/web/src/lib/donationRefunds.ts`, `apps/api/src/application/use-cases/GetDonationUseCase.ts`, `apps/api/src/application/use-cases/ListMyDonationsUseCase.ts`
 
 ## DONATE-061 · P0 · Android guest card donation end to end
 
@@ -639,19 +657,21 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 *Surfaces:* android, api  ·  *Type:* recovery/idempotency
 
-**Before:** Android build; Paystack test keys.
+**Before:** Android build; Paystack test keys; staging DB access (to backdate) and admin token.
 
 **Steps:**
 
-1. Start a GH₵30 donation, close the Custom Tab without paying.
-2. Look for a way to change the amount or start over; leave the screen and come back; restart the app.
-3. Wait 35+ minutes and tap 'Check status'.
+1. Start a GH₵30 donation and close the Custom Tab without paying.
+2. Leave the screen and come back, then restart the app.
+3. Stay on the screen in the foreground for 15 minutes or more (or move the device clock forward).
+4. Tap 'Start a new payment', change the amount to 35 and donate.
+5. Backdate the first intent's createdAt by more than 24 hours and call POST /api/v1/admin/payments/<firstId>/reconcile (or wait for the sweep).
 
-**Expect:** Donor must be able to cancel/start a new donation. RISK: the screen shows 'Awaiting payment confirmation' with only 'Open secure checkout' and 'Check status'; 'Try again'/'Make another payment' only appear for terminal statuses, and abandoned Paystack intents never become terminal — the donor may be stuck on this campaign indefinitely (persisted in AsyncStorage). Launch blocker if reproduced.
+**Expect:** For the first 15 minutes the screen shows 'Awaiting payment confirmation' with 'Open secure checkout' and 'Check status', and the saved attempt survives a restart. After 15 minutes it adds 'Still not confirmed? If you already paid, don't pay again: that payment will still be confirmed once the provider reports it.' and a 'Start a new payment' button. Tapping it returns to the form with the saved attempt and keys cleared, and the new donation gets a new intent and checkout. The first intent stays PENDING until it is over 24 hours old, then becomes EXPIRED ({outcome:'expired'}); if it is paid late it is still credited once. While waiting, no 'Too many requests, please try again later' should appear. If it does, log a defect: the screen re-verifies every 5 s and /verify shares the 60-per-15-minute donation limit.
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/mobile/src/components/PaymentStatus.tsx`, `apps/mobile/app/donate/[id].tsx`, `apps/api/src/application/use-cases/ReconcilePaymentsUseCase.ts`
+**Source:** `apps/mobile/src/components/PaymentStatus.tsx`, `apps/mobile/src/lib/payments.ts (canStartOver, STALE_PAYMENT_MS, clearPending)`, `apps/mobile/app/donate/[id].tsx`, `apps/api/src/application/use-cases/ReconcilePaymentsUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/middleware/rateLimiter.ts`
 
 ## DONATE-063 · P0 · Android kill/restart mid-checkout and repeat donations
 
@@ -671,24 +691,25 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 **Source:** `apps/mobile/src/lib/payments.ts (paymentKey, clearPending)`, `apps/mobile/app/donate/[id].tsx`
 
-## DONATE-064 · P0 · Android MoMo decline then retry in the same checkout
+## DONATE-064 · P0 · Android MoMo decline then retry in the same checkout is credited once
 
 *Surfaces:* android, api  ·  *Type:* recovery/idempotency
 
-**Before:** Android build; Paystack test MoMo that can be declined first then approved (or live-mode small amount in a controlled test).
+**Before:** Android build; a Paystack test MoMo that can be declined first and then approved, or a small live-mode amount in a controlled test.
 
 **Steps:**
 
-1. Start a MoMo donation; decline the first prompt so Paystack shows failure but keep the checkout open.
-2. Return to the app briefly and tap 'Check status' (triggers server verify).
-3. Go back to the checkout and retry, approve payment.
-4. Check intent status and campaign raised.
+1. Start a MoMo donation. Decline the first prompt so Paystack shows failure, but keep the checkout open.
+2. Return to the app briefly and tap 'Check status', which triggers a server verify.
+3. Go back to the checkout, retry and approve the payment.
+4. Leave the donate screen and reopen the same campaign's donate screen without tapping 'Try again'.
+5. Check the intent status, campaign raised and the admin timeline and logs.
 
-**Expect:** Donation must be credited once. RISK: if the mid-checkout verify marks the intent FAILED (Paystack status 'failed'), the later charge.success is ignored and money is taken without credit (see DONATE-021).
+**Expect:** If the mid-checkout verify saw Paystack 'failed', the intent is FAILED and the app shows 'Payment was not completed' with 'Try again'. After approval, Paystack's charge.success is re-verified with Paystack and the intent is reopened and credited exactly once: SUCCEEDED, raised up by the amount once, API log alert 'late_success_credited'. Reopening the donate screen re-checks the saved payment and shows 'Thank you for your support'. Record whether the app's 'Payment was not completed' screen, which stops polling, could lead a donor to tap 'Try again' and pay a second time.
 
-**Needs:** Paystack test/live MoMo
+**Needs:** Paystack test or live MoMo
 
-**Source:** `apps/mobile/src/components/PaymentStatus.tsx`, `apps/api/src/application/use-cases/ReconcilePaymentsUseCase.ts`, `apps/api/src/application/use-cases/HandlePaystackWebhookUseCase.ts`
+**Source:** `apps/mobile/src/components/PaymentStatus.tsx`, `apps/api/src/application/use-cases/HandlePaystackWebhookUseCase.ts (reopenVerifiedLateSuccess)`, `apps/api/src/application/use-cases/ReconcilePaymentsUseCase.ts`, `apps/api/src/application/use-cases/VerifyDonationIntentUseCase.ts`
 
 ## DONATE-066 · P0 · iOS donation takes no payment in-app (App Store 3.2.1/3.2.2)
 
@@ -765,23 +786,86 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 **Source:** `render.yaml`, `apps/api/src/application/use-cases/HandlePaystackWebhookUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminPaymentsRoutes.ts`
 
+## DONATE-N001 · P0 · Resubmitting the same web donation reopens the same Paystack checkout
+
+*Surfaces:* admin, api, web  ·  *Type:* recovery/idempotency
+
+**Before:** Paystack test keys; ACTIVE campaign; admin token; browser devtools.
+
+**Steps:**
+
+1. On /c/<slug>/donate enter GH₵40 and an email and press 'Donate GH₵40.00'. In devtools note the POST /donation-intents Idempotency-Key header and the response's intent.id, reference and authorization_url.
+2. Without paying, press browser Back. Re-enter exactly the same amount, email, name, anonymity and message choices, and press Donate again. Reload the form first if it is restored stuck on 'Starting secure checkout…'.
+3. Compare the second request's key and response with the first.
+4. Go back again, change the amount to 41 and press Donate.
+5. Via the API, resend the first request's Idempotency-Key with amount 45, then with a different donorEmail.
+6. Admin: GET /api/v1/admin/payments?campaignId=<id>, or search the Campaign ID on the admin Payments page.
+
+**Expect:** The second press reuses the same Idempotency-Key and returns the same intent id, uf-<intentId>-<hex> reference and authorization_url, so Paystack is initialized once and the donor lands on the same checkout. sessionStorage 'ujimora:checkout-attempt:*' holds only digests, not amounts or emails. The changed amount sends a new key and creates a second intent. The API replays with a different amount or email return 409 'This checkout request key was already used for different details.'. Admin shows exactly two intents (40 and 41), and paying either credits exactly once.
+
+**Needs:** Paystack test keys
+
+**Source:** `apps/web/src/pages/DonatePage.tsx`, `apps/web/src/lib/checkoutAttempt.ts`, `apps/api/src/application/use-cases/CreateDonationIntentUseCase.ts (replayHostedIntent, markPendingIfCreated)`, `apps/api/src/infrastructure/database/models/DonationIntentModel.ts (hostedCheckout)`
+
+## DONATE-N008 · P0 · A late payment on an expired (abandoned for more than 24 hours) checkout is credited once
+
+*Surfaces:* admin, api, web  ·  *Type:* recovery/idempotency
+
+**Before:** Paystack test keys; staging DB write access; admin token.
+
+**Steps:**
+
+1. Start a GH₵15 donation on web and leave the Paystack checkout tab open without paying.
+2. In donationintents, set that intent's createdAt and updatedAt to 25 hours ago.
+3. Call POST /api/v1/admin/payments/<id>/reconcile.
+4. Complete the payment in the still-open checkout.
+5. Watch /donate/callback and admin payments. Replay the webhook.
+
+**Expect:** Step 3 returns {outcome:'expired', status:'EXPIRED'}, because Paystack reports abandoned and the checkout is over 24 hours old; any coupon seat is released. After payment, charge.success is re-verified with Paystack and the intent is reopened and settled: SUCCEEDED, raised up by 15.00 exactly once, one journal, and the log shows alert 'late_success_credited'. The callback shows 'Your GH₵15.00 donation is confirmed', not 'This checkout expired'. Replays add nothing. If a coupon seat was released, the gift still settles at the quoted waiver (owner decision).
+
+**Needs:** Paystack test keys
+
+**Source:** `apps/api/src/application/use-cases/HandlePaystackWebhookUseCase.ts (reopenVerifiedLateSuccess)`, `apps/api/src/application/use-cases/ReconcilePaymentsUseCase.ts (expire)`, `apps/web/src/pages/DonateCallbackPage.tsx`
+
+## DONATE-N010 · P0 · Legacy wallet donate endpoint honours Idempotency-Key
+
+*Surfaces:* api  ·  *Type:* recovery/idempotency
+
+**Before:** Donor A with GHS 100 wallet balance; Donor C with GHS 2; Donor B token.
+
+**Steps:**
+
+1. As A, POST /api/v1/campaigns/<id>/donate {amount:10, currency:'GHS', paymentMethod:'wallet', isAnonymous:true} with Idempotency-Key K1 (a UUID) twice, then 3 times concurrently.
+2. As A, send K1 with amount 12.
+3. As A, send Idempotency-Key 'bad key!'.
+4. As C, send amount 5 with key K2, then repeat K2.
+5. As A, send two requests with no Idempotency-Key.
+6. As B, send K1.
+
+**Expect:** Step 1: every call returns 200 'Donation successful'; A is debited 10 once and there is one donation. Step 2: 409 'This request key was already used for a different donation'. Step 3: 400 'Invalid Idempotency-Key'. Step 4: the first call returns 400 'Insufficient wallet balance' and the replay returns 409 'This donation attempt did not go through. Please start a new donation.'; the balance is unchanged. Step 5: two separate donations. Step 6: B's own new donation, because keys are scoped per donor and B cannot address A's donation.
+
+**Needs:** none
+
+**Source:** `apps/api/src/application/use-cases/DonateToCampaignUseCase.ts (WALLET_REQUEST_KEY)`, `apps/api/src/infrastructure/adapters/inbound/http/controllers/CampaignController.ts (donate)`
+
 ## DONATE-005 · P1 · Donate form and API input validation
 
 *Surfaces:* api, web  ·  *Type:* negative/edge
 
-**Before:** ACTIVE campaign; curl/Postman.
+**Before:** ACTIVE campaign; curl or Postman.
 
 **Steps:**
 
-1. On /c/<slug>/donate try amounts '', '0', '1.2.3', letters (field strips them), then a bad email (blur), then a tip of '.'.
-2. Confirm the submit button state for each.
-3. Via API POST /api/v1/donation-intents with: amount -5; amount 0; tip -1; provider 'paystack' without donorEmail; donorEmail 'x'; message of 501 chars; donorName of 121 chars; unknown provider 'momo'; campaignId of a non-existent id.
+1. On /c/<slug>/donate type each of these in Amount: '' , '0', '1.2.3', '10.125', '1,000', '100,50' and letters. Letters are stripped as you type.
+2. Enter a bad email and blur the field. Then type tips of '.' and '0.125'.
+3. Note the submit button state and helper text for each input.
+4. Via the API, POST /api/v1/donation-intents with each of: amount -5; amount 0; amount 10.125; tip -1; tip 0.125; provider 'paystack' without donorEmail; donorEmail 'x'; a 501-character message; a 121-character donorName; unknown provider 'momo'; a campaignId that does not exist.
 
-**Expect:** Web: button disabled while amount/email/tip invalid; helper texts 'Enter an amount greater than zero', 'Enter a valid email address', 'Enter a valid tip amount'. API: 400 validation errors for schema violations; 'An email is required to pay with Paystack' (400) when email missing; 'Campaign not found' (404) for unknown campaign. No intent rows are created for any rejected request (check admin payments search).
+**Expect:** Web: only digits, '.' and ',' stay in the money fields. The button is disabled while the amount, email or tip is invalid. Helper texts read 'Enter an amount greater than zero, with at most 2 decimal places', 'Enter a valid email address' and 'Enter a valid tip amount, with at most 2 decimal places'. '1.2.3', '10.125', '1,000' and '0.125' are rejected. '100,50' is accepted as a decimal comma and the button reads 'Donate GH₵100.50'. API: schema violations return 400 'Validation failed', including the 3-decimal amount and tip (they must be multiples of 0.01). A missing email returns 400 'An email is required to pay with Paystack'. An unknown campaign returns 404 'Campaign not found'. No intent is created for any rejected request (check admin payments search).
 
 **Needs:** none
 
-**Source:** `apps/web/src/pages/DonatePage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/donationIntentRoutes.ts`, `apps/api/src/application/use-cases/CreateDonationIntentUseCase.ts`
+**Source:** `apps/web/src/pages/DonatePage.tsx`, `apps/web/src/lib/moneyInput.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/donationIntentRoutes.ts`, `apps/api/src/application/use-cases/CreateDonationIntentUseCase.ts`
 
 ## DONATE-009 · P1 · Very small and very large amounts fail gracefully
 
@@ -801,42 +885,45 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 **Source:** `apps/api/src/infrastructure/adapters/outbound/payments/PaystackGateway.ts`, `apps/api/src/application/services/FeePolicy.ts`
 
-## DONATE-010 · P1 · Callback page states: success, pending timeout, other browser, missing reference
+## DONATE-010 · P1 · Callback page states: success, pending timeout, other browser, missing reference, expired
 
 *Surfaces:* api, web  ·  *Type:* recovery/idempotency
 
-**Before:** Paystack test keys; ability to delay webhooks (point Paystack test webhook to an unreachable URL temporarily).
+**Before:** Paystack test keys; a way to delay webhooks (temporarily point the Paystack test webhook to an unreachable URL); write access to the staging DB to backdate one intent.
 
 **Steps:**
 
 1. Complete a payment and copy the full /donate/callback?reference=... URL.
-2. Open that URL in a different browser (no localStorage handoff).
-3. With webhooks blocked, complete another payment and wait ~30s for 'Still confirming your payment', then press 'Keep checking'.
+2. Open that URL in a different browser. There is no sessionStorage handoff there.
+3. With webhooks blocked, complete another payment. Wait about 30 s for 'Still confirming your payment', then press 'Keep checking'.
 4. Open /donate/callback with no query string.
+5. Start a checkout without paying. Set that intent's createdAt and updatedAt in donationintents to 25 hours ago, then open its /donate/callback?reference=<ref> URL.
 
-**Expect:** Other browser still resolves the intent from the uf-<id>-<hex> reference and shows the confirmed state ('Back to campaign' links to /campaigns/<id>). With webhooks blocked, the page's verify calls repair the payment (server-side Paystack verify) — it should turn SUCCEEDED without the webhook; if it times out, 'Keep checking' restarts polling. No-reference page shows 'We couldn't find a payment reference…'. Flag: that copy promises 'your receipt is emailed once payment is confirmed' but Ujimora sends no receipt by default (see DONATE-059).
+**Expect:** The other browser still resolves the intent from the uf-<id>-<hex> reference and shows 'Thank you for showing up.', with 'Back to campaign' linking to /campaigns/<id>. With webhooks blocked, the page's verify calls repair the payment through a server-side Paystack verify, and it turns SUCCEEDED without the webhook. On timeout the page shows 'Still confirming your payment' with 'We haven’t confirmed this payment yet. If you received a Paystack receipt, don’t pay again. Choose Keep checking to verify its status securely.', and 'Keep checking' restarts polling. The page with no reference shows: 'We couldn't find a payment reference to confirm. If money left your account, don't pay again. Keep any receipt from Paystack or your bank or mobile money provider, and email support@ujimora.com with the reference so we can check it.' It makes no emailed-receipt promise. The backdated abandoned checkout is expired by the verify call and shows 'This checkout expired' with 'Your checkout session timed out before payment completed. You haven't been charged — you can try again.'
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/web/src/pages/DonateCallbackPage.tsx`, `apps/api/src/application/use-cases/VerifyDonationIntentUseCase.ts`, `apps/api/src/application/use-cases/ReconcilePaymentsUseCase.ts`
+**Source:** `apps/web/src/pages/DonateCallbackPage.tsx`, `apps/web/src/lib/donationHandoff.ts`, `apps/api/src/application/use-cases/VerifyDonationIntentUseCase.ts`, `apps/api/src/application/use-cases/ReconcilePaymentsUseCase.ts`
 
-## DONATE-012 · P1 · Abandoned web checkout leaves no donation and does not block a new one
+## DONATE-012 · P1 · Abandoned web checkout leaves no donation, does not block a new one, and expires after 24 hours
 
 *Surfaces:* admin, api, web  ·  *Type:* recovery/idempotency
 
-**Before:** Paystack test keys; admin token.
+**Before:** Paystack test keys; admin token; write access to the staging DB (to backdate one intent), or 24 hours of patience.
 
 **Steps:**
 
-1. Start a GH₵25 donation, reach Paystack, close the tab without paying.
-2. Return to /c/<slug>/donate and complete a GH₵25 donation normally.
-3. After 35+ minutes (production-mode staging) or via POST /api/v1/admin/payments/<abandonedIntentId>/reconcile, inspect the abandoned intent.
+1. Start a GH₵25 donation, reach Paystack and close the tab without paying.
+2. In a new tab, open /c/<slug>/donate and complete a GH₵25 donation normally.
+3. After 35 minutes or more, call POST /api/v1/admin/payments/<abandonedIntentId>/reconcile.
+4. Set the abandoned intent's createdAt to more than 24 hours ago (or wait 24 hours). Call reconcile again, or wait for the 5-minute sweep.
+5. Check the intent in admin payments and whether any fee-waiver seat it held is free again.
 
-**Expect:** No donation or raised change from the abandoned attempt; the new one succeeds. The abandoned intent stays PENDING (Paystack 'abandoned' maps to 'pending'; fiat intents never expire). Record the count of such PENDING rows — they feed the starvation risk in DONATE-023.
+**Expect:** The abandoned attempt creates no donation and does not change raised; the new donation succeeds. Before 24 hours, reconcile returns {outcome:'pending', status:'PENDING'}, because Paystack reports 'abandoned' and the checkout could still be paid. After 24 hours it returns {outcome:'expired', status:'EXPIRED'}, and any coupon seat is released. Each sweep stamps reconciledAt, so abandoned rows rotate instead of blocking the queue. If the donor pays an EXPIRED checkout later, it is still credited once (see DONATE-N008).
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/api/src/application/use-cases/ReconcilePaymentsUseCase.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoDonationIntentRepository.ts`
+**Source:** `apps/api/src/application/use-cases/ReconcilePaymentsUseCase.ts (ABANDONED_CHECKOUT_TTL_MS, expire)`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoDonationIntentRepository.ts (findStalePending, markExpiredIfPending)`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminPaymentsRoutes.ts`
 
 ## DONATE-020 · P1 · Unknown and non-donation references are safe no-ops
 
@@ -875,24 +962,24 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 **Source:** `apps/api/src/application/use-cases/GetDonationIntentPublicUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/controllers/DonationIntentController.ts`
 
-## DONATE-035 · P1 · Admin wallet/Paystack provider toggles actually gate donations
+## DONATE-035 · P1 · Admin wallet/Paystack provider toggles gate donations as described
 
 *Surfaces:* admin, android, api, web  ·  *Type:* functional
 
-**Before:** Admin account; Donor with wallet balance.
+**Before:** Admin account with Payment providers update permission; donor with a wallet balance.
 
 **Steps:**
 
-1. Admin > Payment providers: disable 'Ujimora Wallet'. Try web wallet dialog, Android wallet method, and API provider=wallet.
-2. Re-enable wallet. Disable 'Paystack'. Try web /c/<slug>/donate and Android card/MoMo.
+1. Admin > Payment providers: read the page note, then disable 'Ujimora Wallet'. Try the web wallet dialog, the Android wallet method and API provider=wallet.
+2. Re-enable the wallet. Disable 'Paystack', then try web /c/<slug>/donate and Android card/MoMo.
 3. With Paystack disabled, deliver a webhook for a checkout started before the toggle.
-4. Re-enable Paystack.
+4. Re-enable Paystack from the console.
 
-**Expect:** Wallet off: web shows 'Wallet donations are not currently available.' RISK: Android still offers wallet and the API still accepts wallet donations (the wallet rail ignores the toggle) — decide if acceptable. Paystack off: new intents 400 'paystack payments are currently switched off' even though the admin page text says Paystack is configured separately (fix the copy or behaviour); already-started checkouts still settle via webhook.
+**Expect:** The page note says the Paystack and Flutterwave switches stop new donation checkouts on that gateway, that they do not yet affect wallet top-ups, subscriptions, creator tips or payouts, and that the Ujimora Wallet switch hides the wallet option on the website only. With the wallet off, /campaigns/:id shows 'Wallet donations are not currently available.'. With Paystack off, the row shows a 'Disabled' chip and 'New donation checkouts on this gateway are stopped. Switch it on to accept them again.'. The web form and Android both show 'paystack payments are currently switched off' (API 400). Checkouts started before the toggle still settle by webhook, and Paystack can be switched back on from the console. Known open issue I047: the wallet switch does not stop Android wallet donations or API provider=wallet, and no switch governs top-ups, subscriptions, tips or payouts. That fail-open policy is pending an owner decision.
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/admin/src/pages/PaymentProvidersPage.tsx`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPaymentProviderRepository.ts`, `apps/api/src/application/use-cases/CreateDonationIntentUseCase.ts (assertRailEnabled)`, `apps/web/src/lib/campaignDetailPolicy.ts`
+**Source:** `apps/admin/src/pages/PaymentProvidersPage.tsx`, `apps/api/src/application/use-cases/CreateDonationIntentUseCase.ts (assertRailEnabled)`, `apps/web/src/lib/campaignDetailPolicy.ts`, `apps/web/src/pages/CampaignDetailPage.tsx`
 
 ## DONATE-038 · P1 · Fee-waiver coupon negative paths
 
@@ -916,19 +1003,20 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 *Surfaces:* android, api, web  ·  *Type:* recovery/idempotency
 
-**Before:** Per-user-limit-1 donation coupon; Donor A with low wallet balance.
+**Before:** A donation coupon with a per-user limit of 1; Donor A with a low wallet balance; staging DB access to backdate one intent; admin token.
 
 **Steps:**
 
-1. Android: wallet donation with the code larger than balance -> fails; retry with the code on a funded amount.
-2. Web: start a Paystack donation with the code, abandon checkout, then try the code again on a new donation.
-3. Deliver charge.failed for a coupon intent, then reuse the code.
+1. Android: make a wallet donation with the code for more than the balance, so it fails. Retry with the code on a funded amount.
+2. Web: start a Paystack donation with the code and abandon the checkout. Press Donate again with the same details, then try the code on a different amount.
+3. Backdate the abandoned intent's createdAt by more than 24 hours and call POST /api/v1/admin/payments/<id>/reconcile (or wait for the sweep). Try the code again.
+4. Deliver charge.failed for another coupon intent, then reuse the code.
 
-**Expect:** Insufficient-balance and charge.failed release the seat so the code works again. Abandoned checkout: the seat stays PENDING because the intent never becomes terminal — donor is blocked with 'already used… maximum number of times'. Record as a risk and define ops handling.
+**Expect:** Insufficient balance and charge.failed release the seat, so the code works again. Pressing Donate again with the same details reopens the same checkout and holds no second seat. While the abandoned checkout is under 24 hours old, the seat stays held and a new donation shows 'You have already used this code the maximum number of times' (expected, since it could still be paid). Once it is over 24 hours old and Paystack reports abandoned or unknown, reconcile returns {outcome:'expired'} and releases the seat, so the code works again. If that expired checkout is paid later, it is still credited at the quoted waiver and the seat is not re-consumed (owner decision noted in the fix).
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/api/src/application/services/donationCouponSeats.ts`, `apps/api/src/application/use-cases/SettleDonationUseCase.ts`, `apps/api/src/application/use-cases/ReconcilePaymentsUseCase.ts`
+**Source:** `apps/api/src/application/services/donationCouponSeats.ts`, `apps/api/src/application/use-cases/ReconcilePaymentsUseCase.ts (expire)`, `apps/api/src/application/use-cases/SettleDonationUseCase.ts`, `apps/api/src/application/use-cases/CreateDonationIntentUseCase.ts (replayHostedIntent)`
 
 ## DONATE-041 · P1 · Android coupon entry and live quote
 
@@ -967,23 +1055,25 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 **Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/donationContentReviewRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/middleware/authMiddleware.ts`
 
-## DONATE-048 · P1 · Profile privacy/receipt toggles vs actual donation behaviour
+## DONATE-048 · P1 · Anonymous-by-default setting is applied to donation forms; receipt toggle removed
 
 *Surfaces:* android, api, web  ·  *Type:* compliance
 
-**Before:** Signed-in donor.
+**Before:** A signed-in donor; the account name is prefilled on the Android donate form.
 
 **Steps:**
 
-1. Android Settings: turn on 'Anonymous Donations' and turn off 'Donation Receipts'.
-2. Open a donate screen on Android and web.
-3. Donate and check public display and any emails.
+1. Web Settings: turn on 'Make my donations anonymous by default'. Open /c/<slug>/donate and the wallet dialog on /campaigns/<id>.
+2. Android Settings: turn on 'Anonymous Donations' and open a campaign's donate screen.
+3. Donate once leaving the default, and once after unticking anonymity for that donation. Check the public donation list and leaderboard.
+4. Turn the setting off and reopen the forms.
+5. Look for a 'Donation Receipts' toggle in Android Settings.
 
-**Expect:** Expected by users: donate forms default to anonymous and receipts respect the toggle. RISK: these profile fields are stored but not used — the anonymous checkbox still defaults off and no receipt is governed by that toggle. Either wire them or remove/relabel before launch (privacy expectation).
+**Expect:** With the setting on: web 'Give anonymously (hide my name publicly)' is pre-ticked, the wallet dialog starts anonymous, and Android 'Donate anonymously' is pre-checked with the prefilled account name cleared from 'Name (optional)'. The default donation shows 'Anonymous' publicly. Unticking applies to that donation only (the name goes public subject to consent and review) and does not change the setting. With the setting off, the forms start unticked. Android Settings no longer shows a 'Donation Receipts' toggle. Known open issue I051: there is still no automatic donor receipt, because activity alerts default off.
 
 **Needs:** none
 
-**Source:** `apps/mobile/app/settings.tsx`, `apps/api/src/infrastructure/database/models/ProfileModel.ts`, `apps/mobile/app/donate/[id].tsx`
+**Source:** `apps/web/src/hooks/useAnonymousDonationDefault.ts`, `apps/web/src/pages/DonatePage.tsx`, `apps/web/src/pages/CampaignDetailPage.tsx`, `apps/mobile/src/lib/donationDefaults.ts`, `apps/mobile/app/donate/[id].tsx`, `apps/mobile/app/settings.tsx`
 
 ## DONATE-049 · P1 · Live-session attributed donation updates overlay and session stats
 
@@ -1003,23 +1093,25 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 **Source:** `apps/web/src/pages/WatchLivePage.tsx`, `apps/api/src/application/services/RealtimeDonationProjector.ts`, `apps/api/src/infrastructure/adapters/inbound/http/controllers/RealtimeController.ts`
 
-## DONATE-050 · P1 · Invalid live-session attribution is rejected
+## DONATE-050 · P1 · Invalid or stale live-session attribution is dropped and never blocks the gift
 
 *Surfaces:* api, web  ·  *Type:* negative/edge
 
-**Before:** Live session belonging to campaign X; campaign Y.
+**Before:** Live session X1 belonging to campaign X; campaign Y; a session S on X that you can end; Paystack test keys.
 
 **Steps:**
 
-1. Open /c/<Y-slug>/donate?liveSessionId=<X session id> and submit.
-2. API POST with liveSessionId 'nonexistent'.
-3. Open an ended session's /live page and check the donate link.
+1. Open /c/<Y-slug>/donate?liveSessionId=<X1> and donate GH₵10.
+2. Via the API, POST /donation-intents with liveSessionId 'nonexistent', and again with a malformed value.
+3. End session S. Within 30 minutes donate via /c/<X-slug>/donate?liveSessionId=<S>; after more than 30 minutes, do it again.
+4. Open an ended session's /live page and check the 'Support this campaign' link.
+5. For each donation, read liveSessionId from GET /api/v1/donation-intents/<id>/public and check the sessions' stats and overlay.
 
-**Expect:** 400 'Live session does not belong to this campaign' shown on the form; no intent created. Ended session link has no liveSessionId (plain campaign donation).
+**Expect:** No donation is refused because of attribution: every request returns 201 and goes to checkout. Another campaign's session, an unknown or malformed id, or a session that ended more than 30 minutes ago is dropped, so the intent has no liveSessionId and those sessions' amount raised and checkout starts do not change. A session that ended within 30 minutes is still credited. An ended session's 'Support this campaign' link goes to /c/<campaignId>/donate with no liveSessionId.
 
-**Needs:** none
+**Needs:** Paystack test keys
 
-**Source:** `apps/api/src/application/use-cases/CreateDonationIntentUseCase.ts`, `apps/web/src/pages/WatchLivePage.tsx`
+**Source:** `apps/api/src/application/use-cases/CreateDonationIntentUseCase.ts (resolveLiveAttribution, LIVE_ATTRIBUTION_GRACE_MS)`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoLiveSessionRepository.ts`, `apps/web/src/pages/WatchLivePage.tsx`
 
 ## DONATE-051 · P1 · Live donate from Android and iOS carries attribution
 
@@ -1073,59 +1165,60 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 **Source:** `apps/api/src/application/use-cases/ListRecentDonationsUseCase.ts`, `apps/web/src/components/GlobalActivityFeed.tsx`
 
-## DONATE-057 · P1 · Refunded donation state in My donations
+## DONATE-057 · P1 · Refunded, partially refunded, disputed and refund-requested states in My donations
 
 *Surfaces:* android, api, web  ·  *Type:* functional
 
-**Before:** A donation fully refunded through the refund flow (admin refund with Paystack test keys).
+**Before:** Card donations that are fully refunded, partially refunded, refund in progress (REFUND_PENDING) and disputed, created through admin refunds and a Paystack test dispute or staging data; one completed donation with an open refund request.
 
 **Steps:**
 
 1. Open /donations on web and My donations on Android.
-2. Use the 'Refunded' filter; read totals and the row's actions.
+2. Use the 'Refunded' and 'Partially refunded' filters. Read the totals and each row's actions.
+3. Via the API, POST /api/v1/refunds {donationId, reason} for the refunded donation and for the refund-pending or disputed one.
 
-**Expect:** Refunded donation should show 'Refunded', be excluded from 'total donated', and not offer 'Request Refund'. RISK: the API hardcodes status 'completed' for every donation, so it will still show Completed with a refund button — fix or accept before launch.
+**Expect:** Web chips read 'Refunded', 'Partially refunded', 'Refund in progress' and 'Disputed'. 'Total Donated' and 'Average Donation' exclude fully refunded gifts; a partially refunded gift still counts at its full amount, so confirm that is acceptable. No non-completed gift offers 'Request Refund', and the gift with an open request shows 'Refund requested'. Android shows the same statuses with no refund action. API: the refunded donation returns 409 'This donation has already been refunded', and the refund-pending, partially refunded or disputed ones return 409 'This donation already has a refund or dispute in progress'. Donations settled before the ledger read as Completed.
 
 **Needs:** Paystack test keys (refund)
 
-**Source:** `apps/api/src/application/use-cases/ListMyDonationsUseCase.ts`, `apps/web/src/pages/MyDonationsPage.tsx`, `apps/mobile/app/my-donations.tsx`
+**Source:** `apps/api/src/application/use-cases/ListMyDonationsUseCase.ts (myDonationStatus)`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoDonationPaymentStateRead.ts`, `apps/api/src/application/use-cases/RequestRefundUseCase.ts`, `apps/web/src/pages/MyDonationsPage.tsx`, `apps/mobile/app/my-donations.tsx`, `apps/mobile/src/lib/donationRefunds.ts`
 
 ## DONATE-058 · P1 · Mobile My donations and iOS Safari donation linkage
 
 *Surfaces:* android, ios, web  ·  *Type:* cross-platform
 
-**Before:** Signed-in donor in the iOS and Android apps; Safari not signed in to app.ujimora.com.
+**Before:** A signed-in donor in the iOS and Android apps; Safari not signed in to app.ujimora.com.
 
 **Steps:**
 
-1. Android: donate, then open Profile > My donations; pull to refresh; filter.
-2. iOS: donate via 'Continue in browser' while Safari is signed out; then open My donations in the app.
+1. Android: donate, then open Profile > My donations. Pull to refresh and use the filters.
+2. iOS: read the 'Support this campaign' screen, then donate through 'Continue in browser' while Safari is signed out. Open My donations in the app.
 3. Repeat on iOS after signing in on Safari first.
 
-**Expect:** Android donation listed. iOS signed-out Safari donation is a guest donation and does NOT appear in the app — make sure support copy/FAQ explains this; after signing in on Safari it appears. Amounts show the recorded currency.
+**Expect:** The Android donation is listed, with its amount formatted in the recorded currency to 2 decimals (for example GH₵30.00). The iOS screen tells donors: 'To see this donation in your Ujimora donation history, sign in on the website with this account before you pay.'. A donation made from signed-out Safari is a guest donation and does NOT appear in the app. After signing in on Safari first, it appears.
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/mobile/app/my-donations.tsx`, `apps/mobile/src/screens/ExternalFundraisingScreen.tsx`
+**Source:** `apps/mobile/app/my-donations.tsx`, `apps/mobile/src/lib/money.ts`, `apps/mobile/src/screens/ExternalFundraisingScreen.tsx`
 
 ## DONATE-059 · P1 · Donation confirmation notifications and emails (activity alerts)
 
 *Surfaces:* android, api, email, web  ·  *Type:* compliance
 
-**Before:** RESEND_API_KEY and FROM_EMAIL set; donor with verified email and one with unverified email; Paystack test merchant receipts setting noted.
+**Before:** RESEND_API_KEY and FROM_EMAIL set; one donor with a verified email and one without; Paystack merchant receipt setting noted.
 
 **Steps:**
 
-1. As a new donor, donate and check inbox/in-app notifications (defaults).
-2. Web Settings > activity alerts: enable 'Donations you make' In-app alert and Email; donate again; wait up to ~60s.
-3. Unverified user tries to enable Email.
-4. Guest donates with an email address.
+1. As a new donor, donate and check the inbox and in-app notifications (defaults).
+2. Web Settings > activity alerts: enable 'Donations you make' in-app and email. Donate again with a GH₵2 tip and wait up to about 60 s.
+3. As the unverified user, try to enable email.
+4. As a guest, donate with an email address. Open /donate/callback with no reference.
 
-**Expect:** Defaults: no Ujimora notification (all categories default OFF). After opt-in: in-app notification + email 'Your donation is confirmed' with the right amount/campaign and the text 'This payment confirmation is not a charitable tax certificate.' Exactly one email per donation. Unverified -> 409 'Verify your email address before enabling activity emails.' Guest gets only Paystack's receipt (if enabled). Decide whether launch needs an automatic donor receipt (compliance C14) and fix callback copy promising an emailed receipt.
+**Expect:** Defaults: no Ujimora notification, because every category defaults off. After opt-in: an in-app notification and an email 'Your donation is confirmed' reading 'Your donation of GHS X.XX to “<title>” is confirmed. Total charged: GHS Y.YY, including a GHS 2.00 optional platform tip. This payment confirmation is not a charitable tax certificate.' Exactly one per donation. The unverified user gets 409 'Verify your email address before enabling activity emails.'. The guest gets only Paystack's receipt, if the merchant has it enabled. The callback page no longer promises an emailed receipt. Known open issue I051: there is no automatic donor receipt or confirmation by default and guests never get one; the compliance decision (C14) is pending.
 
 **Needs:** Resend (email provider); Paystack test keys
 
-**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoActivityAlerts.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/activityAlertRoutes.ts`, `packages/types/src/activity-alerts.ts`, `apps/web/src/pages/DonateCallbackPage.tsx`
+**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoActivityAlerts.ts (donorCharge)`, `apps/api/src/infrastructure/adapters/inbound/http/routes/activityAlertRoutes.ts`, `packages/types/src/activity-alerts.ts`, `apps/web/src/pages/DonateCallbackPage.tsx`
 
 ## DONATE-060 · P1 · Campaign owner is notified of new donations
 
@@ -1153,28 +1246,28 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 **Steps:**
 
 1. Read the iOS 'Support this campaign' screen text.
-2. Follow the link and compare with /c/<slug>/donate.
+2. Follow 'Continue in browser' and compare with /c/<slug>/donate.
 
-**Expect:** iOS says 'Continue in your browser to choose an amount, review fees and make your donation. You may need to sign in on the website to use your wallet.' The linked page has no fee breakdown and no wallet option (wallet is only on /campaigns/:id). Align copy or link before store submission to avoid misleading reviewers/donors.
+**Expect:** iOS says: 'Continue in your browser to choose an amount and pay by card or mobile money. To see this donation in your Ujimora donation history, sign in on the website with this account before you pay.' and 'Returning to the app does not confirm payment. Check the payment status on the website before trying again.'. It makes no fee-review or wallet claims. The linked page offers an amount, an optional tip and card or mobile money through Paystack (plus crypto only when enabled), which matches the copy.
 
 **Needs:** none
 
-**Source:** `apps/mobile/src/screens/ExternalFundraisingScreen.tsx`, `apps/web/src/pages/DonatePage.tsx`, `apps/web/src/pages/CampaignDetailPage.tsx`
+**Source:** `apps/mobile/src/screens/ExternalFundraisingScreen.tsx`, `apps/web/src/pages/DonatePage.tsx`
 
 ## DONATE-069 · P1 · Crypto donation happy path and money accuracy (staging)
 
 *Surfaces:* admin, android, api, web  ·  *Type:* functional
 
-**Before:** Staging (NODE_ENV not production) with CRYPTO_PAYMENTS_ENABLED=true and CRYPTO_PRIMARY_PROVIDER=mock (or Bitnob sandbox); mock webhook secret known.
+**Before:** Staging (NODE_ENV not production) with CRYPTO_PAYMENTS_ENABLED=true and CRYPTO_PRIMARY_PROVIDER=mock (or the Bitnob sandbox); mock webhook secret known.
 
 **Steps:**
 
-1. Web: on /c/<slug>/donate choose 'Crypto', amount 100, email; pick USDT + network; 'Review quote'; check rate/provider fee/network fee; 'Get payment address'.
-2. Verify address, QR and copy buttons; 'Send only USDT on <network>' warning; countdown.
-3. Simulate deposit.detected then deposit.confirmed (mock: POST /api/v1/webhooks/crypto/mock with x-mock-signature = HMAC-SHA256(body) and matching cryptoAmount/confirmations).
-4. Check the panel, campaign raised, admin payments.
+1. Web: on /c/<slug>/donate choose 'Crypto', amount 100 and an email. Pick USDT and a network, press 'Review quote', and check the rate, provider fee, network fee and the 'Counts toward the campaign' line. Press 'Get payment address'.
+2. Verify the address, QR and copy buttons, the 'Send only USDT on <network>' warning and the countdown.
+3. Simulate deposit.detected, then deposit.confirmed (mock: POST /api/v1/webhooks/crypto/mock with x-mock-signature = HMAC-SHA256(body) and matching cryptoAmount and confirmations).
+4. Check the panel, campaign raised and admin payments.
 
-**Expect:** Panel goes to 'Your contribution is confirmed'. Campaign raised +100.00 GHS (locked rate). Ledger net = 100 - platform fee (plan %) - provider/network fee. RISK: the quote says 'Campaign receives GH₵100.00' but the campaign nets less after fees — fix the label or disclose. Payment method CRYPTO in admin Donations.
+**Expect:** The quote card shows 'Counts toward the campaign' GH₵100.00 with the note 'Ujimora’s platform fee (and any provider or network fees shown) is deducted before the organizer is paid.' It does not claim the campaign receives the gross amount. Before an email is entered, the prompt reads 'Enter your email above so we can contact you about this payment.' The terms and 18+ notice sits under the panel. The panel moves to 'Your contribution is confirmed' with 'GH₵100.00 has been added to the campaign total. Thank you for making a difference.'. Campaign raised goes up by 100.00 GHS at the locked rate. Ledger net = 100 minus the platform fee (plan %) minus provider and network fees. Payment method CRYPTO appears in admin Donations.
 
 **Needs:** Mock crypto provider or Bitnob sandbox
 
@@ -1221,51 +1314,53 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 *Surfaces:* admin, api  ·  *Type:* security/permission
 
-**Before:** Admin; staff user without admin role but with DONATIONS permission; mix of named, anonymous and guest donations.
+**Before:** Admin; a staff user without the admin role but with DONATIONS permission; a mix of named, anonymous and guest donations (plus one non-GHS or refunded row if available).
 
 **Steps:**
 
-1. Open admin /donations; filter Named/Anonymous; search by donor/campaign; export.
-2. Check totals text '<n> donations · GH₵ <total> total'.
-3. Log in as non-admin staff and open /donations; call GET /api/v1/admin/donations?pageSize=101.
+1. Open admin /donations. Filter Named and Anonymous, search by donor and campaign, and export.
+2. Read the header totals text.
+3. Log in as the non-admin staff user and open /donations. Call GET /api/v1/admin/donations?pageSize=101.
 
-**Expect:** Lists real donations (not fixtures) with campaign title, supporter ('Anonymous donor' / name / 'Former or guest supporter'), amount, method, date; export columns match and anonymous rows have no donorId. Non-admin API -> 403 (page shows error state); pageSize 101 -> 400.
+**Expect:** The page lists real donations (not fixtures) with campaign title, supporter ('Anonymous donor', the name, or 'Former or guest supporter'), amount formatted in the row's own currency, method and date. Export columns match, and anonymous rows have no donorId. The header reads '<n> donations · GH₵<total> gross (refunds not deducted)', with each currency totalled separately and joined by ' · ' when currencies are mixed. The non-admin API call returns 403 and the page shows an error state. pageSize 101 returns 400.
 
 **Needs:** none
 
-**Source:** `apps/admin/src/pages/DonationsPage.tsx`, `apps/admin/src/hooks/useApiData.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminDonationRoutes.ts`
+**Source:** `apps/admin/src/pages/DonationsPage.tsx`, `apps/admin/src/lib/money.ts`, `apps/admin/src/hooks/useApiData.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminDonationRoutes.ts`
 
-## DONATE-075 · P1 · Admin payment trace and reconcile API (no console UI)
+## DONATE-075 · P1 · Admin payment trace and reconcile API
 
 *Surfaces:* admin, api  ·  *Type:* security/permission
 
-**Before:** Admin JWT; non-admin JWT; succeeded, pending and failed intents.
+**Before:** Admin JWT; non-admin JWT; SUCCEEDED, PENDING (paid and abandoned), FAILED and EXPIRED intents.
 
 **Steps:**
 
 1. GET /api/v1/admin/payments?status=PENDING&provider=paystack; ?providerRef=<ref>; ?campaignId=<id>.
 2. GET /api/v1/admin/payments/<id> (timeline).
-3. POST /api/v1/admin/payments/<id>/reconcile for each state.
-4. Repeat with non-admin token.
+3. POST /api/v1/admin/payments/<id>/reconcile for each state, including a random 24-hex id.
+4. POST /api/v1/admin/reconciliation with {limit: 5000}.
+5. Repeat with the non-admin token.
 
-**Expect:** Search returns normalized rows incl. fee split in minor units and donorEmail; timeline lists attempts without raw provider payloads. Reconcile: SUCCEEDED -> 'skipped'; PENDING paid -> 'repaired'; unknown id -> 404. Non-admin -> 403. Note: ops must use API tools because the admin console has no page for this — prepare a runbook.
+**Expect:** Search returns normalized rows with the fee split in minor units and donorEmail. The timeline lists attempts without raw provider payloads. Reconcile returns: SUCCEEDED → 'skipped'; PENDING and paid → 'repaired'; PENDING abandoned under 24 hours → 'pending'; PENDING abandoned over 24 hours → 'expired' (status EXPIRED); FAILED or EXPIRED but actually paid → 'repaired'; unknown id → 404 'Contribution not found'. The sweep scans at most 500. Non-admin gets 403. Known open issue I036: the console now has a Payments page (/payments) for search, timeline and refund (see DONATE-N013), but still no button to re-verify one payment or run the sweep. Ops needs these API calls and a runbook.
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/api/src/infrastructure/adapters/inbound/http/controllers/AdminPaymentsController.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminPaymentsRoutes.ts`
+**Source:** `apps/api/src/infrastructure/adapters/inbound/http/controllers/AdminPaymentsController.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminPaymentsRoutes.ts`, `apps/api/src/application/use-cases/ReconcilePaymentsUseCase.ts`, `apps/admin/src/pages/PaymentsPage.tsx`
 
-## DONATE-076 · P1 · Currency and rail flags reject unsupported contributions
+## DONATE-076 · P1 · Currency and rail flags reject unsupported contributions; Help copy matches
 
 *Surfaces:* api, web  ·  *Type:* compliance
 
-**Before:** PAYMENTS_MULTI_CURRENCY_ENABLED=false, PAYMENTS_INTERNATIONAL_CARDS_ENABLED=false, PAYMENTS_FLUTTERWAVE_ENABLED=false (render.yaml).
+**Before:** PAYMENTS_MULTI_CURRENCY_ENABLED=false, PAYMENTS_INTERNATIONAL_CARDS_ENABLED=false and PAYMENTS_FLUTTERWAVE_ENABLED=false (as in render.yaml).
 
 **Steps:**
 
 1. POST /donation-intents with currency 'USD'; with currency 'ghs' (lowercase); with provider 'flutterwave'; with paymentMethod 'card' and country 'US'.
 2. From web, pay with a foreign (non-Ghana) Paystack test card in GHS.
+3. Read the marketing Help answer to 'Is Ujimora available in my country?'.
 
-**Expect:** USD -> 400 'Contributions in USD are not enabled'; 'ghs' accepted as GHS; flutterwave -> 400 'Flutterwave payments are not enabled'; card+US -> 400 'International card contributions are not enabled'. Foreign card on the web form (which sends no paymentMethod/country) is decided by the Paystack account — verify the Help page claim 'anyone worldwide can donate… family abroad included' is actually true in live mode.
+**Expect:** USD returns 400 'Contributions in USD are not enabled'. 'ghs' is accepted as GHS. flutterwave returns 400 'Flutterwave payments are not enabled'. card + US returns 400 'International card contributions are not enabled'. The web form sends no paymentMethod or country, so whether a foreign card works depends on the Paystack account; record the result. The Help page reads 'Ujimora is built for Ghana. … Donations are made in Ghanaian cedis (GHS) through Paystack, by mobile money or card; some cards issued outside Ghana may not be accepted.' and no longer claims anyone worldwide can donate.
 
 **Needs:** Paystack test keys
 
@@ -1275,18 +1370,210 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 *Surfaces:* api, web  ·  *Type:* functional
 
-**Before:** SPLIT_PROCEEDS_ENABLED=true (as in render.yaml — confirm this is intended for launch); campaign with an active split (e.g. 60/40) and all beneficiary consents accepted.
+**Before:** SPLIT_PROCEEDS_ENABLED=true (as in render.yaml); a campaign with an active 60/40 split and all beneficiary consents accepted.
 
 **Steps:**
 
-1. Donate GH₵100 by test card and GH₵33.33 by wallet.
-2. Inspect per-beneficiary balances/accruals and campaign balance.
+1. Check that /c/<slug>/donate shows the split disclosure.
+2. Donate GH₵100 by test card and GH₵33.33 by wallet.
+3. Inspect per-beneficiary balances and accruals and the campaign balance.
 
-**Expect:** Per-beneficiary accruals sum exactly to each donation's beneficiaryNet (no pesewa lost or created); campaign pending balance equals the sum. If a consent is missing, settlement rolls back and the donation stays PENDING for retry — no partial credit.
+**Expect:** Before paying, the donor sees 'This campaign's proceeds are shared: <A> 60%, <B> 40%.'. Per-beneficiary accruals sum exactly to each donation's beneficiaryNet, with no pesewa lost or created, and the campaign pending balance equals the sum. If a consent is missing, settlement rolls back and the donation stays PENDING for retry, with no partial credit. Known open issue I013: SPLIT_PROCEEDS_ENABLED is "true" in production without the §6 legal sign-off the code requires. Confirm the launch posture.
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/api/src/application/services/SplitAccrualService.ts`, `apps/api/src/application/services/CampaignLedgerProjector.ts`, `docs/compliance/DONATION_SETTLEMENT_INTEGRITY.md`, `render.yaml`
+**Source:** `apps/api/src/application/services/SplitAccrualService.ts`, `apps/api/src/application/services/CampaignLedgerProjector.ts`, `apps/web/src/components/campaigns/SplitDisclosure.tsx`, `docs/compliance/DONATION_SETTLEMENT_INTEGRITY.md`, `render.yaml`
+
+## DONATE-N002 · P1 · Repeating an identical, already-paid donation in the same tab shows the earlier confirmation
+
+*Surfaces:* api, web  ·  *Type:* recovery/idempotency
+
+**Before:** Paystack test keys; ACTIVE campaign.
+
+**Steps:**
+
+1. Complete a GH₵25 test-card donation on /c/<slug>/donate with email E and wait for the confirmation.
+2. In the same tab, open /c/<slug>/donate again, enter GH₵25 and E with the same other choices, and press Donate.
+3. Change the amount to GH₵26 and press Donate.
+4. In a new browser tab, donate GH₵25 with E.
+
+**Expect:** Step 2 does not open Paystack. It navigates to /donate/callback?reference=<first reference> and shows 'Thank you for showing up.' and 'Your GH₵25.00 donation is confirmed' for the first gift, with no new intent or charge (admin shows one GH₵25 intent). Step 3 opens a fresh checkout. Step 4 opens a new GH₵25 checkout, because a new tab has its own sessionStorage. Ask product to confirm that a donor who wants to repeat an identical gift in the same tab must change a detail or use a new tab.
+
+**Needs:** Paystack test keys
+
+**Source:** `apps/web/src/pages/DonatePage.tsx (SUCCEEDED replay branch)`, `apps/web/src/lib/checkoutAttempt.ts`, `apps/api/src/application/use-cases/CreateDonationIntentUseCase.ts (replayHostedIntent)`
+
+## DONATE-N003 · P1 · Shared device: the donation callback never shows a previous donor's gift
+
+*Surfaces:* web  ·  *Type:* security/permission
+
+**Before:** Paystack test keys; browser devtools.
+
+**Steps:**
+
+1. In devtools > Application > Local Storage for the web origin, create key 'uf_pending_donations' with a JSON value containing a '__last' entry (simulating an older build).
+2. Open /donate/callback with no query string.
+3. Start a donation and inspect sessionStorage 'uf_pending_donations' while on Paystack. Complete the payment and inspect it again after the confirmation.
+4. In the same tab, open /donate/callback with no query again. Then open /donate/callback?reference=__last.
+
+**Expect:** A callback without a real reference always shows 'We couldn't find a payment reference to confirm. If money left your account, don't pay again. Keep any receipt from Paystack or your bank or mobile money provider, and email support@ujimora.com with the reference so we can check it.' and never shows another gift's amount or campaign. The legacy localStorage 'uf_pending_donations' key is removed on load. The handoff lives only in sessionStorage, keyed by reference, and is removed once the payment reaches succeeded, failed or expired.
+
+**Needs:** Paystack test keys
+
+**Source:** `apps/web/src/lib/donationHandoff.ts`, `apps/web/src/pages/DonateCallbackPage.tsx`
+
+## DONATE-N004 · P1 · Decimal comma and 2-decimal rule on web and Android money fields
+
+*Surfaces:* android, api, web  ·  *Type:* negative/edge
+
+**Before:** ACTIVE Community-plan campaign; Android build with a comma-decimal keypad locale; Paystack test keys; donor with a wallet balance.
+
+**Steps:**
+
+1. Web /c/<slug>/donate: Amount '100,50' and tip '2,5'. Read the button, then pay.
+2. Web: try Amount '1,000', '1,000.50' and '10.125'.
+3. Android donate: Amount '100,50' and tip '0,5', then Amount '1.005'.
+4. API: POST /donation-intents with tip 0.125, and POST /campaigns/<id>/donate {amount:5.555, currency:'GHS', paymentMethod:'wallet'}.
+
+**Expect:** Web: '100,50' is read as 100.50 and '2,5' as 2.50. The button reads 'Donate GH₵103.00', Paystack charges 103.00 and campaign raised goes up by 100.50. '1,000', '1,000.50' and '10.125' show 'Enter an amount greater than zero, with at most 2 decimal places' and keep the button disabled, because ambiguous grouping is rejected rather than guessed. Android: the button reads 'Donate 101.00 GHS'; '1.005' keeps Donate disabled. API: tip 0.125 and the legacy amount 5.555 return 400 'Validation failed' and nothing is debited.
+
+**Needs:** Paystack test keys
+
+**Source:** `apps/web/src/lib/moneyInput.ts`, `apps/mobile/src/lib/moneyInput.ts`, `apps/web/src/pages/DonatePage.tsx`, `apps/mobile/app/donate/[id].tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/donationIntentRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/campaignRoutes.ts (donateSchema)`
+
+## DONATE-N005 · P1 · Terms and 18+ notice next to every donate button
+
+*Surfaces:* android, web  ·  *Type:* compliance
+
+**Before:** ACTIVE campaign; staging with crypto enabled for the crypto panel check; Android build.
+
+**Steps:**
+
+1. As a guest, open /c/<slug>/donate and read the text above the Donate button. Open each link.
+2. Switch to 'Crypto' (staging) and look under the panel.
+3. Android donate screen: read the text above the Donate button and tap each link.
+4. Make a guest donation that is anonymous and has no message.
+
+**Expect:** Web shows 'Donations are made under our Terms of Use, Contributor Terms and Privacy Notice. You must be 18 or older to donate.', with links opening /terms, /contributor-terms and /privacy in a new tab. The crypto panel shows the same notice. Android shows the same text, and its links open the in-app Terms of Use, Contributor Terms and Privacy screens. The notice is informational only: the anonymous, message-free guest donation proceeds with no checkbox and no consent record. Known open issue I086: guests without a public name or message are still not asked to actively accept the terms or confirm 18+. Clickwrap vs checkbox and server enforcement are pending an owner/legal decision.
+
+**Needs:** none
+
+**Source:** `apps/web/src/components/donate/DonationTermsNotice.tsx`, `apps/web/src/components/donate/CryptoDonatePanel.tsx`, `apps/mobile/app/donate/[id].tsx`, `packages/types/src/legal.ts`
+
+## DONATE-N006 · P1 · Paystack checkout offers only card and mobile money
+
+*Surfaces:* android, api, web  ·  *Type:* functional
+
+**Before:** Paystack test keys with extra channels (for example bank transfer or USSD) enabled on the test merchant dashboard; the ability to change the PAYSTACK_CHANNELS env on staging.
+
+**Steps:**
+
+1. Web: start a GH₵20 donation and list the payment options on the Paystack checkout.
+2. Android: do the same with 'Card or mobile money · secure checkout'.
+3. API: POST /donation-intents with paymentMethod 'card' and open authorization_url. Repeat with paymentMethod 'mobile_money'.
+4. Set PAYSTACK_CHANNELS=card,mobile_money,bank_transfer, restart the API and repeat step 1.
+
+**Expect:** By default the checkout offers only Card and Mobile Money, matching the donate-page copy; bank transfer, USSD, QR and other channels are hidden. paymentMethod 'card' shows only Card, and 'mobile_money' shows only Mobile Money. After widening PAYSTACK_CHANNELS, the extra channel appears if it is enabled on the dashboard. Settlement is unchanged. Ops should confirm the production dashboard channels before launch.
+
+**Needs:** Paystack test keys
+
+**Source:** `apps/api/src/infrastructure/adapters/outbound/payments/PaystackGateway.ts (channelsFor)`, `apps/api/src/infrastructure/config/index.ts (paystack.channels)`, `apps/api/.env.example`
+
+## DONATE-N007 · P1 · API applies the donor's anonymous-by-default setting when no choice is sent
+
+*Surfaces:* api, web  ·  *Type:* security/permission
+
+**Before:** Donor A with 'Make my donations anonymous by default' on; Donor B with it off; both with GHS wallet balances; current LEGAL_ACCEPTANCE_VERSION; crypto enabled on staging for the last step.
+
+**Steps:**
+
+1. As A, POST /api/v1/donation-intents {provider:'wallet', amount:5, donorName:'Ama A'} with no isAnonymous field.
+2. As A, send the same with isAnonymous:false and legalAcceptance {version:<current>, acceptedTerms:true, ageConfirmed:true}.
+3. As A, POST /api/v1/campaigns/<id>/donate {amount:5, currency:'GHS', paymentMethod:'wallet'} with no isAnonymous.
+4. As B, POST /donation-intents with donorName and legalAcceptance and no isAnonymous.
+5. As A (staging with crypto on), create a crypto deposit with no isAnonymous.
+6. Check each intent's isAnonymous (GET /donation-intents/<id>/public) and the public campaign donation list.
+
+**Expect:** Steps 1, 3 and 5 are recorded with isAnonymous true and show 'Anonymous' publicly; no content consent is needed. Step 2 is public, because an explicit choice always wins (the name is still subject to content review). Step 4 is public, because B's setting is off. Guests are unaffected.
+
+**Needs:** none
+
+**Source:** `apps/api/src/application/use-cases/CreateDonationIntentUseCase.ts (withAnonymityDefault)`, `apps/api/src/application/use-cases/CreateCryptoDepositUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/campaignRoutes.ts (isAnonymous optional)`
+
+## DONATE-N009 · P1 · A redelivered charge.success for a refunded donation is acknowledged without a second credit
+
+*Surfaces:* admin, api  ·  *Type:* recovery/idempotency
+
+**Before:** A card donation fully refunded through the admin refund flow (Paystack test keys); its original signed charge.success body and signature captured, or a way to sign with PAYSTACK_SECRET_KEY.
+
+**Steps:**
+
+1. Re-POST the original signed charge.success to /api/v1/webhooks/paystack 3 times.
+2. Check the intent status, donation and journal counts, and campaign raised.
+3. Send a signed charge.failed for the same reference.
+
+**Expect:** Each charge.success returns 200 {status:'ok'}. The intent stays REFUNDED, with no new donation or journal and no change to raised, and the log reads 'paystack charge.success redelivered for an already-settled intent — acknowledged'. There is no 409 retry loop. The charge.failed must also leave the intent REFUNDED. If it flips to FAILED, log a defect: handleChargeFailed only guards SUCCEEDED, FAILED and EXPIRED.
+
+**Needs:** Paystack test keys (refund)
+
+**Source:** `apps/api/src/application/use-cases/HandlePaystackWebhookUseCase.ts (POST_SETTLEMENT_STATES, handleChargeFailed)`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoDonationIntentRepository.ts (updateStatus)`
+
+## DONATE-N011 · P1 · Wallet-funded gifts offer no self-service refund
+
+*Surfaces:* android, api, web  ·  *Type:* functional
+
+**Before:** Donor with a wallet donation and a card donation, both under 30 days old.
+
+**Steps:**
+
+1. Web /donations: read the action column for both rows.
+2. Android My donations: open both rows.
+3. API: POST /api/v1/refunds {donationId:<walletDonationId>, reason:'Changed my mind'}.
+4. Request a refund for the card gift on web, then POST the same card donation again via the API.
+
+**Expect:** The card gift shows 'Request Refund'. The wallet gift shows 'Wallet gift: contact support@ujimora.com for a refund' and no button, and Android offers no refund action for it. The API returns 422 "Wallet donations can't be refunded automatically. Contact support@ujimora.com with the donation ID." and creates no refund. After the card request, the row shows 'Refund requested' with no button, and the second POST returns 409 'Refund already requested for this donation'.
+
+**Needs:** none
+
+**Source:** `apps/api/src/application/use-cases/RequestRefundUseCase.ts`, `apps/web/src/lib/donationRefunds.ts`, `apps/web/src/pages/MyDonationsPage.tsx`, `apps/mobile/src/lib/donationRefunds.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/refundRoutes.ts`
+
+## DONATE-N013 · P1 · Admin Payments page: search, timeline and deep links
+
+*Surfaces:* admin, api  ·  *Type:* functional
+
+**Before:** Admin with DONATIONS permission; a staff user with read-only DONATIONS; PENDING, FAILED, EXPIRED and SUCCEEDED intents.
+
+**Steps:**
+
+1. Open admin sidebar > Payments (/payments). Search by Provider reference for each intent. Search by 'Donor email (exact)', and by Campaign ID + Status + Provider.
+2. Press 'View timeline' on a result.
+3. Open /payments?ref=<providerRef> and /payments?id=<intentId> directly.
+4. Search for a reference that does not exist.
+5. Sign in as the read-only staff user and open a SUCCEEDED payment.
+
+**Expect:** Results include pending, failed and expired payments, with the amount in its own currency and a status chip. The timeline shows the provider and method chips, the campaign link, the donor email (or 'Donor email not recorded') and the attempts ('No provider attempts were recorded.' when there are none), without raw provider payloads. Deep links pre-fill the search or open the timeline. A search with no match shows 'No payments match.' and 'Check the reference or email is exact. Only the 50 most recent matches are shown.'. 'Refund payment' appears only for settled or partly refunded payments and is disabled without DONATIONS update permission; other payments say 'Only a settled or partly refunded payment can be refunded.'. Known open issue I036: there is no re-verify or reconciliation-sweep button; use the API (DONATE-075).
+
+**Needs:** Paystack test keys
+
+**Source:** `apps/admin/src/pages/PaymentsPage.tsx`, `apps/admin/src/components/layout/Sidebar.tsx`, `apps/admin/src/components/payments/RefundDialog.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/controllers/AdminPaymentsController.ts`
+
+## DONATE-N014 · P1 · Split-proceeds disclosure is shown before donating
+
+*Surfaces:* android, api, web  ·  *Type:* compliance
+
+**Before:** A campaign with an active split (for example Ama 60% / Kofi 40%); a campaign without a split; a PENDING_REVIEW campaign with a split; owner and admin tokens.
+
+**Steps:**
+
+1. Open /c/<slug>, /c/<slug>/donate and /campaigns/<id> for the split campaign, then the Android donate screen.
+2. Open the same pages for the campaign without a split.
+3. GET /api/v1/campaigns/<pendingId>/split as guest, as a stranger, as the owner and as an admin.
+
+**Expect:** Each page for the split campaign shows the info notice 'This campaign's proceeds are shared: Ama 60%, Kofi 40%.' above the donate controls, and Android shows the same text on its donate screen. Campaigns without a split show nothing. The split endpoint for the non-public campaign returns 404 for guests and strangers and 200 for the owner and admin. Known open issue I013: SPLIT_PROCEEDS_ENABLED is on in render.yaml without the documented §6 sign-off.
+
+**Needs:** none
+
+**Source:** `apps/web/src/components/campaigns/SplitDisclosure.tsx`, `apps/web/src/pages/DonatePage.tsx`, `apps/web/src/pages/CampaignPublicPage.tsx`, `apps/web/src/pages/CampaignDetailPage.tsx`, `apps/mobile/src/lib/splitDisclosure.ts`, `apps/mobile/app/donate/[id].tsx`
 
 ## DONATE-004 · P2 · Amount preset via ?amount= and preset chips
 
@@ -1363,32 +1650,34 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 *Surfaces:* api, web  ·  *Type:* security/permission
 
-**Before:** Campaign with 25+ donations; a PENDING_REVIEW campaign with donations; owner and admin tokens.
+**Before:** A campaign with 25+ donations; a PENDING_REVIEW campaign with donations; owner and admin tokens.
 
 **Steps:**
 
-1. GET /api/v1/campaigns/<id>/donations?page=2&pageSize=10.
-2. GET for the non-public campaign as guest, as owner, as admin.
-3. GET with pageSize=100000 and time it.
+1. GET /api/v1/campaigns/<id>/donations?page=2&pageSize=10, then page=3.
+2. GET the non-public campaign's list as guest, as owner and as admin.
+3. GET with pageSize=100000, pageSize=100, page=0, page=-1 and page=abc.
+4. GET with no query.
 
-**Expect:** Correct slice, total and totalPages. Non-public: 404 for guest/others, 200 for owner/admin. Large pageSize is served (no cap) and the endpoint loads all donations into memory — note the performance/DoS risk for large campaigns.
+**Expect:** You get the correct newest-first slice with total and totalPages, and pages do not overlap. Non-public campaigns return 404 for guests and others, and 200 for owner and admin. pageSize=100000 returns 400 'Page size must be a whole number between 1 and 100.' and pageSize=100 returns 200. page=0, -1 or abc returns 400 'Page must be a whole number of at least 1.'. With no query, the defaults are page 1 and pageSize 20. Paging happens in the database, so large campaigns respond quickly.
 
 **Needs:** none
 
-**Source:** `apps/api/src/application/use-cases/ListCampaignDonationsUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/controllers/DonationController.ts`
+**Source:** `apps/api/src/infrastructure/adapters/inbound/middleware/pagination.ts`, `apps/api/src/application/use-cases/ListCampaignDonationsUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/controllers/DonationController.ts`
 
 ## DONATE-055 · P2 · Donor count with guest donations
 
 *Surfaces:* api, web  ·  *Type:* functional
 
-**Before:** New campaign.
+**Before:** A new campaign; Paystack test keys.
 
 **Steps:**
 
 1. Make 3 guest donations with 3 different emails and 1 signed-in donation.
 2. Check '… donors · Distinct supporters' on /campaigns/<id>.
+3. Make a second donation from the same signed-in donor, then a second guest donation reusing the first guest's email.
 
-**Expect:** Expected 4 distinct supporters. Current code groups all guests under donorId 'guest', so it will show 2 — decide whether to fix or relabel before launch.
+**Expect:** After the first 4 donations the page shows 4 distinct supporters. Another donation from the same account still shows 4, because accounts are counted once. A repeat guest email shows 5: each guest donation counts as its own supporter, and de-duplicating repeat guests is an owner decision.
 
 **Needs:** Paystack test keys
 
@@ -1415,16 +1704,36 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 *Surfaces:* android, api, web  ·  *Type:* recovery/idempotency
 
-**Before:** Crypto enabled; signed-in donor.
+**Before:** Crypto enabled on staging; signed-in Donor A; second account Donor B.
 
 **Steps:**
 
-1. Web: throttle network, press 'Get payment address', go offline/online and press again.
-2. Android: accept quote twice quickly.
-3. After a confirmed crypto donation, check the donor's My donations.
+1. Web: throttle the network, press 'Get payment address', go offline and back online, and press again for the same quote. Compare Idempotency-Key headers.
+2. Get a new quote and press 'Get payment address'.
+3. Android: accept a quote twice quickly.
+4. Confirm a crypto donation for Donor A and open Donor A's My donations.
+5. As Donor B, POST /api/v1/campaigns/<id>/donations/crypto with Donor A's Idempotency-Key and quote. Also make a guest crypto deposit.
 
-**Expect:** Ideally one deposit per quote. RISK: web sends no Idempotency-Key, so a retry can open a second deposit/address (Android uses a persisted key). RISK: crypto intents are always created with donorUserId null, so signed-in crypto donations never appear in My donations.
+**Expect:** Retries for the same quote send the same Idempotency-Key and return the same deposit and address (one deposit). A new quote gets a new key and a new deposit. Android also opens one deposit. Donor A's confirmed crypto donation appears in My donations (method Crypto) and follows their anonymity default. Donor B replaying the key gets 409 'Idempotency key belongs to another contribution'. Guest deposits stay unlinked.
 
 **Needs:** Mock crypto provider or Bitnob sandbox
 
-**Source:** `apps/web/src/lib/crypto.ts`, `apps/api/src/infrastructure/adapters/inbound/http/controllers/CryptoController.ts`, `apps/api/src/application/use-cases/CreateCryptoDepositUseCase.ts`
+**Source:** `apps/web/src/components/donate/CryptoDonatePanel.tsx`, `apps/web/src/lib/crypto.ts`, `apps/api/src/infrastructure/adapters/inbound/http/controllers/CryptoController.ts`, `apps/api/src/application/use-cases/CreateCryptoDepositUseCase.ts`
+
+## DONATE-N012 · P2 · iOS handoff works for legacy campaigns without a slug
+
+*Surfaces:* ios, web  ·  *Type:* cross-platform
+
+**Before:** iOS TestFlight build; an ACTIVE campaign whose slug field is unset (legacy), with an active live session; a closed legacy campaign.
+
+**Steps:**
+
+1. Open the legacy campaign in the iOS app and tap Donate, then 'Continue in browser'. Note the Safari URL and complete a test donation.
+2. From the live screen for that campaign, tap 'Support this campaign', then 'Continue in browser'.
+3. Open the closed legacy campaign's donate screen.
+
+**Expect:** Safari opens https://app.ujimora.com/c/<24-hex campaign id>/donate, plus ?amount or ?liveSessionId when present. The web page loads the campaign by id, and the donation settles (attributed to the session in step 2). The closed campaign shows 'This campaign is not accepting donations right now.' and no button.
+
+**Needs:** Paystack test keys; TestFlight
+
+**Source:** `apps/mobile/src/lib/fundraising.ts (campaignDonationHandle)`, `apps/mobile/src/screens/ExternalFundraisingScreen.tsx`, `apps/api/src/application/use-cases/GetCampaignBySlugUseCase.ts`

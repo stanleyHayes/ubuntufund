@@ -256,3 +256,33 @@ Goal for this pass: remove engineering causes of App Store / Google Play rejecti
 - Verification: mobile 111 tests / 23 files, type check, lint, all-platform export. Web 203 tests / 48 files, type check, and the KYC Playwright spec (3 pass). Android release APK installs and starts on a 16 KB emulator; see `NATIVE_PERMISSIONS.md`.
 - Owner-only items and console answers: `apps/mobile/APP_REVIEW_NOTES.md`. This includes the Apple Organization developer account (D-U-N-S) required for financial apps.
 - 25 September 2026 (C18): all 48 Android 64-bit native libraries pass Google's 16 KB LOAD and RELRO checks. A build-time header alignment is applied for prebuilts with no fixed upstream release (`apps/mobile/plugins/relro16k.gradle`); evidence is in `NATIVE_PERMISSIONS.md`. The EAS production profile now sets the API/web URLs. The emulator UI pass found and fixed blank form screens on Android (Paper/React Native `outlineStyle`) and funded campaigns hidden on the home tab and the web public page.
+
+
+## Launch QA inventory and defect sweep — 25 September 2026
+
+A 14-area source inventory produced the launch QA plan (`docs/qa/README.md`; 1,546 cases, 612 P0; an interactive tracker is published separately). The risks the inventory agents noted (320) were deduplicated into 184 issues and each was checked against the code. Ten per-area fix branches then resolved 146 and mitigated 20; 3 were skipped with reasons. An adversarial review of the merged result confirmed 70 further findings, and a second round fixed 61 and mitigated 5. Every issue and its status is listed in `docs/qa/README.md`. Highlights:
+
+- Rate limits and audit IPs now use the real client address (Cloudflare `CF-Connecting-IP`), not Render's proxy. Web and admin production builds call `https://api.ujimora.com` directly.
+- `render.yaml` declares every secret the API reads, including the MFA, account-email and store-billing keys (values are still set in the Render dashboard). A startup log names any disabled capability. `/health/ready` checks MongoDB.
+- Money paths:
+  - Manual, creator and beneficiary payouts require current KYC and block self-approval and self-benefit. The beneficiary check fails closed.
+  - Pending payouts can be rejected or cancelled.
+  - Late successful charges on failed or expired intents are verified and credited.
+  - Chargebacks and dashboard refunds are recorded with an accounting-only reversal, never a second refund.
+  - Wallet and campaign donations are idempotent.
+- Staff queues now exist for campaign reports, donor refund requests, provider payment events and stuck payouts.
+- Web subscriptions are described truthfully as fixed-period access. Unimplemented plan benefits are no longer advertised. Enterprise is sales-led. App Review sandbox receipts are supported without granting money benefits.
+- Legal, FAQ and marketing text no longer claims features that do not exist. The operator identity and `LEGAL_ACCEPTANCE_VERSION` were not changed.
+
+Verification of the integrated branch:
+- `turbo lint`, `type-check` and `build` pass.
+- API: 1,840 tests across 236 files. Web: 409 across 90. Admin: 171 across 47. Mobile: 285 across 62. Marketing: 56 across 8. Shared UI passes.
+
+Open items needing the owner:
+- product decisions I013 (split proceeds), I014 (recurring web billing), I017, I020, I048, I051, I076, I088 and I125;
+- the external gates;
+- I046 (wallet debit ledger leg);
+- I122 (expired token checkout);
+- I174 (legacy push tokens, production access needed).
+
+The local test MongoDB crashed twice under load in FTDC. It now runs with diagnostic capture disabled on a fresh data directory (`~/.ujimora-mongo-rs2`).

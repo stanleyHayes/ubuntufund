@@ -19,7 +19,7 @@ import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
 import PageHeader from '@/components/PageHeader'
 import { TONES } from '@/lib/tones'
-import { api } from '@/lib/api'
+import { api, ApiError } from '@/lib/api'
 
 const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
 const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
@@ -109,7 +109,8 @@ function ContactSubmissionsPage() {
       setSelected(null)
       void fetchData()
     } catch (error) {
-      setUpdateError(error instanceof Error ? error.message : 'Could not update submission')
+      // A validation message helps; a server failure only needs a clear retry prompt.
+      setUpdateError(error instanceof ApiError && error.status < 500 ? error.message : 'Could not update the submission. Please try again.')
     } finally { setUpdating(false) }
   }
 

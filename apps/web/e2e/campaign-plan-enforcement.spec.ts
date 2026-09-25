@@ -28,7 +28,6 @@ test('creation respects caps, stops for review, and retries setup without duplic
   })
   await page.goto('/campaigns/new')
   await page.getByLabel('Campaign title').fill('Test campaign')
-  await page.getByLabel('Short summary').fill('Test description for a campaign')
   await page.getByRole('button', { name: 'Education', exact: true }).click()
   await page.getByRole('button', { name: 'Continue', exact: true }).click()
   await page.getByLabel('Your story').fill('Test campaign story for a new library.')

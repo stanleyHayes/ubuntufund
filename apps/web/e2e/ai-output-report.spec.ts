@@ -14,7 +14,6 @@ test('reports an AI suggestion inside the campaign wizard at phone width', async
   await page.route('**/api/v1/safety/reports', route => { report = route.request().postDataJSON(); return route.fulfill({ json: { data: { id: 'report', status: 'pending' } } }) })
   await page.goto('/campaigns/new')
   await page.getByRole('textbox', { name: 'Campaign title', exact: true }).fill('Community library')
-  await page.getByRole('textbox', { name: 'Short summary', exact: true }).fill('Help create a library for our community.')
   await page.getByRole('group', { name: 'Category', exact: true }).getByRole('button').first().click()
   await page.getByRole('button', { name: 'Continue', exact: true }).click()
   await page.getByRole('textbox', { name: 'Your story', exact: true }).fill('We are raising funds to create a library for our community.')

@@ -10,16 +10,10 @@ test.describe('Campaigns', () => {
 
   test('authenticated user can fill in the campaign form', async ({ authenticatedPage: page }) => {
     // The create flow is a multi-step wizard; the first step ("Basics") collects
-    // the title and summary. Filling them proves the form renders and accepts input.
+    // the title. Filling it proves the form renders and accepts input.
     await page.goto('/campaigns/new')
     await page.getByLabel(/^Campaign title/i).fill('Playwright Test Campaign')
-    await page
-      .getByLabel(/^Short summary/i)
-      .fill('An automated end-to-end test campaign that verifies the create form works.')
 
     await expect(page.getByLabel(/^Campaign title/i)).toHaveValue('Playwright Test Campaign')
-    await expect(page.getByLabel(/^Short summary/i)).toHaveValue(
-      'An automated end-to-end test campaign that verifies the create form works.',
-    )
   })
 })

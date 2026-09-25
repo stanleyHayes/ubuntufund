@@ -1,14 +1,14 @@
-# Plans & subscriptions (94 cases)
+# Plans & subscriptions (112 cases)
 
 Plan catalog, web checkout, App Store and Google Play purchases, restore, server verification and notifications, entitlements, coupons, affiliates.
 
 [Back to the QA plan](../README.md)
 
-## SUBS-002 · P0 · Plan endpoints enforce auth and admin role
+## SUBS-002 · P0 · Plan endpoints enforce auth and admin role; only administrators can open the staff console
 
 *Surfaces:* admin, api  ·  *Type:* security/permission
 
-**Before:** Tokens for a normal user, an organization-role user and an admin. No token for the anonymous calls.
+**Before:** Tokens for a normal user, an organization-role user and an admin. No token for the anonymous calls. The normal user's email and password for a console sign-in attempt.
 
 **Steps:**
 
@@ -17,13 +17,14 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 3. User token: POST /api/v1/plans with a valid body; PUT /api/v1/plans/pro {priceMonthly: 1}.
 4. Organization token: repeat step 3.
 5. Admin token: repeat step 3 with a harmless change, then revert.
-6. In the admin console, log in as a staff account whose RBAC role lacks PLANS and navigate to /plans.
+6. Open the admin console login and sign in with the normal (non-admin) user's correct email and password.
+7. As admin open Admin > Audit log and look for the refused console sign-in; call GET /api/v1/rbac/me with the user token and with the admin token.
 
-**Expect:** Anonymous calls to /plans return 401. User and organization tokens get 403 'Insufficient permissions' on POST/PUT, and the plan is unchanged when re-read with GET. Admin succeeds. A staff account without the PLANS permission gets the access-denied screen and no 'New plan' or 'Edit plan' controls.
+**Expect:** Anonymous GET /plans returns 401. User and organization tokens get 403 'Insufficient permissions' on POST/PUT, and the plan is unchanged when re-read. Admin succeeds and the change is audited as subscription-plan.update. The console sign-in by the non-admin account is refused with 'This account does not have staff access.' (403, sent with audience 'admin' after the password check). No session is stored, and /plans cannot be opened. The audit log has an 'auth.admin_console.refused' entry, 'Staff console sign-in refused: account is not an administrator'. /rbac/me returns an empty permission list and an empty role name for the user, and the full admin permission set for the admin, so every admin sees 'New plan' and 'Edit plan'. Known open issue I028: there are no assignable restricted staff roles, so a 'staff account without PLANS' cannot be set up or tested.
 
 **Needs:** None
 
-**Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/planRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/middleware/requireRole.ts`, `apps/admin/src/router.tsx`
+**Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/planRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/middleware/requireRole.ts`, `apps/api/src/application/use-cases/LoginUserUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/rbacRoutes.ts`, `apps/admin/src/context/AuthContext.tsx`, `apps/admin/src/router.tsx`
 
 ## SUBS-003 · P0 · Admin price edit changes the next web charge and is audited
 
@@ -72,23 +73,24 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 *Surfaces:* api, email, web  ·  *Type:* functional
 
-**Before:** New email address. Paystack test keys and webhook to staging API.
+**Before:** New email address. Paystack test keys and webhook to the staging API. For the failure case, the ability to set PAYSTACK_SECRET_KEY to an invalid non-empty value on staging.
 
 **Steps:**
 
 1. Open /register, complete the Account and Details steps and accept the terms.
-2. On the Plan step pick Pro with Yearly, then submit.
-3. Confirm redirect to Paystack showing GH₵1,490.00; pay with the test success card.
+2. On the Plan step note the tiers listed, pick Pro with Yearly and read the price label, then submit.
+3. Confirm the redirect to Paystack showing GH₵1,490.00 and pay with the test success card.
 4. Observe /subscription/callback, then /subscription.
-5. Repeat with a new email but make Paystack init fail (e.g. temporarily unset PAYSTACK_SECRET_KEY on staging).
+5. Repeat with a new email while PAYSTACK_SECRET_KEY is invalid (a blank key returns 501 before any checkout row is written).
+6. Read the new user's subscriptioncheckouts row. Restore the key and click 'Continue to payment' in the pre-opened dialog.
 
-**Expect:** The account is created. The callback shows 'You're all set! Your Pro plan is now active' and 'Your GH₵1,490.00 payment is confirmed'. /subscription shows Pro, Yearly, with period end about 365 days out. In the failure case the account still exists and the user lands on /subscription?tier=pro&billingCycle=yearly&checkoutError=1 with the 'Your account is ready, but we couldn’t open payment...' alert and the checkout dialog pre-opened. No charge is made.
+**Expect:** The Plan step lists Free, Plus and Pro only. Pro Yearly shows GH₵1,490.00 with 'for 1 year · one-time payment'. The account is created. The callback shows 'You're all set!', 'Your Pro plan is now active' and 'Your GH₵1,490.00 payment is confirmed'. /subscription shows Pro with 'Plan length' '1 year', 'Ends in' about 365 days, and 'Your plan does not renew automatically. Buy again before it ends to keep your benefits.' In the failure case the account still exists and the user lands on /subscription?tier=pro&billingCycle=yearly&checkoutError=1. The alert reads 'Your account is ready, but we couldn’t open payment. Your paid plan is not active yet. Check your payment status before retrying.' and the checkout dialog is pre-opened. The failed checkout row is EXPIRED, not left PENDING, so the retry opens Paystack at once without a 409 'payment in progress'. No charge is made before the retry.
 
 **Needs:** Paystack test keys, email provider for verification email
 
-**Source:** `apps/web/src/components/auth/RegisterForm.tsx`, `apps/web/src/pages/SubscriptionPage.tsx`, `apps/web/src/pages/SubscriptionCallbackPage.tsx`
+**Source:** `apps/web/src/components/auth/RegisterForm.tsx`, `apps/web/src/pages/SubscriptionPage.tsx`, `apps/web/src/pages/SubscriptionCallbackPage.tsx`, `apps/api/src/application/use-cases/CreateSubscriptionCheckoutUseCase.ts`
 
-## SUBS-016 · P0 · Web Pro monthly purchase by card: amounts, activation and records
+## SUBS-016 · P0 · Web Pro monthly purchase by card: amounts, one-time copy, activation and records
 
 *Surfaces:* admin, api, web  ·  *Type:* functional
 
@@ -96,15 +98,16 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 **Steps:**
 
-1. Open /subscription. Confirm the current plan card shows Community.
-2. Click 'Choose Pro'. Dialog 'Upgrade to Pro' shows 'Billed monthly' and 'Total due today GH₵149.00'.
-3. Click 'Continue to payment'. Paystack shows GH₵149.00 and the reference begins 'sub-'.
-4. Pay with the Paystack test success card.
-5. Observe the redirect to /subscription/callback?checkout=<id>&reference=sub-... and the polling state.
-6. Open /subscription; open Admin > Subscriptions and find U1.
-7. Call GET /api/v1/subscriptions/mine and GET /api/v1/subscriptions/checkout/<id>.
+1. Open /subscription. Confirm the current plan card shows Community ('Plan length' 'Free', 'Ends' 'No end date').
+2. Read the Pro card: price, unit and the line under it.
+3. Click 'Choose Pro'. Read the dialog title, the text under it and 'Total due today'.
+4. Click 'Continue to payment'. Paystack shows GH₵149.00 and the reference begins 'sub-'.
+5. Pay with the Paystack test success card.
+6. Observe the redirect to /subscription/callback?checkout=<id>&reference=sub-... and the polling state.
+7. Open /subscription; open Admin > Subscriptions and find U1.
+8. Call GET /api/v1/subscriptions/mine and GET /api/v1/subscriptions/checkout/<id>. Read subscriptions.paymentReferences in the DB.
 
-**Expect:** The callback shows 'Confirming your subscription…', then 'You're all set!', 'Your Pro plan is now active' and 'Your GH₵149.00 payment is confirmed'. The subscription has tier pro, status active, billingCycle monthly and currentPeriodEnd = activation + 30 days. The checkout is SUCCEEDED with baseAmount 149, discountAmount 0, finalAmount 149, GHS and providerRef = the Paystack reference. The Paystack transaction is 14900 pesewas in GHS. The admin list shows U1 as Pro/active, and the export has Provider web.
+**Expect:** The Pro card shows GH₵149 '/ 30 days' and 'One-time payment · does not auto-renew'. The dialog is titled 'Upgrade to Pro' and reads 'One-time payment for 30 days. Your plan does not renew automatically.' with 'Total due today GH₵149.00'. The callback shows 'Confirming your subscription…', then 'You're all set!', 'Your Pro plan is now active' and 'Your GH₵149.00 payment is confirmed'. The subscription has tier pro, status active, billingCycle monthly, currentPeriodEnd = activation + 30 days, and paymentReferences = [the sub- reference]. The plan card shows 'Plan length' '30 days', 'Ends in 30 days' and the does-not-renew note, with no Cancel button. The checkout is SUCCEEDED with baseAmount 149, discountAmount 0, finalAmount 149, GHS, and providerRef = the Paystack reference. The Paystack transaction is 14900 pesewas in GHS. The admin list shows U1 as Pro/active and counts U1 under 'Paying now'. The export has Provider web.
 
 **Needs:** Paystack test keys
 
@@ -121,9 +124,9 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 1. User A: toggle Yearly, 'Choose Plus', and pay.
 2. User B: Yearly Pro.
 3. User C: Yearly Organization.
-4. For each, read the plan card price (price/12) vs dialog total vs Paystack amount vs checkout finalAmount.
+4. For each, compare the plan card price (price/12) and its sub-line with the dialog text and total, the Paystack amount and the checkout finalAmount.
 
-**Expect:** Cards show the monthly equivalents 40.83, 124.17 and 332.50. Dialogs and Paystack charge the full 490.00, 1,490.00 and 3,990.00. Each subscription is yearly with currentPeriodEnd = activation + 365 days. No rounding drift between the displayed total and the charged amount.
+**Expect:** Cards show the monthly equivalents 40.83, 124.17 and 332.50 per month, with the sub-lines 'GH₵ 490 for 1 year · One-time payment · does not auto-renew', 'GH₵ 1490 for 1 year · …' and 'GH₵ 3990 for 1 year · …'. Dialogs read 'One-time payment for 1 year (365 days). Your plan does not renew automatically.' Dialogs and Paystack charge the full 490.00, 1,490.00 and 3,990.00. Each subscription is yearly with currentPeriodEnd = activation + 365 days, and the plan card shows 'Plan length' '1 year'. There is no rounding drift between the displayed total and the charged amount.
 
 **Needs:** Paystack test keys
 
@@ -138,11 +141,11 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 **Steps:**
 
 1. 'Choose Plus' then 'Continue to payment'. On Paystack pick Mobile Money and use the Paystack test MoMo number.
-2. Delay approving the prompt for more than 30 seconds.
+2. Delay approving the prompt for more than about 2 minutes, watching the callback's network calls.
 3. Watch the callback reach the 'Still confirming your subscription' timeout state, then approve the MoMo prompt.
 4. Click 'Keep checking'.
 
-**Expect:** The timeout copy says there is no need to pay again. After approval, 'Keep checking' (or the webhook) moves the checkout to SUCCEEDED and the page shows the success state. Plus is active exactly once, with one Paystack charge.
+**Expect:** While waiting, the callback backs off (2 s, 3 s, 5 s, 8 s, then every 10 s). It calls POST …/verify on the first and every 4th attempt and GET /subscriptions/checkout/<id> otherwise, and times out after 15 attempts (about 2 minutes). The timeout copy says there is no need to pay again. After approval, 'Keep checking' (or the webhook) moves the checkout to SUCCEEDED and the page shows the success state. Plus is active exactly once, with one Paystack charge.
 
 **Needs:** Paystack test keys (MoMo test channel)
 
@@ -195,15 +198,15 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 **Steps:**
 
-1. Start Pro checkout, pay, and let Paystack redirect to /subscription/callback.
-2. Observe the callback polling POST /subscriptions/checkout/reference/<ref>/verify.
+1. Start a Pro checkout, pay, and let Paystack redirect to /subscription/callback.
+2. With devtools open, observe the callback's requests: the first POST /subscriptions/checkout/reference/<ref>/verify, then GET /subscriptions/checkout/<id>, then verify again on every 4th attempt.
 3. Restore the webhook URL, then use Paystack's 'resend webhook' for that transaction.
 
-**Expect:** Verify calls Paystack's verify API, matches the reference, currency and amount, and settles. The UI shows success. The later webhook resend is a no-op: same period end, single coupon increment, single commission.
+**Expect:** The first verify calls Paystack's verify API, matches the reference, currency and amount, and settles. The UI shows success without waiting for the webhook. The later webhook resend is a no-op: same period end, a single coupon increment and a single commission.
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/api/src/application/use-cases/GetSubscriptionCheckoutUseCase.ts`, `apps/web/src/pages/SubscriptionCallbackPage.tsx`
+**Source:** `apps/api/src/application/use-cases/GetSubscriptionCheckoutUseCase.ts`, `apps/api/src/application/services/SubscriptionCheckoutResolver.ts`, `apps/web/src/pages/SubscriptionCallbackPage.tsx`
 
 ## SUBS-023 · P0 · Replayed and concurrent settlements do not double-apply
 
@@ -243,83 +246,85 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 **Source:** `apps/api/src/application/use-cases/HandlePaystackWebhookUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/paystackWebhookRoutes.ts`
 
-## SUBS-026 · P0 · Two checkouts in parallel can double-charge
+## SUBS-026 · P0 · Two checkouts in parallel cannot double-charge
 
 *Surfaces:* api, web  ·  *Type:* recovery/idempotency
 
-**Before:** User on Free. Two browser tabs on /subscription.
+**Before:** User on Free. Two browser tabs on /subscription. Paystack test keys.
 
 **Steps:**
 
-1. Tab 1: 'Choose Pro', then 'Continue to payment'. Keep the Paystack page open.
+1. Tab 1: 'Choose Pro', then 'Continue to payment'. Keep the Paystack page open without paying.
 2. Tab 2: 'Choose Pro', then 'Continue to payment'.
-3. Pay both with the test card.
+3. Pay in Tab 1 with the test card. With the webhook briefly blocked, retry 'Continue to payment' in Tab 2 before the callback confirms.
 4. Check Paystack transactions, checkout rows and the subscription period.
+5. In one tab, double-click 'Continue to payment' on a fresh dialog.
 
-**Expect:** Current code allows both checkouts, so two GH₵149 charges succeed. The second settlement overwrites the period (now + 30 days), so the user is not given 60 days. Record this. Decide whether to block a new checkout while one is pending or a paid plan is active, or to refund duplicates, and document the support refund procedure. The 'Continue to payment' button is disabled while starting, so a double-click within one tab must produce only one checkout.
+**Expect:** Tab 2 gets 409 in the dialog: 'You already have a plan payment in progress. Finish it in the payment window, or check its status on your subscription page, before starting another.' No second Paystack page opens. The Tab 2 retry after Tab 1 paid gets 409 'Your earlier plan payment went through and that plan is now active. Review your subscription before buying again.', and that request activates Pro itself. There is exactly one GH₵149 charge and Pro runs for 30 days. If a member knowingly pays for the same plan again once it is active, the new period is added to the end of the current one (SUBS-N001), so no paid time is lost. A double-click creates one checkout, because the button is disabled while starting.
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/api/src/application/use-cases/CreateSubscriptionCheckoutUseCase.ts`, `apps/api/src/application/use-cases/SettleSubscriptionUseCase.ts`, `apps/web/src/pages/SubscriptionPage.tsx`
+**Source:** `apps/api/src/application/use-cases/CreateSubscriptionCheckoutUseCase.ts`, `apps/api/src/application/services/SubscriptionCheckoutResolver.ts`, `apps/api/src/application/use-cases/SettleSubscriptionUseCase.ts`, `apps/web/src/pages/SubscriptionPage.tsx`
 
-## SUBS-027 · P0 · Mid-period web upgrade: price, period and proration disclosure
+## SUBS-027 · P0 · Mid-period web plan switch needs explicit replacement consent and discloses forfeited time
 
 *Surfaces:* api, marketing, web  ·  *Type:* compliance
 
-**Before:** User U2 on Plus monthly, activated 10 days ago (staging: adjust currentPeriodStart and End).
+**Before:** User U2 on Plus monthly (web), activated 10 days ago (staging: adjust currentPeriodStart and End). Paystack test keys.
 
 **Steps:**
 
-1. Open /subscription and click 'Choose Pro'. Read the dialog text and total.
-2. Pay GH₵149.
-3. Read the subscription currentPeriodStart and End.
-4. Read ujimora.com/billing-terms sections 4 (Upgrades) and 3 (Renewal).
+1. Open /subscription and click 'Choose Pro'. Read the dialog title, text, warning and button.
+2. Call POST /api/v1/subscriptions/checkout {tier:'pro', billingCycle:'monthly'} without replaceCurrentPlan.
+3. In the dialog click 'Replace plan and pay' and pay GH₵149.
+4. Read the subscription currentPeriodStart, currentPeriodEnd and paymentReferences.
+5. Read ujimora.com/billing-terms sections 2, 3 and 4.
 
-**Expect:** Current behavior: the full Pro price is charged with no credit for about 20 unused Plus days, and the period restarts at 30 days from now. The dialog discloses no proration rule. Billing terms say upgrades follow 'the displayed billing and proration rules', so either display the rule ('No credit for remaining time; new 30-day period starts today') or implement proration. Launch blocker for consumer-protection accuracy.
+**Expect:** The dialog is titled 'Switch to Pro' and reads 'One-time payment for 30 days. Your plan does not renew automatically.' It carries the warning 'Your Plus plan is active until <date>. Pro replaces it as soon as payment is confirmed, and unused time on Plus is not refunded or credited.' and the button 'Replace plan and pay'. The API call without the flag returns 409 'Your Plus plan is active until <YYYY-MM-DD>. Buying Pro now replaces it straight away, and unused time is not refunded or credited. Confirm the switch to continue.' with errors.code ['replace_current_plan'], and no checkout row is created. After payment the tier is pro, currentPeriodStart is the payment time, currentPeriodEnd is +30 days, and paymentReferences holds only the new reference. The roughly 20 unused Plus days are forfeited as disclosed. Billing terms clause 4 says buying a different plan while one is active replaces it once you confirm, and unused time is not credited or refunded. There is no proration, by owner decision.
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/web/src/pages/SubscriptionPage.tsx`, `apps/api/src/application/use-cases/SettleSubscriptionUseCase.ts`, `packages/types/src/legal.ts`
+**Source:** `apps/web/src/pages/SubscriptionPage.tsx`, `apps/api/src/application/use-cases/CreateSubscriptionCheckoutUseCase.ts`, `apps/api/src/application/use-cases/SettleSubscriptionUseCase.ts`, `packages/types/src/legal.ts`
 
-## SUBS-030 · P0 · Web subscription expiry, same-plan renewal and entitlement fallback
+## SUBS-030 · P0 · Web subscription expiry: expired status, same-plan rebuy and entitlement fallback
 
 *Surfaces:* admin, api, web  ·  *Type:* functional
 
-**Before:** User U2 on Pro monthly (web). Staging DB access to set currentPeriodEnd to 1 minute ago.
+**Before:** User U2 on Pro monthly (web). Staging DB access to set currentPeriodEnd to 1 minute ago. Paystack test keys.
 
 **Steps:**
 
-1. Set U2's currentPeriodEnd to the past.
-2. Open /subscription. Read the plan card chip, the 'Renews in' value and the Pro card button.
-3. Try to buy Pro again from the UI.
-4. Try to start a LIVE session and create a 2nd campaign.
-5. Open Admin > Subscriptions and read U2's status.
-6. POST /api/v1/subscriptions/checkout {tier:'pro'} via API.
+1. Set U2's currentPeriodEnd to the past (leave the stored status 'active').
+2. Call GET /api/v1/subscriptions/mine.
+3. Open /subscription. Read the plan card chip, alert and stats, and the Pro and Community card buttons.
+4. Try to start a LIVE session and to create a 2nd campaign.
+5. Open Admin > Subscriptions and read U2's status and the KPIs.
+6. From the UI click 'Choose Pro' and pay. Read the new period.
 
-**Expect:** Entitlements revert to Community: LIVE returns 403 'Your Community plan does not include LIVE streaming', and the campaign cap is 1. Record UI defects. The chip still says 'Active' with 'Renews in 0 days'. The Pro card shows disabled 'Current Plan' because isCurrent compares tier only, so the user cannot renew Pro from the UI (the API allows it). The admin still shows status active and counts U2 in revenue. Renewal of the same tier must work before launch.
+**Expect:** The API returns status 'expired', derived at read time; the DB row is not rewritten. The page shows the chip 'Expired' and the alert 'Your Pro plan ended on <date>. Community features apply until you buy a plan again.' The stats show 'Ended' <date>. The Community card shows 'Current Plan', the Pro card offers an enabled 'Choose Pro', and the upgrade call-to-action is shown. LIVE returns 403 'Your Community plan does not include LIVE streaming. Upgrade to unlock it.', and the campaign cap is 1. The admin row shows 'expired', and U2 counts under 'Free or lapsed', not 'Paying now' or 'Estimated MRR (list price)'. The dialog is titled 'Upgrade to Pro' and needs no replace confirmation. After payment Pro is active with a fresh period of now + 30 days.
 
-**Needs:** Staging DB
+**Needs:** Staging DB, Paystack test keys
 
-**Source:** `apps/web/src/pages/SubscriptionPage.tsx`, `apps/api/src/application/services/PlanLimitsService.ts`, `apps/admin/src/pages/SubscriptionsPage.tsx`
+**Source:** `apps/api/src/domain/services/subscriptionStatus.ts`, `apps/api/src/application/use-cases/GetMySubscriptionUseCase.ts`, `apps/web/src/pages/SubscriptionPage.tsx`, `apps/web/src/lib/subscriptionStatus.ts`, `apps/api/src/application/services/PlanLimitsService.ts`, `apps/admin/src/pages/SubscriptionsPage.tsx`
 
-## SUBS-031 · P0 · Web subscriptions do not auto-renew: disclosure and reminders
+## SUBS-031 · P0 · Web plans are one-time purchases: honest disclosure and expiry notice
 
 *Surfaces:* api, email, marketing, web  ·  *Type:* compliance
 
-**Before:** User U2 on Plus monthly (web). Activity alerts: enable 'Subscription updates' for in-app and email in profile settings.
+**Before:** User U2 on Plus monthly (web). Activity alerts: 'Subscription updates' enabled for in-app and email in profile settings, with a verified email.
 
 **Steps:**
 
-1. Read the checkout dialog ('Billed monthly. You can cancel anytime.'), the /subscription 'Renews in N days' label, and ujimora.com/billing-terms section 3.
-2. Let the period end (staging: set currentPeriodEnd to past) and wait 2 minutes for the activity sweep.
+1. Read the /subscription plan cards, the checkout dialog and the current plan card; the marketing /pricing cards and FAQ; and ujimora.com/billing-terms sections 2 and 3.
+2. Let the period end (staging: set currentPeriodEnd to the past) and wait 2 minutes for the activity sweep.
 3. Check the Paystack dashboard for any automatic charge.
 4. Check in-app notifications and email.
 
-**Expect:** No automatic charge happens. The code has no Paystack authorization reuse or renewal job. An opted-in user gets 'Subscription expired' in-app or by email. Launch blocker (legal/consumer): copy says 'Renews' and the billing terms say subscriptions renew. Either build renewal (with consent to charge a stored authorization) or change all copy to 'Access until <date>; buy again to continue', plus a pre-expiry reminder.
+**Expect:** No web copy says 'Renews', 'billed monthly' or 'cancel anytime'. Cards show '/ 30 days' with 'One-time payment · does not auto-renew' (marketing: 'One-time payment on the website · does not auto-renew'). The dialog reads 'One-time payment for 30 days. Your plan does not renew automatically.' The plan card shows 'Plan length' and 'Ends in N days' with 'Your plan does not renew automatically. Buy again before it ends to keep your benefits.' and has no Cancel button. The marketing FAQ 'Do plans renew automatically?' says website plans are one-time and app-store plans renew until cancelled in the store. Billing terms clause 3 says website plans do not renew and there is nothing to cancel. After the period ends there is no automatic charge. The opted-in user gets 'Subscription expired' in-app and by email, linking to /subscription. There is no pre-expiry reminder; record whether product wants one. The reworded terms await legal sign-off (LEGAL_ACCEPTANCE_VERSION was not bumped).
 
 **Needs:** Email provider (activity email), Paystack test keys
 
-**Source:** `apps/web/src/pages/SubscriptionPage.tsx`, `packages/types/src/legal.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoActivityAlerts.ts`, `apps/api/src/application/use-cases/CancelSubscriptionUseCase.ts`
+**Source:** `apps/web/src/pages/SubscriptionPage.tsx`, `apps/marketing/src/pages/PricingPage.tsx`, `packages/types/src/legal.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoActivityAlerts.ts`
 
 ## SUBS-034 · P0 · Users cannot read other users' checkouts or subscriptions
 
@@ -396,7 +401,7 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 **Source:** `apps/api/src/application/use-cases/CreateSubscriptionCheckoutUseCase.ts`, `apps/web/src/pages/SubscriptionPage.tsx`
 
-## SUBS-043 · P0 · Per-user coupon seat race is closed
+## SUBS-043 · P0 · Per-user coupon seat race is closed and never opens two charges
 
 *Surfaces:* api, web  ·  *Type:* recovery/idempotency
 
@@ -404,10 +409,11 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 **Steps:**
 
-1. In both tabs open the Plus dialog with ONE and click 'Continue to payment' at the same moment (or fire two parallel API calls).
+1. In both tabs open the Plus dialog with ONE and click 'Continue to payment' at the same moment, or fire two parallel API calls.
 2. Complete payment in the winning tab.
+3. Read both checkout rows and the coupon redemption rows.
 
-**Expect:** One checkout gets a seat and a Paystack URL. The other gets 422 'You have already used this coupon the maximum number of times', and its checkout row is FAILED. No discounted charge is opened without a seat. The discount is applied exactly once.
+**Expect:** One checkout gets a seat and a Paystack URL. The other is refused in one of two ways. If the first checkout was already recorded, it gets 409 'You already have a plan payment in progress. Finish it in the payment window, or check its status on your subscription page, before starting another.' with no row. If both passed that check together, it gets 422 'You have already used this coupon the maximum number of times' and its checkout row is FAILED. No second Paystack page is opened. The discount is applied exactly once and there is one charge.
 
 **Needs:** Paystack test keys
 
@@ -450,26 +456,25 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 **Source:** `apps/api/src/application/services/AffiliateCommissionService.ts`, `apps/api/src/application/services/AffiliateCodePricing.ts`
 
-## SUBS-051 · P0 · Subscription refund reverses the commission; entitlement policy
+## SUBS-051 · P0 · Web subscription refund ends the paid plan and reverses the commission
 
 *Surfaces:* admin, api, web  ·  *Type:* functional
 
-**Before:** R1 converted with a held commission of 14.90. R6 converted with a commission already matured to available. Paystack test mode supports refunds.
+**Before:** R1 converted, with a held commission of 14.90 on a fresh 30-day Pro web plan. R6 converted, with a commission already matured to available. Paystack test mode supports refunds. Admin token.
 
 **Steps:**
 
 1. In the Paystack dashboard refund R1's sub- transaction in full.
-2. Wait for the refund.processed webhook and check the commission status and AFF's pending balance.
-3. Refund R6's transaction and check the available balance.
-4. Check R1's and R6's subscription tier and status after the refund.
+2. After the refund.processed webhook, check R1's subscription (GET /subscriptions/mine and /subscription), the commission status and AFF's pending balance.
+3. Refund R6's transaction in full and check R6's plan and AFF's available balance.
+4. Replay one refund webhook.
+5. As admin call GET /api/v1/admin/payments/provider-events.
 
-**Expect:** R1's commission becomes reversed and the pending balance drops by 14.90. R6's becomes reversed and the available balance drops. A replayed refund webhook is a no-op. If a commission was already paid out, it is marked reversed with a warning log for manual clawback. Record: the refunded user KEEPS the paid plan, because no code revokes entitlement on refund. Decide the policy and write down the operator procedure.
+**Expect:** R1's plan is taken back: status expired, currentPeriodEnd set to the refund time, and the sub- reference removed from paymentReferences. /subscription shows 'Expired' and Community limits apply. R1's commission becomes reversed and the pending balance drops by 14.90. R6's plan also ends, and its commission is reversed out of the available balance. A replayed refund changes nothing. If the commission had already been paid out, it is recorded as an outstanding clawback (SUBS-N016). The refund is listed by the provider-events endpoint with subject 'subscription'. Known open issue I009: there is no admin console page for non-campaign provider events.
 
 **Needs:** Paystack test keys (refunds)
 
-**Operator note:** a refund only takes back plan time for a charge listed in the subscription's `paymentReferences`. Web plans settled before that field existed need `MONGODB_URI=… tsx apps/api/scripts/backfill-subscription-payment-references.ts` run once per environment (dry run first, then `--apply`); rows it lists as `unmatched` need a manual decision.
-
-**Source:** `apps/api/src/application/use-cases/HandlePaystackWebhookUseCase.ts`, `apps/api/src/application/services/AffiliateCommissionService.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoAffiliateBalanceRepository.ts`
+**Source:** `apps/api/src/application/use-cases/RevokeRefundedSubscriptionUseCase.ts`, `apps/api/src/application/use-cases/HandlePaystackWebhookUseCase.ts`, `apps/api/src/application/services/AffiliateCommissionService.ts`, `apps/api/src/application/use-cases/RecordProviderPaymentEventUseCase.ts`
 
 ## SUBS-055 · P0 · Active campaign cap per plan
 
@@ -508,44 +513,48 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 **Source:** `apps/api/src/application/services/PlanLimitsService.ts`, `apps/web/src/components/campaigns/CampaignForm.tsx`, `apps/mobile/app/campaign/create.tsx`
 
-## SUBS-058 · P0 · LIVE streaming follows the owner's plan
+## SUBS-058 · P0 · LIVE streaming follows the owner's plan, including resume and host tokens
 
 *Surfaces:* android, api, ios, web  ·  *Type:* functional
 
-**Before:** LIVEKIT_* configured on staging. Campaign owners on Free, Plus and Pro, each with an active campaign. Admin.
+**Before:** LIVEKIT_* configured on staging. Campaign owners on Free, Plus and Pro, each with an active campaign. Admin. A viewer account.
 
 **Steps:**
 
 1. The Free owner tries 'Go live' (web live page, native campaign/live).
 2. The Plus owner tries.
-3. The Pro owner starts a session, stops it, and then their Pro expires (staging DB).
-4. The expired owner tries again. The admin tries to start LIVE on the expired owner's campaign.
-5. Admin toggles liveStreaming off for Pro in Admin > Plans. An active Pro owner tries.
+3. The Pro owner starts a session and leaves it active without ending it, then closes the studio.
+4. Expire the Pro owner's plan (staging DB: currentPeriodEnd in the past).
+5. The expired owner reopens the studio and taps 'Go live' again, and tries to join video as host.
+6. The viewer opens the watch page for that session.
+7. The admin tries to start LIVE on the expired owner's campaign.
+8. Restore Pro. The admin turns liveStreaming off for Pro in Admin > Plans, and an active Pro owner tries to start.
 
-**Expect:** Free and Plus get 403 'Your Community/Plus plan does not include LIVE streaming. Upgrade to unlock it.' Pro succeeds. After expiry: 403. Admin on the owner's behalf: 403, because the owner's plan applies. After the admin toggle, Pro users are blocked immediately. An already-active session is not force-stopped; record whether that is intended.
+**Expect:** Free and Plus get 403 'Your Community plan does not include LIVE streaming. Upgrade to unlock it.' or 'Your Plus plan does not include LIVE streaming. Upgrade to unlock it.' Pro succeeds. After expiry, starting returns the same 403 even though a session is still active, so the old broadcast is not resumed, and minting a host video token also returns 403. Viewers can still open the watch page as viewers. The admin acting for the owner gets 403. After the admin toggle, Pro owners are blocked immediately. Known residual (I070): a host already connected when the plan lapses is not disconnected until they reconnect or the session ends.
 
 **Needs:** LiveKit credentials
 
-**Source:** `apps/api/src/application/use-cases/StartLiveSessionUseCase.ts`, `apps/api/src/application/services/PlanLimitsService.ts`, `apps/mobile/app/campaign/live.tsx`
+**Source:** `apps/api/src/application/use-cases/StartLiveSessionUseCase.ts`, `apps/api/src/infrastructure/adapters/outbound/video/LiveVideoService.ts`, `apps/api/src/application/services/PlanLimitsService.ts`, `apps/mobile/app/campaign/live.tsx`
 
-## SUBS-062 · P0 · Advertised plan benefits are actually delivered
+## SUBS-062 · P0 · Only delivered plan benefits are advertised, and team seats are enforced
 
-*Surfaces:* api, ios, marketing, web  ·  *Type:* compliance
+*Surfaces:* admin, api, ios, marketing, web  ·  *Type:* compliance
 
-**Before:** Organization-plan user (maxTeamMembers 10). Plus user (maxTeamMembers 1). Pro user (featuredListing, prioritySupport, advancedAnalytics toggles as seeded).
+**Before:** Organization accounts: OrgPlus on Plus (1 seat) and OrgO on Organization (10 seats). Expo-web Subscription screen if deployed.
 
 **Steps:**
 
-1. On /subscription's Feature comparison and marketing /pricing, list every benefit shown: Team members, Featured listing, Priority support, Advanced analytics, Custom branding, Escrow & milestones.
-2. Plus user: invite 2 organization team members.
-3. Pro user: look for featured placement, advanced analytics and custom branding in the product.
-4. Search the API for server enforcement of each.
+1. On /subscription (cards, current-plan chips, Feature comparison), marketing /pricing (cards and comparison) and the Expo-web Subscription screen, list every benefit shown.
+2. In Admin > Plans > 'Edit plan', read the Benefits toggle labels.
+3. OrgPlus owner: invite one team member at /organization-team.
+4. OrgO owner: invite members until refused.
+5. Search the API for server enforcement of each remaining advertised benefit.
 
-**Expect:** Every advertised benefit must be delivered or enforced. Current code has no maxTeamMembers enforcement on the organization team invite, and no implementation behind featuredListing, prioritySupport, advancedAnalytics or customBranding. Launch blocker for truthful advertising (and for App Review 2.3 / 3.1.2 if shown in native): remove the rows, mark them 'coming soon', or implement them.
+**Expect:** No member-facing page shows Featured listing, Priority support, Advanced analytics or Custom branding. 'Escrow & milestones' now reads 'Split proceeds', and 'Team members' reads 'Organization team seats (incl. owner)'. The admin toggles for the four unbuilt flags read '(not built — hidden from members)'. OrgPlus's invite is refused with 403 'Your Plus plan includes 1 team seat, including the owner. Upgrade the organization's plan or remove a member before inviting someone new.' OrgO can invite 9 people (the owner holds the 10th seat), and the 10th invite is refused with the same message for 10 seats. Every remaining advertised benefit has server enforcement.
 
 **Needs:** None
 
-**Source:** `apps/web/src/pages/SubscriptionPage.tsx`, `apps/marketing/src/pages/PricingPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/organizationTeamRoutes.ts`, `packages/types/src/subscription.ts`
+**Source:** `apps/web/src/pages/SubscriptionPage.tsx`, `apps/marketing/src/pages/PricingPage.tsx`, `apps/mobile/src/screens/SubscriptionScreen.tsx`, `apps/admin/src/pages/ManagePlansPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/organizationTeamRoutes.ts`, `apps/api/src/app.ts`
 
 ## SUBS-063 · P0 · iOS sandbox purchase with server verification
 
@@ -700,29 +709,31 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 **Source:** `apps/api/src/infrastructure/adapters/outbound/payments/StorePurchaseVerifier.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoStoreBilling.ts`
 
-## SUBS-075 · P0 · Duplicate store subscription for the same Ujimora account
+## SUBS-075 · P0 · Duplicate store subscription for the same Ujimora account is recorded for review
 
 *Surfaces:* admin, android, api, ios  ·  *Type:* negative/edge
 
-**Before:** U5 has an active Apple Pro bought with Apple ID A. A second device is signed into Apple ID B.
+**Before:** U5 has an active Apple Pro bought with Apple ID A. A second device is signed into Apple ID B. Same scenario on Android with two Google accounts for U6.
 
 **Steps:**
 
-1. On device 2 sign into Ujimora as U5 (with Apple ID B). Subscribe to Plus.
-2. Observe the result. Check whether Apple ID B was charged.
-3. Check the admin Store billing recovery queue.
+1. On device 2 sign into Ujimora as U5 (with Apple ID B) and subscribe to Plus.
+2. Observe the result and check whether Apple ID B was charged.
+3. Read the storepurchases row for the duplicate and open Admin > Store billing recovery.
+4. Repeat on Android. After 3 days, check Play Console Order management.
+5. Let U5's original Pro lapse (turn off auto-renew and wait past period end). Then queue a verification retry for the duplicate from the admin queue, or wait for the daily re-check.
 
-**Expect:** The server refuses: 409 'Another subscription is already active. Contact support to review the duplicate purchase.' U5 keeps Pro. Apple ID B has still been charged and the transaction stays unfinished. Write a support procedure (direct the user to Apple refund). Confirm whether this appears in the admin queue: the write is rolled back, so it likely does not. Consider warning before purchase when a paid plan is already active.
+**Expect:** The server refuses with 409 'Another subscription is already active. Contact support to review the duplicate purchase.' U5 keeps Pro. Apple ID B has been charged and the transaction stays unfinished. The duplicate is recorded, not dropped: reviewRequired true, lastError 'duplicate_active_subscription', acknowledgementPending false and nextCheckAt about 24 hours later. It appears in Admin > Store billing recovery without receipts or tokens. The Google duplicate is never acknowledged, so Play refunds and revokes it after 3 days. Support follows STORE_BILLING.md: Google can refund in Play Console, and Apple purchasers must request a refund at reportaproblem.apple.com. Once the original plan has lapsed, the re-check applies the duplicate if it is still active.
 
-**Needs:** Store sandbox (2 sandbox Apple IDs)
+**Needs:** Store sandbox (2 sandbox Apple IDs, 2 Google license testers)
 
-**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoStoreBilling.ts`, `apps/mobile/src/screens/SubscriptionScreen.native.tsx`
+**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoStoreBilling.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/storeBillingAdminRoutes.ts`, `docs/compliance/STORE_BILLING.md`, `apps/mobile/src/screens/SubscriptionScreen.native.tsx`
 
-## SUBS-076 · P0 · Native behavior when store billing is disabled
+## SUBS-076 · P0 · Native behavior when store billing is disabled, and the production warning
 
 *Surfaces:* android, api, ios  ·  *Type:* negative/edge
 
-**Before:** Staging with STORE_BILLING_ENABLED unset (this is the render.yaml default, which has no store keys). A user with an existing store purchase.
+**Before:** Staging with STORE_BILLING_ENABLED unset. A user with an existing store purchase. Access to API startup logs for a NODE_ENV=production deploy.
 
 **Steps:**
 
@@ -730,12 +741,13 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 2. Tap 'Restore purchases' and 'Refresh'.
 3. POST /api/v1/store-billing/prepare and /verify.
 4. POST /api/v1/webhooks/store/apple and /google.
+5. Read the API startup logs for a production-mode boot without STORE_BILLING_ENABLED, and open render.yaml.
 
-**Expect:** The native screen shows 'New store purchases are temporarily unavailable. Your existing plan and free features remain available.' No Subscribe buttons, and no Paystack or web fallback. Prepare and verify return 503. Webhooks return 503, so the stores retry. Before launch, confirm production has STORE_BILLING_ENABLED=true and the full catalog, otherwise native apps cannot sell plans.
+**Expect:** The native screen shows 'New store purchases are temporarily unavailable. Your existing plan and free features remain available.' There are no Subscribe buttons and no Paystack or web fallback. Prepare and verify return 503, and the webhooks return 503 so the stores retry. At startup, production logs the warning 'Optional production capabilities are off', naming 'native store billing (App Store / Google Play): STORE_BILLING_ENABLED is not "true"', with no values. render.yaml declares STORE_BILLING_*, STORE_RECEIPT_ENCRYPTION_KEY_BASE64, APPLE_IAP_* and GOOGLE_PLAY_* as dashboard-set (sync:false) keys. Before launch, confirm that production has STORE_BILLING_ENABLED=true and the full catalog set in the Render dashboard; otherwise the native apps cannot sell plans.
 
 **Needs:** None
 
-**Source:** `apps/api/src/infrastructure/config/storeBilling.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/storeBillingRoutes.ts`, `apps/mobile/src/screens/SubscriptionScreen.native.tsx`, `render.yaml`
+**Source:** `apps/api/src/infrastructure/config/storeBilling.ts`, `apps/api/src/infrastructure/config/capabilities.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/storeBillingRoutes.ts`, `apps/mobile/src/screens/SubscriptionScreen.native.tsx`, `render.yaml`
 
 ## SUBS-078 · P0 · Web and store billing exclude each other
 
@@ -764,16 +776,16 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 **Steps:**
 
-1. Visit every entry point: Profile > Subscription, campaign create 'Review eligibility' (at the plan cap), Creator 'View plans', the affiliate screen text, campaign live screen copy.
+1. Visit every entry point: Profile > Subscription, campaign create 'Review eligibility' (at the plan cap), Creator 'View plans', the affiliate screen, and the campaign live screen copy.
 2. Open deep and universal links https://app.ujimora.com/subscription and /subscription/callback from Notes or Mail.
-3. Search screens for 'Contact sales', Paystack, 'ujimora.com/pricing' or web subscription links.
+3. Search screens for 'Contact sales', Paystack, 'ujimora.com/pricing', 'website' or web subscription links.
 4. Try to create a web checkout from the native client (the lib throws off-web).
 
-**Expect:** Every path lands on the native IAP screen (resolvePath maps /subscription to /(tabs)/subscription). No Paystack, web pricing or 'buy on website' link exists for plans. Creator tips are not offered natively. Donations and wallet top-ups open Safari (iOS) as designed, but never subscriptions. This satisfies App Review 3.1.1 and the Play Payments policy.
+**Expect:** Every path lands on the native IAP screen (resolvePath maps /subscription to /(tabs)/subscription). No Paystack, web pricing or 'buy on website' link or button exists for plans. Creator tips are not offered natively. Donations and wallet top-ups open Safari (iOS) as designed, but subscriptions never do. The affiliate screen now describes the commission as paid 'when someone you refer buys their first paid plan on the Ujimora website' (I061 copy). It is plain text with no link or button; confirm with the owner that this wording is acceptable under App Review 3.1.1 and the Play Payments policy.
 
 **Needs:** Signed builds
 
-**Source:** `apps/mobile/src/navigation/resolvePath.ts`, `apps/mobile/src/lib/subscriptions.ts`, `apps/mobile/app/(tabs)/profile.tsx`, `apps/mobile/app/creator.tsx`, `apps/mobile/app/campaign/create.tsx`, `apps/mobile/APP_REVIEW_NOTES.md`
+**Source:** `apps/mobile/src/navigation/resolvePath.ts`, `apps/mobile/src/lib/subscriptions.ts`, `apps/mobile/app/(tabs)/profile.tsx`, `apps/mobile/app/creator.tsx`, `apps/mobile/app/affiliate.tsx`, `apps/mobile/app/campaign/create.tsx`, `apps/mobile/APP_REVIEW_NOTES.md`
 
 ## SUBS-080 · P0 · Native paywall disclosures (App Review 3.1.2, Play policy)
 
@@ -796,21 +808,22 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 ## SUBS-081 · P0 · App Review and TestFlight purchases work against the production API
 
-*Surfaces:* api, ios  ·  *Type:* compliance
+*Surfaces:* admin, api, ios  ·  *Type:* compliance
 
-**Before:** Production-like API with APPLE_IAP_ENVIRONMENT=production. App Review / TestFlight build (which uses the sandbox environment).
+**Before:** Production-like API with APPLE_IAP_ENVIRONMENT=production, APPLE_IAP_APP_ID set and APPLE_IAP_ALLOW_SANDBOX_FALLBACK unset (default true). A TestFlight build pointed at it, which uses the sandbox environment. A sandbox tester.
 
 **Steps:**
 
-1. Using a TestFlight build pointed at the production API, buy Pro with a sandbox tester.
+1. Using the TestFlight build, buy Pro with the sandbox tester.
 2. Observe the verify response and the app message.
-3. Send a sandbox App Store Server Notification (App Store Connect 'Request a Test Notification' for the sandbox URL) to /api/v1/webhooks/store/apple.
+3. Read storepurchases.environment and the subscription's billingEnvironment, then open Admin > Subscriptions.
+4. Send a sandbox App Store Server notification ('Request a Test Notification' for the sandbox URL), then a real sandbox renewal notification, to /api/v1/webhooks/store/apple.
 
-**Expect:** The expected outcome for store approval is that the purchase activates. Current verifier behavior requires transaction and renewal environment == APPLE_IAP_ENVIRONMENT, so a sandbox receipt against a production server returns 422 'The store could not verify this subscription.' and Apple's reviewer sees a failed purchase (Guideline 2.1 rejection). Sandbox notifications are rejected with 401. Launch blocker: add production-then-sandbox fallback (Apple's recommendation), or run review against a sandbox-configured API, and document which.
+**Expect:** Production answers 'transaction not found', the server retries the same checks in sandbox, and the purchase activates: 'Your subscription is active.', tier pro, billingProvider apple. The purchase row has environment 'sandbox' and the subscription billingEnvironment 'sandbox'. Admin Subscriptions excludes it from 'Paying now' and 'Estimated MRR (list price)'. The sandbox TEST notification returns 200 with no work. Real sandbox notifications fail the production environment check, are fully re-verified by the sandbox verifier, return 200, and are processed. See SUBS-N011 for the fallback-disabled and outage behaviour.
 
 **Needs:** App Store Connect, TestFlight, Apple IAP keys
 
-**Source:** `apps/api/src/infrastructure/adapters/outbound/payments/StorePurchaseVerifier.ts`, `apps/api/src/infrastructure/config/storeBilling.ts`, `docs/compliance/STORE_BILLING.md`, `apps/mobile/APP_REVIEW_NOTES.md`
+**Source:** `apps/api/src/infrastructure/adapters/outbound/payments/StorePurchaseVerifier.ts`, `apps/api/src/infrastructure/config/storeBilling.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoStoreBilling.ts`, `apps/admin/src/lib/subscriptionRevenue.ts`, `docs/compliance/STORE_BILLING.md`, `apps/mobile/APP_REVIEW_NOTES.md`
 
 ## SUBS-084 · P0 · Apple App Store Server Notifications V2 endpoint
 
@@ -873,37 +886,76 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 *Surfaces:* admin, api  ·  *Type:* security/permission
 
-**Before:** User, organization and admin tokens. A staff RBAC role without SUBSCRIPTIONS.
+**Before:** User, organization and admin tokens. A normal user's email and password for a console sign-in attempt.
 
 **Steps:**
 
 1. As user/org: GET /api/v1/admin/store-billing; POST /admin/store-billing/purchase/<id>/retry; GET /api/v1/subscriptions.
-2. As staff without SUBSCRIPTIONS open /store-billing and /subscriptions in the admin console.
+2. Sign in to the admin console with the normal user's credentials and try to open /store-billing and /subscriptions.
 3. As admin, check the Action center shows the 'Store billing recovery' count.
 
-**Expect:** Non-admins get 403 on every call. Console pages show access denied and the Sidebar hides the links. Admin sees the counts. Responses carry Cache-Control 'private, no-store'.
+**Expect:** Non-admins get 403 on every call. The console refuses the non-admin sign-in with 'This account does not have staff access.' No token is stored, so /store-billing and /subscriptions redirect to login. The refusal is audited as 'auth.admin_console.refused'. The admin sees the counts. Responses carry Cache-Control 'private, no-store'. Known open issue I028: there are no assignable restricted staff roles, so every admin sees these pages.
 
 **Needs:** None
 
-**Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/storeBillingAdminRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/subscriptionRoutes.ts`, `apps/admin/src/router.tsx`, `apps/admin/src/components/layout/Sidebar.tsx`
+**Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/storeBillingAdminRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/subscriptionRoutes.ts`, `apps/api/src/application/use-cases/LoginUserUseCase.ts`, `apps/admin/src/context/AuthContext.tsx`, `apps/admin/src/router.tsx`
 
 ## SUBS-093 · P0 · Billing terms and in-product copy match real behavior
 
 *Surfaces:* android, ios, marketing, web  ·  *Type:* compliance
 
-**Before:** Published legal pack.
+**Before:** Published legal pack from this branch.
 
 **Steps:**
 
 1. Read ujimora.com/billing-terms and native /billing-terms end to end.
-2. Compare against the observed behavior in SUBS-027 (no proration), SUBS-028 (downgrade forfeits time), SUBS-031 (web does not renew), SUBS-032 (cancel), SUBS-051 (refund keeps access), SUBS-062 (unimplemented benefits), SUBS-013 (Enterprise) and store renewal rules.
-3. Check that 'Checkout discloses...any taxes or fees...renewal terms' holds in the web dialog and the native paywall.
+2. Compare with observed behaviour: SUBS-016 (one-time web plan), SUBS-N001 (same-plan renewal adds time), SUBS-027 and SUBS-028 (a switch replaces the plan with no credit), SUBS-032 (nothing to cancel on web), SUBS-051 (refund ends the plan), SUBS-062 (benefits), SUBS-013 (Enterprise is sales-led) and the store renewal rules (SUBS-072).
+3. Check what the web checkout dialog and the native paywall show before payment.
 
-**Expect:** Every statement is true for web and for each store, or the terms and copy are corrected before launch. The web dialog must disclose renewal, or its absence, plus proration and refund terms. This must be signed off by the owner or legal.
+**Expect:** Clause 2: plans are charged for the 30-day or one-year period selected, and checkout shows the plan, the period, any coupon discount and the total, plus any taxes or charges if they apply. The web dialog shows all of these. Clause 3: website plans do not renew and there is nothing to cancel, while store plans renew under store terms until cancelled in the store. Clause 4: buying the same plan adds its period to the end of the current one, and buying a different plan replaces it on confirmation with no credit. Every statement is true for web and for each store. The reworded terms still need owner or legal sign-off (LEGAL_ACCEPTANCE_VERSION was not bumped, so members are not asked to re-accept). Known open issue I021: tax treatment is an external gate; if tax applies, checkout must show it before launch.
 
-**Needs:** None
+**Needs:** Legal/owner sign-off
 
-**Source:** `packages/types/src/legal.ts`, `apps/marketing/src/pages/LegalPolicyPage.tsx`, `apps/mobile/app/billing-terms.tsx`, `apps/web/src/pages/SubscriptionPage.tsx`
+**Source:** `packages/types/src/legal.ts`, `apps/marketing/src/pages/LegalPolicyPage.tsx`, `apps/mobile/app/billing-terms.tsx`, `apps/web/src/pages/SubscriptionPage.tsx`, `apps/mobile/src/screens/SubscriptionScreen.native.tsx`
+
+## SUBS-N002 · P0 · A new checkout is refused while an earlier payment is unresolved, and stale unpaid checkouts make way
+
+*Surfaces:* api, web  ·  *Type:* recovery/idempotency
+
+**Before:** Free users U1 and U3. Paystack test keys. Staging DB write access. The ability to point the Paystack webhook elsewhere and to set PAYSTACK_SECRET_KEY to an invalid non-empty value.
+
+**Steps:**
+
+1. With the webhook blocked, U1 starts 'Choose Plus', pays on Paystack and closes the tab before the redirect, so the checkout stays PENDING.
+2. U1 opens /subscription in a fresh tab and clicks 'Choose Pro' > 'Continue to payment'.
+3. U1 reloads /subscription and reads the plan. Check Paystack for charges.
+4. U3 starts a Plus checkout, abandons it on Paystack, sets its createdAt to 2 hours ago, then starts a new Plus checkout.
+5. U3, with a fresh PENDING checkout that has a provider reference: set PAYSTACK_SECRET_KEY invalid and start another checkout. Restore the key.
+
+**Expect:** Step 2 returns 409 in the dialog: 'Your earlier plan payment went through and that plan is now active. Review your subscription before buying again.' That request settles the earlier Plus checkout itself, and no Pro charge is opened. Step 3 shows Plus active with one charge. In step 4 the 2-hour-old abandoned checkout becomes EXPIRED (releasing any coupon seat) and the new checkout opens normally. Step 5 returns 409 'We could not confirm your earlier plan payment. Check its status on your subscription page before starting another payment.' No second charge is opened in any step.
+
+**Needs:** Paystack test keys, staging DB
+
+**Source:** `apps/api/src/application/use-cases/CreateSubscriptionCheckoutUseCase.ts`, `apps/api/src/application/services/SubscriptionCheckoutResolver.ts`
+
+## SUBS-N003 · P0 · Reconciliation sweep repairs missed webhooks and expires abandoned checkouts
+
+*Surfaces:* api, web  ·  *Type:* recovery/idempotency
+
+**Before:** Staging API with RECONCILIATION_SCHEDULER_ENABLED=true (production default on) and PAYMENTS_RECONCILIATION_ENABLED not 'false'. Paystack test keys. Webhook blocked for step 1. DB write access. Coupon SWEEP1 (perUserLimit 1).
+
+**Steps:**
+
+1. User A starts a Plus checkout, pays on Paystack and closes the browser before the callback. Keep the webhook blocked. Make the checkout older than 30 minutes (wait, or move createdAt back 31 minutes) and wait for the next 5-minute tick.
+2. User B starts a Plus checkout with SWEEP1 and abandons it on Paystack. Move createdAt back 25 hours and wait for the tick.
+3. User C has a PENDING checkout with no providerRef (unset it in the DB) aged 25 hours. Wait for the tick.
+4. Read the API logs and each checkout. As B, reopen /subscription and preview SWEEP1.
+
+**Expect:** A's checkout becomes SUCCEEDED and Plus is active with no client action: the missed webhook is repaired. B's checkout becomes EXPIRED and its SWEEP1 redemption RELEASED, so SWEEP1 previews as valid again, and B's /subscription no longer shows the 'Returning from payment?' banner. C's checkout becomes EXPIRED. The log has 'subscription checkout reconciliation sweep complete' with scanned, settled, expired and pending counts. Checkouts younger than 30 minutes are not touched, and provider errors are retried on later ticks (given up after 7 days).
+
+**Needs:** Paystack test keys, staging DB, scheduler flag
+
+**Source:** `apps/api/src/application/use-cases/ReconcileSubscriptionCheckoutsUseCase.ts`, `apps/api/src/application/services/SubscriptionCheckoutResolver.ts`, `apps/api/src/app.ts`
 
 ## SUBS-001 · P1 · Plan catalog is consistent across marketing, signup, web /subscription, native paywall and admin
 
@@ -950,23 +1002,24 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 *Surfaces:* admin, api, marketing, web  ·  *Type:* functional
 
-**Before:** Admin. User U1 on Free. Paystack test keys.
+**Before:** Admin. User U1 on Free. Paystack test keys. Staging DB write access (fallback for step 4).
 
 **Steps:**
 
 1. Admin > Plans > 'New plan': tier id 'community_plus', name 'Community Plus', monthly 20, yearly 200, fee 3.2, maxActiveCampaigns 2, sort order between Free and Plus, Active and Public on. Click create.
 2. Reload marketing /pricing and web /subscription.
-3. As U1 choose Community Plus monthly, pay with the Paystack test card and wait for the callback.
-4. As U1 create 2 campaigns, then try a 3rd.
-5. Check the callback success heading and the admin Subscriptions list tier chip for U1.
+3. As U1 click 'Choose Community Plus' (monthly), then 'Continue to payment', and pay with the Paystack test card. Record any error shown in the dialog.
+4. If checkout was refused, set U1's subscription to tier community_plus, status active, currentPeriodEnd +30 days in the staging DB so the enforcement steps can run.
+5. As U1 create 2 campaigns, then try a 3rd.
+6. Open Admin > Subscriptions: check U1's tier chip, the tier filter options and the 'Estimated monthly revenue by tier (list price)' row. Open the callback page for U1's checkout if one exists.
 
-**Expect:** The new tier appears in sortOrder position on pricing and /subscription. The GH₵20.00 charge settles and U1's tier becomes community_plus for 30 days. The 3rd active campaign is rejected with 403 'Your Community Plus plan allows 2 active campaigns'. Known gaps to record if seen: the callback page and admin list name plans from seed data, so they may show the raw id 'community_plus' instead of 'Community Plus'.
+**Expect:** The new tier appears in sortOrder position on pricing and /subscription. Requirement: the GH₵20.00 charge settles and U1 becomes community_plus for 30 days, and the callback shows 'Your Community Plus plan is now active'. The 3rd active campaign is rejected with 403 'Your Community Plus plan allows 2 active campaigns'. Admin Subscriptions uses live plans, so U1's chip reads 'Community Plus', the tier filter lists 'Community Plus', and the revenue-by-tier row names it and prices it at GH₵20 (web-billed rows only). Known open gap (noted in the I066 verification, not fixed): POST /subscriptions/checkout validates tier against the built-in SubscriptionTier enum, so 'community_plus' is refused with 400 'Validation failed' (errors.tier). Custom tiers cannot be bought on the web today. Known open issue I069 (residual): SubscriptionCallbackPage still takes plan names from the seed, so for a custom tier the 'Your … plan is now active' line is missing.
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/api/src/application/use-cases/CreatePlanUseCase.ts`, `apps/web/src/pages/SubscriptionCallbackPage.tsx`, `apps/admin/src/pages/SubscriptionsPage.tsx`, `apps/api/src/application/services/PlanLimitsService.ts`
+**Source:** `apps/api/src/application/use-cases/CreatePlanUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/subscriptionRoutes.ts`, `apps/web/src/pages/SubscriptionCallbackPage.tsx`, `apps/admin/src/pages/SubscriptionsPage.tsx`, `apps/admin/src/lib/subscriptionMetrics.ts`, `apps/api/src/application/services/PlanLimitsService.ts`
 
-## SUBS-006 · P1 · Deactivating or hiding a plan removes it from sale without breaking existing subscribers
+## SUBS-006 · P1 · Deactivating or hiding a plan from the Edit dialog removes it from sale without breaking existing subscribers
 
 *Surfaces:* admin, android, api, ios, marketing, web  ·  *Type:* functional
 
@@ -974,40 +1027,42 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 **Steps:**
 
-1. In Admin > Plans > Plus > 'Edit plan', look for Active/Public toggles (the edit dialog only has Benefits toggles).
-2. Via API as admin: PUT /api/v1/plans/starter {active:false}.
-3. Reload marketing /pricing, /register Plan step, web /subscription (as U3) and native Subscription (as U3).
-4. As U3 call POST /api/v1/subscriptions/checkout {tier:'starter', billingCycle:'monthly'}; open /subscription?tier=starter.
-5. As U3 on native call prepare for the Plus product (tap Subscribe if visible).
-6. As U2 create campaigns up to the Plus cap, open creator page settings, check GET /api/v1/creators policy.
-7. Re-enable: PUT {active:true}.
+1. Admin > Plans > Plus > 'Edit plan'. Confirm the dialog has Sort order, Accent colour and Active, Public and Popular switches, and read the note under them. Switch Active off and save.
+2. Reload marketing /pricing, the /register Plan step, web /subscription (as U3) and native Subscription (as U3).
+3. As U3 POST /api/v1/subscriptions/checkout {tier:'starter', billingCycle:'monthly'}; open /subscription?tier=starter.
+4. As U3 on native call prepare for the Plus product (tap Subscribe if visible).
+5. As U2 create campaigns up to the Plus cap, open creator page settings and check the GET /api/v1/creators policy.
+6. Edit Plus again: Active on, Public off, save. Repeat step 3 and read storebillingaccounts for U3.
+7. Restore Public on. Check Admin > Audit log for the subscription-plan.update entries.
 
-**Expect:** The edit dialog cannot change active/isPublic after creation. File this as a UI gap, since today it needs the API. After deactivation Plus disappears from every sales surface and the native catalog. Checkout returns 400 'That subscription plan is not available', and prepare returns 422. /subscription?tier=starter does not charge. U2 keeps Plus campaign limits until period end. Confirm the intended rule for creator donations: creatorPolicy requires plan.active, so U2's creator donations become ineligible while the plan is inactive.
+**Expect:** The dialog note reads 'Turning off Active or Public hides this plan from new purchases on the website and in the app store catalog. Existing subscribers are not cancelled.' Each save is a PUT /plans/starter, audited with a diff. With Active off, Plus disappears from every sales surface and from the native catalog. Checkout returns 400 'That subscription plan is not available', prepare returns 422 'This store product is not available.', and /subscription?tier=starter opens no checkout dialog. With Public off (Active on), checkout returns 403 'This plan is arranged through our sales team. Contact sales@ujimora.com.', and no checkout row or provider claim is created. U2 keeps Plus campaign limits until period end. Confirm the creator-donation rule with the owner: creatorPolicy requires plan.active, so U2's creator donations become ineligible while Plus is inactive.
 
 **Needs:** Store billing staging config
 
-**Source:** `apps/admin/src/pages/ManagePlansPage.tsx`, `apps/api/src/application/use-cases/CreateSubscriptionCheckoutUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/storeBillingRoutes.ts`, `apps/api/src/application/services/PlanLimitsService.ts`
+**Source:** `apps/admin/src/pages/ManagePlansPage.tsx`, `apps/api/src/application/use-cases/CreateSubscriptionCheckoutUseCase.ts`, `apps/web/src/pages/SubscriptionPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/storeBillingRoutes.ts`, `apps/api/src/application/services/PlanLimitsService.ts`
 
 ## SUBS-007 · P1 · Non-public (negotiated) plans cannot be self-purchased on web
 
-*Surfaces:* api, web  ·  *Type:* security/permission
+*Surfaces:* admin, api, web  ·  *Type:* security/permission
 
-**Before:** Admin creates tier 'partner_ngo' with Active=on, Public=off, monthly 10. User U1 on Free. Paystack test keys.
+**Before:** Admin sets Organization to Active on and Public off in Admin > Plans > Organization > 'Edit plan'. Optionally an admin-created tier 'partner_ngo' (Active on, Public off, monthly 10). User U1 on Free with no billing history. Paystack test keys.
 
 **Steps:**
 
-1. As U1 GET /api/v1/plans and check whether partner_ngo is returned.
-2. As U1 open /subscription?tier=partner_ngo&billingCycle=monthly.
-3. As U1 POST /api/v1/subscriptions/checkout {tier:'partner_ngo', billingCycle:'monthly'}.
-4. If an authorizationUrl is returned, pay with a test card.
+1. As U1 call GET /api/v1/plans/public and GET /api/v1/plans and check whether organization is returned.
+2. As U1 open /subscription, then /subscription?tier=organization&billingCycle=monthly.
+3. As U1 POST /api/v1/subscriptions/checkout {tier:'organization', billingCycle:'monthly'}.
+4. As U1 POST /api/v1/subscriptions/checkout {tier:'partner_ngo', billingCycle:'monthly'}.
+5. Read subscriptioncheckouts and storebillingaccounts for U1 and check the Paystack dashboard.
+6. Restore Organization to Public on.
 
-**Expect:** The intended behavior is that non-public plans are not purchasable by arbitrary users. Current code checks only plan.active at checkout (the store catalog also requires isPublic), so a hidden plan is likely purchasable through the API and the ?tier= deep link. It is also listed by the authenticated GET /plans. Record the result. If U1 activates partner_ngo, that is a launch-blocking entitlement bypass whenever hidden plans are priced below their benefits.
+**Expect:** /plans/public omits Organization. The authenticated /plans still lists it, as a catalog read only. /subscription shows no Organization card, and the ?tier= link opens no checkout dialog. The Organization checkout returns 403 'This plan is arranged through our sales team. Contact sales@ujimora.com.' The partner_ngo call is refused with 400 'Validation failed' because the checkout accepts only built-in tier ids. For every call there is no checkout row, no Paystack transaction, and no billing-rail claim (storebillingaccounts.provider stays unset).
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/api/src/application/use-cases/CreateSubscriptionCheckoutUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/controllers/PlanController.ts`, `apps/web/src/pages/SubscriptionPage.tsx`
+**Source:** `apps/api/src/application/use-cases/CreateSubscriptionCheckoutUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/subscriptionRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/http/controllers/PlanController.ts`, `apps/web/src/pages/SubscriptionPage.tsx`
 
-## SUBS-008 · P1 · Zero-priced cycle on a paid plan activates without payment
+## SUBS-008 · P1 · A zero-priced cycle on a paid plan is shown as not offered and cannot be activated free
 
 *Surfaces:* admin, api, web  ·  *Type:* negative/edge
 
@@ -1015,35 +1070,37 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 **Steps:**
 
-1. As admin PUT /api/v1/plans/starter {priceYearly:0} (monthly stays 49).
-2. As U1 open /subscription, toggle Yearly and click 'Choose Plus'.
-3. Read the dialog button label, then click it.
-4. Revert priceYearly to 490.
+1. As admin set Plus yearly price to 0 (Admin > Plans > Plus > 'Edit plan', or PUT /api/v1/plans/starter {priceYearly:0}). Monthly stays 49. Read the Plans page info alert.
+2. As U1 open /subscription, toggle Yearly and read the Plus card button.
+3. Open /register (new email) to the Plan step, choose Yearly and look at Plus.
+4. As U1 POST /api/v1/subscriptions/checkout {tier:'starter', billingCycle:'yearly'}.
+5. Revert priceYearly to 490.
 
-**Expect:** The dialog shows GH₵0.00 and the button label is 'Activate plan'. Plus activates for 365 days with no Paystack charge (activatedWithoutCharge). This is how the code works, so treat it as a money-control check: confirm admins know a 0 price means free activation. Consider requiring a confirm step or rejecting 0 for paid tiers. Nobody should be able to reach this state in production accidentally.
+**Expect:** The admin alert says 'A price of 0 on a paid plan means that billing cycle is not offered.' On /subscription the Plus card button reads 'Yearly not offered' and is disabled. At signup Plus shows 'Not offered', its option is disabled, and submit stays disabled if it was selected. The API returns 400 'That billing cycle is not available for this plan' before any checkout row, coupon seat or billing-rail claim. There is no free activation. A coupon that zeroes a positive price still activates without charge (SUBS-041).
 
 **Needs:** None
 
-**Source:** `apps/api/src/application/use-cases/CreateSubscriptionCheckoutUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/planRoutes.ts`
+**Source:** `apps/api/src/application/use-cases/CreateSubscriptionCheckoutUseCase.ts`, `apps/web/src/pages/SubscriptionPage.tsx`, `apps/web/src/components/auth/RegisterForm.tsx`, `apps/admin/src/pages/ManagePlansPage.tsx`
 
-## SUBS-013 · P1 · Enterprise is not accidentally sold as self-serve at signup
+## SUBS-013 · P1 · Enterprise is sales-led everywhere and cannot be bought self-serve
 
 *Surfaces:* api, marketing, web  ·  *Type:* compliance
 
-**Before:** New email. Paystack test keys. Seed Enterprise is active and public (1500/15000).
+**Before:** New email. Paystack test keys. Seed Enterprise is active and public (1500/15000). A logged-in Free user U1.
 
 **Steps:**
 
-1. On /register Plan step, check whether Enterprise is selectable and what price it shows.
-2. Select Enterprise Monthly and submit.
-3. Compare with /subscription (Enterprise card shows 'Contact sales') and marketing /pricing ('Contact sales' → /contact).
-4. As a logged-in user POST /api/v1/subscriptions/checkout {tier:'enterprise', billingCycle:'monthly'}.
+1. On the /register Plan step, list the selectable tiers.
+2. On /subscription check the Enterprise card; on marketing /pricing check the Enterprise CTA.
+3. As U1 open /subscription?tier=enterprise&billingCycle=monthly.
+4. As U1 POST /api/v1/subscriptions/checkout {tier:'enterprise', billingCycle:'monthly'}.
+5. Read subscriptioncheckouts and storebillingaccounts for U1 and check the Paystack dashboard.
 
-**Expect:** The product decision is needed: Enterprise should be 'Contact sales' everywhere. Current code lists Enterprise in the signup PAID_TIERS and opens a GH₵1,500 Paystack checkout, and the API accepts an enterprise checkout. Record whether a card can buy Enterprise. If Enterprise must be negotiated, this is a launch blocker: set isPublic=false (see SUBS-007) and remove it from signup. Also note Organization is missing from the signup plan list.
+**Expect:** Signup offers Free, Plus and Pro only; Enterprise is never offered. The /subscription Enterprise card is 'Contact sales' (mailto sales@ujimora.com, subject 'Enterprise plan enquiry'), and marketing 'Contact sales' goes to /contact. The ?tier=enterprise link opens no checkout dialog. The API returns 403 'This plan is arranged through our sales team. Contact sales@ujimora.com.' before any checkout row, coupon seat or billing-rail claim. No card can buy Enterprise. Note that Organization is also not offered at signup and can be bought from /subscription after registration; confirm this is intended.
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/web/src/components/auth/RegisterForm.tsx`, `apps/web/src/pages/SubscriptionPage.tsx`, `apps/marketing/src/pages/PricingPage.tsx`, `packages/types/src/subscription.ts`
+**Source:** `apps/web/src/components/auth/RegisterForm.tsx`, `apps/web/src/pages/SubscriptionPage.tsx`, `apps/marketing/src/pages/PricingPage.tsx`, `apps/api/src/application/use-cases/CreateSubscriptionCheckoutUseCase.ts`
 
 ## SUBS-014 · P1 · Enterprise contact channels reach staff
 
@@ -1084,63 +1141,66 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 **Source:** `apps/web/src/components/auth/RegisterForm.tsx`, `apps/api/src/application/services/AffiliateCommissionService.ts`, `apps/api/src/application/use-cases/SettleSubscriptionUseCase.ts`
 
-## SUBS-020 · P1 · Abandoned Paystack checkout leaves a PENDING row that affects later purchases
+## SUBS-020 · P1 · Abandoned Paystack checkout expires and frees the coupon seat and the billing rail
 
 *Surfaces:* android, api, ios, web  ·  *Type:* recovery/idempotency
 
-**Before:** User U1 on Free, never subscribed. Coupon ONCE (perUserLimit 1). Store billing enabled.
+**Before:** User U1 on Free, never subscribed. Coupon ONCE (perUserLimit 1). Store billing enabled. Staging DB write access for time travel (subscriptioncheckouts.createdAt, storebillingaccounts.providerClaimedAt). RECONCILIATION_SCHEDULER_ENABLED=true on staging for the sweep.
 
 **Steps:**
 
 1. 'Choose Plus' with coupon ONCE, 'Continue to payment', then close the Paystack tab without paying.
-2. Return to /subscription and note the 'Returning from payment? Check your latest checkout' banner. Click 'Check payment'.
-3. Try PROMO ONCE again in a new checkout.
-4. Wait more than 1 hour and re-check the checkout status.
-5. On iOS, sign in as U1, open Subscription and tap Subscribe on any plan.
+2. Return to /subscription and read the banner. Click 'Check payment' and let the callback finish polling (about 2 minutes).
+3. Within the hour, open 'Choose Plus' again with ONCE and click 'Continue to payment'.
+4. On iOS sign in as U1, open Profile > Subscription and tap Subscribe on any plan.
+5. Set the first checkout's createdAt to 2 hours ago. Start 'Choose Plus' with ONCE again, then abandon that Paystack page too.
+6. Set the second checkout's createdAt and storebillingaccounts.providerClaimedAt to 25 hours ago. Wait for the next 5-minute reconciliation tick, or click 'Check payment'.
+7. Reload /subscription. On iOS reopen Subscription and tap Subscribe.
 
-**Expect:** Current behavior to record: the checkout stays 'pending' indefinitely. There is no expiry job, and Paystack's 'abandoned' status is not handled by verify, so the callback times out. The ONCE seat stays held, so the coupon now reports 'You have already used this coupon the maximum number of times'. The account's provider claim is 'web', so native prepare returns 409 'This account manages subscriptions through web billing'. The banner never clears. Decide before launch whether abandoned checkouts must expire and release seats and the provider claim. This affects conversion and support load.
+**Expect:** Step 2: the banner 'Returning from payment? Check your latest checkout before starting another payment.' is shown while the checkout is pending. The callback ends at 'Still confirming your subscription', because an unpaid ('abandoned') Paystack checkout is kept for 24 hours. Step 3: the dialog shows 409 'You already have a plan payment in progress. Finish it in the payment window, or check its status on your subscription page, before starting another.' and no second Paystack page opens. Step 4: native shows 'This account manages its subscription through another billing service. Continue using that service to avoid a second subscription.' and prepare returns 409 'This account manages subscriptions through web billing. Use that billing service to avoid a second subscription.' Step 5: the 2-hour-old checkout becomes EXPIRED, its ONCE redemption is RELEASED, and the new checkout opens with ONCE applied. Steps 6-7: the second checkout becomes EXPIRED with its seat RELEASED, and the callback shows 'This checkout expired'. The banner is gone because the browser handoff is cleared. The native catalog no longer reports a provider, so plans are offered, prepare succeeds, and storebillingaccounts.provider becomes 'apple'. Nothing is charged at any point.
 
-**Needs:** Paystack test keys, store sandbox
+**Needs:** Paystack test keys, store sandbox, staging DB
 
-**Source:** `apps/api/src/application/use-cases/GetSubscriptionCheckoutUseCase.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoBillingOwnership.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoCouponRedemptionRepository.ts`, `apps/web/src/lib/subscriptions.ts`
+**Source:** `apps/api/src/application/services/SubscriptionCheckoutResolver.ts`, `apps/api/src/application/use-cases/CreateSubscriptionCheckoutUseCase.ts`, `apps/api/src/application/use-cases/ReconcileSubscriptionCheckoutsUseCase.ts`, `apps/api/src/application/use-cases/GetSubscriptionCheckoutUseCase.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoBillingOwnership.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/storeBillingRoutes.ts`, `apps/web/src/pages/SubscriptionPage.tsx`, `apps/web/src/lib/subscriptions.ts`
 
-## SUBS-025 · P1 · Payment amount or currency mismatch is refused
+## SUBS-025 · P1 · Payment amount or currency mismatch is refused on verify and on the webhook
 
 *Surfaces:* api  ·  *Type:* security/permission
 
-**Before:** Staging DB write access. User with a pending Pro checkout paid in Paystack test mode.
+**Before:** Staging DB write access. PAYSTACK_SECRET_KEY known for signing test webhooks. A user with a pending Pro checkout paid in Paystack test mode, and another user with an unpaid pending checkout.
 
 **Steps:**
 
-1. Before verifying, change the pending checkout's finalAmount in DB to 1.00, then call POST /subscriptions/checkout/<id>/verify.
-2. Repeat with the checkout currency changed to USD.
-3. Separately, for a new pending checkout, send a correctly signed charge.success webhook whose data.amount differs from finalAmount.
+1. Before verifying, change the paid pending checkout's finalAmount in the DB to 1.00, then POST /subscriptions/checkout/<id>/verify.
+2. Repeat with the checkout currency changed to USD, then restore the row.
+3. For the unpaid pending checkout, send a correctly signed charge.success webhook whose data.amount differs from finalAmount × 100. Send another with data.currency 'USD', and one with no amount.
+4. Read the checkout, the subscription and the API logs. Then click 'Check payment' for that checkout.
 
-**Expect:** Verify returns 409 'Payment does not match this subscription checkout' and does not activate. Record the webhook path result: charge.success for a sub- reference settles without comparing amount or currency. Assess whether that is acceptable, given amounts are fixed at initialize. A server-side amount check on the webhook is recommended.
+**Expect:** Verify returns 409 'Payment does not match this subscription checkout' and does not activate. Each mismatched webhook is acknowledged (200) but does not activate: the checkout stays PENDING, the plan stays Free, and the log has the warning 'subscription settlement mismatch — not activating; left for manual review' with the expected and provider amount and currency. The amount must match to within half a pesewa. A later provider verify ('Check payment' or the reconciliation sweep) decides from Paystack's own record: a correctly paid charge activates, and an unpaid one stays pending and expires after 24 hours.
 
 **Needs:** Paystack test keys, staging DB
 
-**Source:** `apps/api/src/application/use-cases/GetSubscriptionCheckoutUseCase.ts`, `apps/api/src/application/use-cases/HandlePaystackWebhookUseCase.ts`
+**Source:** `apps/api/src/application/use-cases/HandlePaystackWebhookUseCase.ts`, `apps/api/src/application/services/providerCharge.ts`, `apps/api/src/application/services/SubscriptionCheckoutResolver.ts`
 
-## SUBS-028 · P1 · Web downgrade by buying a cheaper tier
+## SUBS-028 · P1 · Web downgrade by switching to a cheaper tier
 
 *Surfaces:* api, web  ·  *Type:* functional
 
-**Before:** User U2 on Pro monthly, 5 days into the period, with 5 active campaigns and 2 collaborators on one campaign.
+**Before:** User U2 on Pro monthly (web), 5 days into the period, with 5 active campaigns and 2 collaborators on one campaign. Paystack test keys.
 
 **Steps:**
 
-1. On /subscription click 'Choose Plus' and pay GH₵49.
-2. Check the subscription, campaign list and creation options.
-3. Try to create a new campaign and invite a collaborator.
+1. On /subscription click 'Choose Plus'. Read the dialog, then click 'Replace plan and pay' and pay GH₵49.
+2. Check the subscription, the campaign list and GET /api/v1/campaigns/creation-options.
+3. Try to create a new campaign and to invite a collaborator.
 
-**Expect:** Plus activates immediately with a new 30-day period. The Pro remainder is forfeited; confirm this matches the billing terms and is disclosed. Existing 5 campaigns stay live, per billing terms section 5. Creating a campaign is blocked (403, Plus allows 3). Inviting a collaborator is blocked (Plus has no collaboration). Existing collaborators are not removed.
+**Expect:** The dialog is titled 'Switch to Plus' and warns 'Your Pro plan is active until <date>. Plus replaces it as soon as payment is confirmed, and unused time on Pro is not refunded or credited.' Plus activates immediately with a new 30-day period, and the Pro remainder is forfeited as disclosed and as billing terms clause 4 states. The existing 5 campaigns stay live, per billing terms section 5. Creating a campaign is blocked (403, Plus allows 3 active campaigns). Inviting a collaborator is blocked with 403 'Your Plus plan does not include campaign collaboration. Upgrade to unlock it.' Existing collaborators are not removed.
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/api/src/application/services/PlanLimitsService.ts`, `apps/api/src/application/use-cases/InviteCollaboratorUseCase.ts`, `packages/types/src/legal.ts`
+**Source:** `apps/web/src/pages/SubscriptionPage.tsx`, `apps/api/src/application/services/PlanLimitsService.ts`, `apps/api/src/application/use-cases/InviteCollaboratorUseCase.ts`, `packages/types/src/legal.ts`
 
-## SUBS-032 · P1 · Cancel a web subscription
+## SUBS-032 · P1 · Web plans have no cancel control; the legacy cancel API is harmless
 
 *Surfaces:* api, web  ·  *Type:* functional
 
@@ -1148,17 +1208,17 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 **Steps:**
 
-1. U2: /subscription > 'Cancel subscription' > read the dialog > 'Confirm Cancel'.
-2. Reload. Check the cancel button, the plan card and GET /subscriptions/mine.
+1. U2: open /subscription and look for a cancel button or dialog.
+2. U2: POST /api/v1/subscriptions/cancel. Reload /subscription and call GET /subscriptions/mine.
 3. U2: POST /api/v1/subscriptions/cancel again.
 4. U1: POST /api/v1/subscriptions/cancel.
 5. U2: verify Pro features (LIVE) still work until period end.
 
-**Expect:** The dialog states access continues until <period end date>, then Free. The API sets cancelAtPeriodEnd=true and leaves tier and status unchanged. A second cancel returns 409 'already scheduled for cancellation'. Free-user cancel returns 400. Pro features keep working until period end. Record: the page still shows 'Renews in' after cancelling, and there is no 'resume' option. Cancel is cosmetic, because web plans do not renew (see SUBS-031).
+**Expect:** There is no 'Cancel subscription' button or dialog on web (or on the Expo-web screen). The plan card shows 'Ends in N days' and 'Your plan does not renew automatically. Buy again before it ends to keep your benefits.' The API endpoint, which no client uses, sets cancelAtPeriodEnd=true and leaves tier and status unchanged; the page still reads 'Ends in'. A second cancel returns 409 'Subscription is already scheduled for cancellation', and a Free-user cancel returns 400 'Cannot cancel a free plan subscription'. Pro features keep working until period end, and nothing is refunded.
 
 **Needs:** None
 
-**Source:** `apps/web/src/pages/SubscriptionPage.tsx`, `apps/api/src/application/use-cases/CancelSubscriptionUseCase.ts`
+**Source:** `apps/web/src/pages/SubscriptionPage.tsx`, `apps/mobile/src/screens/SubscriptionScreen.tsx`, `apps/api/src/application/use-cases/CancelSubscriptionUseCase.ts`
 
 ## SUBS-033 · P1 · Legacy subscribe and upgrade endpoints cannot grant paid tiers
 
@@ -1192,9 +1252,10 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 2. {tier:'does_not_exist', billingCycle:'monthly'}.
 3. {tier:'pro'} (no cycle); {tier:'pro', billingCycle:'weekly'}.
 4. {tier:'pro', billingCycle:'monthly', couponCode: 51 characters}.
-5. Open /subscription?tier=does_not_exist.
+5. {tier:'pro', billingCycle:'monthly', replaceCurrentPlan:'yes'}.
+6. Open /subscription?tier=does_not_exist.
 
-**Expect:** Free returns 400 'The free tier has no paid checkout'. An unknown tier returns 400 'That subscription plan is not available'. A missing or invalid cycle or an over-long coupon returns 400 validation. The unknown-tier URL shows 'This plan is unavailable' in the dialog. No Paystack transaction or checkout row is created for any of these.
+**Expect:** Free returns 400 'The free tier has no paid checkout; select it via POST /subscriptions'. An unknown tier, a missing or invalid cycle, an over-long coupon and a non-boolean replaceCurrentPlan each return 400 'Validation failed' with the field in errors. 'That subscription plan is not available' is reserved for built-in tiers that are inactive. The unknown-tier URL opens no checkout dialog, and the plan list renders normally. No Paystack transaction, checkout row or billing-rail claim is created for any of these.
 
 **Needs:** None
 
@@ -1204,15 +1265,15 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 *Surfaces:* email, web  ·  *Type:* compliance
 
-**Before:** Paystack test account with customer receipts enabled. The user's activity alert email is on for 'Subscription updates' and their email is verified.
+**Before:** Paystack test account with customer receipts enabled. User A with activity alert email on for 'Subscription updates' and a verified email. User B with default settings (alerts off).
 
 **Steps:**
 
-1. Buy Plus monthly.
-2. Check the inbox for the Paystack receipt and any Ujimora email.
-3. Check in-app notifications.
+1. User A buys Plus monthly.
+2. Check A's inbox for the Paystack receipt and any Ujimora email, and A's in-app notifications.
+3. User B buys Plus monthly and checks the inbox and in-app notifications.
 
-**Expect:** The Paystack receipt arrives with GH₵49.00. An opted-in user receives the subscription activity alert. Record whether a Ujimora purchase confirmation or invoice is required for launch. None is sent by default, because alerts are opt-in and default off.
+**Expect:** Requirement: every payer gets a purchase confirmation. The Paystack receipt arrives with GH₵49.00 for both users. A also gets the 'Subscription active' activity alert in-app and by email. Known open issue I051: Ujimora sends no purchase confirmation by default, because activity alerts are opt-in and off, so B's only confirmation is the Paystack receipt.
 
 **Needs:** Paystack test account, email provider
 
@@ -1254,44 +1315,46 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 **Source:** `apps/api/src/application/use-cases/SettleSubscriptionUseCase.ts`, `apps/api/src/application/services/CouponService.ts`
 
-## SUBS-045 · P1 · Admin coupon CRUD and permissions
+## SUBS-045 · P1 · Admin coupon CRUD, delete-or-deactivate and permissions
 
 *Surfaces:* admin, api  ·  *Type:* functional
 
-**Before:** Admin with COUPONS permission. Normal user token.
+**Before:** Admin. Normal user token. Coupons: UNUSED (never applied), USED (1+ CONSUMED redemption), HELD (0 redemptions but one PENDING checkout holding a seat).
 
 **Steps:**
 
-1. Admin > Coupons > New coupon: walk through the Offer, Eligibility and Review steps and 'Create coupon'. Verify the Review summary matches the inputs.
-2. Edit the coupon (change amount, deactivate). Confirm the code field is not editable.
+1. Admin > Coupons > New coupon: walk through the Offer, Eligibility and Review steps and click 'Create coupon'. Verify the Review summary matches the inputs.
+2. Edit the coupon (change the amount). Confirm the code field is not editable.
 3. Filter Active/Inactive, search, and export.
-4. Delete a coupon that has CONSUMED redemptions and one PENDING checkout. Then settle that pending checkout.
-5. As a normal user: GET /coupons, POST /coupons, PUT /coupons/:id, DELETE /coupons/:id.
+4. Open the delete dialog for USED. Read it, try Delete, then click Deactivate.
+5. Open the delete dialog for HELD and click Delete. Then settle HELD's pending checkout.
+6. Delete UNUSED.
+7. As a normal user: GET /coupons, POST /coupons, PUT /coupons/:id, DELETE /coupons/:id, POST /coupons/preview.
 
-**Expect:** CRUD works and the code stays immutable. A normal user gets 403 on every admin endpoint, but can POST /coupons/preview. Record: delete is a hard delete even with redemptions. The pending checkout still settles at the discounted price with a warning. The commission basis falls back to post-coupon and the coupon is gone from reporting. Decide whether to soft-delete or deactivate instead.
+**Expect:** CRUD works and the code stays immutable. The dialog is titled 'Delete or deactivate <CODE>?' and explains 'Delete an unused coupon permanently. Used coupons can only be deactivated…'. For USED it adds 'This coupon has been redeemed N time(s), so it cannot be deleted.' and Delete is disabled. Deactivate shows 'Coupon deactivated', the coupon lists as Inactive, and a preview of it says it is no longer active. Deleting HELD returns 409 'This coupon has been used — deactivate it instead.', shown in the snackbar. Its pending checkout then settles at the discounted price, the coupon still exists, and the commission uses the basis captured on the checkout. UNUSED deletes with 'Coupon deleted'. A normal user gets 403 on every admin endpoint but can POST /coupons/preview.
 
-**Needs:** None
+**Needs:** Paystack test keys
 
-**Source:** `apps/admin/src/pages/CouponsPage.tsx`, `apps/admin/src/pages/CreateCouponPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/couponRoutes.ts`, `apps/api/src/application/use-cases/DeleteCouponUseCase.ts`
+**Source:** `apps/admin/src/pages/CouponsPage.tsx`, `apps/admin/src/pages/CreateCouponPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/couponRoutes.ts`, `apps/api/src/application/use-cases/DeleteCouponUseCase.ts`, `apps/api/src/application/use-cases/SettleSubscriptionUseCase.ts`
 
 ## SUBS-048 · P1 · Commission basis: post-coupon vs list price
 
 *Surfaces:* api, web  ·  *Type:* functional
 
-**Before:** Referred users R1 and R2 (pending referrals to AFF). Coupons POST33 (33%, commission basis 'Amount actually charged') and LIST33 (33%, 'Full list price'). Coupon FREE100 (100%, POST_COUPON). Referred user R3.
+**Before:** Referred users R1 and R2 (pending referrals to AFF). Coupons POST33 (33%, commission basis 'Amount actually charged') and LIST33 (33%, 'Full list price'). Coupon FREE100 (100%, 'Amount actually charged'). Referred user R3.
 
 **Steps:**
 
 1. R1 buys Plus monthly with POST33 (pays 32.83).
 2. R2 buys Plus monthly with LIST33.
 3. R3 activates Plus with FREE100.
-4. Read each commission row and the referral status.
+4. Read each checkout's commissionBase, each commission row and each referral status.
 
-**Expect:** R1's commission is 3.28 (10% of 32.83). R2's is 4.90 (10% of 49.00). R3's is 0.00. R3's referral is marked converted, so AFF has permanently spent R3's one-time conversion for nothing. Confirm this is the intended business rule for 100% promos.
+**Expect:** Each checkout stores the coupon's basis (post_coupon, list_price, post_coupon). R1's commission is 3.28 (10% of 32.83). R2's is 4.90 (10% of 49.00). R3's is 0.00, and R3's referral is marked converted. Requirement to confirm: a 100%-promo activation should not spend the affiliate's one-time conversion for nothing. Known open issue I062 (step 3, owner decision): a zero-commission conversion still consumes the referral.
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/api/src/application/use-cases/SettleSubscriptionUseCase.ts`, `apps/api/src/application/services/AffiliateCommissionService.ts`
+**Source:** `apps/api/src/application/use-cases/SettleSubscriptionUseCase.ts`, `apps/api/src/application/use-cases/CreateSubscriptionCheckoutUseCase.ts`, `apps/api/src/application/services/AffiliateCommissionService.ts`
 
 ## SUBS-050 · P1 · Affiliate code abuse is blocked
 
@@ -1312,23 +1375,24 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 **Source:** `apps/api/src/application/services/AffiliateCodePricing.ts`, `apps/api/src/application/services/AffiliateCommissionService.ts`
 
-## SUBS-052 · P1 · Commission maturity and dashboard balances
+## SUBS-052 · P1 · Commission maturity (scheduled and on read) and dashboard balances
 
 *Surfaces:* api, web  ·  *Type:* functional
 
-**Before:** AFF with a held commission. Staging DB: set maturesAt to the past, or use AFFILIATE_HOLD_DAYS=0 on staging.
+**Before:** AFF with a held commission and no payout destination yet. Staging DB write access, or AFFILIATE_HOLD_DAYS=0. RECONCILIATION_SCHEDULER_ENABLED=true on staging. A name-matched saved payout account for AFF.
 
 **Steps:**
 
-1. Open /affiliate as AFF and note the pending and available balances.
-2. Set maturesAt in the past and reload /affiliate.
-3. Request an affiliate payout.
+1. Open /affiliate as AFF and note the pending and available balances and the payout hint.
+2. Set maturesAt in the past. Without opening the dashboard, wait for the next 5-minute reconciliation tick, then check affiliatecommissions and affiliatebalances.
+3. Reload /affiliate.
+4. Choose the saved account as the payout destination, then request a payout for less than the full available balance via the API, then for the full balance.
 
-**Expect:** On reload the commission moves from held to available: the pending balance falls and the available balance rises by the same amount, to the pesewa. The maturity sweep is not scheduled, so maturity happens only on dashboard or payout reads. Confirm the admin views also show accurate balances when the affiliate has not logged in.
+**Expect:** Before a destination is set, 'Request payout' is disabled with 'Choose a payout destination before requesting a payout.' The scheduled sweep matures the commission even though AFF has not logged in: the commission becomes available and the pending balance falls while the available balance rises by the same amount, to the pesewa. The dashboard shows the same figures. A partial request is refused with 422 'Affiliate payouts withdraw your full available balance of GHS <amount>. Refresh and try again.' The full-balance request is recorded as PENDING for admin approval.
 
-**Needs:** None
+**Needs:** Paystack (payout recipient)
 
-**Source:** `apps/api/src/application/use-cases/GetAffiliateDashboardUseCase.ts`, `apps/api/src/application/use-cases/RequestAffiliatePayoutUseCase.ts`, `apps/api/src/app.ts`
+**Source:** `apps/api/src/application/use-cases/MatureAffiliateCommissionsUseCase.ts`, `apps/api/src/application/services/AffiliateCommissionMaturity.ts`, `apps/api/src/application/use-cases/GetAffiliateDashboardUseCase.ts`, `apps/api/src/application/use-cases/RequestAffiliatePayoutUseCase.ts`, `apps/web/src/pages/AffiliateDashboardPage.tsx`, `apps/api/src/app.ts`
 
 ## SUBS-053 · P1 · Admin referral discount setting takes effect live and is audited
 
@@ -1349,22 +1413,23 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 **Source:** `apps/admin/src/components/ReferralDiscountSettings.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/commercialConfigRoutes.ts`, `apps/api/src/application/services/AffiliateCodePricing.ts`
 
-## SUBS-054 · P1 · Store purchases by referred users and affiliate commission
+## SUBS-054 · P1 · Store purchases by referred users earn no commission, and the program copy says so
 
-*Surfaces:* android, api, ios  ·  *Type:* compliance
+*Surfaces:* android, api, ios, marketing, web  ·  *Type:* compliance
 
 **Before:** User R7 registered with AFF's ?ref= (pending referral). Store sandbox configured.
 
 **Steps:**
 
-1. R7 subscribes to Pro via App Store sandbox on iOS.
+1. R7 subscribes to Pro via the App Store sandbox on iOS.
 2. Check affiliatecommissions and the referral status.
+3. Read the marketing affiliate program FAQ, the web /affiliate dashboard and the mobile affiliate screen.
 
-**Expect:** No commission is created. Store billing does not call AffiliateCommissionService, and the referral stays pending. Confirm the business rule (commission only on web purchases?) and make the affiliate program terms say so. Otherwise AFF may later earn on a web purchase.
+**Expect:** No commission is created and the referral stays pending. The copy matches this rule. Marketing FAQ: 'You earn a one-time 10% commission on the first paid plan each member who joins Ujimora through your referral link buys on the Ujimora website. Plans bought through the App Store or Google Play are not eligible.' Web and mobile describe a one-time commission when a referred member buys their first paid plan on the Ujimora website. Known open issue I061: store purchases are excluded by owner default, and because the referral stays pending, a later web purchase by R7 still pays AFF.
 
 **Needs:** App Store sandbox
 
-**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoStoreBilling.ts`, `apps/api/src/application/services/AffiliateCommissionService.ts`, `apps/marketing/src/pages/AffiliateProgramPage.tsx`
+**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoStoreBilling.ts`, `apps/api/src/application/services/AffiliateCommissionService.ts`, `apps/marketing/src/pages/AffiliateProgramPage.tsx`, `apps/web/src/pages/AffiliateDashboardPage.tsx`, `apps/mobile/app/affiliate.tsx`
 
 ## SUBS-057 · P1 · Media-per-campaign cap
 
@@ -1456,23 +1521,25 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 **Source:** `apps/mobile/src/lib/storeBilling.ts`, `apps/mobile/src/screens/SubscriptionScreen.native.tsx`
 
-## SUBS-068 · P1 · Cancelled store sheet and its effect on the provider claim
+## SUBS-068 · P1 · Cancelled store sheet holds the billing rail for 24 hours only
 
 *Surfaces:* android, api, ios, web  ·  *Type:* negative/edge
 
-**Before:** Fresh user U10 on Free, with no web checkout history.
+**Before:** Fresh user U10 on Free with no web checkout history. Staging DB write access (storebillingaccounts.providerClaimedAt). Paystack test keys.
 
 **Steps:**
 
 1. On iOS tap Subscribe on Plus, then Cancel on the Apple sheet.
-2. Check the message.
+2. Read the message.
 3. On web as U10, 'Choose Plus' > 'Continue to payment'.
+4. Set U10's storebillingaccounts.providerClaimedAt to 25 hours ago.
+5. On web repeat 'Choose Plus' > 'Continue to payment', then read storebillingaccounts.provider.
 
-**Expect:** The app shows 'Purchase cancelled.' with no entitlement change. Record: prepare already claimed provider 'apple', so web checkout now returns 409 'This account manages subscriptions through the App Store...'. The web page has no store banner because billingProvider is unset, so the error appears only in the dialog. There is no self-service release; the documented behavior is that claims are never manually released. Decide whether abandoned prepares should keep the claim.
+**Expect:** The app shows 'Purchase cancelled.' and the entitlement does not change. Within 24 hours of the prepare, the web checkout returns 409 in the dialog: 'This account manages subscriptions through the App Store. Use that billing service to avoid a second subscription.' The web page has no store banner because billingProvider is unset. After the 24-hour hold, with no Apple purchase behind it, the claim is released: the web checkout opens Paystack and the provider becomes 'web'. There is still no self-service or admin release action.
 
-**Needs:** Store sandbox
+**Needs:** Store sandbox, Paystack test keys
 
-**Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/storeBillingRoutes.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoBillingOwnership.ts`, `docs/compliance/STORE_BILLING.md`
+**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoBillingOwnership.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/storeBillingRoutes.ts`, `docs/compliance/STORE_BILLING.md`
 
 ## SUBS-069 · P1 · Pending and deferred store purchases
 
@@ -1555,20 +1622,21 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 *Surfaces:* admin, android, api, ios, web  ·  *Type:* compliance
 
-**Before:** UA with an active Apple Pro (sandbox).
+**Before:** UA with an active Apple Pro (sandbox) and no wallet, affiliate or campaign balances. A web-Pro user UW with no balances. Both know their passwords.
 
 **Steps:**
 
-1. Native Settings > Delete account: read the warning text and confirm deletion.
+1. Native Settings > Delete account: read the warning, enter the current password (and an authenticator or recovery code if MFA is on), then confirm 'Delete your account?'.
 2. Let the next sandbox renewal occur.
 3. Check the admin Store billing recovery queue.
-4. Web: delete account for a web-Pro user and check the subscription row.
+4. Web as UW: open Delete account, read the dialog, enter the password and delete. Check UW's subscription row.
+5. Try the web delete with a wrong password, and via API without a password.
 
-**Expect:** The warning says the App Store or Google Play subscription is not cancelled and must be cancelled in the store. After deletion, renewal verification returns 410 'The account is no longer active.' and the purchase appears as review required. Access is never re-granted. The web-Pro user's subscription gets cancelAtPeriodEnd true. Support has a documented response for charged-after-deletion users (store refund).
+**Expect:** The native warning says '…An App Store or Google Play subscription is not cancelled automatically; cancel it in your store subscription settings to stop renewal.' The web dialog says 'An App Store or Google Play subscription is not cancelled automatically; cancel it in your Apple or Google Play subscription settings to stop renewal.' Deletion needs the current password: a wrong or missing password returns 400 and the session stays usable. After UA's deletion, renewal verification returns 410 'The account is no longer active.' and the purchase appears as review required. Access is never re-granted. UW's subscription gets cancelAtPeriodEnd true. Support has a documented response for users charged after deletion (store refund).
 
 **Needs:** Store sandbox
 
-**Source:** `apps/mobile/app/settings.tsx`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoAccountErasure.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoStoreBilling.ts`
+**Source:** `apps/mobile/src/components/DeleteAccountSection.tsx`, `apps/web/src/components/account/DeleteAccountDialog.tsx`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoAccountErasure.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoStoreBilling.ts`
 
 ## SUBS-087 · P1 · Store billing config validation at startup
 
@@ -1582,13 +1650,14 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 2. A catalog with a duplicate productId, a Google entry without basePlanId, an Apple entry with basePlanId, and tier 'free'.
 3. A missing STORE_RECEIPT_ENCRYPTION_KEY_BASE64, or a key that is not 32 bytes.
 4. APPLE_IAP_ENVIRONMENT=production without APPLE_IAP_APP_ID.
-5. A correct config: confirm /health is OK and GET /store-billing/catalog/apple lists the products.
+5. APPLE_IAP_ENVIRONMENT=production with APPLE_IAP_ALLOW_SANDBOX_FALLBACK=maybe.
+6. A correct config: confirm GET /health/ready returns 200 and GET /store-billing/catalog/apple lists the products.
 
-**Expect:** Each invalid config fails startup with 'Store billing configuration is invalid or incomplete...' and the logs contain no key or credential text. A correct config boots and the catalog lists only active public plans. Rotating the receipt key breaks decryption of existing purchases, so back up and never rotate without a migration.
+**Expect:** Each invalid config fails startup with 'Store billing configuration is invalid or incomplete. Check the server-only catalog, credentials, environment and receipt-encryption key.', and the logs contain no key or credential text. APPLE_IAP_ALLOW_SANDBOX_FALLBACK accepts only 'true', 'false' or empty, and is checked only when APPLE_IAP_ENVIRONMENT=production. A correct config boots, /health/ready returns {status:'ok'} (503 when MongoDB is unreachable), and the catalog lists only active public plans. Rotating the receipt key breaks decryption of existing purchases, so back it up and never rotate it without a migration.
 
 **Needs:** Render/staging env access
 
-**Source:** `apps/api/src/infrastructure/config/storeBilling.ts`, `docs/compliance/STORE_BILLING.md`
+**Source:** `apps/api/src/infrastructure/config/storeBilling.ts`, `apps/api/src/app.ts`, `docs/compliance/STORE_BILLING.md`
 
 ## SUBS-088 · P1 · Admin Store billing recovery queue
 
@@ -1612,23 +1681,24 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 **Source:** `apps/admin/src/pages/StoreBillingPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/storeBillingAdminRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminActionRoutes.ts`
 
-## SUBS-090 · P1 · Admin Subscriptions list: accuracy and actions
+## SUBS-090 · P1 · Admin Subscriptions list: accurate metrics and no dead actions
 
 *Surfaces:* admin, api  ·  *Type:* functional
 
-**Before:** Mix of subscriptions: free, web monthly and yearly, Apple, Google, one expired web Pro (status still active), one on the custom tier. Admin edited Pro price to 155.
+**Before:** A mix of subscriptions: free; web monthly and yearly (active); Apple and Google (active); one Apple TestFlight/sandbox purchase; one web Pro whose period has ended (stored status still active); one on a custom tier. The admin has edited the Pro monthly price to 155.
 
 **Steps:**
 
-1. Admin > Subscriptions: read Total Subscribers, Monthly Revenue, Free Users, Paid Users, and Revenue by Tier.
-2. Filter by tier and status; search by email; paginate; export and open the file.
-3. Click the View, Tier and Cancel row buttons.
+1. Admin > Subscriptions: read the KPIs, the info alert and the revenue-by-tier strip.
+2. Filter by tier (including the custom tier) and status; search by email; paginate; export and open the file.
+3. Look at the row actions for an active row.
+4. Compare GET /api/v1/subscriptions for the lapsed web Pro row with its DB status.
 
-**Expect:** Filters, search, pagination and export work, and the export includes the Provider column. Record these defects for launch: Monthly Revenue uses seed prices (149, not 155), counts expired rows whose status is still 'active', and ignores custom tiers. Store revenue is not what the store actually pays out. The 'Tier' and 'Cancel' buttons have no handler and do nothing, so remove them or wire them. View opens /users/<id>.
+**Expect:** KPIs read 'Total Subscribers', 'Estimated MRR (list price)', 'Free or lapsed' and 'Paying now'. 'Paying now' counts only paid tiers that are active and inside their period, excluding sandbox store rows. The lapsed web Pro shows status 'expired' (derived by the API; the DB still says active) and counts under 'Free or lapsed'. MRR prices web-billed rows at live DB prices (Pro 155), and the alert notes 'N paying subscriber(s) … billed by the App Store or Google Play and not priced here.' The alert also says estimates use list prices, ignore discounts, are not money collected, and 'Change or cancel a subscription through its billing provider; this console has no subscription controls.' The strip header is 'Estimated monthly revenue by tier (list price)' and names the custom tier. The tier filter and row chips use live plan names. Rows offer only 'View' (opens /users/<id>), with no Tier or Cancel buttons. Filters, search, pagination and export work, and the export has a Provider column. Record: the export has no environment column, so sandbox rows look like paid Apple rows in the file.
 
-**Needs:** None
+**Needs:** Store sandbox for the store rows
 
-**Source:** `apps/admin/src/pages/SubscriptionsPage.tsx`, `apps/api/src/application/use-cases/ListSubscriptionsUseCase.ts`
+**Source:** `apps/admin/src/pages/SubscriptionsPage.tsx`, `apps/admin/src/lib/subscriptionMetrics.ts`, `apps/admin/src/lib/subscriptionRevenue.ts`, `apps/api/src/application/use-cases/ListSubscriptionsUseCase.ts`, `apps/api/src/domain/services/subscriptionStatus.ts`
 
 ## SUBS-091 · P1 · First subscription read creates Free without overwriting a paid plan
 
@@ -1648,24 +1718,220 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 **Source:** `apps/api/src/application/use-cases/GetMySubscriptionUseCase.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoSubscriptionRepository.ts`, `apps/web/src/hooks/useSubscription.ts`
 
-## SUBS-010 · P2 · Pricing fetch failures show an error and never show stale prices
+## SUBS-N001 · P1 · Early renewal of the same web plan adds time instead of restarting it
+
+*Surfaces:* api, web  ·  *Type:* functional
+
+**Before:** User U2 with an active web Pro monthly, 10 days into the period; note currentPeriodStart and currentPeriodEnd. Paystack test keys.
+
+**Steps:**
+
+1. Open /subscription and read the Pro card button.
+2. Click 'Renew Pro' (Monthly). Read the dialog title, text, total and button.
+3. Click 'Continue to payment' and pay GH₵149 with the test card.
+4. Call GET /api/v1/subscriptions/mine. Read subscriptions.paymentReferences and both subscriptioncheckouts rows.
+5. Resend the renewal's charge.success webhook from the Paystack dashboard.
+
+**Expect:** The Pro card shows an enabled 'Renew Pro' button. The dialog is titled 'Renew Pro' and reads 'One-time payment. Adds 30 days after your current plan ends on <end date>, so no paid time is lost. Your plan does not renew automatically.' It shows 'Total due today GH₵149.00' and the button 'Continue to payment'. No replace warning appears. After settlement the tier is pro and status active. currentPeriodStart is unchanged and currentPeriodEnd = old end + 30 days (about 50 days from now). paymentReferences lists both sub- references. The resent webhook changes nothing, and the plan card shows 'Ends in' about 50 days.
+
+**Needs:** Paystack test keys
+
+**Source:** `apps/web/src/pages/SubscriptionPage.tsx`, `apps/api/src/application/use-cases/SettleSubscriptionUseCase.ts`, `apps/api/src/application/use-cases/CreateSubscriptionCheckoutUseCase.ts`, `apps/api/src/domain/services/subscriptionStatus.ts`
+
+## SUBS-N004 · P1 · A late genuine payment on an expired checkout still activates the plan
+
+*Surfaces:* api, web  ·  *Type:* recovery/idempotency
+
+**Before:** User U on Free. Paystack test keys and webhook. Staging DB write access.
+
+**Steps:**
+
+1. Start a Pro checkout and leave the Paystack page open without paying.
+2. Move the checkout's createdAt back 25 hours and click 'Check payment' until the callback shows 'This checkout expired'.
+3. Complete the payment on the still-open Paystack page with the test card.
+4. Check the webhook log, the checkout and the subscription.
+5. Repeat with the webhook blocked while paying, then use 'Check payment'. Finally resend the webhook from the Paystack dashboard.
+
+**Expect:** The signed charge.success settles the EXPIRED checkout (EXPIRED to SUCCEEDED is allowed). Pro is active for 30 days and the money is never silently dropped. In the blocked-webhook variant, 'Check payment' keeps showing 'This checkout expired', because member verify and the sweep only re-check PENDING checkouts. The plan activates only when Paystack's webhook is resent. Record this as a support procedure: for an 'expired' checkout the member says was paid, resend the webhook from Paystack.
+
+**Needs:** Paystack test keys, staging DB
+
+**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoSubscriptionCheckoutRepository.ts`, `apps/api/src/application/use-cases/HandlePaystackWebhookUseCase.ts`, `apps/api/src/application/use-cases/GetSubscriptionCheckoutUseCase.ts`
+
+## SUBS-N005 · P1 · A failed Paystack initialize closes the checkout so an immediate retry works
+
+*Surfaces:* api, web  ·  *Type:* recovery/idempotency
+
+**Before:** User U on Free. Coupon RETRY1 (perUserLimit 1). Staging where PAYSTACK_SECRET_KEY can be set to an invalid non-empty value.
+
+**Steps:**
+
+1. Set the invalid key. Click 'Choose Plus', apply RETRY1, then 'Continue to payment'.
+2. Read the dialog error, the checkout row and the RETRY1 redemption row.
+3. Restore the key and click 'Continue to payment' again with RETRY1.
+
+**Expect:** The dialog shows 'Paystack initialization failed: <Paystack message>' (502), and nothing is charged. The checkout row is EXPIRED with no providerRef, and the RETRY1 redemption is RELEASED. The retry opens Paystack at once with RETRY1 applied: no 409 'payment in progress' and no coupon 'already used' error.
+
+**Needs:** Paystack test keys
+
+**Source:** `apps/api/src/application/use-cases/CreateSubscriptionCheckoutUseCase.ts`, `apps/api/src/application/services/SubscriptionCheckoutResolver.ts`, `apps/api/src/infrastructure/adapters/outbound/payments/PaystackGateway.ts`
+
+## SUBS-N007 · P1 · Refund edge cases: renewal refund shortens, superseded refund is ignored, partial refund keeps access
+
+*Surfaces:* api, web  ·  *Type:* negative/edge
+
+**Before:** Paystack test refunds. User R with web Pro monthly renewed early (charges C1 and C2; period end about 60 days out). User S who bought Plus (charge P1) and then switched to Pro. User T on Pro with a charge that can be partly refunded; T was referred, so a commission exists.
+
+**Steps:**
+
+1. Refund C2 in full in Paystack and wait for refund.processed.
+2. Replay the refund webhook.
+3. Refund S's superseded Plus charge P1 in full.
+4. Partially refund T's Pro charge (e.g. GH₵50 of 149).
+5. Read the subscriptions of R, S and T, the API logs and T's commission.
+
+**Expect:** R's currentPeriodEnd moves back 30 days, R stays active on the first period, and paymentReferences lists only C1. The replay changes nothing. S's Pro is untouched, because the refund of a charge not in paymentReferences is ignored. T keeps access, and the log warns 'partial subscription refund; plan access left unchanged'. T's affiliate commission is reversed in full even for a partial refund (the current rule; confirm with finance). Store-billed plans are never changed by Paystack refunds.
+
+**Needs:** Paystack test keys (refunds)
+
+**Source:** `apps/api/src/application/use-cases/RevokeRefundedSubscriptionUseCase.ts`, `apps/api/src/application/use-cases/HandlePaystackWebhookUseCase.ts`, `apps/api/src/application/services/AffiliateCommissionService.ts`
+
+## SUBS-N008 · P1 · Billing rail claim moves between web and store only when nothing is live on it
+
+*Surfaces:* android, api, ios, web  ·  *Type:* cross-platform
+
+**Before:** Store sandbox and Paystack test keys. UW: web Plus that has lapsed, with storebillingaccounts.providerClaimedAt moved back 25 hours. UA: Apple Plus with auto-renew turned off, now expired, claim older than 24 hours. UA2: Apple plan whose renewal failed, with auto-renew still on, expired under 60 days ago, claim older than 24 hours.
+
+**Steps:**
+
+1. UW on iOS: open Subscription, tap Subscribe on Plus and complete the sandbox purchase.
+2. UA on web: open /subscription, read the chip and banner, then 'Choose Pro' and pay.
+3. UA2 on web: 'Choose Plus' > 'Continue to payment'.
+4. After each step, read storebillingaccounts.provider and the subscription row (billingProvider, storePurchaseKey, billingEnvironment).
+
+**Expect:** UW: the catalog reports no provider, plans are offered, prepare succeeds, the claim moves to 'apple', and Plus is active with billingProvider apple. UA: the page shows 'Expired' with no store banner and the Choose buttons enabled. The checkout opens and the claim moves to 'web'. The lapsed store row becomes a web row (billingProvider web, storePurchaseKey and billingEnvironment removed), and settlement activates Pro for 30 days. UA2: 409 'This account manages subscriptions through the App Store. Use that billing service to avoid a second subscription.', because the store may still renew within its 60-day retry window. There is no admin release action.
+
+**Needs:** Store sandbox, Paystack test keys, staging DB
+
+**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoBillingOwnership.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/storeBillingRoutes.ts`, `apps/web/src/pages/SubscriptionPage.tsx`, `apps/mobile/src/screens/SubscriptionScreen.native.tsx`, `docs/compliance/STORE_BILLING.md`
+
+## SUBS-N009 · P1 · Organization team seats follow the organization's plan (owner included)
+
+*Surfaces:* api, web  ·  *Type:* functional
+
+**Before:** Organization accounts: OrgC on Community (1 seat), OrgP on Pro (3 seats) and OrgO on Organization (10 seats). Several invitee emails, some with existing accounts.
+
+**Steps:**
+
+1. OrgC owner: at /organization-team invite one member as editor.
+2. OrgP owner: invite 2 members, then a 3rd.
+3. OrgP: re-send the invitation to one already-invited email.
+4. OrgP: remove one member (or move an invitation's expiresAt into the past) and invite someone new.
+5. Let OrgP's Pro lapse (staging DB) and invite another member.
+6. OrgO: invite 9 members, then a 10th. Check an invitee with an account for an in-app notice.
+
+**Expect:** OrgC's invite gets 403 'Your Community plan includes 1 team seat, including the owner. Upgrade the organization's plan or remove a member before inviting someone new.' OrgP's first two invites succeed with 'Invitation created. If the recipient already has an account, it appears in their notifications; no email has been sent, so also share this workspace link with them.' The 3rd gets the same 403 for 'Pro' and '3 team seats'. Re-sending to an invited email needs no new seat. A freed seat allows a new invite. After OrgP's plan lapses it falls back to Community, and the invite gets 403 for 1 seat. OrgO's 9 invites succeed and the 10th is refused. Existing members are never removed. Invitees with accounts get an 'Organization invitation' notice.
+
+**Needs:** None
+
+**Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/organizationTeamRoutes.ts`, `apps/api/src/app.ts`, `apps/api/src/application/services/PlanLimitsService.ts`, `apps/web/src/pages/OrganizationTeamPage.tsx`
+
+## SUBS-N011 · P1 · The Apple sandbox fallback can be disabled and never triggers on an outage
+
+*Surfaces:* api, ios  ·  *Type:* negative/edge
+
+**Before:** A production-configured API on a staging host (APPLE_IAP_ENVIRONMENT=production, APPLE_IAP_APP_ID set). A TestFlight build pointed at it. A sandbox tester. Optional: network control over outbound calls to Apple's production App Store Server API.
+
+**Steps:**
+
+1. Set APPLE_IAP_ALLOW_SANDBOX_FALLBACK=false, redeploy, and buy Pro in TestFlight.
+2. Send a sandbox App Store Server notification to /api/v1/webhooks/store/apple.
+3. Unset the variable (default true). If network control is available, make production App Store Server API calls fail (timeout or 5xx) and buy again.
+4. Read the subscription and storepurchases after each step.
+
+**Expect:** With the fallback off, verify returns 422 'The store could not verify this subscription.', the app shows a failed purchase and no plan is granted. The sandbox notification returns 401 'Invalid App Store notification.' During a production outage the server does not fall back to sandbox: verification fails with a retryable error, nothing is granted, and auto-restore later completes it once production answers. Sandbox is tried only when production definitively reports the transaction as not found.
+
+**Needs:** App Store Connect, TestFlight, Apple IAP keys
+
+**Source:** `apps/api/src/infrastructure/adapters/outbound/payments/StorePurchaseVerifier.ts`, `apps/api/src/infrastructure/config/storeBilling.ts`, `docs/compliance/STORE_BILLING.md`
+
+## SUBS-N015 · P1 · Ended campaigns stop counting against the plan's active-campaign cap
+
+*Surfaces:* api, web  ·  *Type:* functional
+
+**Before:** Free user F (identity verified) with 1 active campaign. Staging DB write access.
+
+**Steps:**
+
+1. F: GET /api/v1/campaigns/creation-options and try to create a 2nd campaign.
+2. Set F's campaign endDate to 1 minute ago.
+3. Immediately call GET creation-options again and create a 2nd campaign.
+4. Wait about 5 minutes and read the first campaign's status. Check Explore.
+
+**Expect:** Before the end date, creation is refused with 403 'Your Community plan allows 1 active campaign. Upgrade to create more.' Once the end date passes, the slot is free at once, before any relabel: creation-options shows room and the 2nd campaign is accepted. Within about 5 minutes the ended campaign's status becomes 'expired' and it leaves Explore. Pending, blocked and deleted campaigns are never relabelled.
+
+**Needs:** None
+
+**Source:** `apps/api/src/application/services/PlanLimitsService.ts`, `apps/api/src/application/use-cases/ExpireEndedCampaignsUseCase.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoCampaignRepository.ts`, `apps/api/src/infrastructure/adapters/inbound/http/controllers/CampaignController.ts`
+
+## SUBS-N016 · P1 · Refunding an already-paid affiliate commission creates an outstanding clawback
+
+*Surfaces:* api, web  ·  *Type:* functional
+
+**Before:** AFF with a verified payout destination. Commission K1 (14.90) from R1's web charge, matured and paid out through an approved affiliate payout (status paid). A later commission K2 that is available. Paystack test refunds.
+
+**Steps:**
+
+1. Refund R1's sub- charge in full in Paystack.
+2. Read K1's status, affiliatebalances.clawbackOutstanding and the API logs.
+3. Open /affiliate as AFF and read Available.
+4. Request a payout for the full displayed amount.
+
+**Expect:** K1 becomes reversed and clawbackOutstanding is 14.90. The log has the error 'affiliate commission reversed after its funds left the unwindable bucket; recorded as outstanding clawback'. The dashboard's Available equals the available balance minus 14.90 (never below 0), and a payout must match that reduced amount. R1's plan also ends (SUBS-051).
+
+**Needs:** Paystack test keys (refunds, transfers)
+
+**Source:** `apps/api/src/application/services/AffiliateCommissionService.ts`, `apps/api/src/application/use-cases/GetAffiliateDashboardUseCase.ts`, `apps/api/src/application/use-cases/RequestAffiliatePayoutUseCase.ts`
+
+## SUBS-N017 · P1 · Provider-reported disputes and outside refunds on subscription charges reach staff
+
+*Surfaces:* admin, api  ·  *Type:* functional
+
+**Before:** Admin and member tokens. Paystack test mode, and the ability to send correctly signed webhooks. A settled web subscription charge.
+
+**Steps:**
+
+1. Send a signed charge.dispute.create whose data.transaction.reference is the settled sub- reference.
+2. Refund another sub- charge directly in the Paystack dashboard, not through Ujimora.
+3. As admin call GET /api/v1/admin/payments/provider-events, then POST /api/v1/admin/payments/provider-events/<id>/acknowledge.
+4. Redeliver both webhooks.
+5. Check the disputed member's plan. Call the provider-events endpoint as a member.
+
+**Expect:** Each event is recorded once in providerpaymentevents (unique event key, no customer details) with subject 'subscription', and appears in the provider-events list. Acknowledge marks it reviewed, and redelivery creates no duplicate. The refund also takes back the plan time (SUBS-051). The dispute moves no money and does not change the plan. A member gets 403. Known open issue I009: there is no admin console page for non-campaign provider events (API only), and a subscription chargeback does not suspend or revoke the plan.
+
+**Needs:** Paystack test keys
+
+**Source:** `apps/api/src/application/use-cases/HandlePaystackWebhookUseCase.ts`, `apps/api/src/application/use-cases/RecordProviderPaymentEventUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminPaymentsRoutes.ts`
+
+## SUBS-010 · P2 · Pricing fetch failures show an error, never stale prices, and do not block Free signup
 
 *Surfaces:* api, marketing, web  ·  *Type:* recovery/idempotency
 
-**Before:** Staging where the API can be made unavailable or /plans/public can be blocked (e.g. browser devtools request blocking).
+**Before:** Staging where /plans/public can be blocked (e.g. browser devtools request blocking).
 
 **Steps:**
 
 1. Block /api/v1/plans/public and open marketing /pricing.
 2. Click 'Retry' after unblocking.
-3. Block /plans/public and open /register to the Plan step.
-4. Block GET /api/v1/plans and open web /subscription.
+3. Block /plans/public and open /register to the Plan step. Try to create a Free account, then look for paid plans.
+4. Unblock and click Retry on the signup alert.
+5. Block GET /api/v1/plans and open web /subscription.
 
-**Expect:** Marketing shows 'Current pricing could not be loaded' with Retry, and Retry recovers. Signup shows 'We couldn’t load current prices' with Retry and does not let the user pick a plan. /subscription falls back to seed prices for display (usePlanMap). Confirm this is acceptable: the charge is always priced server-side, but the displayed price may differ from the charged price if the admin changed prices.
+**Expect:** Marketing shows 'Current pricing could not be loaded' with Retry, and Retry recovers. Signup shows the alert 'We couldn’t load current prices. You can still create a Free account, or retry to see paid plans.' with Retry. A static 'Free' option ('No monthly charge') is shown and a Free account can be created. No paid tier is listed or selectable until prices load, and Retry then shows Plus and Pro with live prices. /subscription falls back to seed prices for display (usePlanMap). Confirm this is acceptable: the charge is always priced server-side, but a displayed price may differ from the charged price after an admin price change.
 
 **Needs:** None
 
-**Source:** `apps/marketing/src/pages/PricingPage.tsx`, `apps/web/src/hooks/useSubscription.ts`, `apps/web/src/components/auth/RegisterForm.tsx`
+**Source:** `apps/marketing/src/pages/PricingPage.tsx`, `apps/web/src/components/auth/RegisterForm.tsx`, `apps/web/src/hooks/useSubscription.ts`
 
 ## SUBS-011 · P2 · Marketing pricing CTAs route to the correct destinations
 
@@ -1686,22 +1952,24 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 **Source:** `apps/marketing/src/pages/PricingPage.tsx`, `apps/web/src/components/auth/RequireAuth.tsx`
 
-## SUBS-029 · P2 · Switching billing cycle on the same tier is possible on web
+## SUBS-029 · P2 · Switching billing cycle on the same tier renews the plan and keeps paid time
 
-*Surfaces:* web  ·  *Type:* functional
+*Surfaces:* api, web  ·  *Type:* functional
 
-**Before:** User on Pro monthly, active.
+**Before:** User on Pro monthly (web), active. Paystack test keys.
 
 **Steps:**
 
-1. Open /subscription, toggle Yearly, and look at the Pro card button.
-2. Read the page meta description ('switch between monthly and yearly billing').
+1. Open /subscription, toggle Yearly, and read the Pro card button.
+2. Click 'Renew Pro'. Read the dialog, then pay GH₵1,490.00.
+3. Read the subscription tier, billingCycle, currentPeriodStart, currentPeriodEnd and paymentReferences.
+4. Read the page meta description.
 
-**Expect:** The Pro card shows a disabled 'Current Plan' regardless of cycle, so monthly-to-yearly for the same tier is not possible on web. Either enable a cycle switch or remove the claim from the copy.
+**Expect:** The Pro card shows an enabled 'Renew Pro' button, not a disabled 'Current Plan'. The dialog is titled 'Renew Pro' and reads 'One-time payment. Adds 1 year (365 days) after your current plan ends on <date>, so no paid time is lost. Your plan does not renew automatically.' After payment the tier is pro and billingCycle is yearly. currentPeriodStart is unchanged, currentPeriodEnd = previous end + 365 days, and paymentReferences lists both charges. The meta description reads 'See the Ujimora plan you are on and when it ends, buy a 30-day or one-year plan with a one-time payment, apply a coupon, and check the platform fee your plan carries.'
 
-**Needs:** None
+**Needs:** Paystack test keys
 
-**Source:** `apps/web/src/pages/SubscriptionPage.tsx`
+**Source:** `apps/web/src/pages/SubscriptionPage.tsx`, `apps/api/src/application/use-cases/SettleSubscriptionUseCase.ts`
 
 ## SUBS-036 · P2 · Web checkout when Paystack is not configured
 
@@ -1720,11 +1988,11 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 **Source:** `apps/api/src/application/use-cases/CreateSubscriptionCheckoutUseCase.ts`, `apps/web/src/lib/subscriptions.ts`
 
-## SUBS-037 · P2 · Callback page edge states
+## SUBS-037 · P2 · Callback page edge states, polling pattern and rate-limit handling
 
-*Surfaces:* web  ·  *Type:* negative/edge
+*Surfaces:* api, web  ·  *Type:* negative/edge
 
-**Before:** Completed and pending checkouts available.
+**Before:** Completed and pending checkouts available. A script that can call the verify endpoint repeatedly as one member.
 
 **Steps:**
 
@@ -1732,29 +2000,31 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 2. Open with only ?reference=<valid sub- ref> in a private window after logging in (no localStorage handoff).
 3. Open ?checkout=<succeeded 100%-coupon checkout>.
 4. Rename the Pro plan in admin to 'Pro Max' and open the callback for a Pro checkout.
-5. Poll verify more than 60 times within 15 minutes (repeated 'Keep checking' or tabs).
+5. As one member send 120 POST /subscriptions/checkout/<id>/verify calls within 15 minutes, then open the callback for a pending checkout.
+6. Wait 60 seconds and click 'Keep checking'.
 
-**Expect:** No params shows 'We couldn't find a checkout to confirm' with 'Go to subscription'. Reference-only resolves the correct checkout. The coupon checkout shows 'Your coupon covered the full price — no payment was needed'. Record: the heading uses the seed name 'Pro', not 'Pro Max'. After the rate limit (429) the page stays in a pending or timeout state and does not show failure.
+**Expect:** No params shows 'We couldn't find a checkout to confirm' with 'Go to subscription'. Reference-only resolves the correct checkout. The coupon checkout shows 'Your coupon covered the full price — no payment was needed'. Requirement: the heading uses the live name 'Pro Max'. On a 429 the page stops polling at once and shows 'Still confirming your subscription' with the extra sentence 'We have checked many times in a short while, so please wait a minute before checking again.' 'Keep checking' is disabled for 60 seconds and then works. The page never shows failure because of the rate limit. Known open issue I069 (residual): SubscriptionCallbackPage still names plans from the seed, so it shows 'Pro', not 'Pro Max'.
 
 **Needs:** None
 
-**Source:** `apps/web/src/pages/SubscriptionCallbackPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/middleware/rateLimiter.ts`
+**Source:** `apps/web/src/pages/SubscriptionCallbackPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/middleware/rateLimiter.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/subscriptionRoutes.ts`
 
 ## SUBS-046 · P2 · Coupon leaves a tiny residual amount
 
 *Surfaces:* api, web  ·  *Type:* negative/edge
 
-**Before:** Coupon ALMOST: fixed 48.99 on Plus monthly (final 0.01).
+**Before:** Coupon ALMOST: fixed 48.99 on Plus monthly (final 0.01), perUserLimit 1.
 
 **Steps:**
 
-1. Preview ALMOST on Plus monthly and 'Continue to payment'.
+1. Preview ALMOST on Plus monthly and click 'Continue to payment'.
+2. If an error is shown, read the checkout and redemption rows, then click 'Continue to payment' again.
 
-**Expect:** Either Paystack accepts GH₵0.01, or the API returns a clear error such as 'Paystack initialization failed' (502) with no pending seat or checkout left behind. Record the behavior. Consider enforcing a minimum charge or rounding tiny residuals to free.
+**Expect:** Either Paystack accepts GH₵0.01 and the checkout proceeds normally, or the dialog shows 502 'Paystack initialization failed: <Paystack message>'. In the error case the checkout row is EXPIRED and the ALMOST redemption RELEASED, so the retry gets the same Paystack error, not a 409 'payment in progress' or 'already used' error. Record which happens, and consider enforcing a minimum charge or rounding tiny residuals to free.
 
 **Needs:** Paystack test keys
 
-**Source:** `apps/api/src/application/use-cases/CreateSubscriptionCheckoutUseCase.ts`, `apps/api/src/infrastructure/adapters/outbound/payments/PaystackGateway.ts`
+**Source:** `apps/api/src/application/use-cases/CreateSubscriptionCheckoutUseCase.ts`, `apps/api/src/application/services/SubscriptionCheckoutResolver.ts`, `apps/api/src/infrastructure/adapters/outbound/payments/PaystackGateway.ts`
 
 ## SUBS-092 · P2 · Subscription activity alerts (in-app and email)
 
@@ -1765,16 +2035,16 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 **Steps:**
 
 1. Buy Plus (web).
-2. Cancel it.
+2. Schedule the end: turn off auto-renew on a store plan, or for a web plan call POST /api/v1/subscriptions/cancel (the web page has no cancel button).
 3. Force expiry (staging DB).
 4. Disable the category and trigger another change.
 5. Repeat with the email unverified.
 
-**Expect:** In-app notifications and emails such as 'Subscription active', 'Subscription scheduled to end' and 'Subscription expired' link to /subscription, with the period end date and 'Manage billing with the provider shown...'. No alerts go out once disabled. There is no email when the address is unverified (suppressed). There are no duplicates on retries.
+**Expect:** In-app notifications and emails such as 'Subscription active', 'Subscription scheduled to end' and 'Subscription expired' link to /subscription, show the period end date and say 'Manage billing with the provider shown in your subscription settings.' No alerts go out once the category is disabled. No email is sent while the address is unverified (it is suppressed). Retries produce no duplicates.
 
 **Needs:** Email provider
 
-**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoActivityAlerts.ts`, `packages/types/src/activity-alerts.ts`
+**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoActivityAlerts.ts`, `packages/types/src/activity-alerts.ts`, `apps/api/src/application/use-cases/CancelSubscriptionUseCase.ts`
 
 ## SUBS-094 · P2 · Expo web build of the subscription screen stays off native
 
@@ -1792,3 +2062,119 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 **Needs:** Paystack test keys
 
 **Source:** `apps/mobile/src/screens/SubscriptionScreen.tsx`, `apps/mobile/src/lib/subscriptions.ts`
+
+## SUBS-N006 · P2 · The 'Returning from payment?' banner appears only while the last checkout is pending
+
+*Surfaces:* web  ·  *Type:* functional
+
+**Before:** Free user. Paystack test keys (success and decline cards). DB write access for the expiry variant.
+
+**Steps:**
+
+1. Start a Pro checkout, reach Paystack, and go back to /subscription without paying. Read the banner and the localStorage key uf_pending_subscriptions.
+2. Finish a payment successfully, let the callback confirm, then open /subscription.
+3. Start another checkout, pay with the decline card, see 'Payment didn’t go through', then open /subscription.
+4. Start another checkout, abandon it, move its createdAt back 25 hours, open the callback ('This checkout expired'), then open /subscription.
+5. Reload each page. Repeat one variant with site storage blocked.
+
+**Expect:** Only the pending case shows 'Returning from payment? Check your latest checkout before starting another payment.' with 'Check payment'. After a success, failure or expiry, the callback or subscription page removes that checkout's entry (and the __last pointer) from uf_pending_subscriptions. No banner shows and it stays hidden on reload. With storage blocked the page still renders, without the banner.
+
+**Needs:** Paystack test keys
+
+**Source:** `apps/web/src/pages/SubscriptionPage.tsx`, `apps/web/src/pages/SubscriptionCallbackPage.tsx`, `apps/web/src/lib/subscriptions.ts`
+
+## SUBS-N010 · P2 · The subscription verify rate limit is per member and separate from donations
+
+*Surfaces:* api, web  ·  *Type:* negative/edge
+
+**Before:** Members A and B on the same network (same public IP), each with a pending checkout. A script that can call the API.
+
+**Steps:**
+
+1. As A, send 120 POST /api/v1/subscriptions/checkout/<id>/verify calls within 15 minutes, then a 121st.
+2. As B from the same IP, POST verify for B's own checkout.
+3. From the same IP, start a guest donation checkout.
+4. As A, call GET /api/v1/subscriptions/checkout/<id>.
+
+**Expect:** A's 121st verify returns 429 'Too many requests, please try again later'. B's verify succeeds, because the bucket is keyed on the signed-in member, not the IP. The donation checkout is unaffected (it has its own donation-intent bucket). A's GET still works, subject only to the general API limit. A's callback page shows the rate-limited timeout state (SUBS-037).
+
+**Needs:** None
+
+**Source:** `apps/api/src/infrastructure/adapters/inbound/middleware/rateLimiter.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/subscriptionRoutes.ts`
+
+## SUBS-N012 · P2 · Admin edits a plan's order, accent colour and Popular flag
+
+*Surfaces:* admin, api, marketing, web  ·  *Type:* functional
+
+**Before:** Admin. Seed plans.
+
+**Steps:**
+
+1. Admin > Plans > Plus > 'Edit plan': set Sort order below Pro's, Accent colour '#1E88E5' and Popular on. Save.
+2. Reload marketing /pricing, web /subscription and the /register Plan step and compare order and highlighting.
+3. Open Admin > Audit log for subscription-plan.update.
+4. Edit Plus with Accent colour 'red' and save.
+5. Revert all changes.
+
+**Expect:** The save persists (PUT /plans/starter) and the audit entry shows a before/after diff of sortOrder, accentColor and popular. Every surface orders plans by the new sortOrder. On web, Plus gets the highlighted (popular) treatment: the contained button and 'Recommended for growth'. The invalid accent returns a 400 field error and the plan is unchanged.
+
+**Needs:** None
+
+**Source:** `apps/admin/src/pages/ManagePlansPage.tsx`, `apps/api/src/application/use-cases/UpdatePlanUseCase.ts`, `apps/web/src/pages/SubscriptionPage.tsx`, `apps/marketing/src/pages/PricingPage.tsx`
+
+## SUBS-N013 · P2 · Admin plan prices are labelled as web-only and do not change store prices
+
+*Surfaces:* admin, android, ios, web  ·  *Type:* functional
+
+**Before:** Admin. Store billing enabled with Pro products. A Free user on web and on each native app.
+
+**Steps:**
+
+1. Open Admin > Plans and read the info alert.
+2. Open 'Edit plan' and 'New plan' and read the helper text under Monthly and Yearly price and the Benefits toggle labels.
+3. Change the Pro monthly price to 155 and save.
+4. Open web /subscription and the native Subscription screens.
+
+**Expect:** The alert says 'Prices here apply to web checkout (Paystack) only' and that store subscribers pay the App Store or Google Play product price, and asks admins to update the matching store products after a price change. Every price field shows 'Web checkout price. Update store products separately.' The four unbuilt benefit toggles read '(not built — hidden from members)'. Web shows GH₵155, while native still shows the unchanged store displayPrice. docs/compliance/STORE_BILLING.md has a 'Changing plan prices' procedure. Revert to 149.
+
+**Needs:** Store billing staging config
+
+**Source:** `apps/admin/src/pages/ManagePlansPage.tsx`, `docs/compliance/STORE_BILLING.md`, `apps/mobile/src/screens/SubscriptionScreen.native.tsx`
+
+## SUBS-N014 · P2 · A coupon's commission basis is fixed when the checkout is quoted
+
+*Surfaces:* admin, api, web  ·  *Type:* functional
+
+**Before:** Referred user R (pending referral to AFF). Coupon LIST33 (33%, commission basis 'Full list price'). Paystack test keys.
+
+**Steps:**
+
+1. R: 'Choose Plus' with LIST33 > 'Continue to payment', without paying yet.
+2. Admin edits LIST33's commission basis to 'Amount actually charged'.
+3. R pays on the open Paystack page.
+4. Read the checkout's commissionBase and the affiliatecommissions row.
+5. A second referred user checks out with LIST33 after the edit and pays.
+
+**Expect:** The first checkout stores commissionBase 'list_price', and its commission is 4.90 (10% of 49.00), from the snapshot rather than the edited coupon. The second checkout stores 'post_coupon', and its commission is 3.28 (10% of 32.83).
+
+**Needs:** Paystack test keys
+
+**Source:** `apps/api/src/application/use-cases/CreateSubscriptionCheckoutUseCase.ts`, `apps/api/src/application/use-cases/SettleSubscriptionUseCase.ts`, `apps/admin/src/pages/CouponsPage.tsx`
+
+## SUBS-N018 · P2 · Current plan card wording for Free, web and store plans
+
+*Surfaces:* web  ·  *Type:* functional
+
+**Before:** Users: Free; web Plus monthly; web Pro yearly; Apple-billed Pro with auto-renew on.
+
+**Steps:**
+
+1. Free user: open /subscription and read the current plan card.
+2. Web Plus monthly and web Pro yearly: read the card stats, period row and chips.
+3. Apple-billed Pro on web: read the banner and stats. Turn off auto-renew in iOS Settings, wait for the notification or re-check, and reload.
+
+**Expect:** Free: 'Plan length' 'Free', 'Ends' 'No end date', and no period row. Web plans: 'Plan length' '30 days' or '1 year', 'Ends in N days', and a period row with 'Your plan does not renew automatically. Buy again before it ends to keep your benefits.' Store plan: the banner 'Your subscription is billed through App Store. Change plans or cancel there to avoid a second subscription.' with 'Manage subscription', 'Billing' 'Monthly' or 'Yearly', and 'Renews in N days'. After auto-renew is off, the label becomes 'Ends in N days'. Plan chips never mention Featured Listing, Priority Support, Analytics, Custom Branding or Escrow; 'Split proceeds' is used instead.
+
+**Needs:** Store sandbox for the store row
+
+**Source:** `apps/web/src/pages/SubscriptionPage.tsx`, `apps/web/src/lib/subscriptionStatus.ts`
