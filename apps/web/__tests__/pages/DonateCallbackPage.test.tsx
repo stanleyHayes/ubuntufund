@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { DonateCallbackPage } from '@/pages/DonateCallbackPage'
 import { getDonationIntentStatus, verifyDonationIntent } from '@/lib/fundraising'
+import { checkoutAttemptKey } from '@/lib/checkoutAttempt'
 
 vi.mock('@/lib/fundraising', () => ({
   getDonationIntentStatus: vi.fn(), verifyDonationIntent: vi.fn(),
@@ -60,6 +61,19 @@ describe('Donation handoff privacy', () => {
     expect(await screen.findByRole('heading', {name:/thank|success/i})).toBeInTheDocument()
     await waitFor(() => expect(sessionStorage.getItem('uf_pending_donations')).toBeNull())
   })
+})
+
+// R2-008: the attempt key outlived the paid gift, so giving the same amount
+// again in this tab replayed the earlier donation.
+it('forgets the checkout attempt once the gift is final, so the same details start a new donation', async () => {
+  const scope = 'donate:campaign:guest'
+  const input = { amount: 200, donorEmail: 'donor@example.com' }
+  const first = await checkoutAttemptKey(scope, input)
+  expect(await checkoutAttemptKey(scope, input)).toBe(first)
+  sessionStorage.setItem('uf_pending_donations', JSON.stringify({[reference]:{intentId:id,reference,slug:'clinic',title:'Clinic',amount:200,currency:'GHS',attemptScope:scope}}))
+  show()
+  expect(await screen.findByRole('heading', {name:/thank|success/i})).toBeInTheDocument()
+  await waitFor(async () => expect(await checkoutAttemptKey(scope, input)).not.toBe(first))
 })
 
 describe('Donation return confirmation', () => {

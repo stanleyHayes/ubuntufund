@@ -14,6 +14,7 @@ import { keyframes } from '@emotion/react'
 import { ItemNotFound, BrandLogo, formatCurrency, SHAPE } from '@ubuntu-fund/ui'
 import { DonationCelebration } from '@/components/donate/DonationCelebration'
 import { clearLegacyDonationHandoff, forgetPendingDonation, readPendingDonation } from '@/lib/donationHandoff'
+import { forgetCheckoutAttempt } from '@/lib/checkoutAttempt'
 import {
   getDonationIntentStatus,
   verifyDonationIntent,
@@ -80,8 +81,11 @@ export function DonateCallbackPage() {
   // payment is final, so a shared device keeps no record of it.
   useEffect(() => { clearLegacyDonationHandoff() }, [])
   useEffect(() => {
-    if (phase === 'succeeded' || phase === 'failed' || phase === 'expired') forgetPendingDonation(paymentReference)
-  }, [phase, paymentReference])
+    if (phase !== 'succeeded' && phase !== 'failed' && phase !== 'expired') return
+    forgetPendingDonation(paymentReference)
+    // The attempt is settled either way: a later identical Give is a new gift.
+    if (handoff?.attemptScope) void forgetCheckoutAttempt(handoff.attemptScope)
+  }, [phase, paymentReference, handoff])
   const [view, setView] = useState<DonationIntentPublicView | null>(null)
   const [snackOpen, setSnackOpen] = useState(false)
   const [pollNonce, setPollNonce] = useState(0)

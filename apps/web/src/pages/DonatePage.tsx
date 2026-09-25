@@ -124,6 +124,7 @@ export function DonatePage() {
   // Submit state
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  const [completedReplay, setCompletedReplay] = useState<{ amount: number; reference?: string } | null>(null)
   const [paymentsDisabled, setPaymentsDisabled] = useState(false)
   const [touchedEmail, setTouchedEmail] = useState(false)
 
@@ -211,6 +212,7 @@ export function DonatePage() {
 
     setSubmitting(true)
     setSubmitError('')
+    setCompletedReplay(null)
     setPaymentsDisabled(false)
 
     const intentInput = {
@@ -235,14 +237,12 @@ export function DonatePage() {
       let result = await createDonationIntent(intentInput, await checkoutAttemptKey(attemptScope, intentInput))
 
       if (!result.authorization_url && result.intent.status === 'SUCCEEDED') {
-        // This exact donation was already paid — show its confirmation rather
-        // than charging the donor a second time.
+        // These exact details were already paid (e.g. Back after checkout). Say
+        // so plainly instead of showing that earlier gift's success screen as if
+        // it were new; the attempt is forgotten, so pressing Give again makes a
+        // new donation.
         await forgetCheckoutAttempt(attemptScope)
-        if (result.intent.providerRef) {
-          navigate(`/donate/callback?reference=${encodeURIComponent(result.intent.providerRef)}`)
-          return
-        }
-        setSubmitError('This donation has already been completed. Thank you!')
+        setCompletedReplay({ amount: result.intent.amount, reference: result.intent.providerRef ?? undefined })
         setSubmitting(false)
         return
       }
@@ -269,6 +269,7 @@ export function DonatePage() {
         title: campaign.title,
         amount: amountValue,
         currency: 'GHS',
+        attemptScope,
       })
 
       // Hand the browser to Paystack's hosted checkout. NEVER treat this as success.
@@ -666,6 +667,23 @@ export function DonatePage() {
             {submitError && (
               <Alert severity="error" sx={{ mb: 3, borderRadius: SHAPE.sm }}>
                 {submitError}
+              </Alert>
+            )}
+
+            {completedReplay && (
+              <Alert severity="info" sx={{ mb: 3, borderRadius: SHAPE.sm }}>
+                <AlertTitle>You already gave {formatCurrency(completedReplay.amount, 'GHS')} with these details</AlertTitle>
+                That earlier donation is complete and nothing new was charged.
+                {completedReplay.reference && (
+                  <>
+                    {' '}
+                    <Link component={RouterLink} to={`/donate/callback?reference=${encodeURIComponent(completedReplay.reference)}`}>
+                      View its confirmation
+                    </Link>
+                    .
+                  </>
+                )}{' '}
+                To give again, press the button below.
               </Alert>
             )}
 

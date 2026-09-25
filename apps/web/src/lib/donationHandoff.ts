@@ -17,6 +17,12 @@ export interface PendingDonation {
   title: string
   amount: number
   currency: string
+  /**
+   * The checkout-attempt scope this gift was submitted under. The callback
+   * page forgets that attempt once the payment is final, so giving again with
+   * the same details starts a new donation instead of replaying this one.
+   */
+  attemptScope?: string
 }
 
 function readStore(): Record<string, PendingDonation> {
