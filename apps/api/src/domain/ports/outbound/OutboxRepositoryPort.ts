@@ -23,9 +23,11 @@ export interface OutboxRepositoryPort {
   claim(id: string, leaseMs: number): Promise<string | null>;
   /**
    * Atomically lease the oldest pending row created at or before
-   * `createdBefore` whose lease is free (used by the catch-up sweep).
+   * `createdBefore` whose lease is free (used by the catch-up sweep). With
+   * `maxAttempts`, rows that have already failed that many times are skipped
+   * (parked for an operator) instead of retried forever.
    */
-  claimNextPending(createdBefore: Date, leaseMs: number): Promise<ClaimedOutboxRecord | null>;
+  claimNextPending(createdBefore: Date, leaseMs: number, maxAttempts?: number): Promise<ClaimedOutboxRecord | null>;
   /** Mark a leased row dispatched once its side-effects have been applied. */
   markDispatched(id: string, leaseToken: string): Promise<void>;
   /** Bump the attempt counter after a failed dispatch (for observability). */

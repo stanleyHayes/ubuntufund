@@ -112,10 +112,15 @@ it('writes no verification notice when the decision rolls back', async () => {
 it('acknowledges campaign reports to the reporter once', async () => {
   const reporter = await account(), admin = await account(true);
   const report = await ReportModel.create({ campaignId: 'aaaaaaaaaaaaaaaaaaaaaaaa', reporterId: reporter.id, reason: 'fraudulent', status: 'pending' });
-  await request(app).put(`/api/v1/reports/${report.id}/review`).set('Authorization', admin.auth).send({ status: 'dismissed' }).expect(200);
+  // Every campaign-report decision now carries staff notes (min 20 chars).
+  const review = { status: 'dismissed', notes: 'Internal: checked the evidence; no policy breach found.' };
+  await request(app).put(`/api/v1/reports/${report.id}/review`).set('Authorization', admin.auth).send(review).expect(200);
+  await request(app).put(`/api/v1/reports/${report.id}/review`).set('Authorization', admin.auth).send(review).expect(409);
   const inbox = await notices(reporter.id);
   expect(inbox).toHaveLength(1);
   expect(inbox[0]).toMatchObject({ title: 'We reviewed your report', path: '/campaigns/aaaaaaaaaaaaaaaaaaaaaaaa' });
+  // Staff notes are an internal record and are never copied to the reporter.
+  expect(inbox[0].body).not.toContain('policy breach');
 });
 
 function moderationApp() {

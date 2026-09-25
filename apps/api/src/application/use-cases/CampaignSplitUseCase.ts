@@ -104,6 +104,12 @@ export class CampaignSplitUseCase {
    * names and shares are public only for a public campaign; a pending,
    * rejected or blocked one answers 404 like its detail page, except to the
    * owner or an administrator.
+   *
+   * Null while SPLIT_PROCEEDS_ENABLED is off, even for a split activated
+   * earlier: SplitAccrualService.accrue then splits nothing and the organiser
+   * may take a campaign-level payout of the whole net. Donors must never be
+   * told proceeds are shared when they are not, so the disclosure follows the
+   * same flag as the money routing.
    */
   async getDisclosure(
     campaignId: string,
@@ -112,6 +118,7 @@ export class CampaignSplitUseCase {
     const campaign = await this.campaignRepo.findById(campaignId);
     const privileged = !!campaign && (campaign.creatorId === requester?.userId || requester?.role === 'admin');
     if (!campaign || (!isPublicCampaign(campaign.status) && !privileged)) throw new AppError('Campaign not found', 404);
+    if (!this.splitEnabled) return null;
     const active = await this.splitRepo.findActive(campaignId);
     return active ? toSplitDisclosure(active) : null;
   }

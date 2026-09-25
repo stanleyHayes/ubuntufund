@@ -5,10 +5,13 @@ import type { CampaignRepositoryPort } from '../../domain/ports/outbound/Campaig
  * re-labelled EXPIRED, so discovery, the sitemap, analytics and the organiser's
  * own lists stop presenting it as open.
  *
- * Nothing about money depends on this label: donation eligibility already
- * checks the end date (`canReceiveDonation`), and plan slots are freed by
- * `countActiveByCreator` at the end date itself, so a missed or late sweep only
- * delays the label.
+ * Donation eligibility already checks the end date (`canReceiveDonation`), and
+ * plan slots are freed by `countActiveByCreator` at the end date itself, so a
+ * missed or late sweep only delays the label. Payouts DO read the label: every
+ * money-out rail (manual, wallet and automatic) gates on
+ * `PAYABLE_CAMPAIGN_STATUSES`, which includes EXPIRED, so an ended campaign
+ * stays payable before and after the sweep. Any new status gate on a money
+ * path must use that shared list.
  */
 export class ExpireEndedCampaignsUseCase {
   constructor(private readonly campaignRepo: Pick<CampaignRepositoryPort, 'expireEnded'>) {}

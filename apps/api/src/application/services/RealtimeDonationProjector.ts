@@ -58,8 +58,15 @@ export interface DonationRealtimeInput {
  * `Anonymous`, hidden amounts → `null`).
  *
  * This is the single reusable seam the wallet rail (today) and the hosted
- * payment phases (later) both call after a donation settles. It never throws —
- * a realtime failure must never fail the donation that triggered it.
+ * payment phases (later) both call after a donation settles, via the outbox.
+ *
+ * Durable steps throw: a failed campaign lookup or session stat credit rejects,
+ * so the `OutboxDispatcher` leaves the row pending and its sweep retries
+ * it. The credit is exactly-once per donation (`Donation.liveStatsAppliedAt`),
+ * so a retry never double-counts. Swallowing these errors used to let the
+ * dispatcher mark the row dispatched with the gift never credited. Publishing
+ * to the in-memory bus and the donor-name lookup never throw. The dispatcher
+ * never rethrows, so a realtime failure still never fails the donation.
  */
 export class RealtimeDonationProjector {
   constructor(
@@ -74,36 +81,37 @@ export class RealtimeDonationProjector {
     liveSessionId: string | undefined,
     donation: DonationRealtimeInput
   ): Promise<void> {
+    const campaign = await this.campaignRepo.findById(campaignId);
+    if (!campaign) return;
+
+    const goalAmount = campaign.goalAmount.amount;
+    const currency = campaign.goalAmount.currency;
+    // `incrementRaised` has already run, so the campaign's raised total is the
+    // post-donation figure; the pre-donation figure is that minus this gift.
+    const raisedAmount = campaign.raisedAmount.amount;
+    const previousRaised = Math.max(0, raisedAmount - donation.amount);
+    const milestones = crossedMilestones(previousRaised, raisedAmount, goalAmount);
+
+    const donorName = await this.resolveDonorName(donation);
+
+    // Attribute to a live session when one was supplied. The stat bump is
+    // exactly-once per donation: the outbox delivers at least once, so a
+    // replayed delivery (`replay`) only refreshes totals — it never counts the
+    // gift again, re-announces it, or re-fires milestones from stale figures.
+    // A failure here propagates so the outbox retries the credit.
+    let session: LiveSessionEntity | null = null;
+    let replay = false;
+    if (liveSessionId) {
+      const credited = await this.liveSessionRepo.applyDonationStats(
+        liveSessionId,
+        donation.donationId,
+        donation.amount
+      );
+      session = credited.session;
+      replay = credited.duplicate;
+    }
+
     try {
-      const campaign = await this.campaignRepo.findById(campaignId);
-      if (!campaign) return;
-
-      const goalAmount = campaign.goalAmount.amount;
-      const currency = campaign.goalAmount.currency;
-      // `incrementRaised` has already run, so the campaign's raised total is the
-      // post-donation figure; the pre-donation figure is that minus this gift.
-      const raisedAmount = campaign.raisedAmount.amount;
-      const previousRaised = Math.max(0, raisedAmount - donation.amount);
-      const milestones = crossedMilestones(previousRaised, raisedAmount, goalAmount);
-
-      const donorName = await this.resolveDonorName(donation);
-
-      // Attribute to a live session when one was supplied. The stat bump is
-      // exactly-once per donation: the outbox delivers at least once, so a
-      // replayed delivery (`replay`) only refreshes totals — it never counts the
-      // gift again, re-announces it, or re-fires milestones from stale figures.
-      let session: LiveSessionEntity | null = null;
-      let replay = false;
-      if (liveSessionId) {
-        const credited = await this.liveSessionRepo.applyDonationStats(
-          liveSessionId,
-          donation.donationId,
-          donation.amount
-        );
-        session = credited.session;
-        replay = credited.duplicate;
-      }
-
       // ── Whole-campaign channel (public) ──────────────────────────────
       const campaignCh = campaignChannel(campaignId);
 
@@ -177,9 +185,11 @@ export class RealtimeDonationProjector {
         }
       }
     } catch (error) {
+      // Best-effort, non-durable fan-out: the credit above has already
+      // committed, so a retry could not re-announce the gift anyway.
       logger.error(
         { err: error, campaignId, liveSessionId },
-        'failed to project donation realtime events'
+        'failed to publish donation realtime events'
       );
     }
   }
@@ -191,7 +201,14 @@ export class RealtimeDonationProjector {
     // Guests carry no user record — trust the pre-resolved name they supplied.
     if (donation.donorName) return donation.donorName;
     if (donation.donorId === GUEST_DONOR_ID) return 'Guest donor';
-    const user = await this.userRepo.findById(donation.donorId);
-    return user?.name ?? 'Anonymous';
+    try {
+      const user = await this.userRepo.findById(donation.donorId);
+      return user?.name ?? 'Anonymous';
+    } catch (error) {
+      // Display only: fall back to the privacy-safe name rather than hold up
+      // the session credit on a profile lookup.
+      logger.warn({ err: error, donationId: donation.donationId }, 'donor name lookup failed; announcing as Anonymous');
+      return 'Anonymous';
+    }
   }
 }

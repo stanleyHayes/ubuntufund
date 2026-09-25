@@ -30,7 +30,8 @@ export interface AdminReportRepositoryPort extends ReportRepositoryPort {
   /**
    * Record a staff decision on a still-pending report and write its audit row
    * atomically. Resolves null when the report is missing or was already
-   * decided, so two reviewers can never both record a decision.
+   * decided, so two reviewers can never both record a decision. Rejects with
+   * 403 when the reviewer filed the report or owns the reported campaign.
    */
   review(id: string, input: ReportReviewInput): Promise<ReportRecord | null>;
 }

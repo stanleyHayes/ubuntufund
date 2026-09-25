@@ -24,6 +24,7 @@ import { UserModel } from '../../src/infrastructure/database/models/UserModel.js
 import { CampaignModel } from '../../src/infrastructure/database/models/CampaignModel.js'
 import { TransferRecipientModel } from '../../src/infrastructure/database/models/TransferRecipientModel.js'
 import { MongoPayoutRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoPayoutRepository.js'
+import { MongoCampaignRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoCampaignRepository.js'
 import { toPayoutDto } from '../../src/application/use-cases/mappers/payoutDto.js'
 const repo = new MongoPayoutRepository()
 const ids = {
@@ -420,6 +421,36 @@ it('verifies a claim taken just before UTC midnight against the day it was taken
   const work = vi.fn(async () => 'reserved')
   await expect(guard.run(String(ids.user), work, { ...(await repo.findById(item.id))!.toPlain(), recipientCode: 'synthetic-recipient' })).resolves.toBe('reserved')
   expect(work).toHaveBeenCalledOnce()
+})
+
+it('keeps an ended campaign on the automatic rail after the expiry sweep relabels it', async () => {
+  // The fixture campaign is funded and ended (endDate 1970), exactly what the
+  // 5-minute sweep relabels. The manual rail already treats EXPIRED as payable.
+  expect(await new MongoCampaignRepository().expireEnded(new Date())).toBe(1)
+  expect((await CampaignModel.findById(ids.campaign))?.status).toBe('expired')
+  const item = await pending()
+  expect((await service.consider(item)).status).toBe('PROCESSING')
+  expect(approve.executeAutomatic).toHaveBeenCalledTimes(1)
+
+  // A claim taken while funded still verifies once the sweep has flipped it.
+  const inFlight = await pending()
+  await seedFinalClaim(inFlight.id)
+  const work = vi.fn(async () => 'reserved')
+  await expect(new MongoAutomaticPayoutVerification().run(String(ids.user), work, { ...(await repo.findById(inFlight.id))!.toPlain(), recipientCode: 'synthetic-recipient' })).resolves.toBe('reserved')
+  expect(work).toHaveBeenCalledOnce()
+})
+
+it.each(['blocked', 'pending_review', 'draft'])('keeps a %s campaign out of the automatic rail', async status => {
+  await CampaignModel.updateOne({ _id: ids.campaign }, { $set: { status } })
+  const item = await pending()
+  expect((await service.consider(item)).status).toBe('PENDING')
+  expect((await PayoutModel.findById(item.id))?.automationReason).toBe('Campaign requires review.')
+  expect(approve.executeAutomatic).not.toHaveBeenCalled()
+  expect(await AutomaticPayoutBudgetModel.countDocuments({})).toBe(0)
+  await seedFinalClaim(item.id)
+  const work = vi.fn()
+  await expect(new MongoAutomaticPayoutVerification().run(String(ids.user), work, { ...(await repo.findById(item.id))!.toPlain(), recipientCode: 'synthetic-recipient' })).rejects.toMatchObject({ statusCode: 409, message: 'Current campaign eligibility requires manual review.' })
+  expect(work).not.toHaveBeenCalled()
 })
 
 it.each([

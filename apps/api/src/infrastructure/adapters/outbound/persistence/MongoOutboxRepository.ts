@@ -54,11 +54,16 @@ export class MongoOutboxRepository implements OutboxRepositoryPort {
     return doc ? leaseToken : null;
   }
 
-  async claimNextPending(createdBefore: Date, leaseMs: number): Promise<ClaimedOutboxRecord | null> {
+  async claimNextPending(createdBefore: Date, leaseMs: number, maxAttempts?: number): Promise<ClaimedOutboxRecord | null> {
     const now = new Date();
     const leaseToken = randomUUID();
     const doc = await OutboxModel.findOneAndUpdate(
-      { createdAt: { $lte: createdBefore }, ...claimableAt(now) },
+      {
+        createdAt: { $lte: createdBefore },
+        ...claimableAt(now),
+        // `$not` so a legacy row without an attempts field still qualifies.
+        ...(maxAttempts ? { attempts: { $not: { $gte: maxAttempts } } } : {}),
+      },
       { $set: { leaseToken, leaseUntil: new Date(now.getTime() + leaseMs) } },
       { new: true, sort: { createdAt: 1 } }
     );
