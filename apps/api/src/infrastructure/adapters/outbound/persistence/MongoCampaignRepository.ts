@@ -237,8 +237,9 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
   }
 
   async expireEnded(now: Date): Promise<number> {
-    // Status only: balances, splits and payouts key on the ledger, never on
-    // this label, and donations were already refused once the end date passed.
+    // Status only: balances and splits key on the ledger, and donations were
+    // already refused once the end date passed. Payout rails do check the
+    // label, through PAYABLE_CAMPAIGN_STATUSES, which treats EXPIRED as payable.
     const result = await CampaignModel.updateMany(
       { deletedAt: { $exists: false }, status: { $in: OPEN_STATUSES }, endDate: { $lte: now } },
       { $set: { status: CampaignStatus.EXPIRED } }

@@ -699,7 +699,8 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   const getCampaignUseCase = new GetCampaignUseCase(campaignRepo, donationRepo)
   // Ended campaigns are re-labelled EXPIRED so Explore, the sitemap and
   // analytics stop presenting them as open. Plan slots and donation eligibility
-  // already follow the end date itself, so this sweep only corrects the label.
+  // already follow the end date itself. Payout rails read the label through
+  // PAYABLE_CAMPAIGN_STATUSES, which keeps EXPIRED payable.
   const expireEndedCampaignsUseCase = new ExpireEndedCampaignsUseCase(campaignRepo)
   if (config.nodeEnv !== 'test') {
     let expiring = false

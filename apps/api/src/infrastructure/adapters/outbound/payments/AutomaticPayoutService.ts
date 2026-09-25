@@ -11,6 +11,7 @@ import { TransferRecipientModel } from '../../../database/models/TransferRecipie
 import { UserModel } from '../../../database/models/UserModel.js'
 import { CampaignModel } from '../../../database/models/CampaignModel.js'
 import { DisputeModel } from '../../../database/models/DisputeModel.js'
+import { PAYABLE_CAMPAIGN_STATUSES } from '../persistence/MongoPayoutEligibility.js'
 import type { ApprovePayoutUseCase } from '../../../../application/use-cases/ApprovePayoutUseCase.js'
 import type { PayoutRepositoryPort } from '../../../../domain/ports/outbound/PayoutRepositoryPort.js'
 import { toPayoutDto } from '../../../../application/use-cases/mappers/payoutDto.js'
@@ -63,10 +64,12 @@ export class AutomaticPayoutService {
           return
         }
         const campaign = await CampaignModel.findById(current.campaignId).session(session)
+        // The same payable states as the manual rail. An ended campaign is
+        // relabelled EXPIRED by the scheduled sweep and must stay payable here.
         if (
           !campaign ||
           campaign.deletedAt ||
-          !['funded', 'completed', 'active'].includes(campaign.status) ||
+          !PAYABLE_CAMPAIGN_STATUSES.includes(campaign.status) ||
           campaign.creatorId !== current.requestedBy
         ) {
           reason = 'Campaign requires review.'
