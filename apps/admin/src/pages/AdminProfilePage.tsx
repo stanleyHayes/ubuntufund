@@ -202,7 +202,10 @@ function AdminProfileForViewer() {
     }
     setSaving(true)
     try {
-      await api.put('/auth/change-password', { currentPassword, newPassword })
+      // The API rotates authVersion, so the old tokens stop working at once.
+      // Keep this console signed in with the fresh pair it returns.
+      const result = await api.put<{ tokens?: { accessToken: string; refreshToken: string } }>('/auth/change-password', { currentPassword, newPassword })
+      if (result?.tokens && user) replaceTokens(result.tokens, user.id)
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')

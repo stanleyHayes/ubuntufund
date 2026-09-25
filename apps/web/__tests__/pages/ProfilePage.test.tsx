@@ -5,8 +5,8 @@ import { ThemeProvider } from '@mui/material/styles'
 import { ujimoraTheme } from '@ubuntu-fund/ui'
 import { ProfilePage } from '@/pages/ProfilePage'
 import { api } from '@/lib/api'
-const updateName = vi.hoisted(() => vi.fn())
-vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ user: { name: 'Old cached name' }, updateName }) }))
+const { updateName, replaceTokens } = vi.hoisted(() => ({ updateName: vi.fn(), replaceTokens: vi.fn() }))
+vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ user: { id: 'user-1', name: 'Old cached name' }, updateName, replaceTokens }) }))
 vi.mock('@/lib/api', () => ({ api: { get: vi.fn(), put: vi.fn() } }))
 vi.mock('@/components/KYCStatus', () => ({ default: () => null }))
 const mount = () => render(<ThemeProvider theme={ujimoraTheme}><MemoryRouter><ProfilePage /></MemoryRouter></ThemeProvider>)
@@ -73,4 +73,34 @@ it('saves private contact changes without resubmitting unchanged public identity
   fireEvent.change(await screen.findByLabelText('Phone Number'), { target: { value: '0551111111' } })
   fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
   await waitFor(() => expect(api.put).toHaveBeenLastCalledWith('/profile', { phone: '0551111111', bio: 'Private biography', automatedReviewConsent: false }))
+})
+
+it('keeps this device signed in with the tokens rotated by a password change', async () => {
+  const tokens = { accessToken: 'fresh-access', refreshToken: 'fresh-refresh' }
+  vi.mocked(api.get).mockResolvedValue({ name: 'Current name' })
+  vi.mocked(api.put).mockResolvedValue({ tokens })
+  replaceTokens.mockClear()
+  mount()
+  fireEvent.click(await screen.findByRole('tab', { name: 'Change Password' }))
+  fireEvent.change(screen.getByLabelText('Current Password'), { target: { value: 'OldPass12345' } })
+  fireEvent.change(screen.getByLabelText('New Password'), { target: { value: 'NewPass12345' } })
+  fireEvent.change(screen.getByLabelText('Confirm New Password'), { target: { value: 'NewPass12345' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Update Password' }))
+  await waitFor(() => expect(replaceTokens).toHaveBeenCalledWith(tokens, 'user-1'))
+  expect(api.put).toHaveBeenLastCalledWith('/auth/change-password', { currentPassword: 'OldPass12345', newPassword: 'NewPass12345' })
+  expect(screen.getByLabelText('Current Password')).toHaveValue('')
+})
+
+it('keeps the current session untouched when the password change is refused', async () => {
+  vi.mocked(api.get).mockResolvedValue({ name: 'Current name' })
+  vi.mocked(api.put).mockRejectedValue(new Error('Current password is incorrect'))
+  replaceTokens.mockClear()
+  mount()
+  fireEvent.click(await screen.findByRole('tab', { name: 'Change Password' }))
+  fireEvent.change(screen.getByLabelText('Current Password'), { target: { value: 'WrongPass123' } })
+  fireEvent.change(screen.getByLabelText('New Password'), { target: { value: 'NewPass12345' } })
+  fireEvent.change(screen.getByLabelText('Confirm New Password'), { target: { value: 'NewPass12345' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Update Password' }))
+  expect(await screen.findByText('Current password is incorrect')).toBeInTheDocument()
+  expect(replaceTokens).not.toHaveBeenCalled()
 })

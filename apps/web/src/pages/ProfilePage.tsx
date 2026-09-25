@@ -51,7 +51,7 @@ import { keyframes } from '@mui/material/styles'
 import { SHAPE, EmptyState } from '@ubuntu-fund/ui'
 import { CampaignCategory } from '@ubuntu-fund/types'
 import { useAuth } from '@/context/AuthContext'
-import { api } from '@/lib/api'
+import { api, type AuthTokens } from '@/lib/api'
 import { Link as RouterLink } from 'react-router-dom'
 
 // ─── Animations ──────────────────────────────────────────────────────────────
@@ -162,7 +162,7 @@ function ProfileForViewer() {
     path: '/profile',
     robots: 'noindex, nofollow',
   })
-  const { user, updateName } = useAuth()
+  const { user, updateName, replaceTokens } = useAuth()
   const [tab, setTab] = useState(0)
   const [images, setImages] = useState({ avatarUrl: '', coverUrl: '' })
   const [imageEditor, setImageEditor] = useState<'avatarUrl' | 'coverUrl' | null>(null)
@@ -263,7 +263,10 @@ function ProfileForViewer() {
     if (!currentPassword) { setPasswordError('Current password is required.'); return }
     setPasswordSaving(true)
     try {
-      await api.put('/auth/change-password', { currentPassword, newPassword })
+      // The API rotates authVersion, so the old tokens stop working at once.
+      // Keep this device signed in with the fresh pair it returns.
+      const result = await api.put<{ tokens?: AuthTokens }>('/auth/change-password', { currentPassword, newPassword })
+      if (result?.tokens && user) replaceTokens(result.tokens, user.id)
       setCurrentPassword(''); setNewPassword(''); setConfirmPassword('')
       setPasswordSnack(true)
     } catch (err) {
