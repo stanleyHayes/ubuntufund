@@ -11,6 +11,7 @@
 // ---------------------------------------------------------------------------
 
 import { api, request, ApiError } from './api'
+import { storedAccessToken } from './session'
 import type {
   CampaignPublicView,
   CreateDonationIntentInput,
@@ -63,18 +64,6 @@ export function isPaymentsNotConfigured(err: unknown): err is PaymentsNotConfigu
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-/** Read the stored access token (mirrors the resolution used by `api`). */
-function getStoredToken(): string | undefined {
-  const direct = localStorage.getItem('accessToken')
-  if (direct) return direct
-  try {
-    const tokens = JSON.parse(localStorage.getItem('uf_tokens') ?? 'null')
-    return tokens?.accessToken ?? undefined
-  } catch {
-    return undefined
-  }
-}
-
 /**
  * Authenticated PATCH that unwraps the `{ data }` envelope. `api` exposes no
  * PATCH method, so this reuses the lower-level `request` (attaching the stored
@@ -83,7 +72,7 @@ function getStoredToken(): string | undefined {
 async function authedPatch<T>(path: string, body?: unknown): Promise<T> {
   const envelope = await request<{ data: T }>(path, {
     method: 'PATCH',
-    token: getStoredToken(),
+    token: storedAccessToken() ?? undefined,
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   })
   return envelope.data
@@ -129,7 +118,7 @@ export async function createDonationIntent(
       method: 'POST',
       body: JSON.stringify(input),
       headers: { 'Idempotency-Key': idempotencyKey },
-      token: getStoredToken(),
+      token: storedAccessToken() ?? undefined,
     })
 
     const data = envelope.data

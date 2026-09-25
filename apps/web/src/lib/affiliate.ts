@@ -10,6 +10,7 @@
 // ---------------------------------------------------------------------------
 
 import { api, request, ApiError } from './api'
+import { storedAccessToken } from './session'
 import type {
   Affiliate,
   AffiliateDashboard,
@@ -20,22 +21,6 @@ import type {
 
 // --- Re-exported contract types (import from this module in the UI) ---------
 export type { Affiliate, AffiliateDashboard, AffiliateReferral, AffiliateCommission, AffiliatePayout } from '@ubuntu-fund/types'
-
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
-/** Read the stored access token (mirrors the resolution used by `api`). */
-function getStoredToken(): string | undefined {
-  const direct = localStorage.getItem('accessToken')
-  if (direct) return direct
-  try {
-    const tokens = JSON.parse(localStorage.getItem('uf_tokens') ?? 'null')
-    return tokens?.accessToken ?? undefined
-  } catch {
-    return undefined
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Owner-facing affiliate API
@@ -59,7 +44,7 @@ export function enroll(): Promise<Affiliate> {
 export async function getAffiliateDashboard(): Promise<AffiliateDashboard | null> {
   try {
     const envelope = await request<{ data: AffiliateDashboard }>('/affiliate', {
-      token: getStoredToken(),
+      token: storedAccessToken() ?? undefined,
     })
     return envelope.data
   } catch (err) {
