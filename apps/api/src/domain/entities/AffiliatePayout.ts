@@ -26,16 +26,20 @@ export interface AffiliatePayoutProps {
  *   PAID       → REVERSED (transfer.reversed of a settled transfer)
  *   FAILED / REVERSED are terminal.
  *
- * Affiliate payouts are single-transfer only; NEEDS_REVIEW (a batched-payout
- * outcome) is unreachable here but present to satisfy the shared status type.
+ * Affiliate payouts are single-transfer only. NEEDS_REVIEW holds a transfer
+ * the provider could not confirm for a full dwell window, with the funds still
+ * reserved, until an admin resolves it from the provider's outcome.
  */
 const ALLOWED_TRANSITIONS: Record<PayoutStatus, PayoutStatus[]> = {
   PENDING: ['PROCESSING', 'FAILED'],
-  PROCESSING: ['PAID', 'FAILED', 'REVERSED'],
+  // NEEDS_REVIEW: the provider could not confirm the transfer for a full
+  // dwell window. It returns to PROCESSING only when an admin resolution
+  // re-drives the provider's authoritative outcome through settlement.
+  PROCESSING: ['PAID', 'FAILED', 'REVERSED', 'NEEDS_REVIEW'],
   PAID: ['REVERSED'],
   FAILED: [],
   REVERSED: [],
-  NEEDS_REVIEW: [],
+  NEEDS_REVIEW: ['PROCESSING'],
 };
 
 /**

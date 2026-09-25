@@ -38,10 +38,11 @@ export interface PayoutProps {
  *                (rejected by an admin or cancelled by the owner — see `closure`)
  *   PROCESSING → PAID (transfer.success) | FAILED (transfer.failed) |
  *                REVERSED (transfer.reversed before we observed success) |
- *                NEEDS_REVIEW (a batched payout that settled only partially)
+ *                NEEDS_REVIEW (a batched payout that settled only partially,
+ *                or a single transfer unconfirmed for a full day)
  *   PAID       → REVERSED (transfer.reversed of a settled transfer) |
  *                NEEDS_REVIEW (a leg of a settled batched payout reversed)
- *   FAILED / REVERSED / NEEDS_REVIEW are terminal.
+ *   FAILED / REVERSED are terminal; NEEDS_REVIEW is resolved by an admin.
  */
 const ALLOWED_TRANSITIONS: Record<PayoutStatus, PayoutStatus[]> = {
   PENDING: ['PROCESSING', 'FAILED'],
@@ -49,7 +50,10 @@ const ALLOWED_TRANSITIONS: Record<PayoutStatus, PayoutStatus[]> = {
   PAID: ['REVERSED', 'NEEDS_REVIEW'],
   FAILED: [],
   REVERSED: [],
-  NEEDS_REVIEW: [],
+  // A single transfer escalated because the provider could not confirm it
+  // returns to PROCESSING only for an admin resolution that re-drives the
+  // provider's outcome through settlement; a partially-settled batch stays put.
+  NEEDS_REVIEW: ['PROCESSING'],
 }
 
 /**

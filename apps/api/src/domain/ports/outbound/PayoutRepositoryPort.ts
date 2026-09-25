@@ -130,6 +130,16 @@ export interface PayoutRepositoryPort {
    */
   flagNeedsReview(id: string): Promise<PayoutEntity | null>
 
+  /**
+   * Stuck single-transfer handling: move PROCESSING → NEEDS_REVIEW (the
+   * provider could not confirm the transfer for a full dwell window), and back
+   * NEEDS_REVIEW → PROCESSING only so an admin-triggered resolution can drive
+   * the rail's own idempotent settlement handler. Each is a guarded, atomic
+   * transition that reports whether this caller won it.
+   */
+  escalateProcessing?(id: string): Promise<boolean>
+  reopenForSettlement?(id: string): Promise<boolean>
+
   /** Attach the provider transfer code once the transfer is initiated. */
   attachTransferCode(id: string, transferCode: string): Promise<PayoutEntity | null>
 

@@ -1,4 +1,5 @@
 import { TransferOutcomeUnknownError } from '../../../../domain/errors/TransferOutcomeUnknownError.js'
+import { TransferNotFoundError } from '../../../../domain/errors/TransferNotFoundError.js'
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
 import type { DonationIntentEntity } from '../../../../domain/entities/DonationIntent.js'
 import type {
@@ -408,6 +409,7 @@ export class PaystackGateway implements PaymentGatewayPort {
       `/transfer/verify/${encodeURIComponent(reference)}`,
     )
     if (!json.status || !json.data) {
+      if (/transfer not found/i.test(json.message ?? '')) throw new TransferNotFoundError(reference)
       throw new AppError(
         `Paystack transfer verification failed: ${json.message ?? 'unknown error'}`,
         502,
@@ -466,6 +468,11 @@ export class PaystackGateway implements PaymentGatewayPort {
     }
     if (path === '/transfer' && method === 'POST' && res.status >= 500)
       throw new TransferOutcomeUnknownError()
+    // Distinguish "Paystack never received this reference" from other
+    // failures, so a transfer whose POST never landed can be escalated and
+    // resolved instead of being re-verified (and failing) forever.
+    if (method === 'GET' && path.startsWith('/transfer/verify/') && res.status === 404)
+      throw new TransferNotFoundError(decodeURIComponent(path.slice('/transfer/verify/'.length)))
     if (!res.ok) throw new AppError('Payment provider rejected the request', 502)
     return json
   }

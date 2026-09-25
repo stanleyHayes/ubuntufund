@@ -39,3 +39,16 @@ it('labels a closed request as rejected and shows the reason', async () => {
   expect(screen.getByText(reason)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Reject request' })).toBeNull()
 })
+
+it('resolves a stuck single transfer from Paystack only after the admin records what they checked', async () => {
+  state.get.mockResolvedValue([{ ...pending, status: 'NEEDS_REVIEW', providerRef: 'pout-payout-1' }])
+  state.post.mockResolvedValue({ rail: 'campaign', payoutId: 'payout-1', providerOutcome: 'failed', status: 'FAILED' })
+  render(<MemoryRouter><PayoutsPage /></MemoryRouter>)
+  const resolve = await screen.findByRole('button', { name: 'Re-check Paystack and resolve' })
+  expect(resolve).toBeDisabled()
+  expect(screen.queryByText(/Partially settled/)).toBeNull()
+  fireEvent.change(screen.getByRole('textbox', { name: 'What you checked' }), { target: { value: 'Paystack shows no transfer for this reference.' } })
+  fireEvent.click(resolve)
+  await waitFor(() => expect(state.post).toHaveBeenCalledWith('/payouts/stuck/campaign/payout-1/resolve', { note: 'Paystack shows no transfer for this reference.' }))
+  expect(await screen.findByText(/Paystack reported failed; the payout is now failed/)).toBeVisible()
+})

@@ -8,6 +8,7 @@ import type { CreatorPayoutRepositoryPort } from '../../domain/ports/outbound/Cr
 import type { CreatorBalanceRepositoryPort } from '../../domain/ports/outbound/CreatorBalanceRepositoryPort.js'
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js'
 import { CreatorPayoutEntity } from '../../domain/entities/CreatorPayout.js'
+import { TransferOutcomeUnknownError } from '../../domain/errors/TransferOutcomeUnknownError.js'
 import { roundToCurrency } from '../../domain/value-objects/Money.js'
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js'
 import { logger } from '../../infrastructure/logging/logger.js'
@@ -44,8 +45,10 @@ export interface CreatorWithdrawalInput {
  * so money is never returned to available while it may still be in flight, and a
  * failure is always correlatable to a persisted, terminal-transitionable record.
  *
- * Once transfer initiation is attempted, an error leaves funds reserved in
- * PROCESSING until a signed webhook or reconciliation resolves the outcome.
+ * Once transfer initiation is attempted, only an AMBIGUOUS error (timeout,
+ * network, provider 5xx) leaves funds reserved in PROCESSING until a signed
+ * webhook or reconciliation resolves the outcome; a definitive provider
+ * rejection returns the reservation immediately.
  */
 /** Duplicate-key detection for the requestKey unique index. */
 function isDuplicateKeyError(error: unknown): boolean {
@@ -144,7 +147,12 @@ export class RequestCreatorWithdrawalUseCase {
     }
 
     if (!this.withdrawalTransaction) throw new AppError('Withdrawals are not available right now.', 503)
-    let committed: CreatorPayoutEntity | { payout: CreatorPayoutEntity; reference: string }
+    // Never reserve (and then strand) a withdrawal the platform balance cannot
+    // fund — the same check campaign payout approval makes before sending.
+    const platformBalance = (await this.gateway.getBalance()).find((b) => b.currency === currency)
+    if (!platformBalance || platformBalance.balance < netAmount)
+      throw new AppError('Withdrawals are temporarily unavailable. Please try again later.', 503)
+    let committed: CreatorPayoutEntity | { payout: CreatorPayoutEntity; reference: string; recipientCode: string }
     try {
       committed = await this.withdrawalTransaction.run(userId, authVersion, async () => {
         // A concurrent request may have committed after the initial replay check.
@@ -166,9 +174,15 @@ export class RequestCreatorWithdrawalUseCase {
           createdAt: new Date(), updatedAt: new Date(),
         }))
         const reference = `cpay-${payout.id}-${randomUUID().slice(0, 8)}`
-        const processing = await this.payoutRepo.transitionToProcessing(payout.id, { providerRef: reference })
+        // The recipient is committed with the reference, BEFORE the provider
+        // call: Paystack's transfer-approval callback can arrive while
+        // POST /transfer is still in flight and must find it to approve.
+        const processing = await this.payoutRepo.transitionToProcessing(payout.id, {
+          providerRef: reference,
+          recipientCode: savedAccount.recipientCode,
+        })
         if (!processing) throw new AppError('Could not start the withdrawal. Please try again.', 502)
-        return { payout, reference }
+        return { payout, reference, recipientCode: savedAccount.recipientCode }
       })
     } catch (err) {
       // Transaction rollback restores all local writes before replaying a winner.
@@ -181,63 +195,8 @@ export class RequestCreatorWithdrawalUseCase {
       throw new AppError('Could not start the withdrawal. Please try again.', 502)
     }
     if (committed instanceof CreatorPayoutEntity) return committed
-    const { payout, reference } = committed
-
-    // External calls happen only after the reservation and reference commit.
-    let transferAttempted = false
-    let recipientCode = ''
-    let transferCode: string | undefined
-    try {
-      recipientCode =
-        savedAccount?.recipientCode ??
-        (await this.gateway.createTransferRecipient({
-          type: r.type,
-          name: r.accountName,
-          accountNumber: r.accountNumber,
-          bankCode: r.bankCode,
-          currency,
-        }))
-      transferAttempted = true
-      const transfer = await this.gateway.initiateTransfer({
-        amount: netAmount,
-        // Derived from the creator's balance above; without it the transfer was
-        // sent as GHS whatever currency that balance is held in.
-        currency,
-        recipientCode,
-        reference,
-        reason: 'Ujimora creator withdrawal',
-      })
-      transferCode = transfer.transferCode
-    } catch (err) {
-      logger.error({ err, payoutId: payout.id }, 'creator withdrawal initiation failed')
-      if (transferAttempted)
-        return {
-          id: payout.id,
-          status: 'PROCESSING' as const,
-          amount: input.amount,
-          fee,
-          feePercent,
-          netAmount,
-          currency,
-          reference,
-        }
-      await this.rollback(payout.id, userId, input.amount)
-      throw new AppError('Could not start the withdrawal. Please try again.', 502)
-    }
-
-    // The transfer is in flight. Recording the provider codes is best-effort
-    // bookkeeping — a failure here must NEVER roll back, or it would return the
-    // reservation while real money is on its way to the creator (double-pay).
-    try {
-      await this.payoutRepo.attachTransferDetails(payout.id, { transferCode, recipientCode })
-    } catch (err) {
-      logger.warn(
-        { err, payoutId: payout.id },
-        'creator withdrawal: could not record transfer codes (non-fatal)',
-      )
-    }
-
-    return {
+    const { payout, reference, recipientCode } = committed
+    const processingResult = {
       id: payout.id,
       status: 'PROCESSING' as const,
       amount: input.amount,
@@ -247,6 +206,51 @@ export class RequestCreatorWithdrawalUseCase {
       currency,
       reference,
     }
+
+    // External calls happen only after the reservation and reference commit.
+    let transfer: Awaited<ReturnType<PaymentGatewayPort['initiateTransfer']>>
+    try {
+      transfer = await this.gateway.initiateTransfer({
+        amount: netAmount,
+        // Derived from the creator's balance above; without it the transfer was
+        // sent as GHS whatever currency that balance is held in.
+        currency,
+        recipientCode,
+        reference,
+        reason: 'Ujimora creator withdrawal',
+      })
+    } catch (err) {
+      // Only an ambiguous outcome (timeout, network, 5xx) may have created a
+      // transfer: keep the funds reserved in PROCESSING for the webhook or
+      // reconciliation. A definitive rejection (4xx, e.g. an invalid recipient
+      // or an empty Paystack balance) created nothing, so the reservation goes
+      // straight back — it used to stay PROCESSING forever.
+      if (err instanceof TransferOutcomeUnknownError) {
+        logger.warn({ err, payoutId: payout.id }, 'creator withdrawal outcome unknown; awaiting reconciliation')
+        return processingResult
+      }
+      logger.error({ err, payoutId: payout.id }, 'creator withdrawal initiation failed')
+      await this.rollback(payout.id, userId, input.amount)
+      throw new AppError('Could not start the withdrawal. Your balance has been restored; please try again.', 502)
+    }
+    if (['failed', 'abandoned', 'blocked', 'rejected'].includes(transfer.status)) {
+      await this.rollback(payout.id, userId, input.amount)
+      throw new AppError('The transfer was rejected by the provider. Your balance has been restored.', 502)
+    }
+
+    // The transfer is in flight. Recording the provider code is best-effort
+    // bookkeeping — a failure here must NEVER roll back, or it would return the
+    // reservation while real money is on its way to the creator (double-pay).
+    try {
+      await this.payoutRepo.attachTransferDetails(payout.id, { transferCode: transfer.transferCode })
+    } catch (err) {
+      logger.warn(
+        { err, payoutId: payout.id },
+        'creator withdrawal: could not record transfer codes (non-fatal)',
+      )
+    }
+
+    return processingResult
   }
 
   private ownedReplay(userId: string, payout: CreatorPayoutEntity): CreatorPayoutEntity {

@@ -30,16 +30,19 @@ export interface BeneficiaryPayoutProps {
  *   PROCESSING → PAID | FAILED | REVERSED
  *   PAID       → REVERSED
  *
- * FAILED / REVERSED / NEEDS_REVIEW are terminal (NEEDS_REVIEW is unreachable
- * here but present for the shared status type).
+ * FAILED / REVERSED are terminal. NEEDS_REVIEW holds a transfer the provider
+ * could not confirm for a full dwell window until an admin resolves it.
  */
 const ALLOWED_TRANSITIONS: Record<PayoutStatus, PayoutStatus[]> = {
   PENDING: ['PROCESSING', 'FAILED'],
-  PROCESSING: ['PAID', 'FAILED', 'REVERSED'],
+  // NEEDS_REVIEW: the provider could not confirm the transfer for a full
+  // dwell window. It returns to PROCESSING only when an admin resolution
+  // re-drives the provider's authoritative outcome through settlement.
+  PROCESSING: ['PAID', 'FAILED', 'REVERSED', 'NEEDS_REVIEW'],
   PAID: ['REVERSED'],
   FAILED: [],
   REVERSED: [],
-  NEEDS_REVIEW: [],
+  NEEDS_REVIEW: ['PROCESSING'],
 };
 
 export class BeneficiaryPayoutEntity {
@@ -75,6 +78,9 @@ export class BeneficiaryPayoutEntity {
   }
   get provider(): PayoutProvider {
     return this.props.provider;
+  }
+  get updatedAt(): Date {
+    return this.props.updatedAt;
   }
   get providerRef(): string | undefined {
     return this.props.providerRef;

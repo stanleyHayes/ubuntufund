@@ -27,6 +27,10 @@ A verified `success` settles PAID. `failed`, `abandoned`, `blocked`, and `reject
 
 Admin/owner payout-list reads verify up to five in-flight single campaign payouts. Owner UI reloads history before fetching balances so a newly settled transfer and available amount agree. Web/admin refresh visible pages every 30 seconds and on focus. Production scheduled payout reconciliation runs every five minutes for records older than one minute. Missing provider responses never imply success or failure.
 
+A single transfer (campaign, beneficiary, affiliate or creator) whose verification keeps failing — typically a POST /transfer that never reached Paystack, so verify answers "Transfer not found" — is escalated to NEEDS_REVIEW after 24 hours in PROCESSING. It is never auto-failed and its funds stay reserved. An admin resolves it with `POST /api/v1/payouts/stuck/:rail/:id/resolve` (`rail` is `campaign`, `beneficiary`, `affiliate` or `creator`; body `{ note }`, at least 20 characters), or from the campaign payout card. Resolution re-verifies the reference and drives Paystack's answer through the rail's own idempotent settlement: success settles PAID, a terminal failure or "not found" returns the reservation once, a reversal uses the reversal handler, and a transfer still pending is left untouched (409). The note is recorded in the audit log.
+
+Creator withdrawals check the Paystack balance before reserving, and a definitive Paystack refusal of POST /transfer (HTTP 4xx) now fails the withdrawal and returns the reservation at once; only a timeout, network error or 5xx keeps it PROCESSING for reconciliation.
+
 `apps/api/scripts/reconcile-campaign-transfer.ts <payout-id>` is a dry-run by default. `--apply` verifies reference/amount/currency and invokes existing idempotent settlement, including incomplete terminal-effect repair. It cannot initiate a transfer.
 
 ## Acceptance limits

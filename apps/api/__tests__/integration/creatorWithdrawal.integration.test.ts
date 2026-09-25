@@ -44,6 +44,11 @@ describe('Creator withdrawal — transfer rail', () => {
   let failTransfer = false
   let transferAmount: unknown
   let transferSnapshot: { status?: string; availableBalance?: number; reference?: string }
+  // Paystack's definitive refusal of POST /transfer (HTTP 4xx, status:false).
+  let rejectTransfer = false
+  let platformBalanceMinor = 100_000_000
+  let verifyNotFound = false
+  let duringTransfer: ((reference: string) => Promise<void>) | undefined
 
   beforeAll(async () => {
     await connectTestDatabase()
@@ -64,9 +69,11 @@ describe('Creator withdrawal — transfer rail', () => {
           return json({ status: true, data: { recipient_code: `RCP_${randomUUID().slice(0, 8)}` } })
         }
         if (u.includes('/balance'))
-          return json({ status: true, data: [{ currency: 'GHS', balance: 100_000_000 }] })
+          return json({ status: true, data: [{ currency: 'GHS', balance: platformBalanceMinor }] })
         if (u.includes('/transfer/verify/')) {
           const ref = decodeURIComponent(u.split('/transfer/verify/')[1] ?? '')
+          if (verifyNotFound)
+            return { ok: false, status: 404, json: async () => ({ status: false, message: 'Transfer not found' }) } as unknown as Response
           return json({
             status: true,
             data: { status: 'success', reference: ref, transfer_code: 'TRF_x' },
@@ -77,7 +84,10 @@ describe('Creator withdrawal — transfer rail', () => {
           const balance = committed ? await CreatorBalanceModel.collection.findOne({ userId: committed.creatorUserId }, { session: null }) : null
           transferSnapshot = { status: committed?.status, availableBalance: balance?.availableBalance, reference: committed?.providerRef }
           transferAmount = body.amount
+          if (duringTransfer) await duringTransfer(String(body.reference))
           if (failTransfer) throw new Error('transfer response timed out')
+          if (rejectTransfer)
+            return { ok: false, status: 400, json: async () => ({ status: false, message: 'Your balance is not enough to fulfil this request' }) } as unknown as Response
           return json({
             status: true,
             data: {
@@ -196,6 +206,88 @@ describe('Creator withdrawal — transfer rail', () => {
       .send({ amount: 50, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { ...recipient, accountName: 'DRAW WITH' } })
       .expect(201)
     expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(50)
+  })
+
+  it('returns the reservation at once when Paystack definitively rejects the transfer', async () => {
+    const owner = await creatorWithBalance(100)
+    rejectTransfer = true
+    try {
+      const res = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
+        .send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+        .expect(502)
+      expect(res.body.message).toMatch(/balance has been restored/i)
+    } finally { rejectTransfer = false }
+    const payout = await CreatorPayoutModel.findOne({ creatorUserId: owner.userId }).lean()
+    expect(payout).toMatchObject({ status: 'FAILED', settlementApplied: true })
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+  })
+
+  it('refuses before reserving anything when the platform balance cannot fund the transfer', async () => {
+    const owner = await creatorWithBalance(100)
+    platformBalanceMinor = 50_00
+    const transfersBefore = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length
+    try {
+      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
+        .send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+        .expect(503)
+    } finally { platformBalanceMinor = 100_000_000 }
+    expect(await CreatorPayoutModel.countDocuments({ creatorUserId: owner.userId })).toBe(0)
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+    expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length).toBe(transfersBefore)
+  })
+
+  it('commits the recipient before POST /transfer so a transfer-approval callback during the call is approved', async () => {
+    const owner = await creatorWithBalance(100)
+    const approvals: number[] = []
+    duringTransfer = async (reference) => {
+      const row = await CreatorPayoutModel.collection.findOne({ providerRef: reference }, { session: null })
+      expect(row?.recipientCode).toMatch(/^RCP_/)
+      const raw = JSON.stringify({ reference, amount: Math.round((row?.netAmount as number) * 100), currency: 'GHS', recipient: { recipient_code: row?.recipientCode } })
+      const res = await request(app).post('/api/v1/payouts/paystack-approval').set('x-paystack-signature', sign(raw)).set('Content-Type', 'application/json').send(raw)
+      approvals.push(res.status)
+    }
+    try {
+      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
+        .send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+        .expect(201)
+    } finally { duringTransfer = undefined }
+    expect(approvals).toEqual([200])
+  })
+
+  it('lets an admin resolve a withdrawal escalated to review once Paystack has no such transfer, returning funds exactly once', async () => {
+    const owner = await creatorWithBalance(100)
+    failTransfer = true
+    let reference = ''
+    try {
+      const started = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
+        .send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+        .expect(201)
+      reference = started.body.data.reference
+    } finally { failTransfer = false }
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(0)
+    const payout = await CreatorPayoutModel.findOne({ providerRef: reference })
+    // The reconciler escalates after the dwell window; simulate that state.
+    await CreatorPayoutModel.updateOne({ _id: payout!._id }, { status: 'NEEDS_REVIEW' })
+
+    const adminEmail = uniqueEmail('cw-admin')
+    const reg = await request(app).post('/api/v1/auth/register')
+      .send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: adminEmail, password: 'SecurePass123', name: 'Admin' })
+      .expect(201)
+    await UserModel.updateOne({ _id: reg.body.data.user.id }, { role: 'admin' })
+    const login = await request(app).post('/api/v1/auth/login').send({ email: adminEmail, password: 'SecurePass123' }).expect(200)
+    const admin = `Bearer ${login.body.data.tokens.accessToken}`
+    const note = { note: 'Paystack dashboard shows no transfer under this reference.' }
+
+    await request(app).post(`/api/v1/payouts/stuck/creator/${payout!.id}/resolve`).set('Authorization', `Bearer ${owner.token}`).send(note).expect(403)
+    await request(app).post(`/api/v1/payouts/stuck/wallet/${payout!.id}/resolve`).set('Authorization', admin).send(note).expect(404)
+    verifyNotFound = true
+    try {
+      const resolved = await request(app).post(`/api/v1/payouts/stuck/creator/${payout!.id}/resolve`).set('Authorization', admin).send(note).expect(200)
+      expect(resolved.body.data).toMatchObject({ providerOutcome: 'failed', status: 'FAILED' })
+      await request(app).post(`/api/v1/payouts/stuck/creator/${payout!.id}/resolve`).set('Authorization', admin).send(note).expect(409)
+    } finally { verifyNotFound = false }
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+    expect(await CreatorPayoutModel.findById(payout!._id).lean()).toMatchObject({ status: 'FAILED', settlementApplied: true })
   })
 
   it('rechecks identity verification at the reservation write boundary', async () => {

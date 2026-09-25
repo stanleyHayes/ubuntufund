@@ -308,6 +308,23 @@ export class MongoPayoutRepository implements PayoutRepositoryPort {
     return doc ? toDomain(doc) : null
   }
 
+  async escalateProcessing(id: string): Promise<boolean> {
+    // Single transfers only: batched payouts escalate through flagNeedsReview.
+    const res = await PayoutModel.updateOne(
+      { _id: id, status: 'PROCESSING', $or: [{ legs: { $exists: false } }, { legs: { $size: 0 } }] },
+      { $set: { status: 'NEEDS_REVIEW' } },
+    )
+    return res.modifiedCount === 1
+  }
+
+  async reopenForSettlement(id: string): Promise<boolean> {
+    const res = await PayoutModel.updateOne(
+      { _id: id, status: 'NEEDS_REVIEW', $or: [{ legs: { $exists: false } }, { legs: { $size: 0 } }] },
+      { $set: { status: 'PROCESSING' } },
+    )
+    return res.modifiedCount === 1
+  }
+
   async attachTransferCode(id: string, transferCode: string): Promise<PayoutEntity | null> {
     const doc = await PayoutModel.findByIdAndUpdate(id, { $set: { transferCode } }, { new: true })
     return doc ? toDomain(doc) : null

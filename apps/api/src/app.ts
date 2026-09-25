@@ -12,6 +12,7 @@ import { MongoAutomaticPayoutVerification } from './infrastructure/adapters/outb
 import { MongoPayoutEligibility } from './infrastructure/adapters/outbound/persistence/MongoPayoutEligibility.js'
 import { MongoPayoutClosureTransaction } from './infrastructure/adapters/outbound/persistence/MongoPayoutClosureTransaction.js'
 import { ClosePendingPayoutUseCase } from './application/use-cases/ClosePendingPayoutUseCase.js'
+import { ResolveStuckPayoutUseCase } from './application/use-cases/ResolveStuckPayoutUseCase.js'
 import { createDonationContentReviewRoutes } from './infrastructure/adapters/inbound/http/routes/donationContentReviewRoutes.js'
 import { createTipContentReviewRoutes } from './infrastructure/adapters/inbound/http/routes/tipContentReviewRoutes.js'
 import { MongoPublicProfileVisibility } from './infrastructure/adapters/outbound/persistence/MongoPublicProfileVisibility.js'
@@ -1411,6 +1412,33 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
       campaignRepo,
       campaignBalanceRepo,
       new MongoPayoutClosureTransaction(),
+    ),
+    // Escalated single transfers settle through each rail's own idempotent handler.
+    new ResolveStuckPayoutUseCase(
+      paymentGateway,
+      {
+        campaign: {
+          findById: (id) => payoutRepo.findById(id),
+          reopenForSettlement: (id) => payoutRepo.reopenForSettlement(id),
+          handler: handlePayoutWebhookUseCase,
+        },
+        beneficiary: {
+          findById: (id) => beneficiaryPayoutRepo.findById(id),
+          reopenForSettlement: (id) => beneficiaryPayoutRepo.reopenForSettlement(id),
+          handler: handleBeneficiaryPayoutWebhookUseCase,
+        },
+        affiliate: {
+          findById: (id) => affiliatePayoutRepo.findById(id),
+          reopenForSettlement: (id) => affiliatePayoutRepo.reopenForSettlement(id),
+          handler: handleAffiliatePayoutWebhookUseCase,
+        },
+        creator: {
+          findById: (id) => creatorPayoutRepo.findById(id),
+          reopenForSettlement: (id) => creatorPayoutRepo.reopenForSettlement(id),
+          handler: handleCreatorPayoutWebhookUseCase,
+        },
+      },
+      auditLogRepo,
     ),
   )
   // Split-proceeds: owner-managed, versioned beneficiary allocations (spec §17).

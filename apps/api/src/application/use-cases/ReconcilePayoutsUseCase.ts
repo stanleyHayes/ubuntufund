@@ -31,7 +31,7 @@ export interface ReconcilePayoutSummary {
   pending: number
   /** PAID-but-unsettled payouts whose idempotent settlement effect was re-applied. */
   repaired: number
-  /** Batched payouts stuck past the dwell window and handed to a human. */
+  /** Payouts (batched, or single transfers the provider cannot confirm) stuck past the dwell window and handed to a human. */
   escalated: number
   errored: number
 }
@@ -84,44 +84,58 @@ export class ReconcilePayoutsUseCase {
 
     const cutoff = new Date(Date.now() - opts.olderThanMinutes * 60_000)
 
+    // Single-transfer rails. A transfer the provider still cannot confirm
+    // (verify keeps failing — e.g. a POST /transfer that never landed, so
+    // Paystack answers "not found") is escalated to NEEDS_REVIEW once it has
+    // sat a full dwell window, with its reservation untouched. Never auto-failed:
+    // an admin resolves it from the provider's authoritative outcome.
     const campaign = await this.payoutRepo.findStuckProcessing(cutoff)
     for (const payout of campaign) {
       if (payout.providerRef) {
-        await this.reconcileOne(payout.providerRef, this.handlePayoutWebhookUseCase, summary)
+        const verified = await this.reconcileOne(payout.providerRef, this.handlePayoutWebhookUseCase, summary)
+        if (!verified)
+          await this.escalateIfStuck('campaign', payout, () => this.payoutRepo.escalateProcessing?.(payout.id), summary)
       }
     }
 
     const beneficiary = await this.beneficiaryPayoutRepo.findStuckProcessing(cutoff)
     for (const payout of beneficiary) {
       if (payout.providerRef) {
-        await this.reconcileOne(
+        const verified = await this.reconcileOne(
           payout.providerRef,
           this.handleBeneficiaryPayoutWebhookUseCase,
           summary,
         )
+        if (!verified)
+          await this.escalateIfStuck('beneficiary', payout, () => this.beneficiaryPayoutRepo.escalateProcessing?.(payout.id), summary)
       }
     }
 
     const affiliate = await this.affiliatePayoutRepo.findStuckProcessing(cutoff)
     for (const payout of affiliate) {
       if (payout.providerRef) {
-        await this.reconcileOne(
+        const verified = await this.reconcileOne(
           payout.providerRef,
           this.handleAffiliatePayoutWebhookUseCase,
           summary,
         )
+        if (!verified)
+          await this.escalateIfStuck('affiliate', payout, () => this.affiliatePayoutRepo.escalateProcessing?.(payout.id), summary)
       }
     }
 
     if (this.creatorPayoutRepo && this.handleCreatorPayoutWebhookUseCase) {
-      const creator = await this.creatorPayoutRepo.findStuckProcessing(cutoff)
+      const creatorRepo = this.creatorPayoutRepo
+      const creator = await creatorRepo.findStuckProcessing(cutoff)
       for (const payout of creator) {
         if (payout.providerRef) {
-          await this.reconcileOne(
+          const verified = await this.reconcileOne(
             payout.providerRef,
             this.handleCreatorPayoutWebhookUseCase,
             summary,
           )
+          if (!verified)
+            await this.escalateIfStuck('creator', payout, () => creatorRepo.escalateProcessing?.(payout.id), summary)
         }
       }
     }
@@ -208,11 +222,39 @@ export class ReconcilePayoutsUseCase {
     return summary
   }
 
+  /**
+   * Escalate a single-transfer payout whose verification keeps failing once it
+   * has been PROCESSING for the full dwell window. Guarded on PROCESSING, so a
+   * webhook that settles it concurrently always wins.
+   */
+  private async escalateIfStuck(
+    rail: 'campaign' | 'beneficiary' | 'affiliate' | 'creator',
+    payout: { id: string; providerRef?: string; updatedAt: Date },
+    escalate: () => Promise<boolean> | undefined,
+    summary: ReconcilePayoutSummary,
+  ): Promise<void> {
+    const stuckFor = Date.now() - new Date(payout.updatedAt).getTime()
+    if (stuckFor < STUCK_BATCH_ESCALATION_MS) return
+    try {
+      if (await escalate()) {
+        summary.escalated += 1
+        logger.warn(
+          { rail, payoutId: payout.id, reference: payout.providerRef, hoursStuck: Math.round(stuckFor / 3_600_000) },
+          'payout reconciliation: transfer unconfirmed past dwell window; escalated for review with funds still reserved',
+        )
+      }
+    } catch (error) {
+      logger.error({ error, rail, payoutId: payout.id }, 'payout reconciliation: escalation failed')
+      summary.errored += 1
+    }
+  }
+
+  /** Returns false when the provider could not be asked (verify threw). */
   private async reconcileOne(
     reference: string,
     handler: PayoutWebhookHandler,
     summary: ReconcilePayoutSummary,
-  ): Promise<void> {
+  ): Promise<boolean> {
     summary.scanned += 1
     let status: string
     try {
@@ -223,7 +265,7 @@ export class ReconcilePayoutsUseCase {
     } catch (error) {
       logger.error({ error, reference }, 'payout reconciliation: verify failed')
       summary.errored += 1
-      return
+      return false
     }
 
     // Drive the same idempotent settlement the webhook would.
@@ -251,5 +293,6 @@ export class ReconcilePayoutsUseCase {
       logger.error({ error, reference, status }, 'payout reconciliation: settlement failed')
       summary.errored += 1
     }
+    return true
   }
 }

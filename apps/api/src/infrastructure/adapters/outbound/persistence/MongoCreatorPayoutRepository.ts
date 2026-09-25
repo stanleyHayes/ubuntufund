@@ -114,6 +114,12 @@ export class MongoCreatorPayoutRepository implements CreatorPayoutRepositoryPort
   transitionToPaid(id: string) {
     return this.transition(id, 'PROCESSING', 'PAID');
   }
+  async escalateProcessing(id: string) {
+    return Boolean(await this.transition(id, 'PROCESSING', 'NEEDS_REVIEW'));
+  }
+  async reopenForSettlement(id: string) {
+    return Boolean(await this.transition(id, 'NEEDS_REVIEW', 'PROCESSING'));
+  }
   transitionToFailed(id: string) {
     return this.transition(id, 'PROCESSING', 'FAILED');
   }

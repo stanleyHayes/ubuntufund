@@ -15,6 +15,7 @@ import type { ApprovePayoutUseCase } from '../../../../../application/use-cases/
 import type { ListCampaignPayoutsUseCase } from '../../../../../application/use-cases/ListCampaignPayoutsUseCase.js'
 import type { ListPayoutsUseCase } from '../../../../../application/use-cases/ListPayoutsUseCase.js'
 import type { ClosePendingPayoutUseCase } from '../../../../../application/use-cases/ClosePendingPayoutUseCase.js'
+import type { ResolveStuckPayoutUseCase, StuckPayoutRail } from '../../../../../application/use-cases/ResolveStuckPayoutUseCase.js'
 import { AppError } from '../../middleware/errorHandler.js'
 
 function firstQueryValue(value: unknown): string | undefined {
@@ -36,7 +37,28 @@ export class PayoutController {
     private readonly transferControls?: PayoutTransferControlUseCase,
     private readonly payoutRepo?: PayoutRepositoryPort,
     private readonly closePendingPayout?: ClosePendingPayoutUseCase,
+    private readonly resolveStuckPayout?: ResolveStuckPayoutUseCase,
   ) {}
+
+  /** POST /payouts/stuck/:rail/:id/resolve — settle an escalated transfer from Paystack's outcome (admin). */
+  resolveStuck = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      if (!this.resolveStuckPayout) throw new AppError('Payout resolution is unavailable.', 503)
+      const result = await this.resolveStuckPayout.execute(
+        req.params.rail as StuckPayoutRail,
+        req.params.id as string,
+        { userId: req.userId!, role: req.userRole, authVersion: req.authVersion },
+        req.body.note,
+      )
+      res.json({ data: result, message: 'Payout resolved from the provider outcome', status: 200 })
+    } catch (error) {
+      next(error)
+    }
+  }
 
   /** POST /payouts/:id/reject — close a PENDING payout with a reason (admin). */
   rejectPayout = async (
