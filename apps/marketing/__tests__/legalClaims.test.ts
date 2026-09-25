@@ -45,7 +45,7 @@ const PUBLISHED: Record<string, { effectiveDate: string; sha256: string }> = {
   'contributor-terms': { effectiveDate: '8 September 2026', sha256: '86000771228c6023d82cb8c96cdafcb8ef18a4c304455c0f543235cc8a879cfe' },
   'refund-policy': { effectiveDate: '8 September 2026', sha256: '8391898b228ebf3664bc903b28a30ba398d4e8444600d428092966e15cec7765' },
   'acceptable-use': { effectiveDate: '8 September 2026', sha256: '255d7c5a5c588e8d1a4e650be17a82a4f8f08af1a06209f86c21d7bffa44d78f' },
-  cookies: { effectiveDate: '25 September 2026', sha256: 'b0486b288ae97aa1685a86fa7d76abefe933d1b9ed92913aec80bab22f55907d' },
+  cookies: { effectiveDate: '25 September 2026', sha256: 'd739f21890eca573046d80b24be7b8d911009fc5aa9d7beee10d589860cf242a' },
   'billing-terms': { effectiveDate: '25 September 2026', sha256: '7c2a73ad1bb1fcd89ae853cf24a79f5d79789ac126aed11c62398c8790630fe3' },
 }
 
