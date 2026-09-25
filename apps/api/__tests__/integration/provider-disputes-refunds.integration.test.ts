@@ -125,12 +125,18 @@ describe('Paystack disputes and provider refunds', () => {
 
   it('records chargebacks on non-campaign charges for the admin provider-event list', async () => {
     const reference = `tip-${randomUUID()}`;
+    const openEvents = async () => (await request(app).get('/api/v1/admin/action-center').set('Authorization', `Bearer ${adminToken}`).expect(200))
+      .body.data.items.find((item: { id: string }) => item.id === 'provider-events');
+    const before = (await openEvents()).count as number;
     await webhook('charge.dispute.create', { id: 7002, status: 'awaiting-merchant-feedback', currency: 'GHS', transaction: { reference, amount: 5000, currency: 'GHS' } }).expect(200);
+    // R2-006: staff see it in the action center, linked to the Provider events screen.
+    expect(await openEvents()).toMatchObject({ href: '/provider-events', count: before + 1 });
     const listed = await request(app).get('/api/v1/admin/payments/provider-events?status=open').set('Authorization', `Bearer ${adminToken}`).expect(200);
     const event = listed.body.data.find((item: { reference: string }) => item.reference === reference);
     expect(event).toMatchObject({ subject: 'tip', kind: 'dispute', amountMinor: 5000, reviewStatus: 'open' });
     await request(app).post(`/api/v1/admin/payments/provider-events/${event.id}/acknowledge`).set('Authorization', `Bearer ${adminToken}`).expect(200);
     await request(app).post(`/api/v1/admin/payments/provider-events/${event.id}/acknowledge`).set('Authorization', `Bearer ${adminToken}`).expect(404);
+    expect((await openEvents()).count).toBe(before);
     const user = await request(app).post('/api/v1/auth/register').send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: uniqueEmail('peuser'), password: 'SecurePass123', name: 'User' }).expect(201);
     await request(app).get('/api/v1/admin/payments/provider-events').set('Authorization', `Bearer ${user.body.data.tokens.accessToken}`).expect(403);
   });

@@ -18,6 +18,7 @@ import WorkspacePremiumRoundedIcon from '@mui/icons-material/WorkspacePremiumRou
 import GavelRoundedIcon from '@mui/icons-material/GavelRounded'
 import FlagRoundedIcon from '@mui/icons-material/FlagRounded'
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
+import ReportGmailerrorredRoundedIcon from '@mui/icons-material/ReportGmailerrorredRounded'
 import AssignmentReturnRoundedIcon from '@mui/icons-material/AssignmentReturnRounded'
 import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded'
 import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded'
@@ -79,6 +80,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Payments', path: '/payments', icon: <ReceiptLongRoundedIcon /> },
       { label: 'Refund requests', path: '/refund-requests', icon: <AssignmentReturnRoundedIcon /> },
       { label: 'Refund recovery', path: '/refund-recovery', icon: <PaymentsRoundedIcon /> },
+      { label: 'Provider events', path: '/provider-events', icon: <ReportGmailerrorredRoundedIcon /> },
       { label: 'Subscriptions', path: '/subscriptions', icon: <WorkspacePremiumRoundedIcon /> },
       { label: 'Store billing recovery', path: '/store-billing', icon: <WorkspacePremiumRoundedIcon /> },
     ],

@@ -10,6 +10,7 @@ import PrivacyRequestsPage from './pages/PrivacyRequestsPage'
 import StoreBillingPage from './pages/StoreBillingPage'
 import RefundOperationsPage from './pages/RefundOperationsPage'
 import RefundRequestsPage from './pages/RefundRequestsPage'
+import ProviderEventsPage from './pages/ProviderEventsPage'
 import PaymentsPage from './pages/PaymentsPage'
 import ActivityEmailReviewPage from './pages/ActivityEmailReviewPage'
 import RouteErrorPage from './components/RouteErrorPage'
@@ -110,6 +111,7 @@ export const router = createBrowserRouter([
       { path: 'store-billing', element: <RequirePermission resource={Resource.SUBSCRIPTIONS}><StoreBillingPage /></RequirePermission> },
       { path: 'refund-recovery', element: <RequirePermission resource={Resource.DONATIONS}><RefundOperationsPage /></RequirePermission> },
       { path: 'refund-requests', element: <RequirePermission resource={Resource.DONATIONS}><RefundRequestsPage /></RequirePermission> },
+      { path: 'provider-events', element: <RequirePermission resource={Resource.DONATIONS}><ProviderEventsPage /></RequirePermission> },
       { path: 'payments', element: <RequirePermission resource={Resource.DONATIONS}><PaymentsPage /></RequirePermission> },
       { path: 'plans', element: <RequirePermission resource={Resource.PLANS}><ManagePlansPage /></RequirePermission> },
       { path: 'coupons/new', element: <RequirePermission resource={Resource.COUPONS} action={Action.CREATE}><CreateCouponPage /></RequirePermission> },

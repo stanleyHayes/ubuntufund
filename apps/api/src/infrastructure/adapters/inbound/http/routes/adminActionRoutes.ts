@@ -23,6 +23,7 @@ import { BeneficiaryPayoutModel } from '../../../../database/models/BeneficiaryP
 import { CampaignModel } from '../../../../database/models/CampaignModel.js'
 import { KYCVerificationModel } from '../../../../database/models/KYCVerificationModel.js'
 import { DisputeModel } from '../../../../database/models/DisputeModel.js'
+import { ProviderPaymentEventModel } from '../../../../database/models/ProviderPaymentEventModel.js'
 import { ContactSubmissionModel } from '../../../../database/models/ContactSubmissionModel.js'
 
 /** Live work queues: viewing an alert does not resolve the underlying work. */
@@ -54,6 +55,7 @@ export function createAdminActionRoutes(auth: ReturnType<typeof createAuthMiddle
         ReportModel.countDocuments({ status: 'pending' }),
         RefundModel.countDocuments({ status: { $in: ['pending', 'processing'] } }),
         ActivityAlertDeliveryModel.countDocuments({ status: 'review', channel: 'email' }),
+        ProviderPaymentEventModel.countDocuments({ reviewStatus: 'open' }),
       ])
       const definitions = [
         ['data-rights', 'Data access and privacy requests', '/privacy-requests', 'users'],
@@ -74,6 +76,7 @@ export function createAdminActionRoutes(auth: ReturnType<typeof createAuthMiddle
         ['campaign-reports', 'Campaign reports from supporters', '/campaign-reports', 'reports'],
         ['refund-requests', 'Donor refund requests', '/refund-requests', 'donations'],
         ['activity-email-review', 'Activity emails needing a delivery check', '/activity-email-review', 'settings'],
+        ['provider-events', 'Chargebacks and refunds reported by Paystack', '/provider-events', 'donations'],
       ]
       const items = definitions.map(([id, title, href, resource], i) => ({
         id,
