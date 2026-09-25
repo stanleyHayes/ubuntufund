@@ -47,9 +47,11 @@ describe('Private verification documents', () => {
     await request(app).post('/api/v1/kyc/identity').set('Authorization', other.bearer).send({ documents: [{ type: 'id_card', url: uploaded.body.data.url }] }).expect(400);
     await request(app).post('/api/v1/kyc/identity').set('Authorization', owner.bearer).send({ documents: [{ type: 'id_card', url: uploaded.body.data.url }] }).expect(201);
   });
-  it('rejects public document URLs and signing arbitrary/private folders', async () => {
+  it('rejects public document URLs and offers no direct-upload signing endpoint', async () => {
     const owner = await register();
     await request(app).post('/api/v1/kyc/identity').set('Authorization', owner.bearer).send({ documents: [{ type: 'id_card', url: 'https://example.com/public-id.jpg' }] }).expect(400);
-    for (const folder of ['kyc', 'ujimora/kyc', '../../kyc']) await request(app).post('/api/v1/uploads/sign').set('Authorization', owner.bearer).send({ folder }).expect(400);
+    // Direct browser → Cloudinary signing is gone: a folder+timestamp signature
+    // let any signed-in user upload any type or size, bypassing /uploads/image.
+    for (const folder of ['kyc', 'ujimora/kyc', '../../kyc', 'misc']) await request(app).post('/api/v1/uploads/sign').set('Authorization', owner.bearer).send({ folder }).expect(404);
   });
 });

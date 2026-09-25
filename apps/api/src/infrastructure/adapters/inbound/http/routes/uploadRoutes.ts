@@ -7,16 +7,9 @@ import express, {
   type Response,
   type NextFunction,
 } from 'express';
-import { z } from 'zod';
-import type { UploadController } from '../controllers/UploadController.js';
-import { validate } from '../../middleware/validate.js';
 import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
 import { AppError } from '../../middleware/errorHandler.js';
 import type { MediaUploader } from '../../../outbound/media/CloudinaryUploader.js';
-
-const signUploadSchema = z.object({
-  folder: z.string().max(200).optional(),
-});
 
 /** Accepted upload types — images and PDFs (KYC documents). */
 const ALLOWED_MIME = /^(image\/(jpe?g|png|webp|gif|heic|heif)|application\/pdf)$/i;
@@ -34,26 +27,19 @@ const MAX_BYTES = 5 * 1024 * 1024;
 
 /**
  * Media upload routes mounted at `/uploads`.
- *   POST /uploads/sign  — returns Cloudinary DIRECT-upload params (browser →
- *     Cloudinary). Fast, but requires the browser to reach api.cloudinary.com.
  *   POST /uploads/image — PROXY upload (browser → API → Cloudinary): the API
- *     forwards the raw bytes with signed credentials, so the upload is
- *     same-origin and never blocked by a client-side ad-blocker or restrictive
- *     network. Preferred for reliability (e.g. KYC document uploads).
+ *     checks type and size, then forwards the raw bytes with signed
+ *     credentials. The only upload path: there is deliberately no direct
+ *     browser → Cloudinary signing endpoint, because a signature covering only
+ *     folder + timestamp let any signed-in user push files of any type or size
+ *     straight into the account, bypassing these checks.
+ *   GET /uploads/kyc/:id/access — short-lived link to a private KYC document.
  */
 export function createUploadRoutes(
-  controller: UploadController,
   uploader: MediaUploader,
   authMiddleware: ReturnType<typeof createAuthMiddleware>
 ): Router {
   const router = Router();
-
-  router.post(
-    '/sign',
-    authMiddleware,
-    validate(signUploadSchema),
-    controller.sign
-  );
 
   router.post(
     '/image',

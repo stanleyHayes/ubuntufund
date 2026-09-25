@@ -78,9 +78,13 @@ services:
         sync: false
       # Cloudinary — image/PDF uploads (KYC documents, campaign covers) go through
       # the server-side signed proxy (POST /uploads/image), so the API needs the
-      # account credentials. Reusing the dev cloud for now: the cloud name is
-      # public (it also ships in the web bundle), but paste the API key + secret
-      # in the dashboard — same values as dev; never commit the secret.
+      # account credentials. The cloud name is public (it is in every media URL);
+      # paste the API key + secret in the dashboard and never commit the secret.
+      # This cloud is also the one local development uses, so every dev machine
+      # holding apps/api/.env has production media credentials. Owner action:
+      # give development its own cloud + key, then rotate this cloud's API
+      # secret and set the new one only here in the dashboard. Keeping this
+      # cloud name for production keeps existing media URLs working.
       - key: CLOUDINARY_CLOUD_NAME
         value: dvoqbonr2
       - key: CLOUDINARY_API_KEY

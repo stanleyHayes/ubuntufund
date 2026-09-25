@@ -297,7 +297,6 @@ import { ListNewsletterSubscribersUseCase } from './application/use-cases/ListNe
 import { ListSiteContentUseCase } from './application/use-cases/ListSiteContentUseCase.js'
 import { GetSiteContentUseCase } from './application/use-cases/GetSiteContentUseCase.js'
 import { UpsertSiteContentUseCase } from './application/use-cases/UpsertSiteContentUseCase.js'
-import { SignCloudinaryUploadUseCase } from './application/use-cases/SignCloudinaryUploadUseCase.js'
 
 // Inbound adapters (controllers, middleware, routes)
 import { AuthController } from './infrastructure/adapters/inbound/http/controllers/AuthController.js'
@@ -336,7 +335,6 @@ import { AdminUserController } from './infrastructure/adapters/inbound/http/cont
 import { AnalyticsController } from './infrastructure/adapters/inbound/http/controllers/AnalyticsController.js'
 import { NewsletterController } from './infrastructure/adapters/inbound/http/controllers/NewsletterController.js'
 import { SiteContentController } from './infrastructure/adapters/inbound/http/controllers/SiteContentController.js'
-import { UploadController } from './infrastructure/adapters/inbound/http/controllers/UploadController.js'
 import { AuditLogController } from './infrastructure/adapters/inbound/http/controllers/AuditLogController.js'
 import { TestimonialController } from './infrastructure/adapters/inbound/http/controllers/TestimonialController.js'
 import { ContactController } from './infrastructure/adapters/inbound/http/controllers/ContactController.js'
@@ -1300,7 +1298,6 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   const listSiteContentUseCase = new ListSiteContentUseCase(siteContentRepo)
   const getSiteContentUseCase = new GetSiteContentUseCase(siteContentRepo)
   const upsertSiteContentUseCase = new UpsertSiteContentUseCase(siteContentRepo)
-  const signCloudinaryUploadUseCase = new SignCloudinaryUploadUseCase(config.cloudinary)
 
   // ── Controllers ──────────────────────────────────────────────────────
   const authController = new AuthController(
@@ -1512,7 +1509,6 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     getSiteContentUseCase,
     upsertSiteContentUseCase,
   )
-  const uploadController = new UploadController(signCloudinaryUploadUseCase)
   const auditLogController = new AuditLogController()
   const testimonialController = new TestimonialController()
   const contactController = new ContactController()
@@ -1776,7 +1772,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   api.use('/newsletter', createNewsletterRoutes(newsletterController, authMiddleware, requireAdmin, newsletterConsent, userRepo))
   api.use('/blog', createBlogRoutes(authMiddleware, requireAdmin))
   api.use('/content', createContentRoutes(siteContentController, authMiddleware, requireAdmin))
-  api.use('/uploads', createUploadRoutes(uploadController, cloudinaryUploader, authMiddleware))
+  api.use('/uploads', createUploadRoutes(cloudinaryUploader, authMiddleware))
   api.use('/audit', createAuditLogRoutes(auditLogController, authMiddleware, requireAdmin))
   api.use(
     '/ai-writing',

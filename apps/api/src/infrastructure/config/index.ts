@@ -245,8 +245,8 @@ export const config: AppConfig = {
     : nodeEnv === 'development'
       ? defaultDevOrigins
       : [],
-  // Cloudinary is optional groundwork: absent creds simply disable signed
-  // uploads (the endpoint returns 501) rather than blocking boot.
+  // Cloudinary is optional: absent creds disable uploads (POST /uploads/image
+  // returns 503) rather than blocking boot.
   cloudinary: {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME ?? '',
     apiKey: process.env.CLOUDINARY_API_KEY ?? '',
