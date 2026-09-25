@@ -55,6 +55,16 @@ Historical SUCCEEDED checkouts created before this change may already have incom
    - **Duplicate store purchase** (`lastError: duplicate_active_subscription`, on a purchase row with its `userId`, or on a notification): the member was charged for a second store subscription while another plan was active. The server records it for review, leaves the active plan untouched, never acknowledges it, and re-checks it daily (it is applied automatically once the other plan lapses). Google Play: leave it unacknowledged and Play refunds and revokes it after 3 days, or refund it now in Play Console → Order management. Apple: developers cannot refund App Store purchases; tell the member to request a refund at reportaproblem.apple.com, and to cancel the unwanted subscription in their Apple ID settings.
 5. Monitor action-center counts and acknowledgement delays, including during disabled-runtime outages. A Google acknowledgement must meet the store deadline; an unresolved backlog is a release/operations incident, not a reason to grant unverified access.
 
+## Changing plan prices
+
+Admin plan prices (Admin → Plans, `PUT /plans/:tier`) apply to web (Paystack) checkout only. Native subscribers always pay the price of the App Store / Google Play product; the server maps products to tiers through STORE_BILLING_PRODUCTS and never reads or pushes admin prices. Store prices may differ deliberately (store commission), but should never drift unannounced.
+
+1. Edit the price in Admin → Plans. It applies to new web checkouts immediately; running web plans keep what they paid for.
+2. App Store Connect: change the auto-renewable subscription's price for each storefront, and choose whether existing subscribers keep their current price (Apple requires notice and, for increases, may require consent).
+3. Google Play Console: change the base plan's price per region, and decide how legacy price cohorts move to the new price.
+4. Check that the native paywall shows the new store `displayPrice` on both platforms.
+5. A new tier also needs its store products created, a STORE_BILLING_PRODUCTS entry and a redeploy before it can be sold in the apps.
+
 ## External release evidence
 
 - Owner-confirmed product IDs/base plans, subscription groups, territories, localized pricing, store agreements and tax/banking setup.
