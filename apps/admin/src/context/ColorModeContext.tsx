@@ -31,11 +31,17 @@ const skinGlobalStyles = {
   },
 } as const
 
+// Above the router, so a throw here would blank the console: read defensively
+// (blocked site data throws SecurityError).
+function readStored(key: string): string | null {
+  try { return localStorage.getItem(key) } catch { return null }
+}
+
 export function ColorModeProvider({ children }: { children: ReactNode }) {
   // Admin is dark-first: default to dark when nothing is stored yet.
-  const [darkMode, setDarkModeState] = useState(() => localStorage.getItem('uf_admin_color_mode') !== 'light')
+  const [darkMode, setDarkModeState] = useState(() => readStored('uf_admin_color_mode') !== 'light')
   const [skin, setSkinState] = useState<ThemeSkin>(() => {
-    const s = localStorage.getItem('uf_admin_skin')
+    const s = readStored('uf_admin_skin')
     return s && (SKINS as string[]).includes(s) ? (s as ThemeSkin) : 'neumorphism'
   })
   const theme = useMemo(() => makeAdminTheme(darkMode ? 'dark' : 'light', skin), [darkMode, skin])

@@ -11,11 +11,23 @@ export function createBrowserSession(options: {
 }) {
   const idleMs = 60 * 60 * 1000
   let refresh: Promise<string | null> | null = null
+  // Storage can be missing or throw (site data blocked → SecurityError; some
+  // in-app WebViews run with DOM storage off). Without it the session simply
+  // reads as signed out — it must never throw into React and blank the app.
+  function read(key: string): string | null {
+    try { return localStorage.getItem(key) } catch { return null }
+  }
+  function write(key: string, value: string) {
+    try { localStorage.setItem(key, value) } catch { /* storage unavailable */ }
+  }
+  function remove(key: string) {
+    try { localStorage.removeItem(key) } catch { /* storage unavailable */ }
+  }
   function tokens(): { accessToken: string; refreshToken?: string } | null {
-    try { return JSON.parse(localStorage.getItem(options.tokensKey) ?? 'null') } catch { return null }
+    try { return JSON.parse(read(options.tokensKey) ?? 'null') } catch { return null }
   }
   function accessToken(): string | null {
-    return tokens()?.accessToken ?? (options.accessKey ? localStorage.getItem(options.accessKey) : null)
+    return tokens()?.accessToken ?? (options.accessKey ? read(options.accessKey) : null)
   }
   function expiresAt(token: string): number | null {
     try {
@@ -24,16 +36,16 @@ export function createBrowserSession(options: {
     } catch { return null }
   }
   function clear() {
-    for (const key of [options.tokensKey, options.userKey, options.activityKey, ...options.legacyKeys]) localStorage.removeItem(key)
+    for (const key of [options.tokensKey, options.userKey, options.activityKey, ...options.legacyKeys]) remove(key)
   }
   function expire(rejectedToken?: string) {
     if (rejectedToken !== undefined && accessToken() !== rejectedToken) return
     clear()
     window.dispatchEvent(new Event(options.expiredEvent))
   }
-  function resetActivity() { localStorage.setItem(options.activityKey, String(Date.now())) }
+  function resetActivity() { write(options.activityKey, String(Date.now())) }
   function isIdle() {
-    const raw = localStorage.getItem(options.activityKey)
+    const raw = read(options.activityKey)
     if (!raw) { resetActivity(); return false } // Existing sessions migrate once.
     const last = Number(raw)
     return !Number.isFinite(last) || Date.now() - last >= idleMs
@@ -60,8 +72,8 @@ export function createBrowserSession(options: {
       const { data } = await response.json()
       if (!data?.accessToken || !data?.refreshToken) throw new Error('Unable to renew your session. Please try again.')
       if (accessToken() !== current) return accessToken()
-      localStorage.setItem(options.tokensKey, JSON.stringify(data))
-      if (options.accessKey) localStorage.setItem(options.accessKey, data.accessToken)
+      write(options.tokensKey, JSON.stringify(data))
+      if (options.accessKey) write(options.accessKey, data.accessToken)
       window.dispatchEvent(new Event(options.changedEvent))
       return data.accessToken as string
     })().finally(() => { refresh = null })
@@ -77,7 +89,7 @@ export function createBrowserSession(options: {
     const activity = () => {
       if (!accessToken()) return
       if (isIdle()) { expire(); return }
-      const last = Number(localStorage.getItem(options.activityKey) ?? 0)
+      const last = Number(read(options.activityKey) ?? 0)
       if (Date.now() - last >= 1000) resetActivity()
       check()
     }

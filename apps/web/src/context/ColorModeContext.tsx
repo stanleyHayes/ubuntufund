@@ -50,12 +50,23 @@ const skinGlobalStyles = {
   },
 } as const
 
+// This provider sits above the router, so a throw here has no error boundary
+// to land in: blocked site data (SecurityError) or a WebView without DOM
+// storage would blank every route, /donate included. Read defensively.
+function readStored(key: string): string | null {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
 export function ColorModeProvider({ children }: { children: ReactNode }) {
   const [darkMode, setDarkModeState] = useState(
-    () => localStorage.getItem('uf_color_mode') === 'dark',
+    () => readStored('uf_color_mode') === 'dark',
   )
   const [skin, setSkinState] = useState<ThemeSkin>(() => {
-    const s = localStorage.getItem('uf_skin')
+    const s = readStored('uf_skin')
     return s && (SKINS as string[]).includes(s) ? (s as ThemeSkin) : 'neumorphism'
   })
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
