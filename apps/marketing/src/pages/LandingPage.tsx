@@ -14,7 +14,7 @@ import { useSeo } from '@/lib/seo'
 function LandingPage() {
   useSeo({
     title: "Ujimora - Ghana's Trust Infrastructure for Giving",
-    description: "Ghana's crowdfunding platform built on trust: verified campaigns, transparent contribution records, and cedi-first giving. Together, we fund what matters.",
+    description: "Ghana's crowdfunding platform built on trust: reviewed campaigns, verified organizers, transparent donation records and cedi-first giving. Together, we fund what matters.",
     path: '/',
     type: 'website',
   })

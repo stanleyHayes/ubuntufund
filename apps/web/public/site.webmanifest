@@ -1,7 +1,7 @@
 {
   "name": "Ujimora — Trusted Crowdfunding in Ghana",
   "short_name": "Ujimora",
-  "description": "Discover and support verified campaigns across Ghana. Together, we fund what matters.",
+  "description": "Ghana's crowdfunding platform built on trust: reviewed campaigns, verified organizers and transparent donation records.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

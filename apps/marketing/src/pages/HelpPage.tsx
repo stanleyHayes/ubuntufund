@@ -59,10 +59,10 @@ const FAQ_CATEGORIES_STATIC: FaqCategory[] = [
     icon: <CampaignRoundedIcon />,
     label: 'Campaigns',
     questions: [
-      { q: 'How do I start a fundraising campaign?', a: 'Click "Start a Campaign" and follow the guided setup: title, description, goal amount, category, and compelling photos. Set a deadline and submit for review. Our team typically reviews campaigns within 24-48 hours.' },
+      { q: 'How do I start a fundraising campaign?', a: 'Click "Start a Campaign" and follow the guided setup: title, category, story, beneficiaries, goal and end date, plus an optional cover photo if your plan includes images. Before a campaign goes live, its text is screened: by automated safety screening if you allow it, otherwise by our staff. Cover photos are always checked by staff. Depending on the goal and our current review settings, your campaign then goes live straight away or waits for staff approval. There is no fixed review time.' },
       { q: 'What types of campaigns can I create?', a: 'We support education, healthcare, community development, emergency relief, arts & culture, small business, agriculture, and technology. Campaigns must be for legitimate, legal purposes benefiting communities or individuals.' },
-      { q: 'How long can my campaign run?', a: 'Campaigns run up to 90 days. We recommend 30-60 days for optimal engagement. You can extend once for 30 additional days if you haven\'t reached your goal. Campaigns that reach their goal early continue accepting donations.' },
-      { q: 'Can I edit my campaign after it\'s live?', a: 'Yes. You can update the description, images, and deadline. The goal amount cannot be reduced once donations are received. Major changes may trigger a re-review by our trust team.' },
+      { q: 'How long can my campaign run?', a: 'You choose the end date when you create your campaign, and it can be any future date. We recommend 30-60 days for steady engagement. The end date cannot be changed or extended after you submit, so choose it carefully. Campaigns that reach their goal early keep accepting donations until the end date.' },
+      { q: 'Can I edit my campaign after it\'s live?', a: 'Not at the moment. After you submit a campaign, its story, images, goal and end date cannot be edited. You can post campaign updates to keep supporters informed, and you can change your campaign link. If something material changes, such as the purpose or who benefits, post an update and contact support.' },
     ],
   },
   {
@@ -90,7 +90,7 @@ const FAQ_CATEGORIES_STATIC: FaqCategory[] = [
     icon: <ShieldRoundedIcon />,
     label: 'Trust & safety',
     questions: [
-      { q: 'How does Ujimora verify campaigns?', a: 'Our team reviews every campaign before it goes live, together with organizer identity verification and documentation checks. Verified organizations show a badge that helps donors judge credibility.' },
+      { q: 'How does Ujimora verify campaigns?', a: 'Organizers must complete identity verification before they can create campaigns. Before a campaign goes live, its text is screened, by automated safety screening if the organizer allows it or otherwise by our staff, and cover photos are checked by staff. Goals above GH₵250,000 need staff approval unless the organizer is currently verified and has published a campaign before. Screening looks for unsafe or prohibited content; it does not confirm every claim, so read the campaign before you give. Verified organizations show a badge that helps donors judge credibility.' },
       { q: 'What happens if a campaign is fraudulent?', a: 'We remove the campaign from public view, hold payouts that have not yet been approved while we investigate, and work with donors on refunds where funds can be recovered. We cooperate with law enforcement. Use the "Report" button on any campaign to flag concerns.' },
     ],
   },

@@ -90,7 +90,7 @@ function AboutPage() {
 
   return (
     <Box sx={{ flex: 1, bgcolor: 'background.default', pb: { xs: 8, md: 12 } }}>
-      <InternalPageHero eyebrow="About Ujimora" title={about.hero.title} description={about.hero.subtitle} icon={<PublicRoundedIcon />} panelLabel="Built in Ghana" panelTitle="Giving infrastructure shaped around local communities." panelBody="Cedi-first records. Human review. Transparent campaign histories." primaryAction={{ label: 'How trust works', href: '#operating-model' }} secondaryAction={{ label: 'Talk to our team', href: '/contact' }} />
+      <InternalPageHero eyebrow="About Ujimora" title={about.hero.title} description={about.hero.subtitle} icon={<PublicRoundedIcon />} panelLabel="Built in Ghana" panelTitle="Giving infrastructure shaped around local communities." panelBody="Cedi-first records. Campaigns screened before launch. Transparent campaign histories." primaryAction={{ label: 'How trust works', href: '#operating-model' }} secondaryAction={{ label: 'Talk to our team', href: '/contact' }} />
 
       <Container maxWidth="lg" sx={{ mt: { xs: 6, md: 10 } }}>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'minmax(0,.8fr) minmax(0,1.2fr)' }, gap: { xs: 4, md: 8 }, alignItems: 'start' }}>
