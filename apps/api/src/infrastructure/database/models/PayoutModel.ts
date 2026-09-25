@@ -24,6 +24,8 @@ export interface PayoutDocument extends Document {
   automationReason?: string
   requestKey?: string
   autoClaimDay?: string
+  /** When the automatic budget claim was taken; bounds how long it stays usable. */
+  autoClaimedAt?: Date
   autoClaimed?: boolean
   transferCode?: string
   requestedBy: string
@@ -92,6 +94,7 @@ const payoutSchema = new Schema<PayoutDocument>(
     automationReason: String,
     requestKey: { type: String, unique: true, sparse: true },
     autoClaimDay: String,
+    autoClaimedAt: Date,
     autoClaimed: Boolean,
     campaignId: { type: String, required: true, index: true },
     recipientId: { type: String, required: true },

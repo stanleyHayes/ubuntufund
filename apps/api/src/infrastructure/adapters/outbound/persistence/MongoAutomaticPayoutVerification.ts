@@ -10,6 +10,9 @@ import { UserModel } from '../../../database/models/UserModel.js'
 import { assertCurrentOwnerVerification } from './MongoPayoutEligibility.js'
 import { AppError } from '../../inbound/middleware/errorHandler.js'
 
+/** How long an automatic budget claim may be verified after it was taken. */
+export const AUTOMATIC_CLAIM_TTL_MS = 15 * 60_000
+
 /** Revalidate after provider balance lookup and before reserving campaign money. */
 export class MongoAutomaticPayoutVerification {
   async run<T>(userId: string, work: () => Promise<T>, payout?: Pick<PayoutEntity, 'id' | 'campaignId' | 'type' | 'recipientId' | 'currency' | 'amount'> & { recipientCode: string }): Promise<T> {
@@ -38,13 +41,19 @@ export class MongoAutomaticPayoutVerification {
         )
         if (!policy || payout.amount > (policy.maxAmount ?? automaticPayoutDefaults.maxAmount))
           throw new AppError('Automatic payout policy changed; manual review required.', 409)
-        const day = new Date().toISOString().slice(0, 10)
+        // Validate the claim against the day it was TAKEN, not today's date:
+        // a claim made at 23:59:59 UTC and verified after midnight (the
+        // provider balance lookup sits in between) is still the same claim
+        // against the same day's budget. Freshness is bounded explicitly.
         const claimed = await PayoutModel.findOne({
-          _id: payout.id, status: 'PENDING', autoClaimed: true, autoClaimDay: day,
+          _id: payout.id, status: 'PENDING', autoClaimed: true,
+          autoClaimedAt: { $gte: new Date(Date.now() - AUTOMATIC_CLAIM_TTL_MS) },
           campaignId: payout.campaignId, requestedBy: userId, recipientId: payout.recipientId,
           currency: payout.currency, amount: payout.amount, type: payout.type,
         })
-        if (!claimed) throw new AppError('Automatic budget claim is unavailable or expired; manual review required.', 409)
+        const day = claimed?.autoClaimDay
+        if (!claimed || !day || !/^\d{4}-\d{2}-\d{2}$/.test(day))
+          throw new AppError('Automatic budget claim is unavailable or expired; manual review required.', 409)
         const amountMinor = Math.round(payout.amount * 100)
         for (const [key, limit] of [
           [`${day}:owner:${userId}`, policy.dailyOwnerLimit ?? automaticPayoutDefaults.dailyOwnerLimit],
