@@ -58,6 +58,8 @@ export interface DonationIntentDocument extends Document {
   cryptoReconciledAt?: Date;
   /** Last time the fiat payment sweep re-verified this PENDING intent (fairness order). */
   reconciledAt?: Date;
+  /** Open hosted checkout, retained only while CREATED/PENDING for idempotent retries. */
+  hostedCheckout?: { authorizationUrl?: string; accessCode?: string };
 }
 
 const DONATION_INTENT_STATUSES: DonationIntentStatus[] = [
@@ -154,6 +156,7 @@ const donationIntentSchema = new Schema<DonationIntentDocument>(
     quoteExpiresAt: { type: Date },
     cryptoReconciledAt: { type: Date },
     reconciledAt: { type: Date },
+    hostedCheckout: { authorizationUrl: String, accessCode: String },
   },
   { collection: 'donationintents', timestamps: true }
 );

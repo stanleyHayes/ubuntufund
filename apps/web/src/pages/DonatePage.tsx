@@ -1,4 +1,5 @@
 import { usePublicCampaign } from '@/hooks/usePublicCampaign'
+import { checkoutAttemptKey, forgetCheckoutAttempt, isDefinitiveRejection } from '@/lib/checkoutAttempt'
 import { MessageAgreement } from '@/components/donate/MessageAgreement'
 import { LEGAL_ACCEPTANCE_VERSION } from '@ubuntu-fund/types'
 import { useEffect, useMemo, useState } from 'react'
@@ -228,20 +229,44 @@ export function DonatePage() {
     setSubmitError('')
     setPaymentsDisabled(false)
 
+    const intentInput = {
+      campaignId: campaign.id,
+      liveSessionId: searchParams.get('liveSessionId') || undefined,
+      amount: amountValue,
+      tip: tipValid && Number.isFinite(tipValue) && tipValue > 0 ? tipValue : undefined,
+      couponCode: user && couponCode.trim() ? couponCode.trim() : undefined,
+      provider: 'paystack' as const,
+      donorEmail: donorEmail.trim(),
+      donorName: donorName.trim() || undefined,
+      message: message.trim() || undefined,
+      legalAcceptance: messageAcceptance,
+      isAnonymous,
+    }
+    // One key per donation attempt: pressing Give again with the same details
+    // (after a lost response, or after coming back from checkout) returns the
+    // same checkout instead of opening a second one.
+    const attemptScope = `donate:${campaign.id}:${user?.id ?? 'guest'}`
+
     try {
-      const result = await createDonationIntent({
-        campaignId: campaign.id,
-        liveSessionId: searchParams.get('liveSessionId') || undefined,
-        amount: amountValue,
-        tip: tipValid && Number.isFinite(tipValue) && tipValue > 0 ? tipValue : undefined,
-        couponCode: user && couponCode.trim() ? couponCode.trim() : undefined,
-        provider: 'paystack',
-        donorEmail: donorEmail.trim(),
-        donorName: donorName.trim() || undefined,
-        message: message.trim() || undefined,
-        legalAcceptance: messageAcceptance,
-        isAnonymous,
-      })
+      let result = await createDonationIntent(intentInput, await checkoutAttemptKey(attemptScope, intentInput))
+
+      if (!result.authorization_url && result.intent.status === 'SUCCEEDED') {
+        // This exact donation was already paid — show its confirmation rather
+        // than charging the donor a second time.
+        await forgetCheckoutAttempt(attemptScope)
+        if (result.intent.providerRef) {
+          navigate(`/donate/callback?reference=${encodeURIComponent(result.intent.providerRef)}`)
+          return
+        }
+        setSubmitError('This donation has already been completed. Thank you!')
+        setSubmitting(false)
+        return
+      }
+      if (!result.authorization_url && ['FAILED', 'EXPIRED', 'CANCELLED'].includes(result.intent.status)) {
+        // The earlier attempt with these details is closed; start a new one.
+        await forgetCheckoutAttempt(attemptScope)
+        result = await createDonationIntent(intentInput, await checkoutAttemptKey(attemptScope, intentInput))
+      }
 
       if (!result.authorization_url) {
         // Paystack should always return a hosted-checkout URL. If it didn't,
@@ -265,6 +290,9 @@ export function DonatePage() {
       // Hand the browser to Paystack's hosted checkout. NEVER treat this as success.
       window.location.href = result.authorization_url
     } catch (err) {
+      // A definite refusal means the next press is a new attempt; a network
+      // error or timeout keeps the key, since the checkout may already exist.
+      if (isDefinitiveRejection(err)) await forgetCheckoutAttempt(attemptScope)
       if (isPaymentsNotConfigured(err)) {
         setPaymentsDisabled(true)
       } else {

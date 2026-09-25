@@ -193,6 +193,7 @@ export class CreateDonationIntentUseCase {
         if (!campaign?.canReceiveDonation()) throw new AppError('Campaign is not accepting donations', 400)
         return { intent: await this.settleWalletIntent(existing) }
       }
+      if (existing.provider !== 'wallet') return this.replayHostedIntent(existing, input, ctx)
       return { intent: existing }
     }
 
@@ -322,6 +323,49 @@ export class CreateDonationIntentUseCase {
   }
 
   /**
+   * A retry of a hosted checkout with the same idempotency key. It must describe
+   * the same donation (a reused key with changed details is refused rather than
+   * silently answered with the earlier checkout), and it gets back the SAME open
+   * checkout — so a retry after a lost response never opens a second Paystack
+   * transaction and never strands a fee-waiver seat on an orphan intent.
+   */
+  private async replayHostedIntent(
+    existing: DonationIntentEntity,
+    input: CreateDonationIntentInput,
+    ctx: CreateDonationIntentContext,
+  ): Promise<CreateDonationIntentResult> {
+    const sameText = (a?: string, b?: string) => (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase()
+    const sameDonation =
+      existing.provider === input.provider &&
+      existing.campaignId === input.campaignId &&
+      existing.donorUserId === ctx.donorUserId &&
+      (!input.currency || input.currency.toUpperCase() === existing.currency.toUpperCase()) &&
+      toMinorUnits(existing.amount, existing.currency) === toMinorUnits(input.amount, existing.currency) &&
+      toMinorUnits(existing.tip, existing.currency) === toMinorUnits(input.tip ?? 0, existing.currency) &&
+      sameText(existing.donorEmail, input.donorEmail) &&
+      sameText(existing.couponCode, input.couponCode)
+    if (!sameDonation) {
+      throw new AppError('This checkout request key was already used for different details.', 409)
+    }
+    if (existing.status === 'PENDING' && existing.providerRef && existing.hostedCheckout) {
+      return {
+        intent: existing,
+        hostedInit: { ...existing.hostedCheckout, reference: existing.providerRef },
+      }
+    }
+    // The first attempt stored the intent but never opened a checkout (the
+    // provider call failed): open it now under the same intent.
+    if (existing.status === 'CREATED' && !existing.providerRef) {
+      await this.assertRailEnabled(existing.provider)
+      const gateway = this.resolveHostedGateway(existing.provider)
+      const campaign = await this.campaignRepo.findById(existing.campaignId)
+      if (!campaign?.canReceiveDonation()) throw new AppError('Campaign is not accepting donations', 400)
+      return this.initializeHostedIntent(existing, gateway)
+    }
+    return { intent: existing }
+  }
+
+  /**
    * Open a hosted checkout (Paystack or Flutterwave) for a freshly-created
    * CREATED intent: call the gateway, move the intent to PENDING with the
    * provider reference, and record the initiation attempt. The signed webhook
@@ -333,9 +377,22 @@ export class CreateDonationIntentUseCase {
   ): Promise<CreateDonationIntentResult> {
     const init = await gateway.initializeTransaction(intent)
 
-    // Store the reference (providerRef) and advance to PENDING so the webhook
-    // can correlate the settlement back to this intent.
-    const pending = await this.donationIntentRepo.updateStatus(intent.id, 'PENDING', init.reference)
+    // Store the reference (providerRef) and the open checkout, and advance to
+    // PENDING so the webhook can correlate the settlement back to this intent.
+    // Compare-and-set on CREATED: if a concurrent retry opened a checkout first,
+    // hand back that one (this call's provider transaction is never shown to
+    // anyone, so it can never be paid).
+    const pending = await this.donationIntentRepo.markPendingIfCreated(intent.id, init.reference, {
+      authorizationUrl: init.authorizationUrl,
+      accessCode: init.accessCode,
+    })
+    if (!pending) {
+      const current = await this.donationIntentRepo.findById(intent.id)
+      if (current?.status === 'PENDING' && current.providerRef && current.hostedCheckout) {
+        return { intent: current, hostedInit: { ...current.hostedCheckout, reference: current.providerRef } }
+      }
+      throw new AppError('Checkout could not be opened. Please try again.', 409)
+    }
 
     // Audit trail for the checkout (best-effort; never fails the request).
     if (this.paymentAttemptRepo) {
@@ -354,7 +411,7 @@ export class CreateDonationIntentUseCase {
       }
     }
 
-    return { intent: pending ?? intent, hostedInit: init }
+    return { intent: pending, hostedInit: init }
   }
 
   /**

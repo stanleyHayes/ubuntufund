@@ -51,6 +51,7 @@ function config(overrides: Partial<PaymentsConfig> = {}): PaymentsConfig {
     multiCurrencyEnabled: false,
     defaultProvider: 'paystack',
     reconciliationEnabled: true,
+    reconciliationSchedulerEnabled: false,
     supportedCurrencies: ['GHS', 'USD', 'GBP', 'EUR', 'CAD'],
     fxSource: 'provider',
     ...overrides,

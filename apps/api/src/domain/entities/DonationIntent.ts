@@ -61,6 +61,12 @@ export interface DonationIntentProps {
   requiredConfirmations?: number;
   quoteId?: string;
   quoteExpiresAt?: Date;
+  /**
+   * The open hosted checkout (authorization URL + access code), kept only while
+   * the intent is CREATED/PENDING so an idempotent retry can hand the donor the
+   * same checkout instead of opening a second one. Never exposed in views.
+   */
+  hostedCheckout?: { authorizationUrl: string; accessCode: string };
 }
 
 /**
@@ -230,6 +236,9 @@ export class DonationIntentEntity {
   }
   get quoteExpiresAt(): Date | undefined {
     return this.props.quoteExpiresAt;
+  }
+  get hostedCheckout(): { authorizationUrl: string; accessCode: string } | undefined {
+    return this.props.hostedCheckout;
   }
 
   /** Record on-chain progress observed from a provider webhook (additive). */

@@ -110,20 +110,25 @@ export interface DonationIntentCreateResult {
 }
 
 /**
- * Create a donation intent (`POST /donation-intents`, guest-capable). Sends a
- * fresh `Idempotency-Key` so retries never double-charge, and forwards the
- * stored auth token when present (needed for the authenticated wallet rail).
+ * Create a donation intent (`POST /donation-intents`, guest-capable). Forwards
+ * the stored auth token when present (needed for the authenticated wallet rail).
+ *
+ * Pass the same `idempotencyKey` when retrying the same donation (see
+ * `checkoutAttemptKey`): the server then returns the same intent and open
+ * checkout instead of creating a second one. Omitted, every call is a new
+ * attempt.
  *
  * @throws {PaymentsNotConfiguredError} when the Paystack rail is disabled (501).
  */
 export async function createDonationIntent(
   input: CreateDonationIntentInput,
+  idempotencyKey: string = crypto.randomUUID(),
 ): Promise<DonationIntentCreateResult> {
   try {
     const envelope = await request<{ data: unknown }>('/donation-intents', {
       method: 'POST',
       body: JSON.stringify(input),
-      headers: { 'Idempotency-Key': crypto.randomUUID() },
+      headers: { 'Idempotency-Key': idempotencyKey },
       token: getStoredToken(),
     })
 

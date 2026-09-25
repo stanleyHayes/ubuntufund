@@ -429,4 +429,51 @@ describe('Paystack Integration', () => {
     const entry = await JournalEntryModel.findOne({ donationIntentId: intentId });
     expect(entry).toBeNull();
   });
+
+  // I041: a retry after a lost response must return the same checkout, not open
+  // a second intent + Paystack transaction.
+  it('replays the same open checkout for a retried request key, and refuses changed details', async () => {
+    const { userId: creatorId, token: creatorToken } = await registerUser(app, uniqueEmail('psreplay'));
+    const campaignId = await createActiveCampaign(app, creatorToken, creatorId);
+    const key = randomUUID();
+    const body = { campaignId, amount: 150, tip: 5, provider: 'paystack', donorEmail: 'Replay@Example.com', isAnonymous: true };
+    const open = (payload: Record<string, unknown> = body) => request(app).post('/api/v1/donation-intents').set('Idempotency-Key', key).send(payload);
+
+    const first = await open().expect(201);
+    const again = await open({ ...body, donorEmail: 'REPLAY@example.com' }).expect(201);
+    expect(again.body.data.intent.id).toBe(first.body.data.intent.id);
+    expect(again.body.data.authorization_url).toBe(first.body.data.authorization_url);
+    expect(again.body.data.reference).toBe(first.body.data.reference);
+    const initCalls = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes('/transaction/initialize'));
+    expect(initCalls).toHaveLength(1);
+    expect(await DonationIntentModel.countDocuments({ idempotencyKey: key })).toBe(1);
+
+    await open({ ...body, amount: 151 }).expect(409);
+    await open({ ...body, donorEmail: 'someone-else@example.com' }).expect(409);
+
+    // Once the checkout is settled its credentials are dropped; a replay returns
+    // the settled intent only.
+    const raw = JSON.stringify({ event: 'charge.success', data: { reference: first.body.data.reference, amount: 15500, fees: 0, currency: 'GHS', status: 'success' } });
+    await request(app).post('/api/v1/webhooks/paystack').set('x-paystack-signature', sign(raw)).set('Content-Type', 'application/json').send(raw).expect(200);
+    const settled = await open().expect(201);
+    expect(settled.body.data.status).toBe('SUCCEEDED');
+    expect(settled.body.data.authorization_url).toBeUndefined();
+    expect((await DonationIntentModel.findById(first.body.data.intent.id))?.hostedCheckout?.authorizationUrl).toBeUndefined();
+  });
+
+  it('opens the checkout on retry when the first provider call failed', async () => {
+    const { userId: creatorId, token: creatorToken } = await registerUser(app, uniqueEmail('psretryinit'));
+    const campaignId = await createActiveCampaign(app, creatorToken, creatorId);
+    const key = randomUUID();
+    const body = { campaignId, amount: 80, provider: 'paystack', donorEmail: 'retry@example.com', isAnonymous: true };
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    vi.mocked(fetch).mockImplementationOnce(async () => ({ ok: false, status: 503, json: async () => ({ status: false, message: 'down' }) }) as unknown as Response);
+    await request(app).post('/api/v1/donation-intents').set('Idempotency-Key', key).send(body).expect(502);
+    vi.mocked(fetch).mockImplementation(original);
+    const retry = await request(app).post('/api/v1/donation-intents').set('Idempotency-Key', key).send(body).expect(201);
+    expect(retry.body.data.intent.status).toBe('PENDING');
+    expect(typeof retry.body.data.authorization_url).toBe('string');
+    expect(await DonationIntentModel.countDocuments({ idempotencyKey: key })).toBe(1);
+  });
 });
+

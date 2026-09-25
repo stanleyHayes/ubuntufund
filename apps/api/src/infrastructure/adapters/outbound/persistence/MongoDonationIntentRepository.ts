@@ -52,8 +52,15 @@ function toDomain(doc: DonationIntentDocument): DonationIntentEntity {
     requiredConfirmations: doc.requiredConfirmations,
     quoteId: doc.quoteId,
     quoteExpiresAt: doc.quoteExpiresAt,
+    hostedCheckout:
+      doc.hostedCheckout?.authorizationUrl && ['CREATED', 'PENDING'].includes(doc.status)
+        ? { authorizationUrl: doc.hostedCheckout.authorizationUrl, accessCode: doc.hostedCheckout.accessCode ?? '' }
+        : undefined,
   });
 }
+
+/** Checkout credentials are only kept while a checkout can still be paid. */
+const CLEAR_CHECKOUT = { hostedCheckout: 1 } as const;
 
 export class MongoDonationIntentRepository
   implements DonationIntentRepositoryPort
@@ -137,7 +144,21 @@ export class MongoDonationIntentRepository
           status: 'SUCCEEDED',
           ...(providerRef ? { providerRef } : {}),
         },
+        $unset: CLEAR_CHECKOUT,
       },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
+  async markPendingIfCreated(
+    id: string,
+    providerRef: string,
+    checkout: { authorizationUrl: string; accessCode: string }
+  ): Promise<DonationIntentEntity | null> {
+    const doc = await DonationIntentModel.findOneAndUpdate(
+      { _id: id, status: 'CREATED' },
+      { $set: { status: 'PENDING', providerRef, hostedCheckout: checkout } },
       { new: true }
     );
     return doc ? toDomain(doc) : null;
@@ -155,6 +176,7 @@ export class MongoDonationIntentRepository
           status,
           ...(providerRef ? { providerRef } : {}),
         },
+        ...(status === 'CREATED' || status === 'PENDING' ? {} : { $unset: CLEAR_CHECKOUT }),
       },
       { new: true }
     );
@@ -169,7 +191,7 @@ export class MongoDonationIntentRepository
     // reconciliation sweep can never clobber a concurrently-SUCCEEDED intent.
     const doc = await DonationIntentModel.findOneAndUpdate(
       { _id: id, status: 'PENDING' },
-      { $set: { status: 'FAILED', ...(providerRef ? { providerRef } : {}) } },
+      { $set: { status: 'FAILED', ...(providerRef ? { providerRef } : {}) }, $unset: CLEAR_CHECKOUT },
       { new: true }
     );
     return doc ? toDomain(doc) : null;
@@ -183,7 +205,7 @@ export class MongoDonationIntentRepository
     // always wins, so an abandoned-checkout sweep never clobbers a payment.
     const doc = await DonationIntentModel.findOneAndUpdate(
       { _id: id, status: 'PENDING', ...(providerRef ? { providerRef } : {}) },
-      { $set: { status: 'EXPIRED' } },
+      { $set: { status: 'EXPIRED' }, $unset: CLEAR_CHECKOUT },
       { new: true }
     );
     return doc ? toDomain(doc) : null;

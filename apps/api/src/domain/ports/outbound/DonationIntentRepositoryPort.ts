@@ -23,6 +23,17 @@ export interface DonationIntentRepositoryPort {
     providerRef?: string
   ): Promise<DonationIntentEntity | null>;
 
+  /**
+   * Atomically move a CREATED hosted intent to PENDING with its provider
+   * reference and the open checkout. Null when it is no longer CREATED (a
+   * concurrent retry opened the checkout first).
+   */
+  markPendingIfCreated(
+    id: string,
+    providerRef: string,
+    checkout: { authorizationUrl: string; accessCode: string }
+  ): Promise<DonationIntentEntity | null>;
+
   /** Set a non-terminal→terminal/PENDING status (FAILED, EXPIRED, PENDING). */
   updateStatus(
     id: string,
