@@ -68,7 +68,14 @@ export async function uploadImageViaApi(
   if (response.status === 401 && token) {
     // The token may only look valid here because the device clock is off:
     // renew once and retry before treating the 401 as a sign-out.
-    const renewed = await browserSession.forceRefresh(token).catch(() => null)
+    let renewed: string | null
+    try {
+      renewed = await browserSession.forceRefresh(token)
+    } catch {
+      // The renewal itself failed (offline, a timeout, a 5xx during a cold
+      // start): that is not a sign-out, so keep the session and the form.
+      throw new Error('Unable to renew your session. Check your connection and try again.')
+    }
     if (renewed && renewed !== token) response = await send(url, file, renewed, onProgress)
     // Still refused: the session can no longer act, so protected pages fall
     // back to the sign-in prompt rather than a dead-end.
