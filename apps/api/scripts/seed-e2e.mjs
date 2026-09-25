@@ -1,10 +1,13 @@
 // Seed minimal data for the Playwright e2e suite: one verified creator and
 // one active GHS campaign to donate to. Used by CI (fresh database) and safe
 // to re-run — it upserts by email/title.
+// LOCAL DATABASES ONLY — refuses production, mongodb+srv and non-local hosts.
 import mongoose from 'mongoose'
 import bcrypt from 'bcryptjs'
+import { assertLocalSeedTarget } from './seedGuard.mjs'
 
 const uri = process.env.MONGODB_URI ?? 'mongodb://127.0.0.1:28017/ubuntu-fund'
+assertLocalSeedTarget(uri, 'seed-e2e')
 await mongoose.connect(uri)
 const db = mongoose.connection.db
 

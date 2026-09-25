@@ -1,14 +1,19 @@
 // Rich local-dev seed: realistic Ghana campaigns, creators, and donations so
 // the running apps show clean Ghana data. Wipes campaigns + donations, keeps
 // existing users, and ensures a demo donor + Ghanaian creators exist.
+// LOCAL DATABASES ONLY — refuses production, mongodb+srv and non-local hosts.
 // Run: cd apps/api && MONGODB_URI=mongodb://127.0.0.1:28017/ubuntu-fund node scripts/seed-dev.mjs
+// Add SEED_ADMIN_PASSWORD=<choose one> to also create the local console admin
+// (admin@ujimora.com); without it no admin account is created.
 import mongoose from 'mongoose'
 import bcrypt from 'bcryptjs'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { assertLocalSeedTarget } from './seedGuard.mjs'
 
 const uri = process.env.MONGODB_URI ?? 'mongodb://127.0.0.1:28017/ubuntu-fund'
+assertLocalSeedTarget(uri, 'seed-dev')
 await mongoose.connect(uri)
 const db = mongoose.connection.db
 const now = new Date()
@@ -39,8 +44,13 @@ const amara = await ensureUser({ email: 'amara2@ujimora.com', name: 'Amara Osei'
 const kojo = await ensureUser({ email: 'kojo.antwi@ujimora.dev', name: 'Kojo Antwi', password: 'SeededCreator123!', country: 'Ghana', trustScore: 65, level: 1 })
 const abena = await ensureUser({ email: 'abena.sarpong@ujimora.dev', name: 'Abena Sarpong', password: 'SeededCreator123!', country: 'Ghana', trustScore: 60, level: 1 })
 
-// --- Platform admin (admin console login: admin@ujimora.com / Admin2026!) ---
-await ensureUser({ email: 'admin@ujimora.com', name: 'Platform Admin', password: 'Admin2026!', country: 'Ghana', role: 'admin', trustScore: 100, level: 3 })
+// --- Platform admin (admin console login) — only with an explicit password ---
+const adminPassword = process.env.SEED_ADMIN_PASSWORD
+if (adminPassword) {
+  await ensureUser({ email: 'admin@ujimora.com', name: 'Platform Admin', password: adminPassword, country: 'Ghana', role: 'admin', trustScore: 100, level: 3 })
+} else {
+  console.log('seed-dev: SEED_ADMIN_PASSWORD not set — skipping the admin account')
+}
 
 // --- Fresh campaigns (Ghana) ---
 await db.collection('campaigns').deleteMany({})
@@ -150,5 +160,5 @@ for (const block of siteContentDefaults) {
   )
 }
 
-console.log(`dev seed complete: ${inserted.length} campaigns, ${donationDocs.length} donations, 6 users, ${siteContentDefaults.length} content blocks`)
+console.log(`dev seed complete: ${inserted.length} campaigns, ${donationDocs.length} donations, ${adminPassword ? 7 : 6} users, ${siteContentDefaults.length} content blocks`)
 await mongoose.disconnect()
