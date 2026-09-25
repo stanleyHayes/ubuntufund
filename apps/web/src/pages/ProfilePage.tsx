@@ -646,7 +646,7 @@ function ProfileForViewer() {
 
             {/* KYC Status */}
             <TabPanel value={tab} index={2}>
-              <KYCStatus />
+              <KYCStatus role={user?.role} />
             </TabPanel>
           </Box>
         </Card>

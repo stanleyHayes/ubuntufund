@@ -36,14 +36,24 @@ const statusConfig: Record<string, { color: string; bg: string; icon: React.Reac
   expired: { color: 'var(--text-secondary)', bg: 'rgba(158,158,158,0.08)', icon: <WarningAmberIcon />, label: 'Expired' },
 }
 
-const levelLabels: Record<number, string> = {
+// Individuals verify identity (which includes address proof) and top out at
+// level 1; only organizations add business verification (level 3).
+const individualLevelLabels: Record<number, string> = { 0: 'None', 1: 'Verified' }
+const organizationLevelLabels: Record<number, string> = {
   0: 'None',
-  1: 'Basic',
-  2: 'Full',
-  3: 'Business',
+  1: 'Representative identity',
+  2: 'Representative identity',
+  3: 'Organization verified',
+}
+const actionLabels: Record<string, string> = {
+  unverified: 'Start Verification',
+  pending: 'View',
+  verified: 'View',
+  rejected: 'Resubmit',
+  expired: 'Renew',
 }
 
-export default function KYCStatus() {
+export default function KYCStatus({ role }: { role?: string }) {
   const [data, setData] = useState<KYCData | null>(null)
 
   useEffect(() => {
@@ -63,14 +73,17 @@ export default function KYCStatus() {
   }, [])
 
   const status = data?.kycStatus || 'unverified'
-  const level = data?.kycLevel || 0
+  const isOrganization = role === 'organization'
+  const max = isOrganization ? 3 : 1
+  const level = Math.min(data?.kycLevel || 0, max)
   const config = statusConfig[status] || statusConfig.unverified
-  const progress = (level / 3) * 100
+  const progress = (level / max) * 100
+  const levelLabel = (isOrganization ? organizationLevelLabels : individualLevelLabels)[level]
 
   const needed: string[] = []
-  if (level < 1) needed.push('Identity verification')
-  if (level < 1) needed.push('Address verification')
-  if (level < 3) needed.push('Business verification (optional)')
+  if (level < 1) needed.push('Identity verification (includes address proof)')
+  // Organization payouts require business verification; individuals cannot submit it.
+  if (isOrganization && level < 3) needed.push('Organization verification')
 
   return (
     <Paper
@@ -100,7 +113,7 @@ export default function KYCStatus() {
             KYC Status: {config.label}
           </Typography>
           <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary' }}>
-            Level {level} — {levelLabels[level]}
+            Level {level} — {levelLabel}
           </Typography>
         </Box>
         <Button
@@ -110,14 +123,16 @@ export default function KYCStatus() {
           size="small"
           sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
         >
-          {level === 0 ? 'Start Verification' : 'Update'}
+          {actionLabels[status] ?? (level === 0 ? 'Start Verification' : 'View')}
         </Button>
       </Box>
 
       <Box sx={{ mb: 2 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
           <Typography sx={{ fontSize: '0.78rem', fontWeight: 600 }}>Progress</Typography>
-          <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary' }}>{level}/3</Typography>
+          <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary' }}>
+            {level}/{max}
+          </Typography>
         </Box>
         <LinearProgress
           variant="determinate"
