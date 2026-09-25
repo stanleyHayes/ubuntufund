@@ -10,6 +10,8 @@ import {
   type ReportDocument,
 } from '../../../database/models/ReportModel.js';
 import { AuditLogModel } from '../../../database/models/AuditLogModel.js';
+import { CampaignModel } from '../../../database/models/CampaignModel.js';
+import { AppError } from '../../inbound/middleware/errorHandler.js';
 import { MongoUnitOfWork } from './MongoUnitOfWork.js';
 
 function toDomain(doc: ReportDocument): ReportRecord {
@@ -66,6 +68,19 @@ export class MongoAdminReportRepository
     input: ReportReviewInput
   ): Promise<ReportRecord | null> {
     return new MongoUnitOfWork().run(async () => {
+      const current = await ReportModel.findOne({ _id: id, status: 'pending' })
+        .select('reporterId campaignId')
+        .lean();
+      if (!current) return null;
+      // Four eyes, as for safety reports and campaign review: never the
+      // reporter, nor the owner of the reported campaign (including one that
+      // was later soft-deleted, so the lookup ignores deletedAt).
+      const owner = /^[a-f0-9]{24}$/i.test(current.campaignId)
+        ? (await CampaignModel.findById(current.campaignId).select('creatorId').lean())?.creatorId
+        : undefined;
+      if (input.reviewerId === current.reporterId || (owner && input.reviewerId === owner)) {
+        throw new AppError('Another administrator must review this report.', 403);
+      }
       // Conditional on 'pending': a concurrent or repeated decision matches
       // nothing, so the first reviewer's notes and audit row stand.
       const doc = await ReportModel.findOneAndUpdate(

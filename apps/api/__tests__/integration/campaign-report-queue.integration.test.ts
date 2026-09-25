@@ -7,6 +7,7 @@ import { connectTestDatabase, disconnectTestDatabase, dropTestDatabase } from '.
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
 import { ReportModel } from '../../src/infrastructure/database/models/ReportModel.js';
 import { AuditLogModel } from '../../src/infrastructure/database/models/AuditLogModel.js';
+import { CampaignModel } from '../../src/infrastructure/database/models/CampaignModel.js';
 
 const NOTE = 'Checked the campaign documents; blocked the campaign for fraud.';
 let app: Express, adminAuth: string, userAuth: string, adminId: string;
@@ -87,6 +88,27 @@ describe('campaign report staff queue', () => {
     expect([first.status, second.status].sort()).toEqual([200, 409]);
     expect(await AuditLogModel.countDocuments({ resource: `campaign-report:${id}` })).toBe(1);
     await request(app).put(`/api/v1/reports/${id}/review`).set('Authorization', adminAuth).send({ status: 'reviewed', notes: NOTE }).expect(409);
+  });
+
+  it('refuses a reviewer who filed the report or owns the reported campaign (four eyes)', async () => {
+    const own = await CampaignModel.create({ title: 'Admin-owned fundraiser', description: 'Campaign run by an administrator.', goalAmount: 3000, currency: 'GHS', category: 'education', status: 'active', creatorId: adminId, beneficiaries: ['School community'], startDate: new Date(), endDate: new Date(Date.now() + 86400000) });
+    const aboutOwn = await seedReport({ campaignId: String(own._id) });
+    await request(app).put(`/api/v1/reports/${aboutOwn}/review`).set('Authorization', adminAuth).send({ status: 'dismissed', notes: NOTE }).expect(403);
+    // Soft-deleting the campaign does not release the owner from the rule.
+    await CampaignModel.updateOne({ _id: own._id }, { $set: { deletedAt: new Date() } });
+    await request(app).put(`/api/v1/reports/${aboutOwn}/review`).set('Authorization', adminAuth).send({ status: 'dismissed', notes: NOTE }).expect(403);
+    const filedByAdmin = await seedReport({ campaignId: 'c'.repeat(24), reporterId: adminId });
+    await request(app).put(`/api/v1/reports/${filedByAdmin}/review`).set('Authorization', adminAuth).send({ status: 'reviewed', notes: NOTE }).expect(403);
+    for (const id of [aboutOwn, filedByAdmin]) {
+      expect((await ReportModel.findById(id))?.status).toBe('pending');
+      expect(await AuditLogModel.countDocuments({ resource: `campaign-report:${id}` })).toBe(0);
+    }
+
+    // Another administrator can still decide both.
+    const other = await register('reports-second-admin');
+    await UserModel.findByIdAndUpdate(other.id, { role: 'admin' });
+    await request(app).put(`/api/v1/reports/${aboutOwn}/review`).set('Authorization', other.auth).send({ status: 'dismissed', notes: NOTE }).expect(200);
+    await request(app).put(`/api/v1/reports/${filedByAdmin}/review`).set('Authorization', other.auth).send({ status: 'reviewed', notes: NOTE }).expect(200);
   });
 
   it('returns 404 for malformed and unknown report ids', async () => {
