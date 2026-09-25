@@ -30,24 +30,6 @@ export function parsePagination(
 }
 
 /**
- * Public sort fields for the campaign list. Anything else would let a caller
- * order by internal or unindexed fields — an ordering oracle over data it
- * cannot read, and a way to force expensive in-memory sorts.
- */
-export const CAMPAIGN_SORT_FIELDS = ['createdAt', 'raisedAmount', 'goalAmount', 'endDate'] as const;
-type CampaignSortField = (typeof CAMPAIGN_SORT_FIELDS)[number];
-
-export function parseCampaignSort(query: Record<string, unknown>): { sortBy: CampaignSortField; sortOrder: 'asc' | 'desc' } {
-  const sortBy = query.sortBy === undefined || query.sortBy === '' ? 'createdAt' : query.sortBy;
-  const sortOrder = query.sortOrder === undefined || query.sortOrder === '' ? 'desc' : query.sortOrder;
-  if (!(CAMPAIGN_SORT_FIELDS as readonly unknown[]).includes(sortBy)) {
-    throw new AppError(`sortBy must be one of: ${CAMPAIGN_SORT_FIELDS.join(', ')}.`, 400);
-  }
-  if (sortOrder !== 'asc' && sortOrder !== 'desc') throw new AppError('sortOrder must be asc or desc.', 400);
-  return { sortBy: sortBy as CampaignSortField, sortOrder };
-}
-
-/**
  * `?limit=&before=` for a newest-first feed (notifications). `before` is an
  * ISO timestamp cursor: the next page is everything older than the last item.
  */

@@ -157,12 +157,14 @@ it('searches, filters and pages on the server so campaigns beyond the first page
   expect(new Set(seen).size).toBe(30);
 });
 
-it('caps page size and only sorts by whitelisted fields', async () => {
+it('bounds page size and only sorts by whitelisted fields', async () => {
   await CampaignModel.create(Array.from({ length: 105 }, (_, index) => campaign({ title: `Bulk ${index}`, goalAmount: 100, raisedAmount: index })));
-  const capped = await request(app).get('/api/v1/campaigns?pageSize=100000').expect(200);
-  expect(capped.body.data.pageSize).toBe(100);
-  expect(capped.body.data.items).toHaveLength(100);
-  expect((await request(app).get('/api/v1/campaigns?pageSize=0').expect(200)).body.data.pageSize).toBe(20);
+  // Out-of-range paging is refused (as on every bounded list), never silently clamped.
+  await request(app).get('/api/v1/campaigns?pageSize=100000').expect(400);
+  await request(app).get('/api/v1/campaigns?pageSize=0').expect(400);
+  const largest = await request(app).get('/api/v1/campaigns?pageSize=100').expect(200);
+  expect(largest.body.data.pageSize).toBe(100);
+  expect(largest.body.data.items).toHaveLength(100);
   await request(app).get('/api/v1/campaigns?sortBy=creatorId').expect(400);
   await request(app).get('/api/v1/campaigns?sortBy=__proto__').expect(400);
   await request(app).get('/api/v1/campaigns?sortOrder=sideways').expect(400);

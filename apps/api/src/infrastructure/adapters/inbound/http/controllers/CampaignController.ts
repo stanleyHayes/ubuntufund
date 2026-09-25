@@ -6,6 +6,7 @@ import type { DonateToCampaignUseCase } from '../../../../../application/use-cas
 import type { GetCampaignBySlugUseCase } from '../../../../../application/use-cases/GetCampaignBySlugUseCase.js';
 import type { SetCampaignSlugUseCase } from '../../../../../application/use-cases/SetCampaignSlugUseCase.js';
 import { AppError } from '../../middleware/errorHandler.js';
+import { MAX_PAGE_SIZE, parsePagination } from '../../middleware/pagination.js';
 
 import type { PlanLimitsService } from '../../../../../application/services/PlanLimitsService.js';
 import type { UserRepositoryPort } from '../../../../../domain/ports/outbound/UserRepositoryPort.js';
@@ -18,7 +19,6 @@ import {
 } from '../../../../../domain/ports/outbound/CampaignRepositoryPort.js';
 import { CampaignCategory, CampaignStatus } from '@ubuntu-fund/types';
 
-const MAX_PAGE_SIZE = 100;
 const MAX_SEARCH_LENGTH = 100;
 /** Effective statuses anyone may filter public listings by. */
 const PUBLIC_LIST_STATUSES: CampaignListStatus[] = [CampaignStatus.ACTIVE, CampaignStatus.FUNDED, CampaignStatus.EXPIRED, 'open'];
@@ -29,10 +29,15 @@ function queryString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
 }
 
-/** Parse and bound the public listing query; unknown filters are refused rather than ignored. */
+/**
+ * Parse and bound the public listing query. Invalid paging, sorts and filters
+ * are refused with 400 rather than silently clamped or ignored, like every
+ * other bounded list endpoint (parsePagination): a client asking for
+ * pageSize=100000 or page=-1 is told so instead of getting a different page
+ * than it asked for.
+ */
 function parseListQuery(query: Record<string, unknown>, isAdmin: boolean): CampaignListQuery {
-  const page = Math.max(1, parseInt(queryString(query.page) ?? '', 10) || 1);
-  const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(queryString(query.pageSize) ?? '', 10) || 20));
+  const { page, pageSize } = parsePagination(query, { maxPageSize: MAX_PAGE_SIZE });
   const sortBy = queryString(query.sortBy) ?? 'createdAt';
   if (!(CAMPAIGN_LIST_SORT_FIELDS as readonly string[]).includes(sortBy)) throw new AppError('Unsupported sort field', 400);
   const sortOrder = queryString(query.sortOrder) ?? 'desc';

@@ -10,7 +10,7 @@ import type { CampaignCategory, CampaignStatus, PaginationParams } from '@ubuntu
 export type CampaignListStatus = CampaignStatus | 'open';
 
 /** Sort keys the listing accepts; anything else is rejected at the edge. */
-export const CAMPAIGN_LIST_SORT_FIELDS = ['createdAt', 'raisedAmount', 'endDate', 'fundedPercent'] as const;
+export const CAMPAIGN_LIST_SORT_FIELDS = ['createdAt', 'raisedAmount', 'goalAmount', 'endDate', 'fundedPercent'] as const;
 export type CampaignListSortField = (typeof CAMPAIGN_LIST_SORT_FIELDS)[number];
 
 export interface CampaignListQuery extends Omit<PaginationParams, 'sortBy'> {
