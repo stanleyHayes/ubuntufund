@@ -30,6 +30,7 @@ import { SHAPE, formatCurrency, LoadingDots } from '@ubuntu-fund/ui'
 import {
   SubscriptionTier,
   SubscriptionStatus,
+  SubscriptionCheckoutStatus,
   BillingCycle,
   type SubscriptionPlan,
 } from '@ubuntu-fund/types'
@@ -41,6 +42,8 @@ import {
   clearSubscriptionHandoff,
   readSubscriptionCheckout,
   isPaymentsNotConfigured,
+  abandonSubscriptionCheckout,
+  checkoutInProgressId,
 } from '@/lib/subscriptions'
 import { useCouponPreview } from '@/hooks/useCouponPreview'
 import { isCurrentPlanTier, isPaidPlanInForce } from '@/lib/subscriptionStatus'
@@ -203,6 +206,8 @@ export function SubscriptionPage() {
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(searchParams.has('checkoutError') ? 'Your account is ready, but we couldn’t open payment. Your paid plan is not active yet. Check your payment status before retrying.' : null)
   const [paymentsUnavailable, setPaymentsUnavailable] = useState(false)
+  /** An earlier unpaid checkout the API says blocks this purchase; the member may cancel it. */
+  const [blockingCheckoutId, setBlockingCheckoutId] = useState<string | null>(null)
   const { preview, loading: couponLoading, error: couponError, run: runCoupon, clear: clearCoupon } = useCouponPreview()
 
   const billingCycle: BillingCycle = billingToggle === 'yearly' ? BillingCycle.YEARLY : BillingCycle.MONTHLY
@@ -221,6 +226,7 @@ export function SubscriptionPage() {
     setSelectedTier(tier)
     setCouponCode('')
     setCheckoutError(null)
+    setBlockingCheckoutId(null)
     setPaymentsUnavailable(false)
     clearCoupon()
   }
@@ -230,8 +236,37 @@ export function SubscriptionPage() {
     setSelectedTier(null)
     setCouponCode('')
     setCheckoutError(null)
+    setBlockingCheckoutId(null)
     setPaymentsUnavailable(false)
     clearCoupon()
+  }
+
+  /**
+   * The member backed out of an earlier payment page and now wants a different
+   * purchase (another cycle, a coupon). Cancel that checkout (the API checks
+   * with Paystack first) and carry on with this one.
+   */
+  async function cancelEarlierAndContinue() {
+    const earlier = blockingCheckoutId
+    if (!earlier) return
+    setCheckoutLoading(true)
+    setCheckoutError(null)
+    try {
+      const closed = await abandonSubscriptionCheckout(earlier)
+      clearSubscriptionHandoff(earlier)
+      setBlockingCheckoutId(null)
+      if (closed.status === SubscriptionCheckoutStatus.SUCCEEDED) {
+        refetch()
+        setCheckoutError('Your earlier plan payment went through, so that plan is now active. Review your subscription before buying again.')
+        setCheckoutLoading(false)
+        return
+      }
+    } catch (err) {
+      setCheckoutError(err instanceof Error ? err.message : 'We could not cancel your earlier payment. Please try again.')
+      setCheckoutLoading(false)
+      return
+    }
+    await handleCheckout()
   }
 
   async function handleCheckout() {
@@ -239,6 +274,7 @@ export function SubscriptionPage() {
     const tier = selectedTier
     setCheckoutLoading(true)
     setCheckoutError(null)
+    setBlockingCheckoutId(null)
     setPaymentsUnavailable(false)
     try {
       const result = await createSubscriptionCheckout({
@@ -272,6 +308,7 @@ export function SubscriptionPage() {
       if (isPaymentsNotConfigured(err)) {
         setPaymentsUnavailable(true)
       } else {
+        setBlockingCheckoutId(checkoutInProgressId(err))
         setCheckoutError(err instanceof Error ? err.message : 'We could not start checkout. Please try again.')
       }
     } finally {
@@ -985,7 +1022,32 @@ export function SubscriptionPage() {
                   </Alert>
                 )}
                 {checkoutError && (
-                  <Alert severity="error" sx={{ mt: 2, borderRadius: SHAPE.sm }}>{checkoutError}</Alert>
+                  <Alert severity={blockingCheckoutId ? 'warning' : 'error'} sx={{ mt: 2, borderRadius: SHAPE.sm }}>
+                    {checkoutError}
+                    {blockingCheckoutId && (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1.5 }}>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="inherit"
+                          onClick={cancelEarlierAndContinue}
+                          disabled={checkoutLoading}
+                          sx={{ fontWeight: 700, textTransform: 'none' }}
+                        >
+                          Cancel it and continue
+                        </Button>
+                        <Button
+                          size="small"
+                          color="inherit"
+                          href={`/subscription/callback?checkout=${encodeURIComponent(blockingCheckoutId)}`}
+                          disabled={checkoutLoading}
+                          sx={{ fontWeight: 600, textTransform: 'none' }}
+                        >
+                          Check that payment
+                        </Button>
+                      </Box>
+                    )}
+                  </Alert>
                 )}
               </DialogContent>
               <DialogActions sx={{ px: 3, pb: 2 }}>

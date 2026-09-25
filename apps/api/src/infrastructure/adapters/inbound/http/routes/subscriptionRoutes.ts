@@ -45,6 +45,8 @@ export function createSubscriptionRoutes(
   router.get('/checkout/:id', authMiddleware, controller.getCheckout);
   router.post('/checkout/reference/:reference/verify', authMiddleware, subscriptionVerifyRateLimiter, controller.verifyCheckoutReference);
   router.post('/checkout/:id/verify', authMiddleware, subscriptionVerifyRateLimiter, controller.verifyCheckout);
+  // Owner-only: cancel an unpaid checkout (checked with Paystack first) to start over.
+  router.post('/checkout/:id/abandon', authMiddleware, subscriptionVerifyRateLimiter, controller.abandonCheckout);
 
   router.post(
     '/',

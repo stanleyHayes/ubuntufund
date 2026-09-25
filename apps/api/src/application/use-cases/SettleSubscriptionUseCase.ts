@@ -26,9 +26,10 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
  * (no charge). It mirrors {@link SettleDonationUseCase}.
  *
  * settle(checkout, reference):
- *   1. Atomically transition the checkout PENDING → SUCCEEDED (the exactly-once
- *      gate). Null => already settled/terminal; return the current record
- *      unchanged (idempotent no-op).
+ *   1. Atomically transition the checkout PENDING/EXPIRED → SUCCEEDED (the
+ *      exactly-once gate; FAILED too for a re-verified late success). Null =>
+ *      already settled/terminal; return the current record unchanged
+ *      (idempotent no-op).
  *   2. Upsert the user's Subscription to the paid tier, ACTIVE. A fresh period
  *      starts now — unless the member bought the web plan they already have
  *      while it is still running, in which case the new period is added to the
@@ -36,6 +37,7 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
  *      throws paid days away).
  *   3. If the checkout carried a coupon: bump the coupon's global redemption
  *      counter (atomic, under-cap), then CONSUME the provisional redemption slot
+ *      (re-claiming it, seat included, if an expiry had already released it)
  *      and link it to the activated subscription.
  *   4. Award the one-time affiliate commission.
  *
@@ -136,8 +138,11 @@ export class SettleSubscriptionUseCase {
             : 'subscription settled but its coupon no longer exists'
         );
       }
+      // By reference; a slot that never got the reference (the process
+      // stopped between the two writes) is still findable by its checkout.
       const redemption =
-        await this.couponRedemptionRepo.findByProviderRef(reference);
+        (await this.couponRedemptionRepo.findByProviderRef(reference)) ??
+        (await this.couponRedemptionRepo.findByCheckoutId(settled.id));
       if (redemption) {
         const consumed = await this.couponRedemptionRepo.markConsumed(redemption.id);
         if (!consumed && redemption.status === CouponRedemptionStatus.RELEASED) {

@@ -18,12 +18,14 @@ export interface SubscriptionCheckoutRepositoryPort {
   /**
    * Store the provider reference on a freshly-created PENDING checkout once the
    * charge is opened (or, for a coupon-zeroed activation, a synthetic ref), so
-   * the signed webhook / inline settlement can correlate it. Returns the updated
-   * checkout, or null when no record exists for `id`.
+   * the signed webhook / inline settlement can correlate it. `page` keeps the
+   * hosted payment page so an unpaid checkout can be resumed. Returns the
+   * updated checkout, or null when no record exists for `id`.
    */
   setProviderRef(
     id: string,
-    providerRef: string
+    providerRef: string,
+    page?: { authorizationUrl?: string; accessCode?: string }
   ): Promise<SubscriptionCheckout | null>;
 
   /**
@@ -45,8 +47,15 @@ export interface SubscriptionCheckoutRepositoryPort {
   /** Atomically move PENDING → EXPIRED (unpaid past its lifetime). Null when not PENDING. */
   transitionToExpired(id: string): Promise<SubscriptionCheckout | null>;
 
-  /** PENDING checkouts created before `olderThan`, oldest first (reconciliation sweep). */
+  /**
+   * PENDING checkouts created before `olderThan` for the reconciliation sweep:
+   * never-visited first, then the least recently visited, so rows the provider
+   * cannot resolve yet rotate behind newer ones instead of starving them.
+   */
   findStalePending(olderThan: Date, limit: number): Promise<SubscriptionCheckout[]>;
+
+  /** Stamp a sweep visit on a still-PENDING checkout (see findStalePending). */
+  recordReconciliationAttempt(id: string, attemptedAt: Date): Promise<void>;
 
   /** A user's PENDING checkouts, newest first. */
   findPendingByUser(userId: string, limit: number): Promise<SubscriptionCheckout[]>;

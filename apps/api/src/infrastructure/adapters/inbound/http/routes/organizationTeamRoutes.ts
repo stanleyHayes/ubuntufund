@@ -181,37 +181,48 @@ export function createOrganizationTeamRoutes(auth: RequestHandler, admission: Pu
           'This member already has access; ask the owner to change their role',
           409,
         )
-      // Plans sell a number of team seats (maxTeamMembers), and the owner holds
-      // one. Active members and unexpired invitations hold the rest; re-sending
-      // an invitation to the same address does not need a new seat.
-      if (teamSeats) {
-        const { limit, planName } = await teamSeats(organizationId)
-        if (limit >= 0) {
-          const held = await Members.countDocuments({
-            organizationId,
-            email: { $ne: input.email },
-            $or: [{ status: 'active' }, { status: 'invited', expiresAt: { $gt: new Date() } }],
-          })
-          if (1 + held + 1 > limit)
-            throw new AppError(
-              `Your ${planName} plan includes ${limit} team seat${limit === 1 ? '' : 's'}, including the owner. Upgrade the organization's plan or remove a member before inviting someone new.`,
-              403,
-            )
+      // The seat count and the invitation write commit together. Every invite
+      // first bumps a counter on the organization, so two admins inviting
+      // different people at once conflict and the later one retries, counting
+      // the seat the first just took, instead of both seeing one seat free.
+      const member = await uow.run(async () => {
+        // Plans sell a number of team seats (maxTeamMembers), and the owner holds
+        // one. Active members and unexpired invitations hold the rest; re-sending
+        // an invitation to the same address does not need a new seat.
+        if (teamSeats) {
+          await UserModel.updateOne(
+            { _id: organizationId, role: 'organization' },
+            { $inc: { teamSeatWriteVersion: 1 } },
+            { timestamps: false },
+          )
+          const { limit, planName } = await teamSeats(organizationId)
+          if (limit >= 0) {
+            const held = await Members.countDocuments({
+              organizationId,
+              email: { $ne: input.email },
+              $or: [{ status: 'active' }, { status: 'invited', expiresAt: { $gt: new Date() } }],
+            })
+            if (1 + held + 1 > limit)
+              throw new AppError(
+                `Your ${planName} plan includes ${limit} team seat${limit === 1 ? '' : 's'}, including the owner. Upgrade the organization's plan or remove a member before inviting someone new.`,
+                403,
+              )
+          }
         }
-      }
-      const member = await Members.findOneAndUpdate(
-        { organizationId, email: input.email },
-        {
-          $set: {
-            ...input,
-            status: 'invited',
-            invitedBy: req.userId,
-            expiresAt: new Date(Date.now() + 7 * 86400000),
+        return Members.findOneAndUpdate(
+          { organizationId, email: input.email },
+          {
+            $set: {
+              ...input,
+              status: 'invited',
+              invitedBy: req.userId,
+              expiresAt: new Date(Date.now() + 7 * 86400000),
+            },
+            $unset: { userId: 1 },
           },
-          $unset: { userId: 1 },
-        },
-        { upsert: true, new: true },
-      )
+          { upsert: true, new: true },
+        )
+      })
       // In-app notice when the invitee already has an account, so they learn
       // of it without opening the workspace page. No email is sent (whether to
       // email people without accounts is an owner decision). Best-effort, and

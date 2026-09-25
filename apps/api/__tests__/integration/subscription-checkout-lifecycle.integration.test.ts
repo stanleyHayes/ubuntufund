@@ -22,6 +22,8 @@ import { SubscriptionModel } from '../../src/infrastructure/database/models/Subs
 import { CouponModel } from '../../src/infrastructure/database/models/CouponModel.js';
 import { CouponRedemptionModel } from '../../src/infrastructure/database/models/CouponRedemptionModel.js';
 import { StoreBillingAccountModel } from '../../src/infrastructure/database/models/StoreBillingAccountModel.js';
+import { ProviderTransactionNotFoundError } from '../../src/domain/errors/ProviderTransactionNotFoundError.js';
+import { HandlePaystackWebhookUseCase } from '../../src/application/use-cases/HandlePaystackWebhookUseCase.js';
 
 const models = [SubscriptionCheckoutModel, SubscriptionModel, CouponModel, CouponRedemptionModel, StoreBillingAccountModel];
 const DAY = 86_400_000;
@@ -40,6 +42,7 @@ function paystack() {
       amounts.set(reference, amount);
       return { reference, authorizationUrl: `https://checkout.paystack.test/${reference}`, accessCode: 'access' };
     }),
+    verifyWebhookSignature: () => true,
     verifyTransaction: vi.fn(async (reference: string) => ({
       status: statuses.get(reference) ?? 'abandoned', reference, amount: amounts.get(reference) ?? 0, fees: 0, currency: 'GHS', raw: {},
     })),
@@ -65,7 +68,9 @@ function build(plans: Record<string, Partial<SubscriptionPlan>> = {}) {
     undefined, redemptionRepo);
   const charge = (event: 'charge.success' | 'charge.failed', reference: string, amount: number) => webhook.execute({ signature: 'signed',
     rawBody: Buffer.from(JSON.stringify({ event, data: { reference, amount: Math.round(amount * 100), currency: 'GHS', status: event === 'charge.success' ? 'success' : 'failed' } })) });
-  return { gateway, checkoutRepo, settle, create, sweep, status, charge };
+  /** A signed charge.success for `reference`, charging `amount` (major units, GHS). */
+  const chargeSuccess = (reference: string, amount: number) => charge('charge.success', reference, amount);
+  return { gateway, checkoutRepo, settle, create, sweep, status, charge, chargeSuccess };
 }
 const buy = (s: ReturnType<typeof build>, userId: string, tier = SubscriptionTier.PRO, extra: Record<string, unknown> = {}) =>
   s.create.execute({ tier, billingCycle: BillingCycle.MONTHLY, ...extra }, userId);
@@ -100,12 +105,73 @@ describe('subscription checkout lifecycle', () => {
     expect((await SubscriptionModel.findOne({ userId }))!.currentPeriodEnd).toEqual(after.currentPeriodEnd);
   });
 
-  it('refuses a second charge while the first could still be paid, and names the open checkout', async () => {
+  it('sends a member who backed out of payment back to the same payment page instead of opening a second charge', async () => {
     const s = build(); const userId = randomUUID();
     const first = await buy(s, userId);
-    await expect(buy(s, userId)).rejects.toMatchObject({ statusCode: 409, errors: { checkoutId: [first.checkout.id] } });
+    // Paystack reports the page the member left as 'abandoned'; it can still be paid.
+    const again = await buy(s, userId);
+    expect(again).toMatchObject({ resumed: true, reference: first.reference, authorizationUrl: first.authorizationUrl,
+      checkout: { id: first.checkout.id }, preview: first.preview });
     expect(s.gateway.verifyTransaction).toHaveBeenCalledWith(first.reference);
+    expect(s.gateway.initializeCharge).toHaveBeenCalledTimes(1);
     expect(await SubscriptionCheckoutModel.countDocuments({ userId })).toBe(1);
+  });
+
+  it('refuses a different purchase while the first could still be paid, until the member cancels it', async () => {
+    const s = build(); const userId = randomUUID();
+    const first = await buy(s, userId);
+    const yearly = { billingCycle: BillingCycle.YEARLY };
+    await expect(buy(s, userId, SubscriptionTier.PRO, yearly))
+      .rejects.toMatchObject({ statusCode: 409, errors: { checkoutId: [first.checkout.id] } });
+    expect(await SubscriptionCheckoutModel.countDocuments({ userId })).toBe(1);
+    // Only the owner can cancel it.
+    await expect(s.status.abandon(first.checkout.id, randomUUID())).rejects.toMatchObject({ statusCode: 404 });
+    expect((await s.status.abandon(first.checkout.id, userId)).status).toBe('expired');
+    const second = await buy(s, userId, SubscriptionTier.PRO, yearly);
+    expect(second.checkout.billingCycle).toBe(BillingCycle.YEARLY);
+    // The old page paid late anyway: that charge still activates the plan.
+    await pay(s, first.reference!);
+    expect((await SubscriptionCheckoutModel.findById(first.checkout.id))?.status).toBe('succeeded');
+  });
+
+  it('will not cancel a checkout Paystack is still processing, and settles one that was paid', async () => {
+    const s = build(); const userId = randomUUID();
+    const first = await buy(s, userId);
+    s.gateway.statuses.set(first.reference!, 'ongoing');
+    await expect(s.status.abandon(first.checkout.id, userId)).rejects.toMatchObject({ statusCode: 409 });
+    expect((await SubscriptionCheckoutModel.findById(first.checkout.id))?.status).toBe('pending');
+    s.gateway.statuses.set(first.reference!, 'success');
+    expect((await s.status.abandon(first.checkout.id, userId)).status).toBe('succeeded');
+    expect((await SubscriptionModel.findOne({ userId }))?.tier).toBe(SubscriptionTier.PRO);
+  });
+
+  it('does not lock a member out over a no-charge activation that never committed', async () => {
+    const s = build(); const userId = randomUUID();
+    const coupon = await CouponModel.create({ code: `ZERO${randomUUID().slice(0, 6)}`.toUpperCase(), discountType: CouponDiscountType.PERCENT,
+      amount: 100, currency: 'GHS', maxRedemptions: 10, perUserLimit: 1 });
+    const stuck = await s.checkoutRepo.create({ id: '', userId, tier: SubscriptionTier.PRO, billingCycle: BillingCycle.MONTHLY,
+      status: SubscriptionCheckoutStatus.PENDING, baseAmount: 149, discountAmount: 149, finalAmount: 0, currency: 'GHS',
+      couponId: coupon.id, couponCode: coupon.code, createdAt: new Date(), updatedAt: new Date() });
+    await s.checkoutRepo.setProviderRef(stuck.id, `sub_free_${randomUUID()}`);
+    // Its seat never got the reference either: stopped between the two writes.
+    await CouponRedemptionModel.create({ couponId: coupon.id, code: coupon.code, userId, checkoutId: stuck.id, status: 'pending',
+      seat: 0, baseAmount: 149, discountAmount: 149, finalAmount: 0, currency: 'GHS' });
+    // Settlement for it is synchronous, so a few minutes on nothing is coming.
+    await age(stuck.id, 10 * 60 * 1000);
+    const again = await buy(s, userId, SubscriptionTier.PRO, { couponCode: coupon.code });
+    expect(again.activatedWithoutCharge).toBe(true);
+    expect((await SubscriptionCheckoutModel.findById(stuck.id))?.status).toBe('expired');
+    expect(s.gateway.verifyTransaction).not.toHaveBeenCalled();
+    expect((await SubscriptionModel.findOne({ userId }))?.tier).toBe(SubscriptionTier.PRO);
+  });
+
+  it('treats a reference Paystack has never seen as unpaid instead of blocking every purchase', async () => {
+    const s = build(); const userId = randomUUID();
+    const first = await buy(s, userId);
+    await age(first.checkout.id, 2 * 60 * 60 * 1000);
+    s.gateway.verifyTransaction.mockImplementation(async (reference: string) => { throw new ProviderTransactionNotFoundError(reference); });
+    await expect(buy(s, userId, SubscriptionTier.STARTER)).resolves.toMatchObject({ authorizationUrl: expect.any(String) });
+    expect((await SubscriptionCheckoutModel.findById(first.checkout.id))?.status).toBe('expired');
   });
 
   it('activates a paid checkout whose webhook is late instead of charging again', async () => {
@@ -263,6 +329,90 @@ describe('subscription checkout reconciliation sweep', () => {
     // A provider error is not swallowed: the webhook fails so Paystack redelivers.
     s.gateway.verifyTransaction.mockRejectedValueOnce(new Error('Paystack unreachable'));
     await expect(s.charge('charge.success', first.reference!, first.checkout.finalAmount)).rejects.toThrow('Paystack unreachable');
+  });
+
+  it('expires a charge Paystack has kept processing for over a day, but not a recent one', async () => {
+    const s = build(); const stuckUser = randomUUID(), recentUser = randomUUID();
+    const stuck = await buy(s, stuckUser);
+    const recent = await buy(s, recentUser);
+    s.gateway.statuses.set(stuck.reference!, 'ongoing');
+    s.gateway.statuses.set(recent.reference!, 'ongoing');
+    await age(stuck.checkout.id, 25 * 60 * 60 * 1000);
+    await age(recent.checkout.id, 2 * 60 * 60 * 1000);
+    expect(await s.sweep.reconcileStale()).toMatchObject({ scanned: 2, expired: 1, pending: 1 });
+    expect((await SubscriptionCheckoutModel.findById(stuck.checkout.id))?.status).toBe('expired');
+    expect((await SubscriptionCheckoutModel.findById(recent.checkout.id))?.status).toBe('pending');
+    // The member whose charge was stuck is no longer blocked from buying.
+    await expect(buy(s, stuckUser)).resolves.toMatchObject({ authorizationUrl: expect.any(String) });
+  });
+
+  it('rotates rows it cannot resolve behind ones it has not visited, so a backlog never starves newer checkouts', async () => {
+    const s = build();
+    const stuck = [await buy(s, randomUUID()), await buy(s, randomUUID())];
+    for (const checkout of stuck) {
+      s.gateway.statuses.set(checkout.reference!, 'ongoing');
+      await age(checkout.checkout.id, 3 * 60 * 60 * 1000);
+    }
+    const payer = randomUUID();
+    const paid = await buy(s, payer);
+    s.gateway.statuses.set(paid.reference!, 'success');
+    await age(paid.checkout.id, 60 * 60 * 1000);
+    // Oldest first on the first visit: only the two stuck rows fit.
+    expect(await s.sweep.reconcileStale({ limit: 2 })).toMatchObject({ scanned: 2, pending: 2 });
+    // Next run reaches the newer paid checkout instead of the same two again.
+    expect(await s.sweep.reconcileStale({ limit: 2 })).toMatchObject({ scanned: 2, settled: 1, pending: 1 });
+    expect((await SubscriptionModel.findOne({ userId: payer }))?.tier).toBe(SubscriptionTier.PRO);
+  });
+
+  it('counts a coupon again when its expired checkout is paid late, so a once-per-member coupon cannot be reused', async () => {
+    const s = build(); const userId = randomUUID();
+    const coupon = await CouponModel.create({ code: `LATE${randomUUID().slice(0, 6)}`.toUpperCase(), discountType: CouponDiscountType.PERCENT,
+      amount: 10, currency: 'GHS', maxRedemptions: 10, perUserLimit: 1 });
+    const late = await buy(s, userId, SubscriptionTier.PRO, { couponCode: coupon.code });
+    await age(late.checkout.id, 25 * 60 * 60 * 1000);
+    await s.sweep.reconcileStale();
+    expect(await CouponRedemptionModel.findOne({ checkoutId: late.checkout.id })).toMatchObject({ status: 'released', seat: undefined });
+    // The old Paystack tab is paid after all.
+    s.gateway.statuses.set(late.reference!, 'success');
+    await s.chargeSuccess(late.reference!, late.preview.finalAmount);
+    expect((await SubscriptionCheckoutModel.findById(late.checkout.id))?.status).toBe('succeeded');
+    expect(await CouponRedemptionModel.findOne({ checkoutId: late.checkout.id })).toMatchObject({ status: 'consumed', seat: 0 });
+    await expect(buy(s, userId, SubscriptionTier.PRO, { couponCode: coupon.code })).rejects.toMatchObject({ statusCode: 422 });
+  });
+
+  it('still counts a late-paid coupon use when the member already re-used the coupon', async () => {
+    const s = build(); const userId = randomUUID();
+    const coupon = await CouponModel.create({ code: `TWICE${randomUUID().slice(0, 6)}`.toUpperCase(), discountType: CouponDiscountType.PERCENT,
+      amount: 10, currency: 'GHS', maxRedemptions: 10, perUserLimit: 1 });
+    const first = await buy(s, userId, SubscriptionTier.PRO, { couponCode: coupon.code });
+    await s.status.abandon(first.checkout.id, userId);
+    const second = await buy(s, userId, SubscriptionTier.PRO, { couponCode: coupon.code });
+    await pay(s, second.reference!);
+    await pay(s, first.reference!);
+    const slots = await CouponRedemptionModel.find({ userId }).sort({ createdAt: 1 });
+    expect(slots.map((slot) => slot.status)).toEqual(['consumed', 'consumed']);
+    expect(slots.map((slot) => slot.seat)).toEqual([undefined, 0]);
+  });
+
+  it('activates a payment completed on the same page after an earlier attempt failed', async () => {
+    const s = build(); const userId = randomUUID();
+    const first = await buy(s, userId);
+    // The first card attempt failed; a new purchase attempt closes the checkout.
+    s.gateway.statuses.set(first.reference!, 'failed');
+    await buy(s, userId, SubscriptionTier.STARTER);
+    expect((await SubscriptionCheckoutModel.findById(first.checkout.id))?.status).toBe('failed');
+    // Paystack only confirms a success we can verify.
+    await s.chargeSuccess(first.reference!, first.preview.finalAmount);
+    expect((await SubscriptionCheckoutModel.findById(first.checkout.id))?.status).toBe('failed');
+    // The member retried another method on the original page, which succeeded.
+    s.gateway.statuses.set(first.reference!, 'success');
+    await s.chargeSuccess(first.reference!, first.preview.finalAmount);
+    expect((await SubscriptionCheckoutModel.findById(first.checkout.id))?.status).toBe('succeeded');
+    expect((await SubscriptionModel.findOne({ userId }))?.tier).toBe(SubscriptionTier.PRO);
+    // A replay changes nothing.
+    const end = (await SubscriptionModel.findOne({ userId }))!.currentPeriodEnd;
+    await s.chargeSuccess(first.reference!, first.preview.finalAmount);
+    expect((await SubscriptionModel.findOne({ userId }))!.currentPeriodEnd).toEqual(end);
   });
 
   it('lets the member see an old abandoned checkout as expired when they check it', async () => {

@@ -32,6 +32,8 @@ class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    /** Field or reason details the API attached to the error (`errors`). */
+    public errors?: Record<string, string[]>,
   ) {
     super(message)
     this.name = 'ApiError'
@@ -94,7 +96,7 @@ async function request<T>(path: string, options: ApiOptions = {}, retried = fals
       if (renewed && renewed !== token) return request<T>(path, { ...options, token: renewed }, true)
     }
     if (res.status === 401 && token) expireSession(token)
-    const errorBody = data && typeof data === 'object' ? data as { error?: string; message?: string } : null
+    const errorBody = data && typeof data === 'object' ? data as { error?: string; message?: string; errors?: Record<string, string[]> } : null
     const fallback = res.status === 401
       ? 'The email or password is incorrect.'
       : res.status === 429
@@ -102,7 +104,8 @@ async function request<T>(path: string, options: ApiOptions = {}, retried = fals
         : res.status >= 500
           ? 'Ujimora is temporarily unavailable. Please try again shortly.'
           : 'We could not complete your request. Please try again.'
-    throw new ApiError(res.status, errorBody?.error ?? errorBody?.message ?? fallback)
+    const details = errorBody?.errors && typeof errorBody.errors === 'object' ? errorBody.errors : undefined
+    throw new ApiError(res.status, errorBody?.error ?? errorBody?.message ?? fallback, details)
   }
 
   if (data === null) throw new ApiError(res.status, 'Ujimora returned an empty response. Please try again.')

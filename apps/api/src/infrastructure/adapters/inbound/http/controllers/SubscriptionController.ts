@@ -30,6 +30,12 @@ export class SubscriptionController {
     catch (error) { next(error); }
   };
 
+  /** POST /subscriptions/checkout/:id/abandon — cancel the owner's unpaid checkout so they can start over. */
+  abandonCheckout = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try { res.json({ data: await this.getSubscriptionCheckoutUseCase.abandon(req.params.id as string, req.userId!) }); }
+    catch (error) { next(error); }
+  };
+
   list = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
       const params = z.object({ page: z.coerce.number().int().min(1).max(10000).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(50) }).parse(req.query);

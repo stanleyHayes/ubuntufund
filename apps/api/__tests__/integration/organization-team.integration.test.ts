@@ -100,6 +100,17 @@ it('limits invitations to the plan team seats, counting the owner, members and l
  await invite(`${randomUUID()}@example.test`).expect(403);
 });
 
+it('does not oversell team seats when invitations are sent at the same moment', async () => {
+ const owner = await account(true);
+ await teamPlan(owner.id, 'pro');
+ const base = `/api/v1/organization-team/${owner.id}/invitations`;
+ // Pro has three seats: the owner plus two. Six different people invited at once.
+ const results = await Promise.all(Array.from({ length: 6 }, () =>
+   request(app).post(base).set('Authorization', owner.auth).send({ email: `${randomUUID()}@example.test`, role: 'viewer' })));
+ expect(results.map((result) => result.status).sort()).toEqual([200, 200, 403, 403, 403, 403]);
+ expect(await OrganizationMemberModel.countDocuments({ organizationId: owner.id, status: 'invited' })).toBe(2);
+});
+
 it('notifies an invitee who already has an account, with the same response for unknown emails', async () => {
  const { NotificationModel } = await import('../../src/infrastructure/database/models/NotificationModel.js');
  const owner = await account(true), member = await account();

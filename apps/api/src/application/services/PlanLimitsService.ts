@@ -26,6 +26,16 @@ const ACTIVE_STATUSES: ReadonlySet<SubscriptionStatus> = new Set([
   SubscriptionStatus.TRIALING,
 ]);
 
+/**
+ * A plan bought with an App Store sandbox receipt (App Review, TestFlight) is
+ * free to obtain. It unlocks the plan's features so reviewers can test them,
+ * but never its money benefits: the lower platform fee (locked onto campaigns
+ * at creation) and creator donations stay at the Free plan's terms.
+ */
+function isSandboxPlan(subscription: { billingEnvironment?: string } | null | undefined): boolean {
+  return subscription?.billingEnvironment === 'sandbox';
+}
+
 /** Plan limits use -1 (and, defensively, any negative) to mean "unlimited". */
 function isUnlimited(limit: number): boolean {
   return limit < 0;
@@ -82,7 +92,13 @@ export class PlanLimitsService {
     return this.getPlanFor(subscription.tier, lock);
   }
 
-  /** Paid-only creator entitlement and the effective plan rate for withdrawals. */
+  /**
+   * Paid-only creator entitlement and the effective plan rate for withdrawals.
+   * A plan retired by staff (active: false) still honours subscriptions in
+   * force, exactly as {@link resolvePlan} does for every other benefit; only
+   * new purchases stop. A sandbox (App Review / TestFlight) plan is never
+   * eligible and pays the Free plan's rate.
+   */
   async creatorPolicy(userId: string, lock = false) {
     if (lock) {
       if (!this.subscriptionRepo.lockForConsumption || !this.planService) throw new AppError('Withdrawal fee verification unavailable.', 503);
@@ -90,19 +106,29 @@ export class PlanLimitsService {
     }
     const plan = await this.resolvePlan(userId, lock);
     const subscription = await this.subscriptionRepo.findByUserId(userId);
-    const eligible = !!subscription && subscription.status === SubscriptionStatus.ACTIVE &&
-      new Date(subscription.currentPeriodEnd).getTime() > Date.now() && plan.active &&
+    const sandbox = isSandboxPlan(subscription);
+    const eligible = !!subscription && !sandbox && subscription.status === SubscriptionStatus.ACTIVE &&
+      new Date(subscription.currentPeriodEnd).getTime() > Date.now() &&
       plan.tier !== SubscriptionTier.FREE && (plan.priceMonthly > 0 || plan.priceYearly > 0);
-    return { eligible, planName: plan.name, feePercent: plan.platformFeePercent };
+    const feePlan = sandbox ? await this.getPlanFor(SubscriptionTier.FREE, lock) : plan;
+    return { eligible, planName: plan.name, feePercent: feePlan.platformFeePercent };
   }
 
   async assertCreatorDonations(userId: string): Promise<void> {
     if (!(await this.creatorPolicy(userId)).eligible) throw new AppError('Creator donations require an active paid subscription. Upgrade your plan to enable your creator page.', 403);
   }
 
-  /** The platform revenue cut (%) to apply to donations for this user's plan. */
+  /**
+   * The platform revenue cut (%) to apply to donations for this user's plan.
+   * A sandbox (App Review / TestFlight) plan pays the Free plan's rate: the
+   * rate is locked onto campaigns at creation, so a free test purchase would
+   * otherwise discount real donations for good.
+   */
   async platformFeePercent(userId: string): Promise<number> {
-    const plan = await this.resolvePlan(userId);
+    const subscription = await this.subscriptionRepo.findByUserId(userId);
+    const plan = isSandboxPlan(subscription)
+      ? await this.getPlanFor(SubscriptionTier.FREE)
+      : await this.resolvePlan(userId);
     return plan.platformFeePercent;
   }
 

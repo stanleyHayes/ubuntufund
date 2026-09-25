@@ -217,6 +217,13 @@ export interface SubscriptionCheckout {
    */
   commissionBase?: CouponCommissionBase
   providerRef?: string
+  /**
+   * The provider's hosted payment page for this checkout (and its access code),
+   * kept so a member who backed out can go back to the same payment instead of
+   * opening a second charge. Only ever shown to the checkout's owner.
+   */
+  authorizationUrl?: string
+  accessCode?: string
   createdAt: Date
   updatedAt: Date
 }
@@ -229,6 +236,12 @@ export interface SubscriptionCheckoutResult {
   reference?: string
   /** True when a 100%/fixed coupon zeroed the price and the subscription was activated with no charge. */
   activatedWithoutCharge?: boolean
+  /**
+   * True when the member already had an unpaid checkout for exactly this plan,
+   * cycle and code: its existing payment page is returned instead of a second
+   * charge being opened.
+   */
+  resumed?: boolean
   preview: { baseAmount: number; discountAmount: number; finalAmount: number; currency: string }
 }
 

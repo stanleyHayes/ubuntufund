@@ -269,4 +269,35 @@ describe('PlanLimitsService', () => {
       await expect(service.platformFeePercentForCampaign('c-1')).resolves.toBe(3.5)
     })
   })
+
+  describe('money benefits', () => {
+    const paid = (over: Partial<Subscription> = {}) => ({ ...makeSubscription(SubscriptionTier.PRO), ...over })
+
+    it('keeps creator donations for a subscriber whose plan staff retired from sale', async () => {
+      subscriptionRepo.findByUserId = vi.fn().mockResolvedValue(paid())
+      const planService = { getPlan: vi.fn(async (tier: string) => ({
+        ...(await new PlanLimitsService(subscriptionRepo, campaignRepo).resolvePlan('user-1')), tier, active: false,
+      })) }
+      const retired = new PlanLimitsService(subscriptionRepo, campaignRepo, planService as never)
+      await expect(retired.creatorPolicy('user-1')).resolves.toMatchObject({ eligible: true })
+      await expect(retired.assertCreatorDonations('user-1')).resolves.toBeUndefined()
+    })
+
+    it('gives an App Store sandbox plan its features but not the lower fee or creator donations', async () => {
+      subscriptionRepo.findByUserId = vi.fn().mockResolvedValue(paid({ billingEnvironment: 'sandbox', billingProvider: 'apple' }))
+      // Free plan's rate (3.5%), not Pro's, even though the plan is active.
+      await expect(service.platformFeePercent('user-1')).resolves.toBe(3.5)
+      await expect(service.creatorPolicy('user-1')).resolves.toMatchObject({ eligible: false, feePercent: 3.5 })
+      await expect(service.assertCreatorDonations('user-1')).rejects.toMatchObject({ statusCode: 403 })
+      // Reviewers can still exercise the plan's features.
+      expect((await service.resolvePlan('user-1')).tier).toBe(SubscriptionTier.PRO)
+      await expect(service.assertFeature('user-1', 'liveStreaming', 'LIVE streaming')).resolves.toBeUndefined()
+    })
+
+    it('keeps the paid rate and creator donations for a production store plan', async () => {
+      subscriptionRepo.findByUserId = vi.fn().mockResolvedValue(paid({ billingEnvironment: 'production', billingProvider: 'apple' }))
+      await expect(service.platformFeePercent('user-1')).resolves.toBe(2.5)
+      await expect(service.creatorPolicy('user-1')).resolves.toMatchObject({ eligible: true, feePercent: 2.5 })
+    })
+  })
 })

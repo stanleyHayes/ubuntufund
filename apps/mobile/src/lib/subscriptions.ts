@@ -44,6 +44,29 @@ export async function getSubscriptionCheckoutStatus(
   return result
 }
 
+/**
+ * Cancel the member's own unpaid checkout so they can start over
+ * (`POST /subscriptions/checkout/:id/abandon`). The API checks with Paystack
+ * first: a payment that went through comes back `succeeded`, and one still
+ * being processed is refused (409) rather than risk a double charge.
+ */
+export async function abandonSubscriptionCheckout(id: string): Promise<SubscriptionCheckout> {
+  const result = await api.post<SubscriptionCheckout>(`/subscriptions/checkout/${encodeURIComponent(id)}/abandon`)
+  const key = `ujimora:subscription:${sessionSnapshot()?.user.id}`
+  if (await AsyncStorage.getItem(key) === id) await AsyncStorage.removeItem(key)
+  return result
+}
+
+/**
+ * The open checkout blocking a new purchase, when the API refused one because
+ * an earlier plan payment is still payable (409 `checkout_in_progress`).
+ */
+export function checkoutInProgressId(error: unknown): string | null {
+  if (!(error instanceof ApiError) || error.status !== 409) return null
+  if (!error.errors?.code?.includes('checkout_in_progress')) return null
+  return error.errors.checkoutId?.[0] ?? null
+}
+
 export async function recoverPendingSubscription(): Promise<void> {
   const id = await AsyncStorage.getItem(`ujimora:subscription:${sessionSnapshot()?.user.id}`)
   if (id) await getSubscriptionCheckoutStatus(id)

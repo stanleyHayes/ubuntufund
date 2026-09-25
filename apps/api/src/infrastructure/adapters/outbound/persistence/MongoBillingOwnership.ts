@@ -36,7 +36,7 @@ export class MongoBillingOwnership implements BillingOwnershipPort {
     }
   }
 
-  async claimProvider(userId: string, provider: BillingProvider, options: { refreshHold?: boolean } = {}): Promise<void> {
+  async claimProvider(userId: string, provider: BillingProvider, options: { refreshHold?: boolean | 'on-switch' } = {}): Promise<void> {
     await this.account(userId);
     await this.transaction.run(async () => {
       const account = (await StoreBillingAccountModel.findOne({ userId }))!;
@@ -67,9 +67,13 @@ export class MongoBillingOwnership implements BillingOwnershipPort {
           throw new AppError('An existing web subscription or pending payment must be resolved before starting store billing.', 409);
         }
       }
-      // Re-verifying an existing store purchase (every sweep) must not keep
-      // renewing the in-flight hold, or a store claim could never be released.
-      const refreshHold = options.refreshHold !== false || account.provider !== provider;
+      // Re-verifying an existing store purchase must not keep renewing the
+      // in-flight hold, or a store claim could never be released. A member's own
+      // verification starts it when the claim moves here; a server-side sweep or
+      // notification never does, so it cannot lock the member to that rail.
+      const refreshHold = options.refreshHold === 'on-switch'
+        ? account.provider !== provider
+        : options.refreshHold !== false;
       await StoreBillingAccountModel.updateOne({ _id: account._id },
         { $set: { provider, ...(refreshHold ? { providerClaimedAt: now } : {}) } });
     });

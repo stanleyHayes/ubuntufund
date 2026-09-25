@@ -13,6 +13,17 @@ import { storePurchaseKey, type StoreReceiptCipher } from '../payments/StoreRece
 const RETRY_MS = 60_000;
 const RECHECK_MS = 15 * 60_000;
 const DAY_MS = 24 * 60 * 60_000;
+/** Apple and Google keep retrying a failed renewal for up to 60 days. */
+const STORE_RENEWAL_RETRY_MS = 60 * DAY_MS;
+/**
+ * How often a purchase that can no longer charge or entitle is re-checked.
+ * A resubscription arrives as a store notification, so this is only a backstop.
+ */
+const DORMANT_RECHECK_MS = 30 * DAY_MS;
+
+/** Inactive, not renewing, and past the store's billing-retry window. */
+const isDormant = (purchase: Pick<VerifiedStorePurchase, 'active' | 'autoRenew' | 'periodEnd'>, now: Date) =>
+  !purchase.active && !purchase.autoRenew && purchase.periodEnd.getTime() < now.getTime() - STORE_RENEWAL_RETRY_MS;
 
 /**
  * A second, separately charged store subscription while another plan is still
@@ -28,16 +39,30 @@ export class DuplicateStorePurchaseError extends AppError {
 export class MongoStoreBilling extends MongoBillingOwnership {
   constructor(private readonly verifier: StorePurchaseVerifierPort, private readonly cipher: StoreReceiptCipher) { super(); }
 
-  /** Called for native purchase/restore. Only verified account binding establishes ownership. */
-  async verifyForUser(userId: string, store: BillingStore, reference: string) {
+  /**
+   * Called for native purchase/restore (the member) and by the reconcile sweep
+   * and store notifications (`serverInitiated`). Only verified account binding
+   * establishes ownership.
+   */
+  async verifyForUser(userId: string, store: BillingStore, reference: string, options: { serverInitiated?: boolean } = {}) {
     const account = await this.account(userId);
     const revision = await this.nextRevision(userId);
     const purchase = await this.verifier.verify(store, reference);
     if (purchase.accountToken !== account.accountToken) {
       throw new AppError('This purchase belongs to a different Ujimora account. Sign in to the account used for the purchase.', 403);
     }
+    if (options.serverInitiated && account.provider && account.provider !== store && !purchase.active && !purchase.autoRenew) {
+      // The member has moved to another rail, and this purchase can no longer
+      // charge or entitle them. A background re-check must not take the rail
+      // back (and overwrite their plan with this old one) once that other plan
+      // lapses, nor flag it for review while it runs: only record what the
+      // store says. The member's own restore, or a new store notification for
+      // an active purchase, can still switch.
+      await this.recordObserved(userId, purchase, revision);
+      return { active: false, applied: false };
+    }
     // The verified purchase row is now the durable evidence for this rail.
-    await this.claimProvider(userId, store, { refreshHold: false });
+    await this.claimProvider(userId, store, { refreshHold: options.serverInitiated ? false : 'on-switch' });
     try {
       return await this.apply(userId, purchase, revision);
     } catch (error) {
@@ -67,6 +92,26 @@ export class MongoStoreBilling extends MongoBillingOwnership {
         acknowledgementPending: false, nextCheckAt: new Date(now.getTime() + DAY_MS), lastCheckedAt: now,
         verificationRevision: revision, reviewRequired: true, lastError: 'duplicate_active_subscription',
       } }, { upsert: true });
+    } catch (error) {
+      // A newer verification (or another owner's row) already holds the key.
+      if ((error as { code?: number }).code !== 11000) throw error;
+    }
+  }
+
+  /** Refresh a purchase's observed store state without applying it or touching the claim. */
+  private async recordObserved(userId: string, purchase: VerifiedStorePurchase, revision: number): Promise<void> {
+    const now = new Date();
+    try {
+      await StorePurchaseModel.findOneAndUpdate({
+        _id: storePurchaseKey(purchase.store, purchase.reference), userId,
+        $or: [{ verificationRevision: { $lt: revision } }, { verificationRevision: { $exists: false } }],
+      }, { $set: {
+        userId, store: purchase.store, referenceCiphertext: this.cipher.encrypt(purchase.store, purchase.reference),
+        productId: purchase.productId, basePlanId: purchase.basePlanId, environment: purchase.environment,
+        active: purchase.active, autoRenew: purchase.autoRenew, periodEnd: purchase.periodEnd,
+        acknowledgementPending: false, lastCheckedAt: now, verificationRevision: revision, reviewRequired: false,
+        nextCheckAt: new Date(now.getTime() + (isDormant(purchase, now) ? DORMANT_RECHECK_MS : DAY_MS)),
+      }, $unset: { lastError: 1 } }, { upsert: true });
     } catch (error) {
       // A newer verification (or another owner's row) already holds the key.
       if ((error as { code?: number }).code !== 11000) throw error;
@@ -105,7 +150,7 @@ export class MongoStoreBilling extends MongoBillingOwnership {
         const account = await StoreBillingAccountModel.findOne({ accountToken: verified.accountToken });
         if (!account) throw new AppError('Store notification requires account review.', 409);
         // Allocate an account revision before the final authoritative refresh.
-        await this.verifyForUser(account.userId, row.store, reference);
+        await this.verifyForUser(account.userId, row.store, reference, { serverInitiated: true });
         await StoreBillingNotificationModel.deleteOne({ _id: row._id, revision: row.revision, processingToken });
         // A newer notification may have arrived while this one was processed.
         await StoreBillingNotificationModel.updateOne({ _id: row._id, processingToken },
@@ -162,7 +207,10 @@ export class MongoStoreBilling extends MongoBillingOwnership {
         productId: purchase.productId, basePlanId: purchase.basePlanId, environment: purchase.environment,
         active: purchase.active, autoRenew: purchase.autoRenew, periodEnd: purchase.periodEnd,
         acknowledgementPending: purchase.active && purchase.needsAcknowledgement,
-        nextCheckAt: new Date(now.getTime() + RECHECK_MS), lastCheckedAt: now, verificationRevision: revision,
+        // A purchase that can no longer charge or entitle is not re-verified
+        // every 15 minutes forever.
+        nextCheckAt: new Date(now.getTime() + (isDormant(purchase, now) ? DORMANT_RECHECK_MS : RECHECK_MS)),
+        lastCheckedAt: now, verificationRevision: revision,
         reviewRequired: false,
       }, $unset: { lastError: 1 } }, { upsert: true });
       // Global revisions are allocated BEFORE provider calls. An older request
@@ -204,7 +252,7 @@ export class MongoStoreBilling extends MongoBillingOwnership {
       .select('+referenceCiphertext').sort({ nextCheckAt: 1 }).limit(Math.min(limit, 100));
     for (const row of due) {
       try {
-        await this.verifyForUser(row.userId, row.store, this.cipher.decrypt(row.store, row.referenceCiphertext));
+        await this.verifyForUser(row.userId, row.store, this.cipher.decrypt(row.store, row.referenceCiphertext), { serverInitiated: true });
       } catch (error) {
         const status = error instanceof AppError ? error.statusCode : 503;
         await StorePurchaseModel.updateOne({ _id: row._id, verificationRevision: row.verificationRevision }, { $set: {
