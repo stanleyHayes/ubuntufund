@@ -12,6 +12,8 @@ export interface UserDocument extends Document {
   accountIdentityRevision?: number;
   publicationWriteVersion?: number;
   organizationProfileRevision?: number;
+  /** Bumped by every team invitation so concurrent invites cannot oversell seats. */
+  teamSeatWriteVersion?: number;
   recoveryEmailRequestedAt?: Date;
   verificationEmailRequestedAt?: Date;
   avatarUrl?: string;
@@ -54,6 +56,7 @@ const userSchema = new Schema<UserDocument>(
     accountIdentityRevision: { type: Number },
     publicationWriteVersion: { type: Number },
     organizationProfileRevision: { type: Number },
+    teamSeatWriteVersion: { type: Number },
     recoveryEmailRequestedAt: { type: Date },
     verificationEmailRequestedAt: { type: Date },
     avatarUrl: { type: String },
