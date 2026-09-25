@@ -73,7 +73,8 @@ describe('payout segregation of duties', () => {
     expect(gateway.initiateTransfer).not.toHaveBeenCalled();
   });
 
-  it.each([['requested', 'admin-a', 'owner'], ['owns the campaign of', 'owner', 'admin-a']])('refuses an admin who %s a beneficiary payout', async (_label, requestedBy, creatorId) => {
+  it('refuses an admin who requested a beneficiary payout', async () => {
+    const requestedBy = 'admin-a', creatorId = 'owner'
     const recipients = { findByCampaignAndBeneficiary: vi.fn() };
     const gateway = { isConfigured: () => true, getBalance: vi.fn(), initiateTransfer: vi.fn() };
     const useCase = new BeneficiaryPayoutUseCase(

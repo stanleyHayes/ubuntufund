@@ -9,6 +9,8 @@ import { UserModel } from '../../src/infrastructure/database/models/UserModel.js
 import { KYCVerificationModel } from '../../src/infrastructure/database/models/KYCVerificationModel.js'
 import { DisputeModel } from '../../src/infrastructure/database/models/DisputeModel.js'
 import { grantCurrentKyc } from '../helpers/currentKyc.js'
+import { MongoBeneficiaryPayoutAuthorization } from '../../src/infrastructure/adapters/outbound/persistence/MongoBeneficiaryPayoutAuthorization.js'
+import { BeneficiaryRecipientModel } from '../../src/infrastructure/database/models/BeneficiaryRecipientModel.js'
 
 const staff = new mongoose.Types.ObjectId(), owner = new mongoose.Types.ObjectId(), campaign = new mongoose.Types.ObjectId(), destination = new mongoose.Types.ObjectId()
 const requester = { userId: String(staff), role: 'admin' as const }
@@ -84,4 +86,13 @@ it.each(['expired', 'revoked by a newer rejection', 'suspended by a pending rene
   const work = vi.fn()
   await expect(new MongoManualPayoutApproval().run(requester, work, payout as never)).rejects.toMatchObject({ statusCode: 409 })
   expect(work).not.toHaveBeenCalled()
+})
+it('refuses a beneficiary payout approval by the administrator who owns the campaign', async () => {
+  await UserModel.updateOne({ _id: owner }, { role: 'admin' })
+  const kycVerifiedAt = new Date()
+  const recipient = await BeneficiaryRecipientModel.create({ campaignId: String(campaign), beneficiaryId: 'b1', type: 'mobile_money', currency: 'GHS', accountName: 'Beneficiary', accountNumber: '0551234567', bankCode: 'MTN', recipientCode: 'RCP_b1', kycVerified: true, kycVerifiedBy: String(staff), kycVerifiedAt, createdBy: String(owner) })
+  const plain = { ...recipient.toObject(), id: recipient.id } as never
+  await expect(new MongoBeneficiaryPayoutAuthorization().assertCurrent({ userId: String(owner), role: 'admin' }, plain)).rejects.toMatchObject({ statusCode: 403 })
+  await expect(new MongoBeneficiaryPayoutAuthorization().assertCurrent({ userId: String(staff), role: 'admin' }, plain)).resolves.toBeUndefined()
+  await BeneficiaryRecipientModel.deleteMany({})
 })

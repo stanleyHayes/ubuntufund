@@ -216,10 +216,9 @@ export class BeneficiaryPayoutUseCase {
     if (payout.status !== 'PENDING') {
       throw new AppError(`Payout cannot be approved in state ${payout.status}`, 409);
     }
-    // Segregation of duties: an admin never approves a payout they requested
-    // or one drawn from a campaign they own.
-    const campaign = await this.campaignRepo.findById(payout.campaignId);
-    if (payout.requestedBy === requester.userId || campaign?.creatorId === requester.userId) {
+    // Segregation of duties: an admin never approves a payout they requested.
+    // The campaign-owner check runs inside the authorization transaction.
+    if (payout.requestedBy === requester.userId) {
       throw new AppError('Another administrator must approve payouts from your own campaign or request.', 403);
     }
 
