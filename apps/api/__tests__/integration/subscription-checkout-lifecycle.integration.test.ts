@@ -23,7 +23,6 @@ import { CouponModel } from '../../src/infrastructure/database/models/CouponMode
 import { CouponRedemptionModel } from '../../src/infrastructure/database/models/CouponRedemptionModel.js';
 import { StoreBillingAccountModel } from '../../src/infrastructure/database/models/StoreBillingAccountModel.js';
 import { ProviderTransactionNotFoundError } from '../../src/domain/errors/ProviderTransactionNotFoundError.js';
-import { HandlePaystackWebhookUseCase } from '../../src/application/use-cases/HandlePaystackWebhookUseCase.js';
 
 const models = [SubscriptionCheckoutModel, SubscriptionModel, CouponModel, CouponRedemptionModel, StoreBillingAccountModel];
 const DAY = 86_400_000;
