@@ -37,11 +37,9 @@ export default function RootLayout() {
   const [splashDone, setSplashDone] = useState(false)
 
   useEffect(() => {
-    void cleanupRecoveryCodeCache().catch(() => {
-      console.warn('Temporary recovery-code cleanup could not complete; it will retry at the next app start.')
-    })
-    void cleanupPickerCache().catch(() => {
-      console.warn('Temporary upload cleanup could not complete; it will retry at the next app start.')
+    // Remove temporary recovery-code exports and picker copies (ID images, selfies) left by an interrupted run.
+    void Promise.allSettled([cleanupRecoveryCodeCache(), cleanupPickerCache()]).then(results => {
+      if (results.some(result => result.status === 'rejected')) console.warn('Temporary file cleanup could not complete; it will retry at the next app start.')
     })
     const cleanup = setupNotificationHandlers()
     return cleanup
