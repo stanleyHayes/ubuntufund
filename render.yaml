@@ -1,7 +1,19 @@
-# Render Blueprint — free-tier deployment of the Ujimora API.
+# Render Blueprint — deployment of the Ujimora API.
 # Apply at https://dashboard.render.com/blueprints (New > Blueprint) after
-# connecting the GitHub repo. MongoDB is not offered on Render's free tier:
-# create a free MongoDB Atlas M0 cluster and paste its URI into MONGODB_URI.
+# connecting the GitHub repo. MongoDB is not offered on Render: create a
+# MongoDB Atlas cluster and paste its URI into MONGODB_URI.
+#
+# PLAN: `plan: free` below is Render's free instance type, which Render says
+# not to use for production. It spins down after 15 min without traffic (the
+# next request waits ~1 min, webhooks included), may restart at any time, and
+# counts against 750 free instance-hours per workspace per month, after which
+# free services are suspended. While asleep, every in-process job stops:
+# payment/payout reconciliation, email delivery, outbox retries, store-billing
+# and live-safety sweeps. Restarts drop open SSE streams and the in-memory
+# rate-limit and live-event state. Moving to an always-on paid instance
+# (`plan: starter`) is a billing decision for the owner — see DEPLOYMENT.md.
+# Keep ONE instance either way: the SSE event bus and rate limiters are
+# per-process.
 services:
   - type: web
     name: ujimora-api
@@ -9,7 +21,10 @@ services:
     plan: free
     buildCommand: npx --yes npm@12.0.2 ci
     startCommand: npm start -w @ubuntu-fund/api
-    healthCheckPath: /health
+    # Readiness, not liveness: 503 unless MongoDB answers a ping, so Render
+    # stops routing to (and eventually restarts) an instance that lost the
+    # database. /health stays dependency-free for CI and tooling.
+    healthCheckPath: /health/ready
     autoDeploy: true
     envVars:
       - key: NODE_ENV

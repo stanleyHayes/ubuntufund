@@ -3,8 +3,11 @@ import { createApp } from './app.js';
 import { config } from './infrastructure/config/index.js';
 import { connectDatabase, disconnectDatabase } from './infrastructure/database/connection.js';
 import { logger } from './infrastructure/logging/logger.js';
+import { installProcessFailureHandlers } from './infrastructure/logging/processFailureHandlers.js';
 import { MongoSiteContentRepository } from './infrastructure/adapters/outbound/persistence/MongoSiteContentRepository.js';
 import { seedSiteContentIfEmpty } from './infrastructure/database/seedSiteContent.js';
+
+installProcessFailureHandlers(process, logger);
 
 async function bootstrap(): Promise<void> {
   await connectDatabase(config.mongodbUri);

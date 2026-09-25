@@ -415,6 +415,7 @@ import { MongoUnitOfWork } from './infrastructure/adapters/outbound/persistence/
 import { MongoBillingOwnership } from './infrastructure/adapters/outbound/persistence/MongoBillingOwnership.js'
 import { configureStoreBilling } from './infrastructure/config/storeBilling.js'
 import { disabledCapabilities } from './infrastructure/config/capabilities.js'
+import { isDatabaseReady } from './infrastructure/database/connection.js'
 import { TotpCipher } from './application/services/Totp.js'
 import { createStoreBillingRoutes, createStoreBillingWebhookRoutes } from './infrastructure/adapters/inbound/http/routes/storeBillingRoutes.js'
 import { createStoreBillingAdminRoutes } from './infrastructure/adapters/inbound/http/routes/storeBillingAdminRoutes.js'
@@ -1599,8 +1600,18 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   app.use(requestLogger)
   app.use('/api/v1/webhooks/store', createStoreBillingWebhookRoutes(storeBilling))
 
+  // Liveness: the process is up. Dependency-free on purpose — CI and local
+  // tooling poll it before the database is seeded.
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() })
+  })
+  // Readiness (Render's healthCheckPath, uptime monitors): 503 unless MongoDB
+  // answers a ping. Almost every route needs the database, so an instance that
+  // cannot reach it should not be handed traffic. Reports no internals.
+  app.get('/health/ready', async (_req, res) => {
+    const ready = await isDatabaseReady()
+    res.set('Cache-Control', 'no-store')
+    res.status(ready ? 200 : 503).json({ status: ready ? 'ok' : 'unavailable', timestamp: new Date().toISOString() })
   })
 
   const api = express.Router()

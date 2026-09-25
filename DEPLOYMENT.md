@@ -1,21 +1,28 @@
 # Deployment
 
-The backend deploys to **Render** (free tier, via Blueprint) and the frontends
-deploy to **Vercel**.
+The backend deploys to **Render** (via Blueprint; currently the free instance
+type — read the limitations below) and the frontends deploy to **Vercel**.
 
-## 1. Database — MongoDB Atlas (free M0)
+## 1. Database — MongoDB Atlas
 
-Render's free tier has no MongoDB, so the API uses Atlas:
+Render has no MongoDB, so the API uses Atlas:
 
-1. Create a free M0 cluster at https://cloud.mongodb.com.
-2. Create a database user and allow access from `0.0.0.0/0` (or Render's IPs).
+1. Create a cluster at https://cloud.mongodb.com. The free M0 tier works but
+   has **no backups**. A service holding donation and payout records needs a
+   tier with automated backups (M10+ for continuous backup and point-in-time
+   restore) — an owner/cost decision.
+2. Create a database user. Under Network Access, prefer the Render region's
+   outbound IPs (Render dashboard → service → Connect → Outbound) over
+   `0.0.0.0/0`.
 3. Copy the connection string (`mongodb+srv://...`) — you'll paste it into
    Render as `MONGODB_URI`.
+4. Once backups are on, run a restore drill into a scratch cluster and check
+   the API boots against it, so the procedure is known before it is needed.
 
 ## 2. Backend — Render Blueprint
 
 [render.yaml](render.yaml) at the repo root defines the `ujimora-api`
-web service (free plan, health check on `/health`, runs `tsx src/main.ts`).
+web service (free plan, health check on `/health/ready`, runs `tsx src/main.ts`).
 
 1. In the Render dashboard: **New → Blueprint**, connect this GitHub repo.
 2. Render reads `render.yaml`; when prompted, paste the Atlas URI into
@@ -27,8 +34,47 @@ web service (free plan, health check on `/health`, runs `tsx src/main.ts`).
    publicly as `https://api.ujimora.com`, which is what the frontends and the
    `vercel.json` rewrites call.
 
-Note: free Render services sleep after inactivity; the first request after
-idle takes ~30–60s.
+### Free-plan limitations (`plan: free` in render.yaml)
+
+Render's free instance type is not meant for production, and this API runs
+money-moving background work in-process:
+
+- It **spins down after 15 minutes without inbound traffic**; the next request
+  (a donor, or a Paystack webhook) waits about a minute while it starts.
+  Webhooks are delayed, not lost: the request wakes the service, Paystack
+  retries failed deliveries, and the reconciliation sweeps backfill.
+- While asleep, **every in-process job stops**: payment/payout reconciliation,
+  account and activity email delivery, outbox retries, store-billing and
+  live-safety sweeps. They resume on the next wake-up.
+- Render may restart a free service at any time. A restart drops open SSE
+  streams, the live-event replay buffer and the in-memory rate-limit counters.
+- Free services share **750 instance-hours per workspace per month**; past
+  that, all free services are suspended until the month ends.
+
+Moving to an always-on paid instance (`plan: starter`, the smallest) removes
+all of the above; it is a billing decision, so the Blueprint still says
+`free`. If you change the plan in the dashboard, change `render.yaml` too, or
+the next Blueprint sync reverts it. Keep a single instance either way: the SSE
+event bus and the rate limiters are per-process.
+
+### Health checks and monitoring
+
+- `GET /health` — liveness; always 200 while the process runs. CI polls it
+  before seeding.
+- `GET /health/ready` — readiness; 503 unless MongoDB answers a ping within
+  2 s. Render's `healthCheckPath` uses it, so an instance that loses the
+  database stops receiving traffic (Render stops routing after ~15 s of failed
+  checks and restarts the instance after ~60 s). It is not rate-limited and
+  returns no internals.
+- Point an external uptime monitor with alerting at
+  `https://api.ujimora.com/health/ready`. On the free plan a 5-minute check
+  also keeps the service awake — which then uses ~744 of the 750 monthly free
+  hours, so only if it is the workspace's only free service.
+- Uncaught exceptions and unhandled promise rejections are logged as `fatal`
+  through the structured logger, then the process exits for Render to restart.
+- There is no error tracking (Sentry or similar) yet; it needs an account and
+  DSN, which is an owner decision. Enable Render's deploy-failure
+  notifications in the dashboard.
 
 ### API secrets set in the Render dashboard
 

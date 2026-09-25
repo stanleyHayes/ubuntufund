@@ -91,6 +91,10 @@ describe('render.yaml blueprint', () => {
     for (const name of secrets) expect({ name, source: declared.get(name) }).toEqual({ name, source: 'sync:false' });
   });
 
+  it('health-checks readiness (MongoDB reachable), not bare liveness', () => {
+    expect(readFileSync(join(repoRoot, 'render.yaml'), 'utf8')).toMatch(/^\s*healthCheckPath: \/health\/ready\s*$/m);
+  });
+
   it('does not declare the test-only mock crypto secret', () => {
     expect(declared.has('CRYPTO_MOCK_WEBHOOK_SECRET')).toBe(false);
   });
