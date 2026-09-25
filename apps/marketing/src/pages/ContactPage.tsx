@@ -97,7 +97,7 @@ function ContactPage() {
   const responseTimes = (contact.responseTimes ?? []).filter(row => row.label?.trim() && row.time?.trim())
 
   const CONTACT_CHANNELS = [
-    { icon: <EmailRoundedIcon />, label: 'Email support', value: contact.email, detail: 'Send account, campaign, or general questions' },
+    { icon: <EmailRoundedIcon />, label: 'Email us', value: contact.email, detail: 'Send account, campaign, or general questions' },
     { icon: <ChatBubbleOutlineRoundedIcon />, label: 'Support hours', value: contact.hours, detail: 'Availability is confirmed before a live conversation' },
     { icon: <LocationOnRoundedIcon />, label: 'Ghana operations', value: contact.address || 'Serving communities across Ghana', detail: contact.address ? 'Contact us before planning a visit' : 'Contact the team online' },
     contact.phone ? { icon: <PhoneRoundedIcon />, label: 'Phone', value: contact.phone, detail: 'Call the team about your inquiry' } : { icon: <GroupsRoundedIcon />, label: 'Organization help', value: 'Verification and team access', detail: 'Use the form and select Campaign support' },
