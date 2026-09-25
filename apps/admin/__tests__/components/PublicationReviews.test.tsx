@@ -3,8 +3,10 @@ vi.mock('@/components/ExportMenu', () => ({ default: () => null }))
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { it, expect, vi } from 'vitest'
 import PublicationReviewsPage from '@/pages/PublicationReviewsPage'
-const { get, put } = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn() }))
+const { get, put, auth } = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), auth: { user: { id: 'reviewer' } } }))
 vi.mock('@/lib/api', () => ({ api: { get, put } }))
+vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ user: auth.user }) }))
+const photo = 'https://res.cloudinary.com/ujimora/image/upload/v1/avatars/photo.jpg', cover = 'https://res.cloudinary.com/ujimora/image/upload/v1/covers/cover.jpg'
 it.each([
   { action: 'account.profile', text: JSON.stringify({ name: 'Full proposed content', country: 'Ghana', publicProfile: true }) },
   { action: 'organization.profile', text: JSON.stringify({ organizationName: 'Full proposed content', website: 'https://example.test' }) },
@@ -47,4 +49,59 @@ it.each([['tip-content-reviews', 'Supporter names and messages'], ['donation-con
     await waitFor(() => expect(get).toHaveBeenCalledWith(`/admin/${queue}?status=pending&page=1&pageSize=12`))
     expect(screen.getByRole('combobox', { name: 'Content queue' })).toHaveTextContent(label)
   } finally { window.history.replaceState({}, '', '/') }
+})
+it('previews Cloudinary profile media labelled as the proposed photo and cover', async () => {
+  vi.clearAllMocks()
+  get.mockResolvedValue({ items: [{ id: 'profile', actorId: 'author', action: 'creator.profile', text: JSON.stringify({ displayName: 'Ama', avatarUrl: photo, coverUrl: cover }), mediaUrls: [cover, photo], status: 'pending', reason: 'staff_requested' }], total: 1 })
+  render(<PublicationReviewsPage />)
+  expect(await screen.findByAltText('Photo preview')).toHaveAttribute('src', photo)
+  expect(screen.getByAltText('Cover preview')).toHaveAttribute('src', cover)
+  expect(screen.getByAltText('Photo preview')).toHaveAttribute('referrerpolicy', 'no-referrer')
+  expect(screen.getByRole('link', { name: 'Open original Cover' })).toHaveAttribute('href', cover)
+  expect(screen.queryByText(/^Media \d/)).toBeNull()
+})
+it('labels one image proposed as both photo and cover', async () => {
+  vi.clearAllMocks()
+  get.mockResolvedValue({ items: [{ id: 'profile', actorId: 'author', action: 'creator.profile', text: JSON.stringify({ displayName: 'Ama', avatarUrl: photo, coverUrl: photo }), mediaUrls: [photo, photo], status: 'pending', reason: 'staff_requested' }], total: 1 })
+  render(<PublicationReviewsPage />)
+  expect(await screen.findAllByAltText('Photo and cover preview')).toHaveLength(2)
+  expect(screen.queryByAltText('Photo preview')).toBeNull()
+})
+it('falls back to numbered labels when the profile text is not structured', async () => {
+  vi.clearAllMocks()
+  get.mockResolvedValue({ items: [{ id: 'profile', actorId: 'author', action: 'account.profile', text: 'not json', mediaUrls: [photo], status: 'pending', reason: 'staff_requested' }], total: 1 })
+  render(<PublicationReviewsPage />)
+  expect(await screen.findByAltText('Media 1 preview')).toHaveAttribute('src', photo)
+})
+it('does not load media hosted outside Cloudinary', async () => {
+  vi.clearAllMocks()
+  get.mockResolvedValue({ items: [{ id: 'comment', actorId: 'author', action: 'comment.create', text: 'Look at this', mediaUrls: ['https://media.example.test/photo.jpg'], status: 'pending', reason: 'staff_requested' }], total: 1 })
+  render(<PublicationReviewsPage />)
+  expect(await screen.findByText(/not hosted in Ujimora image storage/)).toBeInTheDocument()
+  expect(screen.getByText('https://media.example.test/photo.jpg')).toBeInTheDocument()
+  expect(screen.queryByRole('img')).toBeNull()
+  expect(screen.queryByRole('link', { name: /Open original/ })).toBeNull()
+})
+it('explains and blocks review of the signed-in administrator\'s own pending submission', async () => {
+  vi.clearAllMocks()
+  get.mockResolvedValue({ items: [
+    { id: 'own', actorId: 'reviewer', action: 'comment.create', text: 'My own comment', mediaUrls: [], status: 'pending', reason: 'staff_requested' },
+    { id: 'other', actorId: 'author', action: 'comment.create', text: 'Another author comment', mediaUrls: [], status: 'pending', reason: 'staff_requested' },
+    { id: 'decided', actorId: 'reviewer', action: 'comment.create', text: 'My decided comment', mediaUrls: [], status: 'approved', reason: 'staff_requested', reviewNotes: 'Reviewed by another administrator.' },
+  ], total: 3 })
+  put.mockResolvedValue({})
+  render(<PublicationReviewsPage />)
+  expect(await screen.findByText('You submitted this. Another administrator must review it.')).toBeInTheDocument()
+  expect(screen.getAllByText('You submitted this. Another administrator must review it.')).toHaveLength(1)
+  const [ownNotes, otherNotes] = screen.getAllByLabelText('Review notes (at least 20 characters)')
+  const [ownApprove, otherApprove] = screen.getAllByRole('button', { name: 'Approve this version' })
+  const [ownDecline, otherDecline] = screen.getAllByRole('button', { name: 'Decline this version' })
+  fireEvent.change(ownNotes, { target: { value: 'Trying to review my own submission.' } })
+  fireEvent.change(otherNotes, { target: { value: 'Reviewed the other author comment.' } })
+  expect(ownApprove).toBeDisabled()
+  expect(ownDecline).toBeDisabled()
+  expect(otherApprove).toBeEnabled()
+  expect(otherDecline).toBeEnabled()
+  fireEvent.click(otherDecline)
+  await waitFor(() => expect(put).toHaveBeenCalledExactlyOnceWith('/admin/publication-reviews/other/review', { decision: 'rejected', notes: 'Reviewed the other author comment.' }))
 })
