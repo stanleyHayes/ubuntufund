@@ -5,6 +5,8 @@ import type { AffiliatePayoutRepositoryPort } from '../../domain/ports/outbound/
 import type { AffiliateRepositoryPort } from '../../domain/ports/outbound/AffiliateRepositoryPort.js';
 import type { AffiliateBalanceRepositoryPort } from '../../domain/ports/outbound/AffiliateBalanceRepositoryPort.js';
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
+import type { AffiliateCommissionRepositoryPort } from '../../domain/ports/outbound/AffiliateCommissionRepositoryPort.js';
+import type { UnitOfWorkPort } from '../../domain/ports/outbound/UnitOfWorkPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 import { toAffiliatePayoutDto } from './mappers/affiliateDto.js';
@@ -34,7 +36,11 @@ export class ApproveAffiliatePayoutUseCase {
     private readonly affiliateRepo: AffiliateRepositoryPort,
     private readonly affiliateBalanceRepo: AffiliateBalanceRepositoryPort,
     private readonly paymentGateway: PaymentGatewayPort,
-    private readonly approval?: { run<T>(approver: AffiliatePayoutApprover, context: { affiliateId: string; ownerId: string; recipientCode: string }, work: () => Promise<T>): Promise<T> }
+    private readonly approval?: { run<T>(approver: AffiliatePayoutApprover, context: { affiliateId: string; ownerId: string; recipientCode: string }, work: () => Promise<T>): Promise<T> },
+    /** Unlinks the commissions a rolled-back payout would have paid. */
+    private readonly commissionRepo?: Pick<AffiliateCommissionRepositoryPort, 'releaseFromPayout'>,
+    /** Commits the rollback's status, balance return, flag and unlink together. */
+    private readonly unitOfWork?: UnitOfWorkPort
   ) {}
 
   async execute(
@@ -135,24 +141,32 @@ export class ApproveAffiliatePayoutUseCase {
    * webhook doesn't return it twice), and return with the same settleRef +
    * settlement-applied flag the webhook uses, so this FAILED payout is never
    * re-detected as unsettled and double-returned by the reconciliation repair.
+   * The commissions linked to the payout are released as the webhook and a
+   * rejection release them: the repair never revisits this settled payout, so
+   * leaving them linked would keep them out of every later payout for good.
    */
   private async rollback(
     payoutId: string,
     affiliateId: string,
     amount: number
   ): Promise<void> {
-    const failed = await this.affiliatePayoutRepo.transitionToFailed(payoutId);
-    if (!failed) return;
-    const balance = await this.affiliateBalanceRepo.findByAffiliateId(
-      affiliateId
-    );
-    if (balance) {
-      await this.affiliateBalanceRepo.returnToAvailable(
-        balance.id,
-        amount,
-        `aff:${payoutId}:returned`
+    const work = async () => {
+      const failed = await this.affiliatePayoutRepo.transitionToFailed(payoutId);
+      if (!failed) return;
+      const balance = await this.affiliateBalanceRepo.findByAffiliateId(
+        affiliateId
       );
-    }
-    await this.affiliatePayoutRepo.markSettlementApplied(payoutId, 'FAILED');
+      if (balance) {
+        await this.affiliateBalanceRepo.returnToAvailable(
+          balance.id,
+          amount,
+          `aff:${payoutId}:returned`
+        );
+      }
+      await this.affiliatePayoutRepo.markSettlementApplied(payoutId, 'FAILED');
+      await this.commissionRepo?.releaseFromPayout?.(payoutId);
+    };
+    if (this.unitOfWork) await this.unitOfWork.run(work);
+    else await work();
   }
 }

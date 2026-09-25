@@ -937,6 +937,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     new MongoWalletPayoutRepository(planLimitsService),
     new MongoCreatorWithdrawalTransaction(),
     payoutEligibility,
+    auditLogRepo,
   )
   const handleCreatorPayoutWebhookUseCase = new HandleCreatorPayoutWebhookUseCase(
     creatorPayoutRepo,
@@ -1026,6 +1027,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     paymentGateway,
     handleCreatorPayoutWebhookUseCase,
     creatorPayoutRepo,
+    auditLogRepo,
   )
   // Paid-subscription checkouts: repair missed webhooks and expire checkouts
   // left unpaid for a day, freeing their coupon seats and the billing rail.
@@ -1127,6 +1129,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     couponRedemptionRepo,
     couponRepo,
     payoutEligibility,
+    new MongoUnitOfWork(),
   )
   const approvePayoutUseCase = new ApprovePayoutUseCase(
     payoutRepo,
@@ -1361,6 +1364,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     affiliateCommissionRepo,
     paymentGateway,
     new MongoUnitOfWork(),
+    payoutEligibility,
   )
   const approveAffiliatePayoutUseCase = new ApproveAffiliatePayoutUseCase(
     affiliatePayoutRepo,
@@ -1368,6 +1372,8 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     affiliateBalanceRepo,
     paymentGateway,
     new MongoAffiliatePayoutApproval(),
+    affiliateCommissionRepo,
+    new MongoUnitOfWork(),
   )
   const listAffiliatesUseCase = new ListAffiliatesUseCase(affiliateRepo)
   const getAffiliateDetailUseCase = new GetAffiliateDetailUseCase(
@@ -1521,6 +1527,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
       campaignRepo,
       campaignBalanceRepo,
       new MongoPayoutClosureTransaction(),
+      { redemptions: couponRedemptionRepo, coupons: couponRepo },
     ),
     // Escalated single transfers settle through each rail's own idempotent handler.
     new ResolveStuckPayoutUseCase(
@@ -1530,21 +1537,35 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
           findById: (id) => payoutRepo.findById(id),
           reopenForSettlement: (id) => payoutRepo.reopenForSettlement(id),
           handler: handlePayoutWebhookUseCase,
+          listEscalated: async () => (await payoutRepo.findByStatuses(['NEEDS_REVIEW']))
+            .filter((p) => !p.legs?.length && p.providerRef)
+            .map((p) => ({ id: p.id, amount: p.amount, currency: p.currency, providerRef: p.providerRef, subject: p.campaignId, subjectLabel: 'Campaign', createdAt: p.createdAt, updatedAt: p.updatedAt })),
         },
         beneficiary: {
           findById: (id) => beneficiaryPayoutRepo.findById(id),
           reopenForSettlement: (id) => beneficiaryPayoutRepo.reopenForSettlement(id),
           handler: handleBeneficiaryPayoutWebhookUseCase,
+          listEscalated: async () => (await beneficiaryPayoutRepo.findByStatuses(['NEEDS_REVIEW']))
+            .filter((p) => p.providerRef)
+            .map((p) => ({ id: p.id, amount: p.amount, currency: p.currency, providerRef: p.providerRef, subject: `${p.campaignId} / ${p.beneficiaryId}`, subjectLabel: 'Campaign / beneficiary', createdAt: p.toPlain().createdAt, updatedAt: p.updatedAt })),
         },
         affiliate: {
           findById: (id) => affiliatePayoutRepo.findById(id),
           reopenForSettlement: (id) => affiliatePayoutRepo.reopenForSettlement(id),
           handler: handleAffiliatePayoutWebhookUseCase,
+          listEscalated: async () => ((await affiliatePayoutRepo.findEscalated?.()) ?? [])
+            .map((payout) => payout.toPlain())
+            .filter((p) => p.providerRef)
+            .map((p) => ({ id: p.id, amount: p.amount, currency: p.currency, providerRef: p.providerRef, subject: p.affiliateId, subjectLabel: 'Affiliate', createdAt: p.createdAt, updatedAt: p.updatedAt })),
         },
         creator: {
           findById: (id) => creatorPayoutRepo.findById(id),
           reopenForSettlement: (id) => creatorPayoutRepo.reopenForSettlement(id),
           handler: handleCreatorPayoutWebhookUseCase,
+          listEscalated: async () => ((await creatorPayoutRepo.findEscalated?.()) ?? [])
+            .map((payout) => payout.toPlain())
+            .filter((p) => p.providerRef)
+            .map((p) => ({ id: p.id, amount: p.amount, currency: p.currency, providerRef: p.providerRef, subject: p.creatorUserId, subjectLabel: 'Creator', createdAt: p.createdAt, updatedAt: p.updatedAt })),
         },
       },
       auditLogRepo,
@@ -1575,6 +1596,8 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     new MongoUnitOfWork(),
     config.payouts.dualApprovalAmount,
     new MongoBeneficiaryPayoutAuthorization(),
+    payoutEligibility,
+    new MongoPayoutClosureTransaction(),
   )
   const beneficiaryPayoutController = new BeneficiaryPayoutController(beneficiaryPayoutUseCase)
   const leaderboardController = new LeaderboardController(

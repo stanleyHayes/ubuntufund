@@ -23,6 +23,7 @@ import { CampaignBeneficiaryBalanceModel } from '../../src/infrastructure/databa
 import { BeneficiaryRecipientModel } from '../../src/infrastructure/database/models/BeneficiaryRecipientModel.js';
 import { BeneficiaryPayoutModel } from '../../src/infrastructure/database/models/BeneficiaryPayoutModel.js';
 import { MongoBeneficiaryPayoutRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoBeneficiaryPayoutRepository.js';
+import { DisputeModel } from '../../src/infrastructure/database/models/DisputeModel.js';
 import { CampaignCategory, CampaignPriority } from '@ubuntu-fund/types';
 
 function uniqueEmail(label: string): string {
@@ -153,10 +154,10 @@ describe('Beneficiary payout Integration (flag on, spec §17)', () => {
     await CampaignBeneficiaryBalanceModel.create({ campaignId, beneficiaryId, currency: 'GHS', pendingBalance: 100 });
     await CampaignBalanceModel.create({ campaignId, currency: 'GHS', pendingBalance: campaignPending, totalRaised: campaignPending });
     await BeneficiaryRecipientModel.create({ campaignId, beneficiaryId, currency: 'GHS', type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'Fixture Beneficiary', recipientCode: 'RCP_fixture', createdBy: owner.userId });
-    const submit = (target: Express = app) => request(target)
+    const submit = (target: Express = app, amount = 60) => request(target)
       .post(`/api/v1/campaigns/${campaignId}/split/beneficiaries/${beneficiaryId}/payouts`)
-      .set('Authorization', `Bearer ${owner.token}`).send({ amount: 60 });
-    return { campaignId, beneficiaryId, submit };
+      .set('Authorization', `Bearer ${owner.token}`).send({ amount });
+    return { campaignId, beneficiaryId, owner, submit };
   }
 
   it('rolls back beneficiary clearing when the campaign mirror is short', async () => {
@@ -193,16 +194,34 @@ describe('Beneficiary payout Integration (flag on, spec §17)', () => {
   it('keeps both balance mirrors equal under concurrent beneficiary requests', async () => {
     const { campaignId, beneficiaryId, submit } = await seedRequestBalances(100);
     const responses = await Promise.all([submit(), submit()]);
-    expect(responses.map((response) => response.status)).toEqual([201, 201]);
+    // Two GHS 60 requests against GHS 100 can never both be paid. PENDING
+    // requests count against the requestable amount (as on campaign payouts),
+    // and the requests serialise on the balance row, so the second is refused
+    // instead of queuing a request whose approval would fail.
+    expect(responses.map((response) => response.status).sort()).toEqual([201, 422]);
     const beneficiary = await CampaignBeneficiaryBalanceModel.findOne({ campaignId, beneficiaryId });
     const campaign = await CampaignBalanceModel.findOne({ campaignId });
-    // Requests do not reserve twice; approval is responsible for reserving the
-    // available balance. Both requests can exist but cannot both pay GHS 60.
     expect(beneficiary?.pendingBalance).toBe(40);
     expect(beneficiary?.availableBalance).toBe(60);
     expect(campaign?.pendingBalance).toBe(40);
     expect(campaign?.availableBalance).toBe(60);
-    expect(await BeneficiaryPayoutModel.countDocuments({ campaignId })).toBe(2);
+    expect(await BeneficiaryPayoutModel.countDocuments({ campaignId })).toBe(1);
+  });
+
+  it('clears enough for every pending request, so they can be approved in any order', async () => {
+    const { campaignId, beneficiaryId, submit } = await seedRequestBalances(100);
+    // Two GHS 50 requests against GHS 100: the second clears its own 50 rather
+    // than leaning on the 50 the first request already cleared.
+    await submit(app, 50).expect(201);
+    await submit(app, 50).expect(201);
+    await submit(app, 1).expect(422);
+    const beneficiary = await CampaignBeneficiaryBalanceModel.findOne({ campaignId, beneficiaryId });
+    const campaign = await CampaignBalanceModel.findOne({ campaignId });
+    expect([beneficiary?.availableBalance, beneficiary?.pendingBalance]).toEqual([100, 0]);
+    expect([campaign?.availableBalance, campaign?.pendingBalance]).toEqual([100, 0]);
+    const payouts = await BeneficiaryPayoutModel.find({ campaignId }).lean();
+    expect(payouts.map((payout) => payout.clearedAmount)).toEqual([50, 50]);
+    expect(payouts.every((payout) => /^[a-f0-9]{64}$/.test(payout.destinationFingerprint ?? ''))).toBe(true);
   });
 
   it.each(['success', 'mirror_short', 'processing_failure', 'staff_revoked', 'kyc_revoked', 'destination_changed', 'account_changed', 'wrong_currency'])('beneficiary reservation and processing commit together: %s', async (scenario) => {
@@ -434,5 +453,146 @@ describe('Beneficiary payout Integration (flag on, spec §17)', () => {
       .send({ amount: 500 });
     expect(res.status).toBe(409);
     expect(res.body.message).toMatch(/per-beneficiary/i);
+  });
+  /** A funded 60/40 split campaign: Ama accrues 585 and Kofi 390 of a GHS 1000 donation. */
+  async function fundedSplit() {
+    const owner = await registerUser(app, uniqueEmail('bp-split-own'));
+    const admin = await createAdmin(app, uniqueEmail('bp-split-admin'));
+    const campaignId = await createActiveCampaign(app, owner.token, owner.userId);
+    const created = await request(app)
+      .post(`/api/v1/campaigns/${campaignId}/split`)
+      .set('Authorization', `Bearer ${owner.token}`)
+      .send({ allocations: [{ name: 'Ama', shareBps: 6000 }, { name: 'Kofi', shareBps: 4000 }] })
+      .expect(201);
+    const [ama] = created.body.data.allocations as { beneficiaryId: string }[];
+    for (const b of created.body.data.allocations as { beneficiaryId: string }[]) {
+      await request(app)
+        .post(`/api/v1/campaigns/${campaignId}/split/1/consent`)
+        .set('Authorization', `Bearer ${owner.token}`)
+        .send({ beneficiaryId: b.beneficiaryId, status: 'accepted' })
+        .expect(200);
+    }
+    await request(app)
+      .post(`/api/v1/campaigns/${campaignId}/split/1/activate`)
+      .set('Authorization', `Bearer ${owner.token}`)
+      .send({})
+      .expect(200);
+    await fundCampaign(app, campaignId, 1000);
+    const base = `/api/v1/campaigns/${campaignId}/split/beneficiaries/${ama.beneficiaryId}`;
+    const register = (token: string, accountNumber = '0551234567') => request(app)
+      .post(`${base}/recipient`).set('Authorization', `Bearer ${token}`)
+      .send({ type: 'mobile_money', accountNumber, bankCode: 'MTN', accountName: 'Ama' });
+    const verifyKyc = () => request(app).post(`${base}/verify-kyc`).set('Authorization', `Bearer ${admin.token}`).send({});
+    const requestPayout = (token: string, amount = 585) => request(app)
+      .post(`${base}/payouts`).set('Authorization', `Bearer ${token}`).send({ amount });
+    const approve = (payoutId: string) => request(app)
+      .post(`/api/v1/beneficiary-payouts/${payoutId}/approve`).set('Authorization', `Bearer ${admin.token}`)
+      .send({ reviewNote: 'Verified the beneficiary MoMo wallet owner and capacity.' });
+    const cancel = (payoutId: string, token: string, beneficiaryId = ama.beneficiaryId) => request(app)
+      .post(`/api/v1/campaigns/${campaignId}/split/beneficiaries/${beneficiaryId}/payouts/${payoutId}/cancel`)
+      .set('Authorization', `Bearer ${token}`).send({});
+    const balances = async () => {
+      const share = await CampaignBeneficiaryBalanceModel.findOne({ campaignId, beneficiaryId: ama.beneficiaryId });
+      const aggregate = await CampaignBalanceModel.findOne({ campaignId });
+      return { share: [share?.availableBalance, share?.pendingBalance], aggregate: [aggregate?.availableBalance, aggregate?.pendingBalance] };
+    };
+    const transfers = () => vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer'));
+    return { owner, admin, campaignId, ama, register, verifyKyc, requestPayout, approve, cancel, balances, transfers };
+  }
+
+  it('lets only the beneficiary or the campaign owner enter a destination or request a payout', async () => {
+    const f = await fundedSplit();
+    vi.mocked(fetch).mockClear();
+    const staff = await f.register(f.admin.token, '0240000000').expect(403);
+    expect(staff.body.message).toMatch(/beneficiary or the campaign owner/);
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/transferrecipient'))).toBe(false);
+    expect(await BeneficiaryRecipientModel.countDocuments({ campaignId: f.campaignId })).toBe(0);
+
+    await f.register(f.owner.token).expect(201);
+    await f.verifyKyc().expect(200);
+    await f.requestPayout(f.admin.token).expect(403);
+    expect(await BeneficiaryPayoutModel.countDocuments({ campaignId: f.campaignId })).toBe(0);
+  });
+
+  it('never pays a destination swapped in after the request, even through registration itself', async () => {
+    const f = await fundedSplit();
+    await f.register(f.owner.token).expect(201);
+    await f.verifyKyc().expect(200);
+    const requested = await f.requestPayout(f.owner.token).expect(201);
+    const payoutId = requested.body.data.id as string;
+    const before = await f.balances();
+
+    // The destination is locked while the request waits for approval.
+    const locked = await f.register(f.owner.token, '0249999999').expect(409);
+    expect(locked.body.message).toMatch(/Cancel it before changing the payout destination/);
+
+    // Even if a replacement slips past that check, the request stays bound to
+    // the destination it was made against — the recipient document keeps its id.
+    const original = await BeneficiaryRecipientModel.findOne({ campaignId: f.campaignId, beneficiaryId: f.ama.beneficiaryId }).orFail();
+    const lookup = vi.spyOn(MongoBeneficiaryPayoutRepository.prototype, 'findByCampaignAndBeneficiary').mockResolvedValueOnce([]);
+    await f.register(f.owner.token, '0249999999').expect(201);
+    lookup.mockRestore();
+    const replaced = await BeneficiaryRecipientModel.findOne({ campaignId: f.campaignId, beneficiaryId: f.ama.beneficiaryId }).orFail();
+    expect(String(replaced._id)).toBe(String(original._id));
+    await f.verifyKyc().expect(200);
+    vi.mocked(fetch).mockClear();
+    const refused = await f.approve(payoutId).expect(409);
+    expect(refused.body.message).toMatch(/destination changed after this request/);
+    expect(f.transfers()).toHaveLength(0);
+    expect(await f.balances()).toEqual(before);
+    expect((await BeneficiaryPayoutModel.findById(payoutId))?.status).toBe('PENDING');
+
+    // The owner cancels; what the request cleared goes back to pending on both mirrors.
+    const cancelled = await f.cancel(payoutId, f.owner.token).expect(200);
+    expect(cancelled.body.data).toMatchObject({ status: 'FAILED', closure: { kind: 'cancelled', closedBy: f.owner.userId } });
+    expect(await f.balances()).toEqual({ share: [0, 585], aggregate: [0, 975] });
+
+    // A new request binds the new destination and pays it.
+    const again = await f.requestPayout(f.owner.token).expect(201);
+    const approved = await f.approve(again.body.data.id).expect(200);
+    expect(approved.body.data.status).toBe('PROCESSING');
+    const sent = f.transfers();
+    expect(sent).toHaveLength(1);
+    expect(JSON.parse((sent[0][1] as { body: string }).body).recipient).toBe(replaced.recipientCode);
+  });
+
+  it('limits cancellation to the beneficiary or the campaign owner', async () => {
+    const f = await fundedSplit();
+    await f.register(f.owner.token).expect(201);
+    const requested = await f.requestPayout(f.owner.token).expect(201);
+    const payoutId = requested.body.data.id as string;
+    const stranger = await registerUser(app, uniqueEmail('bp-stranger'));
+    await f.cancel(payoutId, stranger.token).expect(403);
+    await f.cancel(payoutId, f.admin.token).expect(403);
+    await f.cancel(payoutId, f.owner.token, randomUUID()).expect(404);
+    expect((await BeneficiaryPayoutModel.findById(payoutId))?.status).toBe('PENDING');
+    await f.cancel(payoutId, f.owner.token).expect(200);
+    await f.cancel(payoutId, f.owner.token).expect(409);
+  });
+
+  it.each(['blocked', 'disputed'])('refuses a request on a %s campaign before clearing any funds', async (scenario) => {
+    const f = await fundedSplit();
+    await f.register(f.owner.token).expect(201);
+    await f.verifyKyc().expect(200);
+    const before = await f.balances();
+    if (scenario === 'blocked') await CampaignModel.updateOne({ _id: f.campaignId }, { status: 'blocked' });
+    else await DisputeModel.collection.insertOne({ campaignId: f.campaignId, reporterId: randomUUID(), reason: 'fraud', description: 'Donor dispute', status: 'open', createdAt: new Date(), updatedAt: new Date() });
+    await f.requestPayout(f.owner.token).expect(409);
+    expect(await f.balances()).toEqual(before);
+    expect(await BeneficiaryPayoutModel.countDocuments({ campaignId: f.campaignId })).toBe(0);
+  });
+
+  it('refuses to approve a request once its campaign is blocked after the request', async () => {
+    const f = await fundedSplit();
+    await f.register(f.owner.token).expect(201);
+    await f.verifyKyc().expect(200);
+    const requested = await f.requestPayout(f.owner.token).expect(201);
+    const before = await f.balances();
+    await CampaignModel.updateOne({ _id: f.campaignId }, { status: 'blocked' });
+    vi.mocked(fetch).mockClear();
+    await f.approve(requested.body.data.id).expect(409);
+    expect(f.transfers()).toHaveLength(0);
+    expect(await f.balances()).toEqual(before);
+    expect((await BeneficiaryPayoutModel.findById(requested.body.data.id))?.status).toBe('PENDING');
   });
 });

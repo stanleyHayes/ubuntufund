@@ -13,6 +13,11 @@ import { toAffiliatePayoutDto } from './mappers/affiliateDto.js';
 import { AffiliateStatus } from '@ubuntu-fund/types';
 import type { UnitOfWorkPort } from '../../domain/ports/outbound/UnitOfWorkPort.js';
 import { AffiliateCommissionMaturity } from '../services/AffiliateCommissionMaturity.js';
+import type { PayoutEligibilityPort } from '../../domain/ports/outbound/PayoutEligibilityPort.js';
+import {
+  AFFILIATE_VERIFICATION_REQUIRED,
+  VERIFY_EMAIL_BEFORE_AFFILIATE_WITHDRAWAL,
+} from '../services/payoutEligibilityMessages.js';
 
 /** The platform's only settlement currency. */
 const CURRENCY = 'GHS';
@@ -40,7 +45,14 @@ export class RequestAffiliatePayoutUseCase {
     private readonly affiliateBalanceRepo: AffiliateBalanceRepositoryPort,
     private readonly affiliateCommissionRepo: AffiliateCommissionRepositoryPort,
     private readonly paymentGateway: PaymentGatewayPort,
-    private readonly unitOfWork?: UnitOfWorkPort
+    private readonly unitOfWork?: UnitOfWorkPort,
+    /**
+     * Money-out gate shared with campaign payouts and creator withdrawals:
+     * commissions go to an external bank or MoMo account, so the affiliate
+     * needs a verified email and current identity verification. Approval
+     * re-checks it inside its transaction.
+     */
+    private readonly eligibility?: Pick<PayoutEligibilityPort, 'assertOwnerVerified'>
   ) {}
 
   async execute(
@@ -66,6 +78,13 @@ export class RequestAffiliatePayoutUseCase {
         400
       );
     }
+    // Checked before anything is matured, reserved or linked (fail closed).
+    if (!this.eligibility) throw new AppError('Affiliate payouts are not available right now.', 503);
+    await this.eligibility.assertOwnerVerified(
+      userId,
+      AFFILIATE_VERIFICATION_REQUIRED,
+      VERIFY_EMAIL_BEFORE_AFFILIATE_WITHDRAWAL
+    );
 
     const amount = round2(Number(input.amount));
     if (!Number.isFinite(amount) || amount <= 0) {

@@ -20,7 +20,7 @@ export function PayoutAccountsPage() {
         description="Choose where your campaign and creator earnings go."
         icon={<AccountBalanceRounded />}
       />
-      <EmailVerificationNotice reason="Automatic payouts need a verified email; until then each payout waits for manual review." />
+      <EmailVerificationNotice reason="Every payout and withdrawal to a bank or mobile-money account needs a verified email address; until then none can be requested or approved." />
       <SavedPayoutAccounts />
       <Box sx={{ mt: 5 }}>
         <PayoutAccounts />

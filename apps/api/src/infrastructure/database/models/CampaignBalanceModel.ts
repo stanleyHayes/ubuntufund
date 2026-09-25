@@ -14,6 +14,8 @@ export interface CampaignBalanceDocument extends Document {
   payoutFees: number;
   /** Idempotency keys of settlement effects already applied (G5 durability). */
   settledRefs: string[];
+  /** Bumped by each payout request so concurrent requests serialise. */
+  requestWriteVersion?: number;
   updatedAt: Date;
 }
 
@@ -31,6 +33,7 @@ const campaignBalanceSchema = new Schema<CampaignBalanceDocument>(
     tips: { type: Number, default: 0 },
     payoutFees: { type: Number, default: 0 },
     settledRefs: { type: [String], default: [] },
+    requestWriteVersion: { type: Number },
     updatedAt: { type: Date, default: Date.now },
   },
   { collection: 'campaignbalances', timestamps: false }

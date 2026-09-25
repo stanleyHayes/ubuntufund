@@ -3,16 +3,14 @@ import { Icon, Text } from 'react-native-paper'
 import type { Payout } from '@ubuntu-fund/types'
 import { usePalette } from '@/context/ColorModeContext'
 import { GlassSurface } from './GlassSurface'
+import { payoutHistoryState } from '@/lib/payoutHistory'
 
 export function PayoutHistoryCard({ payout: p }: { payout: Payout }) {
   const palette = usePalette()
   const wallet = p.provider === 'ujimora_wallet'
-  const status =
-    p.status === 'PAID'
-      ? 'Completed'
-      : p.status === 'PROCESSING' && p.providerStatus === 'otp'
-        ? 'Awaiting authorization'
-        : p.status.replaceAll('_', ' ').toLowerCase()
+  const state = payoutHistoryState(p)
+  const statusColor =
+    state.tone === 'success' ? palette.success : state.tone === 'warning' ? palette.warningText : palette.primary
   const money = (amount: number) =>
     `${p.currency} ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   return (
@@ -42,19 +40,24 @@ export function PayoutHistoryCard({ payout: p }: { payout: Payout }) {
         </Text>
         <Text
           style={{
-            color: p.status === 'PAID' ? palette.success : palette.primary,
+            color: statusColor,
             fontFamily: 'Outfit_700Bold',
             textTransform: 'capitalize',
           }}
         >
-          {status}
+          {state.label}
         </Text>
       </View>
+      {state.detail && (
+        <Text accessibilityRole="text" style={{ color: palette.text, marginTop: 12 }}>
+          {state.detail}
+        </Text>
+      )}
       <Text variant="titleMedium" style={{ marginTop: 16, textTransform: 'capitalize' }}>
         {p.type} cashout
       </Text>
       <Text variant="bodySmall" style={{ color: palette.textSecondary, marginTop: 16 }}>
-        {p.status === 'PAID' ? 'AMOUNT RECEIVED' : 'EXPECTED NET AMOUNT'}
+        {state.amountCaption}
       </Text>
       <Text variant="headlineMedium" style={{ fontFamily: 'Outfit_700Bold', marginVertical: 8 }}>
         {money(p.netAmount)}

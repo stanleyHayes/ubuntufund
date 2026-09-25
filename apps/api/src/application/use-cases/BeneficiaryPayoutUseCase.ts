@@ -15,6 +15,8 @@ import type { BeneficiaryRecipientRepositoryPort } from '../../domain/ports/outb
 import type { BeneficiaryPayoutRepositoryPort } from '../../domain/ports/outbound/BeneficiaryPayoutRepositoryPort.js';
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
 import type { UnitOfWorkPort } from '../../domain/ports/outbound/UnitOfWorkPort.js';
+import type { PayoutEligibilityPort } from '../../domain/ports/outbound/PayoutEligibilityPort.js';
+import type { PayoutClosureTransactionPort } from '../../domain/ports/outbound/PayoutClosureTransactionPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 import { toBeneficiaryPayoutDto } from './mappers/beneficiaryPayoutDto.js';
@@ -30,6 +32,23 @@ const roundMoney = (n: number, currency: string): number =>
 
 /** Minimum length of an approver's destination review note. */
 export const REVIEW_NOTE_MIN = 20;
+
+/** Minimum length of an admin's rejection reason (it is shown to the requester). */
+export const BENEFICIARY_REJECTION_REASON_MIN = 20;
+
+/**
+ * Fingerprint of a beneficiary payout destination. A payout request records the
+ * fingerprint of the destination it was made against, and approval pays only
+ * that destination: a replaced account, recipient code or registrant (even one
+ * that keeps the same recipient document) needs a new request.
+ */
+export function beneficiaryDestinationFingerprint(recipient: BeneficiaryRecipient): string {
+  return createHash('sha256').update(JSON.stringify([
+    recipient.id, recipient.campaignId, recipient.beneficiaryId, recipient.type,
+    recipient.accountNumber, recipient.bankCode, recipient.accountName,
+    recipient.recipientCode, recipient.currency, recipient.createdBy,
+  ])).digest('hex');
+}
 
 /** What an approver reviews before approving a beneficiary payout. */
 export interface BeneficiaryPayoutDestination {
@@ -71,10 +90,23 @@ export class BeneficiaryPayoutUseCase {
     // Maker-checker threshold (GHS); `0` disables dual approval. Mirrors the
     // campaign payout rail's control for high-value payouts (spec §16).
     private readonly dualApprovalAmount = 0,
-    private readonly authorization?: { assertCurrent(requester: SplitRequester, recipient: BeneficiaryRecipient): Promise<void> }
+    private readonly authorization?: { assertCurrent(requester: SplitRequester, recipient: BeneficiaryRecipient): Promise<void> },
+    /**
+     * Money-out gate: a blocked, deleted or disputed campaign never pays out.
+     * Approval re-checks this inside its transaction (fail closed); the request
+     * pre-check stops a request that could never be paid from clearing funds.
+     */
+    private readonly eligibility?: Pick<PayoutEligibilityPort, 'assertCampaignPayable'>,
+    /** Fences the actor and audits a PENDING request's rejection or cancellation. */
+    private readonly closureTransaction?: PayoutClosureTransactionPort
   ) {}
 
-  /** Owner/beneficiary: register a beneficiary's provider payout destination. */
+  /**
+   * Beneficiary/owner: register a beneficiary's provider payout destination.
+   * Staff never enter bank details: approval pays only a destination the
+   * beneficiary or the campaign owner registered, so an admin cannot route a
+   * beneficiary's money to an account of their choosing.
+   */
   async registerRecipient(
     campaignId: string,
     beneficiaryId: string,
@@ -85,11 +117,21 @@ export class BeneficiaryPayoutUseCase {
     if (!this.paymentGateway.isConfigured()) {
       throw new AppError('Payouts are not configured', 501);
     }
-    await this.assertBeneficiaryAccess(campaignId, beneficiaryId, requester);
+    await this.assertBeneficiaryOrOwner(campaignId, beneficiaryId, requester);
     await this.assertBeneficiaryInActiveSplit(campaignId, beneficiaryId);
 
     if (!input.accountNumber || !input.bankCode || !input.accountName) {
       throw new AppError('accountNumber, bankCode and accountName are required', 400);
+    }
+    // A request is bound to the destination it was made against. Changing the
+    // destination under a queued request would leave it unpayable, so the
+    // request is cancelled first and a new one made for the new destination.
+    const queued = await this.payoutRepo.findByCampaignAndBeneficiary(campaignId, beneficiaryId);
+    if (queued.some((payout) => payout.status === 'PENDING')) {
+      throw new AppError(
+        'This beneficiary has a payout request awaiting approval. Cancel it before changing the payout destination.',
+        409
+      );
     }
     const recipientCode = await this.paymentGateway.createTransferRecipient({
       type: input.type,
@@ -146,7 +188,9 @@ export class BeneficiaryPayoutUseCase {
     if (!this.paymentGateway.isConfigured()) {
       throw new AppError('Payouts are not configured', 501);
     }
-    await this.assertBeneficiaryAccess(campaignId, beneficiaryId, requester);
+    // Staff do not request on a beneficiary's behalf: a request only an admin
+    // made could never be approved by that admin, and nobody else could close it.
+    const campaign = await this.assertBeneficiaryOrOwner(campaignId, beneficiaryId, requester);
 
     const recipient = await this.recipientRepo.findByCampaignAndBeneficiary(
       campaignId,
@@ -155,11 +199,21 @@ export class BeneficiaryPayoutUseCase {
     if (!recipient) {
       throw new AppError('Register a payout recipient before requesting a payout', 400);
     }
+    if (recipient.createdBy !== beneficiaryId && recipient.createdBy !== campaign.creatorId) {
+      throw new AppError(
+        'This payout destination was not entered by the beneficiary or the campaign owner. Register it again before requesting a payout.',
+        409
+      );
+    }
 
     const amount = roundMoney(Number(rawAmount), CURRENCY);
     if (!Number.isFinite(amount) || amount <= 0) {
       throw new AppError('Payout amount must be greater than zero', 422);
     }
+    // A blocked, deleted or disputed campaign never pays out, so it never
+    // clears funds for a request either. Approval re-checks inside its
+    // transaction, which also covers a block or dispute that lands afterwards.
+    await this.eligibility?.assertCampaignPayable(campaignId);
 
     // Both balance mirrors and the request must commit together. This callback
     // contains only database work and may safely be retried on write conflicts.
@@ -167,17 +221,32 @@ export class BeneficiaryPayoutUseCase {
       const balance = await this.beneficiaryBalanceRepo.findOne(campaignId, beneficiaryId, CURRENCY);
       const available = balance?.availableBalance ?? 0;
       const pending = balance?.pendingBalance ?? 0;
-      const eligible = roundMoney(available + pending, CURRENCY);
+      // PENDING requests reserve nothing until approval, so without this the
+      // same funds could be requested twice and the second approval would fail.
+      const pendingRequests = roundMoney(
+        (await this.payoutRepo.sumPendingAmount?.(campaignId, beneficiaryId)) ?? 0,
+        CURRENCY
+      );
+      const eligible = roundMoney(Math.max(0, available + pending - pendingRequests), CURRENCY);
       if (amount > eligible) {
         throw new AppError(
-          `Cannot request a payout of ${CURRENCY} ${amount}; only ${CURRENCY} ${eligible} is available.`,
+          `Cannot request a payout of ${CURRENCY} ${amount}; only ${CURRENCY} ${eligible} is available${
+            pendingRequests > 0 ? ` (${CURRENCY} ${pendingRequests} is already in pending requests)` : ''
+          }.`,
           422
         );
       }
 
       // Clear just enough of the beneficiary's pending → available (mirroring the
-      // campaign aggregate) so the approval step can reserve the full amount.
-      const needed = roundMoney(amount - available, CURRENCY);
+      // campaign aggregate) so the approval step can reserve the full amount on
+      // top of what this beneficiary's other PENDING requests will reserve.
+      const needed = roundMoney(pendingRequests + amount - available, CURRENCY);
+      // Serialise requests for this beneficiary even when nothing needs
+      // clearing: the fence write makes a concurrent request's transaction
+      // conflict and retry against the committed pending total.
+      if (needed <= 0 && this.beneficiaryBalanceRepo.fenceRequests) {
+        await this.beneficiaryBalanceRepo.fenceRequests(campaignId, beneficiaryId, CURRENCY);
+      }
       if (needed > 0) {
         const cleared = await this.beneficiaryBalanceRepo.clearPendingToAvailable(
           campaignId,
@@ -205,12 +274,60 @@ export class BeneficiaryPayoutUseCase {
           status: 'PENDING',
           provider: 'paystack',
           requestedBy: requester.userId,
+          destinationFingerprint: beneficiaryDestinationFingerprint(recipient),
+          // Recorded so a rejection or cancellation returns exactly this.
+          clearedAmount: needed > 0 ? needed : 0,
           createdAt: new Date(),
           updatedAt: new Date(),
         })
       );
       return toBeneficiaryPayoutDto(saved);
     });
+  }
+
+  /** Admin: reject a PENDING beneficiary payout with a reason the requester sees. */
+  async rejectPayout(
+    payoutId: string,
+    requester: SplitRequester,
+    reason: string
+  ): Promise<BeneficiaryPayout> {
+    this.assertEnabled();
+    if (requester.role !== 'admin') {
+      throw new AppError('Only an admin can reject a payout', 403);
+    }
+    const trimmed = (reason ?? '').trim();
+    if (trimmed.length < BENEFICIARY_REJECTION_REASON_MIN) {
+      throw new AppError(
+        `Give the requester a reason for the rejection (at least ${BENEFICIARY_REJECTION_REASON_MIN} characters).`,
+        422
+      );
+    }
+    const payout = await this.payoutRepo.findById(payoutId);
+    if (!payout) throw new AppError('Payout not found', 404);
+    return this.closePending(payout, requester, 'rejected', trimmed);
+  }
+
+  /** Beneficiary/owner: cancel a PENDING beneficiary payout request. */
+  async cancelPayout(
+    campaignId: string,
+    beneficiaryId: string,
+    payoutId: string,
+    requester: SplitRequester,
+    reason?: string
+  ): Promise<BeneficiaryPayout> {
+    this.assertEnabled();
+    const payout = await this.payoutRepo.findById(payoutId);
+    // Same 404 for a payout on another campaign or beneficiary: never confirm it exists.
+    if (!payout || payout.campaignId !== campaignId || payout.beneficiaryId !== beneficiaryId) {
+      throw new AppError('Payout not found', 404);
+    }
+    await this.assertBeneficiaryOrOwner(campaignId, beneficiaryId, requester);
+    return this.closePending(
+      payout,
+      requester,
+      'cancelled',
+      reason?.trim() || 'Cancelled by the beneficiary or the campaign owner.'
+    );
   }
 
   /**
@@ -225,9 +342,7 @@ export class BeneficiaryPayoutUseCase {
     this.assertAdmin(requester);
     const payout = await this.payoutRepo.findById(payoutId);
     if (!payout) throw new AppError('Payout not found', 404);
-    const recipient = await this.recipientRepo.findByCampaignAndBeneficiary(payout.campaignId, payout.beneficiaryId);
-    if (!recipient) throw new AppError('Beneficiary payout recipient not found', 404);
-    if (recipient.id !== payout.recipientId) throw new AppError('Payout destination was replaced; create a new payout request.', 409);
+    const recipient = await this.boundRecipient(payout);
     return {
       type: recipient.type,
       accountName: recipient.accountName,
@@ -273,12 +388,7 @@ export class BeneficiaryPayoutUseCase {
       throw new AppError('Another administrator must approve payouts from your own campaign or request.', 403);
     }
 
-    const recipient = await this.recipientRepo.findByCampaignAndBeneficiary(
-      payout.campaignId,
-      payout.beneficiaryId
-    );
-    if (!recipient) throw new AppError('Beneficiary payout recipient not found', 404);
-    if (recipient.id !== payout.recipientId) throw new AppError('Payout destination was replaced; create a new payout request.', 409);
+    const recipient = await this.boundRecipient(payout);
     if (recipient.currency !== payout.currency) throw new AppError('Beneficiary destination currency does not match the payout.', 409);
     if (!recipient.kycVerified) {
       throw new AppError('Beneficiary KYC must be verified before payout', 422);
@@ -440,6 +550,97 @@ export class BeneficiaryPayoutUseCase {
     });
   }
 
+  /**
+   * The destination this payout was requested against, or 409. A request made
+   * before destinations were bound carries no fingerprint and is never paid: it
+   * is rejected or cancelled and requested again.
+   */
+  private async boundRecipient(payout: BeneficiaryPayoutEntity): Promise<BeneficiaryRecipient> {
+    const recipient = await this.recipientRepo.findByCampaignAndBeneficiary(
+      payout.campaignId,
+      payout.beneficiaryId
+    );
+    if (!recipient) throw new AppError('Beneficiary payout recipient not found', 404);
+    if (!payout.destinationFingerprint) {
+      throw new AppError(
+        'This request is not bound to a reviewed destination. Reject it and ask for a new payout request.',
+        409
+      );
+    }
+    if (
+      recipient.id !== payout.recipientId ||
+      beneficiaryDestinationFingerprint(recipient) !== payout.destinationFingerprint
+    ) {
+      throw new AppError(
+        'The payout destination changed after this request. Reject it and ask for a new payout request.',
+        409
+      );
+    }
+    return recipient;
+  }
+
+  /**
+   * Close a PENDING request before any transfer. PENDING never reserved money,
+   * so closing only undoes the request's own clearing: what it moved pending →
+   * available goes back to pending on both mirrors (bounded by what is still
+   * available), which lets a refund draw on those funds again. The terminal
+   * status, both balance moves and the audit entry commit together; a replay
+   * finds the payout no longer PENDING and changes nothing.
+   */
+  private async closePending(
+    payout: BeneficiaryPayoutEntity,
+    requester: SplitRequester,
+    kind: 'rejected' | 'cancelled',
+    reason: string
+  ): Promise<BeneficiaryPayout> {
+    const closePayout = this.payoutRepo.closePending?.bind(this.payoutRepo);
+    const returnShare = this.beneficiaryBalanceRepo.returnAvailableToPending?.bind(this.beneficiaryBalanceRepo);
+    if (!this.closureTransaction || !closePayout || !returnShare) {
+      throw new AppError('Payout review is unavailable.', 503);
+    }
+    const closed = await this.closureTransaction.run(
+      requester,
+      { kind, payoutId: payout.id, reason, rail: 'beneficiary' },
+      async () => {
+        const current = await closePayout(payout.id, {
+          kind,
+          reason,
+          closedBy: requester.userId,
+          closedAt: new Date(),
+        });
+        if (!current) throw new AppError('Payout is no longer pending; refresh before trying again.', 409);
+        const share = await this.beneficiaryBalanceRepo.findOne(current.campaignId, current.beneficiaryId, current.currency);
+        const aggregate = await this.campaignBalanceRepo.findByCampaignId(current.campaignId);
+        const shareAvailable = share?.availableBalance ?? 0;
+        // A request made before clearedAmount was recorded: return what is not
+        // spoken for by this beneficiary's other PENDING requests.
+        const cleared = current.clearedAmount ?? Math.max(
+          0,
+          Math.min(
+            current.amount,
+            shareAvailable - ((await this.payoutRepo.sumPendingAmount?.(current.campaignId, current.beneficiaryId, current.id)) ?? 0)
+          )
+        );
+        // Another payout may have been approved out of `available` since this
+        // request cleared it; return only what is still there on both mirrors.
+        const back = roundMoney(
+          Math.min(cleared, shareAvailable, aggregate?.availableBalance ?? 0),
+          current.currency
+        );
+        if (back > 0) {
+          if (!(await returnShare(current.campaignId, current.beneficiaryId, current.currency, back))) {
+            throw new AppError('Beneficiary balance changed; try again.', 409);
+          }
+          if (!(await this.campaignBalanceRepo.returnAvailableToPending(current.campaignId, back))) {
+            throw new AppError('Campaign balance changed; try again.', 409);
+          }
+        }
+        return current;
+      }
+    );
+    return toBeneficiaryPayoutDto(closed);
+  }
+
   private async assertOwnerOrAdmin(
     campaignId: string,
     requester: SplitRequester
@@ -451,13 +652,21 @@ export class BeneficiaryPayoutUseCase {
     }
   }
 
-  private async assertBeneficiaryAccess(
+  /**
+   * The beneficiary themselves or the campaign owner — never staff acting on
+   * their behalf. Returns the campaign so callers can check its owner.
+   */
+  private async assertBeneficiaryOrOwner(
     campaignId: string,
     beneficiaryId: string,
     requester: SplitRequester
-  ): Promise<void> {
-    if (requester.userId === beneficiaryId) return; // the beneficiary themselves
-    await this.assertOwnerOrAdmin(campaignId, requester);
+  ): Promise<{ creatorId: string }> {
+    const campaign = await this.campaignRepo.findById(campaignId);
+    if (!campaign) throw new AppError('Campaign not found', 404);
+    if (requester.userId !== beneficiaryId && campaign.creatorId !== requester.userId) {
+      throw new AppError('Only the beneficiary or the campaign owner can manage this beneficiary\'s payouts', 403);
+    }
+    return campaign;
   }
 
   private async assertBeneficiaryInActiveSplit(

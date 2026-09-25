@@ -8,6 +8,7 @@ import type { CampaignBalanceRepositoryPort } from '../../domain/ports/outbound/
 import type { CampaignSplitRepositoryPort } from '../../domain/ports/outbound/CampaignSplitRepositoryPort.js'
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js'
 import type { PayoutEligibilityPort } from '../../domain/ports/outbound/PayoutEligibilityPort.js'
+import type { UnitOfWorkPort } from '../../domain/ports/outbound/UnitOfWorkPort.js'
 import type { CouponPricing, CouponService } from '../services/CouponService.js'
 import { logger } from '../../infrastructure/logging/logger.js'
 import type { CouponRepositoryPort } from '../../domain/ports/outbound/CouponRepositoryPort.js'
@@ -21,6 +22,7 @@ import {
   campaignNeedsEarlyCashout,
 } from '../services/payoutFee.js'
 import type { PayoutsConfig } from '../../infrastructure/config/index.js'
+import { VERIFY_EMAIL_BEFORE_PAYOUT } from '../services/payoutEligibilityMessages.js'
 
 const CURRENCY = 'GHS'
 
@@ -77,6 +79,12 @@ export class RequestPayoutUseCase {
      * inside its transaction; this stops a request that could never be paid.
      */
     private readonly eligibility?: PayoutEligibilityPort,
+    /**
+     * Makes the pending-requests ceiling, the clearing step and the insert one
+     * transaction, write-fenced on the campaign balance so concurrent requests
+     * for a campaign serialise instead of both passing the ceiling.
+     */
+    private readonly unitOfWork?: UnitOfWorkPort,
   ) {}
 
   async execute(
@@ -159,7 +167,12 @@ export class RequestPayoutUseCase {
     }
     if (this.eligibility) {
       await this.eligibility.assertCampaignPayable(campaignId)
-      await this.eligibility.assertOwnerVerified(campaign.creatorId)
+      // The owner is told the step they can take; staff get a neutral message.
+      await this.eligibility.assertOwnerVerified(
+        campaign.creatorId,
+        undefined,
+        isOwner ? VERIFY_EMAIL_BEFORE_PAYOUT : undefined,
+      )
     }
     const recipient = wallet
       ? { id: `wallet:${campaign.creatorId}`, currency: 'GHS' }
@@ -182,18 +195,18 @@ export class RequestPayoutUseCase {
     if (wallet && currency !== 'GHS')
       throw new AppError('Ujimora Wallet transfers require GHS', 422)
 
-    if (amount > eligible) {
-      throw new AppError(
+    const overCeiling = (ceiling: number, spoken: number) =>
+      new AppError(
         `Cannot request a payout of ${currency} ${amount.toLocaleString(
           'en-US',
-        )}; only ${currency} ${eligible.toLocaleString('en-US')} is available for payout${
-          pendingRequests > 0
-            ? ` (${currency} ${pendingRequests.toLocaleString('en-US')} is already in pending requests)`
+        )}; only ${currency} ${ceiling.toLocaleString('en-US')} is available for payout${
+          spoken > 0
+            ? ` (${currency} ${spoken.toLocaleString('en-US')} is already in pending requests)`
             : ''
         }.`,
         422,
       )
-    }
+    if (amount > eligible) throw overCeiling(eligible, pendingRequests)
 
     // Payout service fee + net the beneficiary receives (spec §17). `standard`
     // is free; the chosen type sets the fee, deducted from the disbursed amount.
@@ -256,9 +269,10 @@ export class RequestPayoutUseCase {
 
     // Early/urgent withdrawals may take only a capped share of the eligible
     // balance, leaving a reserve (spec §17).
-    if (isEarlyWithdrawal(type)) {
+    const assertEarlyCeiling = (ceilingBase: number) => {
+      if (!isEarlyWithdrawal(type)) return
       const earlyCeiling = roundToCurrency(
-        (eligible * cfg.earlyMaxWithdrawalPercent) / 100,
+        (ceilingBase * cfg.earlyMaxWithdrawalPercent) / 100,
         currency,
       )
       if (amount > earlyCeiling) {
@@ -268,24 +282,13 @@ export class RequestPayoutUseCase {
         )
       }
     }
+    assertEarlyCeiling(eligible)
 
-    // Clear just enough pending → available so the approval step can reserve the
-    // full requested amount out of `availableBalance` — on top of what the
-    // campaign's other PENDING requests will reserve, so approving them in any
-    // order never finds the money already spoken for.
-    const needed = roundToCurrency(pendingRequests + amount - available, currency)
-    if (needed > 0) {
-      const cleared = await this.campaignBalanceRepo.clearPendingToAvailable(campaignId, needed)
-      if (!cleared) {
-        throw new AppError('Insufficient cleared funds for this payout; please try again.', 422)
-      }
-    }
-
-    // Claim the per-user seat now, with every rejection behind us. PENDING and
-    // reversible: if the insert below fails for any reason — including the
-    // duplicate-key replay, which succeeds by returning the original payout —
-    // the seat goes straight back, so a retried request cannot spend a second
-    // redemption.
+    // Claim the per-user seat now, with the up-front rejections behind us.
+    // PENDING and reversible: if the transactional re-check or the insert below
+    // fails for any reason — including the duplicate-key replay, which succeeds
+    // by returning the original payout — the seat goes straight back, so a
+    // retried request cannot spend a second redemption.
     let couponSlotId: string | undefined
     if (feeCoupon && this.couponRedemptionRepo) {
       const now = new Date()
@@ -315,9 +318,58 @@ export class RequestPayoutUseCase {
       couponSlotId = slot.id
     }
 
-    let saved: PayoutEntity
-    try {
-      saved = await this.payoutRepo.create(
+    // The ceiling check above read the balance and pending requests without a
+    // lock. Inside the unit of work the balance row is write-fenced first, so a
+    // concurrent request on this campaign conflicts and retries against the
+    // committed pending total rather than both passing the ceiling.
+    const transactional = Boolean(this.unitOfWork)
+    let needed = 0
+    const commit = async (): Promise<{ payout: PayoutEntity; replayed: boolean; counted?: boolean }> => {
+      let current = { available, pendingRequests }
+      if (transactional) {
+        await this.campaignBalanceRepo.fenceRequests?.(campaignId)
+        // A concurrent request with the same key that committed first is
+        // replayed — or refused, exactly as the pre-check above would.
+        const winner = requestKey && this.payoutRepo.findByRequestKey
+          ? await this.payoutRepo.findByRequestKey(requestKey)
+          : reference ? await this.payoutRepo.findByProviderRef(reference) : null
+        if (winner) {
+          if (winner.campaignId !== campaignId || winner.amount !== amount || winner.type !== type)
+            throw new AppError('Request key already used with different details', 409)
+          return { payout: winner, replayed: true }
+        }
+        const fresh = await this.campaignBalanceRepo.findByCampaignId(campaignId)
+        current = {
+          available: fresh?.availableBalance ?? 0,
+          pendingRequests: roundToCurrency((await this.payoutRepo.sumPendingAmount?.(campaignId)) ?? 0, currency),
+        }
+        const ceiling = roundToCurrency(
+          Math.max(0, current.available + (fresh?.pendingBalance ?? 0) - current.pendingRequests),
+          currency,
+        )
+        if (amount > ceiling) throw overCeiling(ceiling, current.pendingRequests)
+        assertEarlyCeiling(ceiling)
+      }
+
+      // Clear just enough pending → available so the approval step can reserve the
+      // full requested amount out of `availableBalance` — on top of what the
+      // campaign's other PENDING requests will reserve, so approving them in any
+      // order never finds the money already spoken for.
+      needed = roundToCurrency(current.pendingRequests + amount - current.available, currency)
+      if (needed > 0) {
+        const cleared = await this.campaignBalanceRepo.clearPendingToAvailable(campaignId, needed)
+        if (!cleared) {
+          throw new AppError('Insufficient cleared funds for this payout; please try again.', 422)
+        }
+      }
+
+      // In a transaction the coupon's global count moves with the insert, so a
+      // failed or replayed request never counts. Only a counted use is
+      // recorded on the payout for a later rejection or cancellation to undo.
+      const counted = transactional && feeCoupon && this.couponRepo
+        ? Boolean(await this.couponRepo.incrementRedemptionIfUnderLimit(feeCoupon.coupon.id))
+        : undefined
+      const created = await this.payoutRepo.create(
         new PayoutEntity({
           id: '',
           requestKey,
@@ -334,20 +386,38 @@ export class RequestPayoutUseCase {
           requestedBy: requester.userId,
           // Recorded so a rejection or cancellation returns exactly this.
           clearedAmount: needed > 0 ? needed : 0,
+          // Recorded so a rejection or cancellation frees the coupon use.
+          couponId: couponSlotId && counted !== false ? feeCoupon?.coupon.id : undefined,
+          couponRedemptionId: couponSlotId,
           createdAt: new Date(),
           updatedAt: new Date(),
         }),
       )
+      if (transactional && couponSlotId) await this.couponRedemptionRepo?.markConsumed(couponSlotId)
+      return { payout: created, replayed: false, counted }
+    }
+    let counted: boolean | undefined
+
+    let saved: PayoutEntity
+    try {
+      const outcome = this.unitOfWork ? await this.unitOfWork.run(commit) : await commit()
+      if (outcome.replayed) {
+        if (couponSlotId) await this.couponRedemptionRepo?.markReleased(couponSlotId)
+        return toPayoutDto(outcome.payout)
+      }
+      saved = outcome.payout
+      counted = outcome.counted
     } catch (error) {
       // The findByRequestKey check above is a read, so two concurrent requests
       // with the same key both reach this create and the loser hits the unique
       // index. That E11000 is not mapped by the error handler, so it surfaced as
       // a 500 instead of the idempotent replay — and, worse, this request had
       // already run the non-idempotent clearPendingToAvailable, permanently
-      // understating pendingBalance. Compensate, then replay the winner.
+      // understating pendingBalance. Compensate (a transaction already rolled
+      // the clearing back), then replay the winner.
       if (couponSlotId) await this.couponRedemptionRepo?.markReleased(couponSlotId)
       if (isDuplicateKeyError(error) && requestKey && this.payoutRepo.findByRequestKey) {
-        if (needed > 0) {
+        if (!transactional && needed > 0) {
           await this.campaignBalanceRepo.returnAvailableToPending(campaignId, needed)
         }
         const winner = await this.payoutRepo.findByRequestKey(requestKey)
@@ -357,20 +427,23 @@ export class RequestPayoutUseCase {
     }
 
     // The payout exists at the discounted fee, so the redemption is now real.
-    // The global counter moves here and only here. A cap reached in the
+    // The global counter moved with the insert (in a transaction) or moves
+    // here, and only here. A cap reached in the
     // meantime is logged rather than thrown: the payout is already written, and
     // failing the request now would leave the organizer with a payout they were
     // told had failed — the same reasoning the subscription rail applies once
     // money has moved.
     if (feeCoupon) {
-      const bumped = await this.couponRepo?.incrementRedemptionIfUnderLimit(feeCoupon.coupon.id)
+      const bumped = transactional
+        ? counted
+        : await this.couponRepo?.incrementRedemptionIfUnderLimit(feeCoupon.coupon.id)
       if (this.couponRepo && !bumped) {
         logger.warn(
           { couponId: feeCoupon.coupon.id, campaignId },
           'payout settled but the coupon was already at its global limit',
         )
       }
-      if (couponSlotId) await this.couponRedemptionRepo?.markConsumed(couponSlotId)
+      if (!transactional && couponSlotId) await this.couponRedemptionRepo?.markConsumed(couponSlotId)
     }
 
     return toPayoutDto(saved)

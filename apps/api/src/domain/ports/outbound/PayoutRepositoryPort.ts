@@ -30,7 +30,7 @@ export interface PayoutRepositoryPort {
    * no reservation, so a new request must leave room for them; PROCESSING rows
    * are already out of `availableBalance`.
    */
-  sumPendingAmount?(campaignId: string): Promise<number>
+  sumPendingAmount?(campaignId: string, excludeId?: string): Promise<number>
   /** Correlate a provider transfer webhook back to its (single-transfer) payout. */
   findByProviderRef(providerRef: string): Promise<PayoutEntity | null>
   /** Correlate a transfer webhook to the batched payout owning a leg reference. */

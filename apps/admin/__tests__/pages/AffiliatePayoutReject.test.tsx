@@ -26,3 +26,11 @@ it('rejects a pending affiliate payout only with a recorded reason', async () =>
   await waitFor(() => expect(state.post).toHaveBeenCalledWith('/affiliates/payouts/ap-1/reject', { reason: 'Destination is not in the affiliate’s own name.' }))
   expect(await screen.findByText(/back in the affiliate’s available balance/)).toBeVisible()
 })
+
+it('points an escalated affiliate payout to the resolve view instead of offering approval', async () => {
+  state.get.mockImplementation(async (path: string) => (path === '/affiliates/payouts' ? [{ ...payout, status: 'NEEDS_REVIEW', providerRef: 'aff-ap-1-x' }] : [affiliate]))
+  render(<MemoryRouter><AffiliatesPage /></MemoryRouter>)
+  fireEvent.click(await screen.findByRole('tab', { name: /Payout Queue/ }))
+  expect(await screen.findByRole('button', { name: 'Resolve in Payouts' })).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull()
+})

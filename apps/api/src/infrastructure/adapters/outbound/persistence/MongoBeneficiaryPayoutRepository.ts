@@ -1,6 +1,6 @@
 import { BeneficiaryPayoutEntity } from '../../../../domain/entities/BeneficiaryPayout.js';
 import type { BeneficiaryPayoutRepositoryPort } from '../../../../domain/ports/outbound/BeneficiaryPayoutRepositoryPort.js';
-import type { PayoutStatus } from '@ubuntu-fund/types';
+import type { PayoutClosure, PayoutStatus } from '@ubuntu-fund/types';
 import {
   BeneficiaryPayoutModel,
   type BeneficiaryPayoutDocument,
@@ -23,6 +23,9 @@ function toDomain(doc: BeneficiaryPayoutDocument): BeneficiaryPayoutEntity {
     firstApprovedBy: doc.firstApprovedBy,
     firstApprovedAt: doc.firstApprovedAt,
     firstApprovalFingerprint: doc.firstApprovalFingerprint,
+    destinationFingerprint: doc.destinationFingerprint,
+    clearedAmount: doc.clearedAmount,
+    closure: doc.closure,
     reversedFrom: doc.reversedFrom,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
@@ -34,6 +37,7 @@ function approvalFilter(expected: BeneficiaryPayoutEntity) {
   const p = expected.toPlain();
   return { campaignId: p.campaignId, beneficiaryId: p.beneficiaryId, recipientId: p.recipientId,
     amount: p.amount, currency: p.currency,
+    destinationFingerprint: p.destinationFingerprint ?? { $exists: false },
     firstApprovedBy: p.firstApprovedBy ?? { $exists: false },
     firstApprovedAt: p.firstApprovedAt ?? { $exists: false },
     firstApprovalFingerprint: p.firstApprovalFingerprint ?? { $exists: false },
@@ -59,8 +63,34 @@ export class MongoBeneficiaryPayoutRepository
       transferCode: p.transferCode,
       requestedBy: p.requestedBy,
       approvedBy: p.approvedBy,
+      destinationFingerprint: p.destinationFingerprint,
+      clearedAmount: p.clearedAmount,
     });
     return toDomain(doc);
+  }
+
+  async closePending(id: string, closure: PayoutClosure): Promise<BeneficiaryPayoutEntity | null> {
+    // PENDING reserved nothing, so the closed payout owes no settlement effect:
+    // flag it settled so the terminal-unsettled repair never "returns" money
+    // this payout never reserved.
+    const doc = await BeneficiaryPayoutModel.findOneAndUpdate(
+      { _id: id, status: 'PENDING' },
+      { $set: { status: 'FAILED', settlementApplied: true, closure } },
+      { new: true }
+    );
+    return doc ? toDomain(doc) : null;
+  }
+
+  async sumPendingAmount(
+    campaignId: string,
+    beneficiaryId: string,
+    excludeId?: string
+  ): Promise<number> {
+    const rows = await BeneficiaryPayoutModel.find(
+      { campaignId, beneficiaryId, status: 'PENDING', ...(excludeId ? { _id: { $ne: excludeId } } : {}) },
+      { amount: 1 }
+    ).lean();
+    return rows.reduce((sum, row) => sum + (row.amount ?? 0), 0);
   }
 
   async findById(id: string): Promise<BeneficiaryPayoutEntity | null> {

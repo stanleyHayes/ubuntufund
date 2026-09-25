@@ -398,9 +398,10 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
             Request cashout
           </Button>
           <Text>
-            Pending requests await review. Do not retry processing transfers. For failed or reversed
-            payouts, refresh your balance and correct account or limit issues first. Contact support
-            with the payout reference if review is needed.
+            Pending requests await review. Do not retry processing transfers. A rejected request shows
+            the admin team's reason; nothing was sent. For failed or reversed payouts, refresh your
+            balance and correct account or limit issues first. Contact support with the payout
+            reference if review is needed.
           </Text>
           <Text variant="titleMedium">Payout history</Text>
           {history.length === 0 && (

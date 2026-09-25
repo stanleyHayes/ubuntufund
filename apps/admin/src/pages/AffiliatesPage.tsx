@@ -404,6 +404,16 @@ export default function AffiliatesPage() {
                           >
                             Reject
                           </Button>
+                        ) : p.status === 'NEEDS_REVIEW' ? (
+                          // Held for review with funds reserved: resolved from Paystack's outcome.
+                          <Button
+                            size="small"
+                            color="warning"
+                            onClick={() => navigate('/payouts?view=escalated')}
+                            sx={{ textTransform: 'none', fontWeight: 700 }}
+                          >
+                            Resolve in Payouts
+                          </Button>
                         ) : (
                           <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>
                             {p.status === 'PENDING' ? 'Awaiting approval' : '—'}

@@ -25,6 +25,9 @@ export interface PayoutProps {
   reversedFrom?: 'PAID' | 'PROCESSING'
   /** Amount the request cleared pending → available (returned if it is closed unpaid). */
   clearedAmount?: number
+  /** The PAYOUT_FEE coupon and redemption the request consumed (freed if it is closed unpaid). */
+  couponId?: string
+  couponRedemptionId?: string
   /** Why a PENDING request was rejected or cancelled before any transfer. */
   closure?: PayoutClosure
   createdAt: Date
@@ -132,6 +135,12 @@ export class PayoutEntity {
   }
   get closure(): PayoutClosure | undefined {
     return this.props.closure
+  }
+  get couponId(): string | undefined {
+    return this.props.couponId
+  }
+  get couponRedemptionId(): string | undefined {
+    return this.props.couponRedemptionId
   }
   /** A batched (multi-leg) payout has one or more transfer legs. */
   get isBatched(): boolean {

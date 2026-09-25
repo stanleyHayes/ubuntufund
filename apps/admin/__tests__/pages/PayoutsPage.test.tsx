@@ -52,3 +52,17 @@ it('resolves a stuck single transfer from Paystack only after the admin records 
   await waitFor(() => expect(state.post).toHaveBeenCalledWith('/payouts/stuck/campaign/payout-1/resolve', { note: 'Paystack shows no transfer for this reference.' }))
   expect(await screen.findByText(/Paystack reported failed; the payout is now failed/)).toBeVisible()
 })
+
+it('lists escalated transfers from every rail and resolves each on its own rail', async () => {
+  const creator = { rail: 'creator', id: 'cp-1', amount: 97, currency: 'GHS', providerRef: 'cpay-cp-1', subject: 'user-9', subjectLabel: 'Creator', createdAt: '2026-09-20T00:00:00Z', updatedAt: '2026-09-21T00:00:00Z' }
+  const affiliate = { ...creator, rail: 'affiliate', id: 'ap-1', providerRef: 'aff-ap-1', subject: 'aff-1', subjectLabel: 'Affiliate' }
+  state.get.mockImplementation(async (path: string) => (path === '/payouts/stuck' ? [creator, affiliate] : []))
+  state.post.mockResolvedValue({ rail: 'creator', payoutId: 'cp-1', providerOutcome: 'failed', status: 'FAILED' })
+  render(<MemoryRouter initialEntries={['/payouts?view=escalated']}><PayoutsPage /></MemoryRouter>)
+  expect(await screen.findByText('Creator withdrawal')).toBeVisible()
+  expect(screen.getByText('Affiliate payout')).toBeVisible()
+  const [firstNote] = screen.getAllByRole('textbox', { name: 'What you checked' })
+  fireEvent.change(firstNote, { target: { value: 'Paystack shows no transfer for this reference.' } })
+  fireEvent.click(screen.getAllByRole('button', { name: 'Re-check Paystack and resolve' })[0])
+  await waitFor(() => expect(state.post).toHaveBeenCalledWith('/payouts/stuck/creator/cp-1/resolve', { note: 'Paystack shows no transfer for this reference.' }))
+})

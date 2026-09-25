@@ -23,4 +23,10 @@ export interface CouponRepositoryPort {
    * concurrent settlements can never oversell a capped coupon.
    */
   incrementRedemptionIfUnderLimit(id: string): Promise<CouponEntity | null>;
+
+  /**
+   * Undo one counted redemption (a payout request that used the coupon was
+   * rejected or cancelled before any transfer). Never takes the count below 0.
+   */
+  decrementRedemption?(id: string): Promise<void>;
 }

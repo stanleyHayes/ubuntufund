@@ -103,14 +103,16 @@ it('serializes a terminal repair with a concurrent reversal before moving either
   expect(state.campaign.availableBalance).toBe(100); expect(state.beneficiary.availableBalance).toBe(100); expect(state.entries).toHaveLength(2);
 });
 it('keeps a rejected transfer repairable when the immediate reservation return fails', async () => {
-  const { BeneficiaryPayoutUseCase } = await import('../../src/application/use-cases/BeneficiaryPayoutUseCase.js');
+  const { BeneficiaryPayoutUseCase, beneficiaryDestinationFingerprint } = await import('../../src/application/use-cases/BeneficiaryPayoutUseCase.js');
   const { MongoCampaignRepository } = await import('../../src/infrastructure/adapters/outbound/persistence/MongoCampaignRepository.js');
   const { MongoCampaignSplitRepository } = await import('../../src/infrastructure/adapters/outbound/persistence/MongoCampaignSplitRepository.js');
   const { MongoBeneficiaryRecipientRepository } = await import('../../src/infrastructure/adapters/outbound/persistence/MongoBeneficiaryRecipientRepository.js');
   const { BeneficiaryRecipientModel } = await import('../../src/infrastructure/database/models/BeneficiaryRecipientModel.js');
   const f = await seed();
   const recipient = await BeneficiaryRecipientModel.create({ campaignId: f.campaignId, beneficiaryId: f.beneficiaryId, type: 'mobile_money', currency: 'GHS', accountName: 'Beneficiary', accountNumber: '0551234567', bankCode: 'MTN', recipientCode: 'RCP_fixture', kycVerified: true, kycVerifiedBy: 'reviewer', kycVerifiedAt: new Date(), createdBy: 'owner' });
-  await BeneficiaryPayoutModel.updateOne({ _id: f.payout.id }, { status: 'PENDING', recipientId: recipient.id });
+  // A request is bound to the destination it was made against (its fingerprint).
+  const bound = await new MongoBeneficiaryRecipientRepository().findById(recipient.id);
+  await BeneficiaryPayoutModel.updateOne({ _id: f.payout.id }, { status: 'PENDING', recipientId: recipient.id, destinationFingerprint: beneficiaryDestinationFingerprint(bound!) });
   await CampaignBalanceModel.updateOne({ campaignId: f.campaignId }, { availableBalance: 100 });
   await CampaignBeneficiaryBalanceModel.updateOne({ campaignId: f.campaignId }, { availableBalance: 100 });
   const transfer = vi.fn(async () => ({ status: 'failed', transferCode: 'TRF_rejected' }));

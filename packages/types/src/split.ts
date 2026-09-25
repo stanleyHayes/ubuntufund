@@ -9,7 +9,7 @@
  * anchored to the split that was in force when the money arrived.
  */
 
-import type { PayoutProvider, PayoutRecipientType, PayoutStatus } from './payout'
+import type { PayoutClosure, PayoutProvider, PayoutRecipientType, PayoutStatus } from './payout'
 
 /** Basis points that a full (100%) allocation must sum to. */
 export const SPLIT_TOTAL_BPS = 10000
@@ -197,6 +197,8 @@ export interface BeneficiaryPayout {
   /** Maker-checker (spec §16): the first admin to approve a high-value payout. */
   firstApprovedBy?: string
   firstApprovedAt?: Date
+  /** Set when a PENDING request was rejected or cancelled before any transfer. */
+  closure?: PayoutClosure
   createdAt: Date
   updatedAt: Date
 }

@@ -11,6 +11,10 @@ import { AppError } from '../../inbound/middleware/errorHandler.js'
 export const OWNER_VERIFICATION_NOT_CURRENT =
   'The account holder’s identity verification is missing, expired or under renewal. It must be current before funds can be paid out.'
 
+/** Staff-facing: the account holder's identity may be fine; their email is not verified. */
+export const OWNER_EMAIL_NOT_VERIFIED =
+  'The account holder has not verified their email address. It must be verified before funds can be paid out.'
+
 /** Campaign states that may pay out: live, funded or ended. Never draft, in review or blocked. */
 export const PAYABLE_CAMPAIGN_STATUSES: readonly string[] = [
   CampaignStatus.ACTIVE,
@@ -25,12 +29,16 @@ export const PAYABLE_CAMPAIGN_STATUSES: readonly string[] = [
  * business) record is an approval with a future expiry — a stored badge alone
  * never counts, and a newer pending, rejected or expired renewal suspends it.
  *
+ * An unverified email fails with its own message (`emailMessage`), never the
+ * identity one: KYC can be approved and current while the email is not, and
+ * telling that person to redo identity verification sends them nowhere.
+ *
  * Pass `session` when running inside an explicitly-sessioned transaction;
  * inside `MongoUnitOfWork` the async-local session is picked up automatically.
  */
 export async function assertCurrentOwnerVerification(
   userId: string,
-  options: { session?: ClientSession; message?: string } = {},
+  options: { session?: ClientSession; message?: string; emailMessage?: string } = {},
 ): Promise<void> {
   const message = options.message ?? OWNER_VERIFICATION_NOT_CURRENT
   const ownerQuery = UserModel.findOne({ _id: userId, deletedAt: null })
@@ -38,7 +46,9 @@ export async function assertCurrentOwnerVerification(
   // unit-of-work's async-local session and it would read outside the snapshot.
   if (options.session) ownerQuery.session(options.session)
   const owner = await ownerQuery
-  if (!owner || !owner.emailVerified || owner.verificationLevel < (owner.role === 'organization' ? 3 : 2))
+  if (!owner) throw new AppError(message, 409)
+  if (!owner.emailVerified) throw new AppError(options.emailMessage ?? OWNER_EMAIL_NOT_VERIFIED, 409)
+  if (owner.verificationLevel < (owner.role === 'organization' ? 3 : 2))
     throw new AppError(message, 409)
   const recordQuery = KYCVerificationModel.findOne({
     userId,
@@ -70,8 +80,20 @@ export async function assertCampaignPayable(
 }
 
 export class MongoPayoutEligibility implements PayoutEligibilityPort {
-  async assertOwnerVerified(userId: string, message?: string): Promise<void> {
-    await assertCurrentOwnerVerification(userId, { message })
+  async assertOwnerVerified(userId: string, message?: string, emailMessage?: string): Promise<void> {
+    await assertCurrentOwnerVerification(userId, { message, emailMessage })
+  }
+
+  async verifiedLegalName(userId: string): Promise<string | undefined> {
+    const owner = await UserModel.findOne({ _id: userId, deletedAt: null }).select('role')
+    if (!owner) return undefined
+    const organization = owner.role === 'organization'
+    const record = await KYCVerificationModel.findOne({
+      userId,
+      verificationType: organization ? 'business' : 'identity',
+    }).sort({ createdAt: -1, _id: -1 })
+    if (!isCurrentApproval(record)) return undefined
+    return (organization ? record?.businessInfo?.businessName : record?.personalInfo?.fullName)?.trim() || undefined
   }
 
   async assertCampaignPayable(campaignId: string): Promise<void> {

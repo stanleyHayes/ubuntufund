@@ -120,6 +120,10 @@ export class MongoCouponRepository implements CouponRepositoryPort {
     await CouponModel.findByIdAndDelete(id);
   }
 
+  async decrementRedemption(id: string): Promise<void> {
+    await CouponModel.updateOne({ _id: id, redemptions: { $gt: 0 } }, { $inc: { redemptions: -1 } });
+  }
+
   async incrementRedemptionIfUnderLimit(
     id: string
   ): Promise<CouponEntity | null> {

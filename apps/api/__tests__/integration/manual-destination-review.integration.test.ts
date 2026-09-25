@@ -84,7 +84,11 @@ it.each(['expired', 'revoked by a newer rejection', 'suspended by a pending rene
   if (state === 'missing expiry') await KYCVerificationModel.updateMany({ userId: String(owner) }, { $unset: { expiryDate: 1 } })
   if (state === 'unverified email') await UserModel.updateOne({ _id: owner }, { emailVerified: false })
   const work = vi.fn()
-  await expect(new MongoManualPayoutApproval().run(requester, work, payout as never)).rejects.toMatchObject({ statusCode: 409 })
+  // An unverified email is reported as such to the approver, never as an identity problem.
+  await expect(new MongoManualPayoutApproval().run(requester, work, payout as never)).rejects.toMatchObject({
+    statusCode: 409,
+    message: state === 'unverified email' ? expect.stringMatching(/has not verified their email address/) : expect.stringMatching(/identity verification is missing/),
+  })
   expect(work).not.toHaveBeenCalled()
 })
 it('refuses a beneficiary payout approval by the administrator who owns the campaign', async () => {

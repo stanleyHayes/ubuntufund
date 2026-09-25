@@ -54,3 +54,27 @@ it('shows a replaced destination as an error instead of approving', async () => 
   expect(await screen.findByText(/destination was replaced/)).toBeVisible()
   expect(screen.getByRole('button', { name: 'Approve' })).toBeDisabled()
 })
+
+it('rejects a pending beneficiary request only with a 20-character reason', async () => {
+  state.post.mockResolvedValue({ ...payout, status: 'FAILED', closure: { kind: 'rejected', reason: 'x', closedBy: 'admin', closedAt: '2026-09-21T00:00:00Z' } })
+  renderPage()
+  fireEvent.click(await screen.findByRole('button', { name: 'Reject request' }))
+  const submit = screen.getByRole('button', { name: 'Reject payout' })
+  fireEvent.change(screen.getByRole('textbox', { name: 'Reason for rejection' }), { target: { value: 'too short' } })
+  expect(submit).toBeDisabled()
+  const reason = 'Wallet owner does not match the beneficiary on the split.'
+  fireEvent.change(screen.getByRole('textbox', { name: 'Reason for rejection' }), { target: { value: reason } })
+  fireEvent.click(submit)
+  await waitFor(() => expect(state.post).toHaveBeenCalledWith('/beneficiary-payouts/bp-1/reject', { reason }))
+  expect(await screen.findByText(/no transfer was sent/i)).toBeVisible()
+})
+
+it('resolves an escalated beneficiary transfer on the beneficiary rail', async () => {
+  state.get.mockImplementation(async (path: string) => path === '/payouts/stuck' ? [] : [{ ...payout, status: 'NEEDS_REVIEW', providerRef: 'bpay-bp-1-x' }])
+  state.post.mockResolvedValue({ rail: 'beneficiary', payoutId: 'bp-1', providerOutcome: 'failed', status: 'FAILED' })
+  renderPage()
+  fireEvent.change(await screen.findByRole('textbox', { name: 'What you checked' }), { target: { value: 'Paystack shows no transfer for this reference.' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Re-check Paystack and resolve' }))
+  await waitFor(() => expect(state.post).toHaveBeenCalledWith('/payouts/stuck/beneficiary/bp-1/resolve', { note: 'Paystack shows no transfer for this reference.' }))
+  expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull()
+})

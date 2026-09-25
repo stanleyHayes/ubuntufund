@@ -88,6 +88,7 @@ export function createCampaignPayoutRoutes(
  *   GET  /payouts             → every payout across the platform (admin)
  *   POST /payouts/:id/approve → approve + initiate the transfer (admin)
  *   POST /payouts/:id/reject  → close a PENDING request with a reason (admin)
+ *   GET  /payouts/stuck   → escalated (NEEDS_REVIEW) single transfers, every rail (admin)
  *   POST /payouts/stuck/:rail/:id/resolve → settle an escalated (NEEDS_REVIEW)
  *        single transfer from Paystack's authoritative outcome (admin)
  */
@@ -101,6 +102,7 @@ export function createPayoutRoutes(
   router.get('/', authMiddleware, adminGuard, payoutController.listAll)
   router.get('/:id/recipient', authMiddleware, adminGuard, payoutController.recipientDetails)
   router.get('/review-queue', authMiddleware, adminGuard, payoutController.reviewQueue)
+  router.get('/stuck', authMiddleware, adminGuard, payoutController.listStuck)
   router.post(
     '/:id/approve',
     authMiddleware,

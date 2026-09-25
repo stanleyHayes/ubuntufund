@@ -7,6 +7,8 @@ export interface CreatorPayoutRepositoryPort {
   findByProviderRef(providerRef: string): Promise<CreatorPayoutEntity | null>;
   findByRequestKey(requestKey: string): Promise<CreatorPayoutEntity | null>;
   findByCreator(creatorUserId: string, limit?: number): Promise<CreatorPayoutEntity[]>;
+  /** Withdrawals escalated to NEEDS_REVIEW (oldest first), for the staff queue. */
+  findEscalated?(): Promise<CreatorPayoutEntity[]>;
 
   /** Attach the provider transfer + recipient details and move PENDING → PROCESSING. */
   transitionToProcessing(

@@ -1,6 +1,7 @@
 import { PayoutHistoryCard } from './PayoutHistoryCard'
 import { payoutInstitutionName } from '@ubuntu-fund/types'
 import { BankPicker } from '@/components/account/BankPicker'
+import { EmailVerificationNotice } from '@/components/account/EmailVerificationNotice'
 import { campaignPayoutBreakdownRows } from '@ubuntu-fund/types'
 import type { CampaignPayoutBreakdown } from '@ubuntu-fund/types'
 import { EmptyState } from '@ubuntu-fund/ui'
@@ -255,6 +256,9 @@ export function CampaignCashout({
         <Typography sx={{ fontWeight: 800 }}>Cashout & payout history</Typography>
       </AccordionSummary>
       <AccordionDetails>
+        {expanded && (
+          <EmailVerificationNotice reason="A cashout can be requested and approved only once your email address is verified." />
+        )}
         {error && (
           <Alert severity="error" action={<Button onClick={refresh}>Retry</Button>}>
             {error}

@@ -205,6 +205,14 @@ export class MongoCouponRedemptionRepository
     return doc ? toDomain(doc) : null;
   }
 
+  async releaseConsumed(id: string): Promise<boolean> {
+    const result = await CouponRedemptionModel.updateOne(
+      { _id: id, status: CouponRedemptionStatus.CONSUMED },
+      { $set: { status: CouponRedemptionStatus.RELEASED }, $unset: { seat: 1 } }
+    );
+    return result.modifiedCount === 1;
+  }
+
   async attachSubscription(
     id: string,
     subscriptionId: string

@@ -3,6 +3,7 @@ import type { BeneficiaryPayoutRepositoryPort } from '../../domain/ports/outboun
 import type { AffiliatePayoutRepositoryPort } from '../../domain/ports/outbound/AffiliatePayoutRepositoryPort.js'
 import type { CreatorPayoutRepositoryPort } from '../../domain/ports/outbound/CreatorPayoutRepositoryPort.js'
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js'
+import type { AuditLogRepositoryPort } from '../../domain/ports/outbound/AuditLogRepositoryPort.js'
 import { logger } from '../../infrastructure/logging/logger.js'
 
 /**
@@ -67,6 +68,8 @@ export class ReconcilePayoutsUseCase {
     // Optional creator-withdrawal rail (`cpay-`): reconciled the same way when wired.
     private readonly handleCreatorPayoutWebhookUseCase?: PayoutWebhookHandler,
     private readonly creatorPayoutRepo?: CreatorPayoutRepositoryPort,
+    /** Escalations are recorded in the audit trail, not only in a log line. */
+    private readonly audit?: AuditLogRepositoryPort,
   ) {}
 
   async reconcileStale(opts: { olderThanMinutes: number }): Promise<ReconcilePayoutSummary> {
@@ -238,10 +241,19 @@ export class ReconcilePayoutsUseCase {
     try {
       if (await escalate()) {
         summary.escalated += 1
+        const hoursStuck = Math.round(stuckFor / 3_600_000)
         logger.warn(
-          { rail, payoutId: payout.id, reference: payout.providerRef, hoursStuck: Math.round(stuckFor / 3_600_000) },
+          { rail, payoutId: payout.id, reference: payout.providerRef, hoursStuck },
           'payout reconciliation: transfer unconfirmed past dwell window; escalated for review with funds still reserved',
         )
+        await this.audit?.record({
+          actorId: 'system:reconciliation',
+          actorRole: 'system',
+          action: 'payout.escalated',
+          resource: `${rail}:${payout.id}`,
+          details: `Transfer ${payout.providerRef ?? '(no reference)'} unconfirmed for ${hoursStuck}h; held in review with funds reserved. Resolve it from Payouts → Escalated.`,
+          severity: 'critical',
+        })
       }
     } catch (error) {
       logger.error({ error, rail, payoutId: payout.id }, 'payout reconciliation: escalation failed')

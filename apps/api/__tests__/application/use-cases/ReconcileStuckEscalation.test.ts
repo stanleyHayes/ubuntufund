@@ -28,9 +28,17 @@ describe('escalating single transfers the provider cannot confirm', () => {
     });
     const handlers = [handler(), handler(), handler(), handler()];
     const gateway = { isConfigured: () => true, verifyTransfer: vi.fn(async (ref: string) => { throw new TransferNotFoundError(ref); }) };
-    const uc = new ReconcilePayoutsUseCase(r.campaign as never, r.beneficiary as never, r.affiliate as never, handlers[0], handlers[1], handlers[2], gateway as never, handlers[3], r.creator as never);
+    const audit = { record: vi.fn(async () => {}) };
+    const uc = new ReconcilePayoutsUseCase(r.campaign as never, r.beneficiary as never, r.affiliate as never, handlers[0], handlers[1], handlers[2], gateway as never, handlers[3], r.creator as never, audit);
     const summary = await uc.reconcileStale({ olderThanMinutes: 1 });
     expect(summary.escalated).toBe(4);
+    // Staff learn of each escalation from the audit trail, not only a log line.
+    expect(audit.record.mock.calls.map(([entry]) => [entry.action, entry.resource, entry.severity])).toEqual([
+      ['payout.escalated', 'campaign:c-old', 'critical'],
+      ['payout.escalated', 'beneficiary:b-old', 'critical'],
+      ['payout.escalated', 'affiliate:a-old', 'critical'],
+      ['payout.escalated', 'creator:k-old', 'critical'],
+    ]);
     expect(r.campaign.escalateProcessing.mock.calls).toEqual([['c-old']]);
     expect(r.beneficiary.escalateProcessing).toHaveBeenCalledWith('b-old');
     expect(r.affiliate.escalateProcessing).toHaveBeenCalledWith('a-old');
@@ -48,6 +56,22 @@ describe('escalating single transfers the provider cannot confirm', () => {
     const summary = await uc.reconcileStale({ olderThanMinutes: 1 });
     expect(summary).toMatchObject({ escalated: 0, pending: 1 });
     expect(r.campaign.escalateProcessing).not.toHaveBeenCalled();
+  });
+});
+
+describe('listing escalated transfers for staff', () => {
+  it('merges every rail, oldest first, and is admin-only', async () => {
+    const row = (id: string, h: number) => ({ id, amount: 10, currency: 'GHS', providerRef: `ref-${id}`, subject: 's', subjectLabel: 'S', createdAt: hours(h + 1), updatedAt: hours(h) });
+    const access = (rows: ReturnType<typeof row>[]) => ({ findById: vi.fn(), reopenForSettlement: vi.fn(), handler: handler(), listEscalated: vi.fn(async () => rows) });
+    const uc = new ResolveStuckPayoutUseCase({ isConfigured: () => true } as never, {
+      campaign: access([row('c1', 30)]),
+      beneficiary: access([]),
+      affiliate: access([row('a1', 50)]),
+      creator: access([row('k1', 26)]),
+    });
+    const listed = await uc.listEscalated({ userId: 'admin', role: 'admin' });
+    expect(listed.map((r) => [r.rail, r.id])).toEqual([['affiliate', 'a1'], ['campaign', 'c1'], ['creator', 'k1']]);
+    await expect(uc.listEscalated({ userId: 'member', role: 'user' })).rejects.toMatchObject({ statusCode: 403 });
   });
 });
 

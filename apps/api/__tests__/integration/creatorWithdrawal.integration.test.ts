@@ -29,6 +29,7 @@ import { CreatorPayoutModel } from '../../src/infrastructure/database/models/Cre
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js'
 import { grantCurrentKyc } from '../helpers/currentKyc.js'
 import { KYCVerificationModel } from '../../src/infrastructure/database/models/KYCVerificationModel.js'
+import { AuditLogModel } from '../../src/infrastructure/database/models/AuditLogModel.js'
 
 function uniqueEmail(label: string): string {
   return `${label}-${randomUUID()}@example.com`
@@ -193,6 +194,33 @@ describe('Creator withdrawal — transfer rail', () => {
     },
   )
 
+  it('tells a creator with current identity verification but an unverified email to verify their email', async () => {
+    const owner = await creatorWithBalance(100)
+    await UserModel.updateOne({ _id: owner.userId }, { emailVerified: false })
+    const callsBefore = vi.mocked(fetch).mock.calls.length
+    const res = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
+      .send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+      .expect(409)
+    expect(res.body.message).toMatch(/^Verify your email address before withdrawing creator funds/)
+    expect(res.body.message).not.toMatch(/identity/i)
+    expect(vi.mocked(fetch).mock.calls.length).toBe(callsBefore)
+    expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
+  })
+
+  it.each([
+    ['a third party', 'Kofi Boateng', 1],
+    ['the creator (surname first)', 'Draw With', 0],
+  ] as const)('audits a withdrawal to an account held by %s against the verified legal name', async (_label, legalName, entries) => {
+    const owner = await creatorWithBalance(100)
+    await KYCVerificationModel.updateMany({ userId: owner.userId }, { $set: { 'personalInfo.fullName': legalName } })
+    // The typed name matches the provider's ("With Draw"), so the account is name_matched.
+    const res = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
+      .send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+      .expect(201)
+    const payout = await CreatorPayoutModel.findOne({ providerRef: res.body.data.reference }).orFail()
+    expect(await AuditLogModel.countDocuments({ action: 'creator_withdrawal.destination_not_legal_name', resource: payout.id })).toBe(entries)
+  })
+
   it('refuses an unmatched account, then withdraws once the name is re-entered surname-first', async () => {
     const owner = await creatorWithBalance(100)
     const recipient = { type: 'mobile_money', accountNumber: '0557654321', bankCode: 'MTN' }
@@ -278,6 +306,11 @@ describe('Creator withdrawal — transfer rail', () => {
     const admin = `Bearer ${login.body.data.tokens.accessToken}`
     const note = { note: 'Paystack dashboard shows no transfer under this reference.' }
 
+    // Staff can find it in the console's escalated queue, not only in a log line.
+    await request(app).get('/api/v1/payouts/stuck').set('Authorization', `Bearer ${owner.token}`).expect(403)
+    const queue = await request(app).get('/api/v1/payouts/stuck').set('Authorization', admin).expect(200)
+    expect(queue.body.data).toEqual(expect.arrayContaining([expect.objectContaining({ rail: 'creator', id: payout!.id, subject: owner.userId, providerRef: reference })]))
+
     await request(app).post(`/api/v1/payouts/stuck/creator/${payout!.id}/resolve`).set('Authorization', `Bearer ${owner.token}`).send(note).expect(403)
     await request(app).post(`/api/v1/payouts/stuck/wallet/${payout!.id}/resolve`).set('Authorization', admin).send(note).expect(404)
     verifyNotFound = true
@@ -288,6 +321,8 @@ describe('Creator withdrawal — transfer rail', () => {
     } finally { verifyNotFound = false }
     expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
     expect(await CreatorPayoutModel.findById(payout!._id).lean()).toMatchObject({ status: 'FAILED', settlementApplied: true })
+    const after = await request(app).get('/api/v1/payouts/stuck').set('Authorization', admin).expect(200)
+    expect(after.body.data.some((row: { id: string }) => row.id === payout!.id)).toBe(false)
   })
 
   it('rechecks identity verification at the reservation write boundary', async () => {

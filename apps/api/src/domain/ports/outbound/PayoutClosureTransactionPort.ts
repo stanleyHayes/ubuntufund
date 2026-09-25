@@ -8,7 +8,7 @@ import type { PayoutRequester } from '../../../application/use-cases/CreatePayou
 export interface PayoutClosureTransactionPort {
   run<T>(
     actor: PayoutRequester,
-    closure: { kind: 'rejected' | 'cancelled'; payoutId: string; reason: string; rail?: 'campaign' | 'affiliate' },
+    closure: { kind: 'rejected' | 'cancelled'; payoutId: string; reason: string; rail?: 'campaign' | 'affiliate' | 'beneficiary' },
     work: () => Promise<T>,
   ): Promise<T>
 }
