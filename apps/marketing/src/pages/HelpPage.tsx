@@ -48,9 +48,9 @@ const FAQ_CATEGORIES_STATIC: FaqCategory[] = [
     icon: <RocketLaunchRoundedIcon />,
     label: 'Getting started',
     questions: [
-      { q: 'How do I create an account on Ujimora?', a: 'Click "Sign Up" on the homepage, enter your email and create a password. You can also sign up with Google or Facebook. Complete your profile with your name, location, and a photo to build trust with the community.' },
-      { q: 'Is Ujimora available in my country?', a: 'Ujimora is built for Ghana. Campaign creation is open to organizers based in Ghana, and anyone worldwide can donate to a Ghanaian campaign — family abroad included. All campaigns raise funds in Ghanaian cedis (GHS).' },
-      { q: 'Do I need to verify my identity?', a: 'Basic usage requires email verification. To create campaigns and build trust, we recommend completing our multi-level verification: email/phone, national ID, institutional, and community vouching. Higher verification means a higher trust score.' },
+      { q: 'How do I create an account on Ujimora?', a: 'Click "Sign Up" on the homepage, enter your email and create a password. Complete your profile with your name, location, and a photo to build trust with the community.' },
+      { q: 'Is Ujimora available in my country?', a: 'Ujimora is built for Ghana. Campaign creation is open to organizers based in Ghana. Donations are made in Ghanaian cedis (GHS) through Paystack, by mobile money or card; some cards issued outside Ghana may not be accepted.' },
+      { q: 'Do I need to verify my identity?', a: 'Basic use requires a verified email. To create campaigns, complete identity verification (national ID and, for organizations, registration documents). Higher verification levels raise your campaign limits.' },
     ],
   },
   {
@@ -89,9 +89,8 @@ const FAQ_CATEGORIES_STATIC: FaqCategory[] = [
     icon: <ShieldRoundedIcon />,
     label: 'Trust & safety',
     questions: [
-      { q: 'How does Ujimora verify campaigns?', a: 'Multi-layer verification: initial team review, organizer identity verification, documentation checks, and community trust scores. Verified campaigns earn badges that help donors assess credibility at a glance.' },
-      { q: 'What happens if a campaign is fraudulent?', a: 'The campaign is immediately suspended, funds are frozen, and we process refunds for affected donors. Fraudulent accounts are permanently banned. We cooperate with law enforcement. Use the "Report" button on any campaign to flag concerns.' },
-      { q: 'How does the trust score work?', a: 'Trust scores (0-100) are calculated from verification level, campaign track record, community engagement, and donor feedback. Higher scores unlock features like increased campaign limits and featured placement.' },
+      { q: 'How does Ujimora verify campaigns?', a: 'Our team reviews every campaign before it goes live, together with organizer identity verification and documentation checks. Verified organizations show a badge that helps donors judge credibility.' },
+      { q: 'What happens if a campaign is fraudulent?', a: 'We remove the campaign from public view, hold payouts that have not yet been approved while we investigate, and work with donors on refunds where funds can be recovered. We cooperate with law enforcement. Use the "Report" button on any campaign to flag concerns.' },
     ],
   },
   {
@@ -99,7 +98,7 @@ const FAQ_CATEGORIES_STATIC: FaqCategory[] = [
     icon: <GroupsRoundedIcon />,
     label: 'Organizations',
     questions: [
-      { q: 'How do I register as an organization?', a: 'During registration, select "Organization" as your account type. Provide your organization name, registration number, and type (NGO, hospital, school, etc.). Complete verification with official documents for priority trust status.' },
+      { q: 'How do I register as an organization?', a: 'During registration, select "Organization" as your account type. Provide your organization name, registration number, and type (NGO, hospital, school, etc.). Complete verification with official documents before you create campaigns.' },
       { q: 'What features are available for organizations?', a: 'Organizations have a dedicated workspace, member collaboration, campaign management, updates, comments, donation history, and review status across web and mobile. Paid organization plans are available — compare tiers and pricing on the pricing page.' },
     ],
   },
@@ -137,7 +136,7 @@ const CONTACT_OPTIONS = [
 function HelpPage() {
   useSeo({
     title: 'Help center: campaigns, giving, payouts | Ujimora',
-    description: 'Search answers on starting a campaign, donating in cedis, wallet and mobile money payments, verification and trust scores, and organization accounts.',
+    description: 'Search answers on starting a campaign, donating in cedis, wallet and mobile money payments, identity verification, and organization accounts.',
     path: '/help',
     type: 'website',
     jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'Help center' }]),

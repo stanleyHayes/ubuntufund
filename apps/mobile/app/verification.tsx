@@ -278,7 +278,7 @@ export default function VerificationScreen() {
         <View style={styles.infoBanner}>
           <Icon source="shield-check" size={20} color={p.primary} />
           <Text style={styles.infoText}>
-            Higher verification levels increase your trust score and unlock more features.
+            Higher verification levels unlock higher campaign limits.
           </Text>
         </View>
 

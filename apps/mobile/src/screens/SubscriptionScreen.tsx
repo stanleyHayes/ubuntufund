@@ -647,7 +647,7 @@ export default function SubscriptionScreen() {
                   plan.prioritySupport ? 'Priority support' : null,
                   plan.advancedAnalytics ? 'Advanced analytics' : null,
                   plan.customBranding ? 'Custom branding' : null,
-                  plan.escrowSupport ? 'Escrow support' : null,
+                  plan.escrowSupport ? 'Split proceeds' : null,
                   plan.liveStreaming ? 'Live streaming' : null,
                   plan.tier !== 'free' && (plan.priceMonthly > 0 || plan.priceYearly > 0) ? 'Creator profile donations (active paid plan)' : null,
                 ].filter(Boolean).map((feat) => (

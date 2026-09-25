@@ -19,17 +19,17 @@
         {
           "category": "Getting started",
           "question": "How do I create an account on Ujimora?",
-          "answer": "Click \"Sign Up\" on the homepage, enter your email and create a password. You can also sign up with Google or Facebook. Complete your profile with your name, location, and a photo to build trust with the community."
+          "answer": "Click \"Sign Up\" on the homepage, enter your email and create a password. Complete your profile with your name, location, and a photo to build trust with the community."
         },
         {
           "category": "Getting started",
           "question": "Is Ujimora available in my country?",
-          "answer": "Ujimora is built for Ghana. Campaign creation is open to organizers based in Ghana, and anyone worldwide can donate to a Ghanaian campaign — family abroad included. All campaigns raise funds in Ghanaian cedis (GHS)."
+          "answer": "Ujimora is built for Ghana. Campaign creation is open to organizers based in Ghana. Donations are made in Ghanaian cedis (GHS) through Paystack, by mobile money or card; some cards issued outside Ghana may not be accepted."
         },
         {
           "category": "Getting started",
           "question": "Do I need to verify my identity?",
-          "answer": "Basic usage requires email verification. To create campaigns and build trust, we recommend completing our multi-level verification: email/phone, national ID, institutional, and community vouching. Higher verification means a higher trust score."
+          "answer": "Basic use requires a verified email. To create campaigns, complete identity verification (national ID and, for organizations, registration documents). Higher verification levels raise your campaign limits."
         },
         {
           "category": "Campaigns",
@@ -84,22 +84,17 @@
         {
           "category": "Trust & safety",
           "question": "How does Ujimora verify campaigns?",
-          "answer": "Multi-layer verification: initial team review, organizer identity verification, documentation checks, and community trust scores. Verified campaigns earn badges that help donors assess credibility at a glance."
+          "answer": "Our team reviews every campaign before it goes live, together with organizer identity verification and documentation checks. Verified organizations show a badge that helps donors judge credibility."
         },
         {
           "category": "Trust & safety",
           "question": "What happens if a campaign is fraudulent?",
-          "answer": "The campaign is immediately suspended, funds are frozen, and we process refunds for affected donors. Fraudulent accounts are permanently banned. We cooperate with law enforcement. Use the \"Report\" button on any campaign to flag concerns."
-        },
-        {
-          "category": "Trust & safety",
-          "question": "How does the trust score work?",
-          "answer": "Trust scores (0-100) are calculated from verification level, campaign track record, community engagement, and donor feedback. Higher scores unlock features like increased campaign limits and featured placement."
+          "answer": "We remove the campaign from public view, hold payouts that have not yet been approved while we investigate, and work with donors on refunds where funds can be recovered. We cooperate with law enforcement. Use the \"Report\" button on any campaign to flag concerns."
         },
         {
           "category": "Organizations",
           "question": "How do I register as an organization?",
-          "answer": "During registration, select \"Organization\" as your account type. Provide your organization name, registration number, and type (NGO, hospital, school, etc.). Complete verification with official documents for priority trust status."
+          "answer": "During registration, select \"Organization\" as your account type. Provide your organization name, registration number, and type (NGO, hospital, school, etc.). Complete verification with official documents before you create campaigns."
         },
         {
           "category": "Organizations",

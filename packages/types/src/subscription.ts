@@ -53,7 +53,10 @@ export interface SubscriptionPlan {
   customBranding: boolean
   /** Max media uploads per campaign */
   maxMediaPerCampaign: number
-  /** Whether escrow/milestone features are available */
+  /**
+   * Whether split (shared) campaign proceeds are available. The key name is
+   * historical: there is no escrow or milestone-release feature behind it.
+   */
   escrowSupport: boolean
   /** Whether live fundraising streaming is available */
   liveStreaming: boolean
