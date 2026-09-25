@@ -7,6 +7,7 @@ import { connectTestDatabase, disconnectTestDatabase, dropTestDatabase } from '.
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
 import { AuditLogModel } from '../../src/infrastructure/database/models/AuditLogModel.js';
 import { AccountDeletionRequestModel } from '../../src/infrastructure/database/models/AccountDeletionRequestModel.js';
+import { WalletModel } from '../../src/infrastructure/database/models/WalletModel.js';
 
 const NOTE = 'Holder replied from the registered address asking to close the account.';
 let app: Express, admin: { id: string; auth: string };
@@ -37,6 +38,23 @@ describe('staff-assisted account closure', () => {
     const audit = await AuditLogModel.findOne({ resource: `user:${member.id}`, action: 'account.staff_closure' }).lean();
     expect(audit).toMatchObject({ actorId: admin.id, reason: NOTE, severity: 'warning' });
     await close(member.id, { verificationNote: NOTE, confirmEmail: member.email }).expect(404);
+    expect(await AuditLogModel.countDocuments({ resource: `user:${member.id}`, action: 'account.staff_closure' })).toBe(1);
+  });
+
+  it('refuses while money is outstanding, in staff wording, and leaves no closure or audit row behind', async () => {
+    const member = await account('closure-blocked');
+    await WalletModel.updateOne({ userId: member.id, type: 'local', currency: 'GHS' }, { $set: { balance: 25 } }, { upsert: true });
+    const res = await close(member.id, { verificationNote: NOTE, confirmEmail: member.email }).expect(409);
+    expect(res.body.message).toContain('GHS 25.00 in the member');
+    expect(res.body.message).not.toMatch(/password|your Ujimora wallet|update the Ujimora app/i);
+    expect((await UserModel.findById(member.id).lean())?.deletedAt ?? null).toBeNull();
+    expect(await AccountDeletionRequestModel.exists({ userId: member.id })).toBeNull();
+    expect(await AuditLogModel.countDocuments({ resource: `user:${member.id}` })).toBe(0);
+    // The member's session is untouched by a refused closure.
+    await request(app).get('/api/v1/profile').set('Authorization', member.auth).expect(200);
+    // Retrying while still blocked does not accumulate misleading audit rows either.
+    await close(member.id, { verificationNote: NOTE, confirmEmail: member.email }).expect(409);
+    expect(await AuditLogModel.countDocuments({ resource: `user:${member.id}` })).toBe(0);
   });
 
   it('requires a verification note and the matching account email', async () => {

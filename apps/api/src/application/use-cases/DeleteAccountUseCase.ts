@@ -45,6 +45,27 @@ export function describeClosureBlockers(blockers: AccountClosureBlocker[]): stri
     + 'If you can’t, contact support@ujimora.com and we’ll help you close your account.';
 }
 
+function describeStaffBlocker(blocker: AccountClosureBlocker): string {
+  const amount = formatAmount(blocker.amount ?? 0, blocker.currency);
+  switch (blocker.kind) {
+    case 'wallet_balance': return `${amount} in the member's Ujimora wallet`;
+    case 'campaign_balance': return `${amount} raised by their campaigns that has not been paid out`;
+    case 'beneficiary_balance': return `${amount} held for their campaign beneficiaries`;
+    case 'creator_balance': return `${amount} in creator tips not yet withdrawn`;
+    case 'affiliate_balance': return `${amount} in affiliate earnings not yet paid out`;
+    case 'pending_payout': {
+      const count = blocker.count ?? 1;
+      return `${count} payout${count === 1 ? '' : 's'} still being processed`;
+    }
+  }
+}
+
+/** The same blockers, worded for staff closing an account on the holder's behalf. */
+export function describeStaffClosureBlockers(blockers: AccountClosureBlocker[]): string {
+  return `This account can’t be closed yet. Outstanding: ${blockers.map(describeStaffBlocker).join('; ')}. `
+    + 'Pay out, refund or otherwise resolve these with finance first, then close the account. Nothing was changed.';
+}
+
 export class DeleteAccountUseCase {
   constructor(
     private readonly userRepo: UserRepositoryPort,
@@ -64,6 +85,21 @@ export class DeleteAccountUseCase {
       canClose: check.blockers.length === 0,
       ...(check.blockers.length ? { message: describeClosureBlockers(check.blockers) } : {}),
     };
+  }
+
+  /**
+   * Staff-assisted closure for a holder who cannot sign in. Staff verify the
+   * request out of band (the admin route records how), so there is no member
+   * password to step up with. Every other guard still applies: money or
+   * payouts outstanding block closure, and closure uses the same erasure and
+   * session revocation as self-service deletion. Only the admin route calls
+   * this; member-facing routes use `execute`.
+   */
+  async closeForStaff(userId: string): Promise<void> {
+    const user = await this.userRepo.findById(userId);
+    if (!user) throw new AppError('Account not found', 404);
+    await this.assertNothingOutstanding(userId, describeStaffClosureBlockers);
+    await this.close(userId);
   }
 
   async execute(userId: string, credentials: AccountClosureCredentials = {}): Promise<void> {
@@ -89,13 +125,19 @@ export class DeleteAccountUseCase {
       }
     }
 
-    if (this.closureCheck) {
-      const { blockers } = await this.closureCheck.check(userId);
-      if (blockers.length) {
-        throw new AppError(describeClosureBlockers(blockers), 409, { accountClosure: blockers.map(blocker => blocker.kind) });
-      }
-    }
+    await this.assertNothingOutstanding(userId, describeClosureBlockers);
+    await this.close(userId);
+  }
 
+  private async assertNothingOutstanding(userId: string, describe: (blockers: AccountClosureBlocker[]) => string): Promise<void> {
+    if (!this.closureCheck) return;
+    const { blockers } = await this.closureCheck.check(userId);
+    if (blockers.length) {
+      throw new AppError(describe(blockers), 409, { accountClosure: blockers.map(blocker => blocker.kind) });
+    }
+  }
+
+  private async close(userId: string): Promise<void> {
     if (this.erasure) await this.erasure.request(userId);
     else await this.userRepo.delete(userId);
     this.tokenService.revokeAllTokens(userId);

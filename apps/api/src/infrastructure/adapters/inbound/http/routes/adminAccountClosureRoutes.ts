@@ -6,6 +6,7 @@ import { validate } from '../../middleware/validate.js';
 import { UserModel } from '../../../../database/models/UserModel.js';
 import { AuditLogModel } from '../../../../database/models/AuditLogModel.js';
 import { MongoUnitOfWork } from '../../../outbound/persistence/MongoUnitOfWork.js';
+import { logger } from '../../../../logging/logger.js';
 import type { DeleteAccountUseCase } from '../../../../../application/use-cases/DeleteAccountUseCase.js';
 
 const closeSchema = z.object({
@@ -20,6 +21,10 @@ const closeSchema = z.object({
  * to email legal@). Uses the same erasure path as self-service deletion
  * (tombstone, retryable cleanup, token revocation) instead of database edits,
  * and records who closed the account and how the requester was verified.
+ *
+ * The audit row is written only after the closure succeeds, so a refusal
+ * (money or payouts outstanding, account already gone) never leaves a record
+ * saying an account was closed.
  */
 export function createAdminAccountClosureRoutes(auth: RequestHandler, admin: RequestHandler, deleteAccount: DeleteAccountUseCase) {
   const router = Router();
@@ -41,11 +46,20 @@ export function createAdminAccountClosureRoutes(auth: RequestHandler, admin: Req
         if (String(target.email).toLowerCase() !== input.confirmEmail.toLowerCase()) {
           throw new AppError('The confirmation email does not match this account.', 400);
         }
-        await AuditLogModel.create({ actorId: req.userId, actorRole: 'admin', action: 'account.staff_closure', resource: `user:${id}`,
-          details: 'Staff-assisted account closure requested; erasure and session revocation follow', reason: input.verificationNote,
-          severity: 'warning', method: 'POST', path: '/admin/users/:id/close', statusCode: 200 });
       });
-      await deleteAccount.execute(id);
+      // Staff verified the holder out of band, so there is no member password
+      // step-up here; outstanding money or payouts still refuse with a 409.
+      await deleteAccount.closeForStaff(id);
+      const audit = { actorId: req.userId, actorRole: 'admin', action: 'account.staff_closure', resource: `user:${id}`,
+        details: 'Staff-assisted account closure: account closed, sessions revoked and erasure started', reason: input.verificationNote,
+        severity: 'warning', method: 'POST', path: '/admin/users/:id/close', statusCode: 200 };
+      try {
+        await AuditLogModel.create(audit);
+      } catch (error) {
+        // The account is already closed; a retry would only 404. Keep the
+        // record in the error log so it can be restored to the audit trail.
+        logger.error({ err: error, audit }, 'Staff account closure succeeded but its audit row was not saved');
+      }
       res.json({ data: { closed: true } });
     } catch (error) { next(error); }
   });

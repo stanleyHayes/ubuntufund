@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { DeleteAccountUseCase, describeClosureBlockers } from '../../../src/application/use-cases/DeleteAccountUseCase.js';
+import { DeleteAccountUseCase, describeClosureBlockers, describeStaffClosureBlockers } from '../../../src/application/use-cases/DeleteAccountUseCase.js';
 import { AppError } from '../../../src/infrastructure/adapters/inbound/middleware/errorHandler.js';
 import type { AccountClosureCheck } from '../../../src/domain/ports/outbound/AccountClosureCheckPort.js';
 
@@ -63,5 +63,37 @@ it('maps wrong reauthentication to 400 so clients keep the session', async () =>
   await expect(uc.execute('user-1', { password: 'SecurePass123' })).rejects.toMatchObject({ statusCode: 400, errors: { mfaCode: ['required'] } });
   stepUp.verifyStepUp.mockRejectedValueOnce(new AppError('Too many code attempts. Try again in 10 minutes.', 429));
   await expect(uc.execute('user-1', { password: 'SecurePass123', code: '000000' })).rejects.toMatchObject({ statusCode: 429 });
+  expect(erasure.request).not.toHaveBeenCalled();
+});
+
+it('lets staff close an account without a member password but keeps every other guard', async () => {
+  const { uc, erasure, tokens, stepUp, closure } = setup();
+  await uc.closeForStaff('user-1');
+  expect(stepUp.verifyStepUp).not.toHaveBeenCalled();
+  expect(closure.check).toHaveBeenCalledWith('user-1');
+  expect(erasure.request).toHaveBeenCalledWith('user-1');
+  expect(tokens.revokeAllTokens).toHaveBeenCalledWith('user-1');
+});
+
+it('refuses a staff closure with staff wording while money or payouts are outstanding', async () => {
+  const blockers = [
+    { kind: 'wallet_balance' as const, currency: 'GHS', amount: 150 },
+    { kind: 'pending_payout' as const, count: 1 },
+  ];
+  const { uc, erasure, tokens } = setup({ blockers, openCampaigns: 0 });
+  const failure = await uc.closeForStaff('user-1').catch(error => error);
+  expect(failure).toMatchObject({ statusCode: 409, errors: { accountClosure: ['wallet_balance', 'pending_payout'] } });
+  expect(failure.message).toBe(describeStaffClosureBlockers(blockers));
+  expect(failure.message).toContain("GHS 150.00 in the member's Ujimora wallet");
+  expect(failure.message).toContain('1 payout still being processed');
+  expect(failure.message).not.toMatch(/\byour\b|support@/);
+  expect(erasure.request).not.toHaveBeenCalled();
+  expect(tokens.revokeAllTokens).not.toHaveBeenCalled();
+});
+
+it('refuses a staff closure for an account that no longer exists', async () => {
+  const { uc, userRepo, erasure } = setup();
+  userRepo.findById.mockResolvedValueOnce(null as never);
+  await expect(uc.closeForStaff('user-1')).rejects.toMatchObject({ statusCode: 404 });
   expect(erasure.request).not.toHaveBeenCalled();
 });
