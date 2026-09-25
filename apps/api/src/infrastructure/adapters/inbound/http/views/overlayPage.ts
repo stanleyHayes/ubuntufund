@@ -147,6 +147,7 @@ export const OVERLAY_PAGE_HTML = `<!DOCTYPE html>
       <div class="bar"><div class="fill" id="fill"></div><span class="pct" id="pct">0%</span></div>
       <div class="meta">
         <span>Raised live <b id="sessionRaised">GH₵ 0</b></span>
+        <span id="sessionGoalWrap" hidden>Session goal <b id="sessionGoal">GH₵ 0</b></span>
         <span><b id="donations">0</b> donations</span>
       </div>
     </div>
@@ -165,9 +166,12 @@ export const OVERLAY_PAGE_HTML = `<!DOCTYPE html>
   var panel = el("panel"), titleEl = el("title"), raisedEl = el("raised"),
       goalEl = el("goal"), fillEl = el("fill"), pctEl = el("pct"),
       sessionRaisedEl = el("sessionRaised"), donationsEl = el("donations"),
+      sessionGoalWrap = el("sessionGoalWrap"), sessionGoalEl = el("sessionGoal"),
       alertsEl = el("alerts"), milestoneEl = el("milestone"), statusEl = el("status");
 
   var goalAmount = 0;
+  var sessionTarget = 0;
+  var seenDonations = {};
   var seenMilestones = {};
   var stream = null;
   var refreshTimer = null;
@@ -202,6 +206,16 @@ export const OVERLAY_PAGE_HTML = `<!DOCTYPE html>
     bar.setAttribute("aria-valuemax", "100");
   }
 
+  // The host's optional stretch goal for this broadcast (distinct from the
+  // campaign goal). Progress is shown only while amounts are visible.
+  function renderSessionGoal(sessionRaised) {
+    if (!(sessionTarget > 0)) { sessionGoalWrap.hidden = true; return; }
+    var text = money(sessionTarget);
+    if (typeof sessionRaised === "number") text += " · " + Math.min(100, Math.round((sessionRaised / sessionTarget) * 100)) + "%";
+    sessionGoalEl.textContent = text;
+    sessionGoalWrap.hidden = false;
+  }
+
   function renderInitial(v) {
     if (v.status === "ended") {
       if (stream) stream.close();
@@ -219,9 +233,16 @@ export const OVERLAY_PAGE_HTML = `<!DOCTYPE html>
       sessionRaisedEl.textContent = v.totals.amountRaised === null ? "hidden" : money(v.totals.amountRaised);
       donationsEl.textContent = String(v.totals.successfulDonations || 0);
     }
+    sessionTarget = Number(v.targetAmount) > 0 ? Number(v.targetAmount) : 0;
+    renderSessionGoal(v.totals ? v.totals.amountRaised : null);
   }
 
   function pushAlert(d) {
+    // Each gift is announced once, even if its event is delivered again.
+    if (d.donationId) {
+      if (seenDonations[d.donationId]) return;
+      seenDonations[d.donationId] = true;
+    }
     var node = document.createElement("div");
     node.className = "alert";
     var who = document.createElement("div");
@@ -283,6 +304,7 @@ export const OVERLAY_PAGE_HTML = `<!DOCTYPE html>
         renderGoal(d.raisedAmount, d.goalAmount);
         if (d.sessionAmountRaised !== undefined) {
           sessionRaisedEl.textContent = d.sessionAmountRaised === null ? "hidden" : money(d.sessionAmountRaised);
+          renderSessionGoal(d.sessionAmountRaised);
         }
         // Authoritative donation count is refreshed from the overlay snapshot.
       } catch (e) {}
@@ -296,7 +318,8 @@ export const OVERLAY_PAGE_HTML = `<!DOCTYPE html>
   if (params.get("preview") === "1") {
     var amount = Number(params.get("raised"));
     var goal = Number(params.get("goal"));
-    renderInitial({ title: params.get("title") || "Your live fundraiser", campaignRaisedAmount: Number.isFinite(amount) ? Math.max(0, amount) : 0, campaignGoalAmount: Number.isFinite(goal) ? Math.max(0, goal) : 0, totals: { amountRaised: 0, successfulDonations: 0 } });
+    var target = Number(params.get("target"));
+    renderInitial({ title: params.get("title") || "Your live fundraiser", campaignRaisedAmount: Number.isFinite(amount) ? Math.max(0, amount) : 0, campaignGoalAmount: Number.isFinite(goal) ? Math.max(0, goal) : 0, targetAmount: Number.isFinite(target) ? target : 0, totals: { amountRaised: 0, successfulDonations: 0 } });
   } else {
     loadInitial();
     connect();

@@ -27,6 +27,7 @@ import { MongoRefundFunds } from '../../src/infrastructure/adapters/outbound/per
 import { MongoCampaignBeneficiaryBalanceRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoCampaignBeneficiaryBalanceRepository.js';
 import { JournalEntryModel } from '../../src/infrastructure/database/models/JournalEntryModel.js';
 import { DonationIntentModel } from '../../src/infrastructure/database/models/DonationIntentModel.js';
+import { LiveSessionModel } from '../../src/infrastructure/database/models/LiveSessionModel.js';
 import { CampaignCategory, CampaignPriority } from '@ubuntu-fund/types';
 
 function uniqueEmail(label: string): string {
@@ -64,10 +65,10 @@ async function createActiveCampaign(app: Express, token: string, creatorId: stri
 }
 
 /** Settle a paystack donation of 200 (+20 tip) GHS and return its intent id. */
-async function settleDonation(app: Express, campaignId: string) {
+async function settleDonation(app: Express, campaignId: string, liveSessionId?: string) {
   const created = await request(app)
     .post('/api/v1/donation-intents')
-    .send({ campaignId, amount: 200, tip: 20, provider: 'paystack', donorEmail: 'guest@example.com', donorName: 'Guest', legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true } })
+    .send({ campaignId, amount: 200, tip: 20, provider: 'paystack', donorEmail: 'guest@example.com', donorName: 'Guest', legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, liveSessionId })
     .expect(201);
   const reference = created.body.data.reference as string;
   const intentId = created.body.data.intent.id as string;
@@ -308,6 +309,27 @@ describe('Refunds (spec §14)', () => {
     const intentDoc = await DonationIntentModel.findById(intentId);
     expect(intentDoc?.status).toBe('REFUNDED');
     expect(intentDoc?.refundedAmountMinor).toBe(20000);
+  });
+
+  it('takes refunded live-attributed gifts back out of the broadcast totals, once', async () => {
+    const { userId, token } = await registerUser(app, uniqueEmail('refundlive'));
+    const campaignId = await createActiveCampaign(app, token, userId);
+    const session = await LiveSessionModel.create({ campaignId, status: 'active', overlayToken: randomUUID(), startedAt: new Date() });
+    const { intentId } = await settleDonation(app, campaignId, session.id);
+    expect((await LiveSessionModel.findById(session.id))?.stats).toMatchObject({ successfulDonations: 1, amountRaised: 200 });
+
+    await request(app).post(`/api/v1/admin/payments/${intentId}/refund`).set('Authorization', `Bearer ${adminToken}`).send({ amount: 100 }).expect(200);
+    // A partial refund lowers the amount; the gift still counts.
+    expect((await LiveSessionModel.findById(session.id))?.stats).toMatchObject({ successfulDonations: 1, amountRaised: 100 });
+
+    const done = await request(app).post(`/api/v1/admin/payments/${intentId}/refund`).set('Authorization', `Bearer ${adminToken}`).send({ amount: 100 }).expect(200);
+    expect(done.body.data.status).toBe('REFUNDED');
+    expect((await LiveSessionModel.findById(session.id))?.stats).toMatchObject({ successfulDonations: 0, amountRaised: 0 });
+
+    // Re-running local accounting for a completed operation changes nothing.
+    const operation = await RefundOperationModel.findOne({ intentId }).sort({ createdAt: -1 });
+    await request(app).post(`/api/v1/admin/payments/refund-operations/${operation!.id}/retry-accounting`).set('Authorization', `Bearer ${adminToken}`);
+    expect((await LiveSessionModel.findById(session.id))?.stats).toMatchObject({ successfulDonations: 0, amountRaised: 0 });
   });
 
   it('forbids a non-admin from refunding', async () => {

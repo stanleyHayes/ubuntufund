@@ -1,4 +1,4 @@
-import { startLiveSession } from '@/lib/fundraising'
+import { endLiveSession, startLiveSession } from '@/lib/fundraising'
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -12,9 +12,10 @@ vi.mock('@/components/live/LiveVideoPanel', () => ({ LiveVideoPanel: () => <div>
 vi.mock('@/components/live/QrCodeManager', () => ({ QrCodeManager: () => null }))
 vi.mock('@/components/LiveDonationFeed', () => ({ LiveDonationFeed: () => null }))
 const session = { id: 'session', campaignId: 'campaign', status: 'active', overlayToken: 'test-token', showDonorNames: true, showDonorMessages: true, showAmounts: true, privacyMode: false }
-vi.mock('@/lib/fundraising', async importOriginal => ({ ...await importOriginal<typeof import('@/lib/fundraising')>(), startLiveSession: vi.fn(async () => session) }))
+vi.mock('@/lib/fundraising', async importOriginal => ({ ...await importOriginal<typeof import('@/lib/fundraising')>(), startLiveSession: vi.fn(async () => session), endLiveSession: vi.fn(async () => ({ ...session, status: 'ended' })) }))
 beforeEach(() => {
   vi.mocked(startLiveSession).mockReset().mockResolvedValue(session as any)
+  vi.mocked(endLiveSession).mockReset().mockResolvedValue({ ...session, status: 'ended' } as never)
   const storage = () => { const data = new Map<string, string>(); return { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => data.set(key, value), removeItem: (key: string) => data.delete(key), clear: () => data.clear() } }
   vi.stubGlobal('localStorage', storage()); vi.stubGlobal('sessionStorage', storage());
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }); mocks.active = null; mocks.videoEnabled = false
@@ -60,5 +61,32 @@ describe('live broadcast workspace', () => {
     view.unmount(); mocks.active = session; mount()
     await screen.findByText('Host video controls')
     expect(screen.getByTitle('Broadcast preview').getAttribute('src')).not.toContain('preview=1')
+  })
+  it('asks before ending the broadcast for everyone', async () => {
+    mocks.videoEnabled = true; mocks.active = session; mount()
+    fireEvent.click(await screen.findByRole('button', { name: 'End session' }))
+    const dialog = await screen.findByRole('dialog', { name: 'End broadcast?' })
+    expect(dialog).toHaveTextContent('This closes the live session for viewers.')
+    expect(endLiveSession).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(endLiveSession).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'End session' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'End broadcast' }))
+    await waitFor(() => expect(endLiveSession).toHaveBeenCalledTimes(1))
+    expect(endLiveSession).toHaveBeenCalledWith('session')
+    await screen.findByRole('button', { name: 'Go LIVE' })
+  })
+  it('previews the session goal being set on the pre-live overlay', async () => {
+    mocks.videoEnabled = true; mount()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Go LIVE' })).toBeEnabled())
+    expect(screen.getByTitle('Broadcast preview').getAttribute('src')).not.toContain('target=')
+    fireEvent.change(screen.getByLabelText('Session goal (optional)'), { target: { value: '2000' } })
+    expect(screen.getByTitle('Broadcast preview').getAttribute('src')).toContain('target=2000')
+    expect(screen.getByTitle('Broadcast preview').getAttribute('src')).toContain('/live-sessions/preview/overlay/view?')
+  })
+  it('explains that hiding amounts keeps the campaign progress bar visible', async () => {
+    mocks.videoEnabled = true; mocks.active = session; mount()
+    await screen.findByText(/Hiding amounts hides each gift’s amount and this broadcast’s total/)
   })
 })

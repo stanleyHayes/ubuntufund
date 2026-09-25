@@ -16,6 +16,7 @@ import {
   liveChannel,
 } from '../../../../realtime/EventBus.js';
 import { AppError } from '../../middleware/errorHandler.js';
+import { overlayTokenMatches } from '../../../../../application/utils/overlayToken.js';
 
 /** Comment heartbeat cadence — keeps proxies from idling the connection out. */
 const HEARTBEAT_MS = 20_000;
@@ -99,18 +100,20 @@ export class RealtimeController {
       if (!session) {
         throw new AppError('Live session not found', 404);
       }
-      if (!token || token !== session.overlayToken) {
+      if (!overlayTokenMatches(session.overlayToken, token)) {
         throw new AppError('Invalid overlay token', 403);
       }
       if (!session.isActive()) throw new AppError('This live session has ended', 409);
       const campaign = await this.campaignRepo.findById(session.campaignId);
       if (!campaign || !isPublicCampaign(campaign.status) || (await this.visibility.hiddenContentAuthorIds([campaign.creatorId], req.userId)).has(campaign.creatorId)) throw new AppError('Campaign not found', 404);
+      // A closed or expired campaign has no broadcast, whatever the session says.
+      if (!campaign.canReceiveDonation()) throw new AppError('This live session has ended', 409);
       this.stream(req, res, liveChannel(sessionId), session.campaignId, async () => {
         const current = await this.liveSessionRepo.findById(sessionId);
-        return current?.isActive() && current.overlayToken === token ? current : null;
+        return current?.isActive() && overlayTokenMatches(current.overlayToken, token) ? current : null;
       }, async () => {
         const current = await this.campaignRepo.findById(session.campaignId);
-        return !!current && isPublicCampaign(current.status) && !(await this.visibility.hiddenContentAuthorIds([current.creatorId], req.userId)).has(current.creatorId);
+        return !!current && isPublicCampaign(current.status) && current.canReceiveDonation() && !(await this.visibility.hiddenContentAuthorIds([current.creatorId], req.userId)).has(current.creatorId);
       });
     } catch (error) {
       next(error);

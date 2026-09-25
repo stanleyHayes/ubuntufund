@@ -16,4 +16,22 @@ export interface LiveSessionRepositoryPort {
     id: string,
     delta: Partial<LiveSessionStats>
   ): Promise<LiveSessionEntity | null>;
+  /**
+   * Credit one settled donation to the session's `successfulDonations` and
+   * `amountRaised`, exactly once per donation: the donation is claimed in the
+   * same transaction as the counter bump, so a replayed (at-least-once) outbox
+   * delivery changes nothing. `duplicate` is true when an earlier delivery had
+   * already credited it. `session` is the current session, or null if unknown.
+   */
+  applyDonationStats(
+    id: string,
+    donationId: string,
+    amount: number
+  ): Promise<{ session: LiveSessionEntity | null; duplicate: boolean }>;
+  /**
+   * Take a refunded amount back out of `amountRaised` and, when the refund
+   * completes the donation's full refund, one gift out of
+   * `successfulDonations`. Never drops a counter below zero.
+   */
+  reverseDonationStats(id: string, amount: number, removeDonation: boolean): Promise<void>;
 }

@@ -1001,6 +1001,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     new MongoRefundOperationRepository(),
     new MongoUnitOfWork(),
     new MongoRefundFunds(),
+    liveSessionRepo,
   )
   // Payout reconciliation: repair payouts stuck in PROCESSING (a missed/delayed
   // transfer webhook) by re-verifying against the provider and driving the same
@@ -1139,6 +1140,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     config.publicWebUrl,
     config.publicApiUrl,
     creatorProfileRepo,
+    liveSessionRepo,
   )
   const resolveShortLinkUseCase = new ResolveShortLinkUseCase(shortLinkRepo, liveSessionRepo, {
     campaignRepo, creatorProfiles: creatorProfileRepo, publicWebUrl: config.publicWebUrl,
@@ -1170,7 +1172,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     publicationAdmission,
     new MongoLiveSessionCreation(),
   )
-  const endLiveSessionUseCase = new EndLiveSessionUseCase(liveSessionRepo, campaignRepo, liveVideo)
+  const endLiveSessionUseCase = new EndLiveSessionUseCase(liveSessionRepo, campaignRepo, { end: id => liveSafety.end(id, liveVideo) })
   const updateLiveSessionPrivacyUseCase = new UpdateLiveSessionPrivacyUseCase(
     liveSessionRepo,
     campaignRepo,

@@ -12,6 +12,8 @@ import { UserModel } from '../../src/infrastructure/database/models/UserModel.js
 import { CampaignModel } from '../../src/infrastructure/database/models/CampaignModel.js';
 import { WalletModel } from '../../src/infrastructure/database/models/WalletModel.js';
 import { SubscriptionModel } from '../../src/infrastructure/database/models/SubscriptionModel.js';
+import { LiveSessionModel } from '../../src/infrastructure/database/models/LiveSessionModel.js';
+import { DonationIntentModel } from '../../src/infrastructure/database/models/DonationIntentModel.js';
 import {
   eventBus,
   campaignChannel,
@@ -318,6 +320,53 @@ describe('Live sessions + realtime projector', () => {
     expect((liveDonation?.data as { message?: string }).message).toBeUndefined();
   });
 
+  it('never refuses a donation over its live attribution; credits only this campaign’s current broadcast', async () => {
+    const { userId, token } = await registerUser(app, uniqueEmail('attr'));
+    const campaignId = await createActiveCampaign(app, token, userId);
+    const other = await registerUser(app, uniqueEmail('attr-other'));
+    const otherCampaignId = await createActiveCampaign(app, other.token, other.userId);
+    const otherSession = await LiveSessionModel.create({ campaignId: otherCampaignId, status: 'active', overlayToken: randomUUID(), startedAt: new Date() });
+    const recent = await LiveSessionModel.create({ campaignId, status: 'ended', overlayToken: randomUUID(), startedAt: new Date(Date.now() - 3600_000), endedAt: new Date(Date.now() - 10 * 60_000) });
+    const stale = await LiveSessionModel.create({ campaignId, status: 'ended', overlayToken: randomUUID(), startedAt: new Date(Date.now() - 5 * 3600_000), endedAt: new Date(Date.now() - 2 * 3600_000) });
+    const { token: donorToken } = await fundedDonor(app, 1000);
+    const give = (liveSessionId: string, amount: number) => request(app)
+      .post(`/api/v1/campaigns/${campaignId}/donate`)
+      .set('Authorization', `Bearer ${donorToken}`)
+      .send({ amount, currency: 'GHS', paymentMethod: PaymentMethod.WALLET, legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, isAnonymous: true, liveSessionId })
+      .expect(200);
+
+    await give('not-a-session-id', 11);
+    await give(otherSession.id, 12);
+    await give(stale.id, 13);
+    await give(recent.id, 14);
+
+    const intents = await DonationIntentModel.find({ campaignId }).lean();
+    const attribution = Object.fromEntries(intents.map(intent => [intent.amount, intent.liveSessionId ?? null]));
+    expect(attribution).toEqual({ 11: null, 12: null, 13: null, 14: recent.id });
+    expect(intents.every(intent => intent.status === 'SUCCEEDED')).toBe(true);
+    expect((await LiveSessionModel.findById(otherSession.id))?.stats).toMatchObject({ successfulDonations: 0, amountRaised: 0, checkoutStarts: 0 });
+    expect((await LiveSessionModel.findById(stale.id))?.stats).toMatchObject({ successfulDonations: 0, amountRaised: 0, checkoutStarts: 0 });
+    expect((await LiveSessionModel.findById(recent.id))?.stats).toMatchObject({ successfulDonations: 1, amountRaised: 14, checkoutStarts: 1 });
+  });
+
+  it('counts a live checkout start once per new intent, never for an idempotent replay', async () => {
+    const { userId, token } = await registerUser(app, uniqueEmail('starts'));
+    const campaignId = await createActiveCampaign(app, token, userId);
+    const start = await request(app).post(`/api/v1/campaigns/${campaignId}/live-sessions`).set('Authorization', `Bearer ${token}`).send({}).expect(201);
+    const sessionId = start.body.data.id as string;
+    const { token: donorToken } = await fundedDonor(app, 1000);
+    const key = randomUUID();
+    const give = () => request(app)
+      .post('/api/v1/donation-intents')
+      .set('Authorization', `Bearer ${donorToken}`)
+      .set('Idempotency-Key', key)
+      .send({ campaignId, amount: 20, provider: 'wallet', isAnonymous: true, liveSessionId: sessionId, legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true } });
+    expect((await give()).status).toBeLessThan(300);
+    expect((await give()).status).toBeLessThan(300);
+    const stats = (await request(app).get(`/api/v1/live-sessions/${sessionId}/overlay?token=${start.body.data.overlayToken}`).expect(200)).body.data.totals;
+    expect(stats).toMatchObject({ checkoutStarts: 1, successfulDonations: 1, amountRaised: 20 });
+  });
+
   it('honors privacy toggles on the overlay and public sheet', async () => {
     const { userId, token } = await registerUser(app, uniqueEmail('priv'));
     const campaignId = await createActiveCampaign(app, token, userId);
@@ -367,6 +416,25 @@ describe('Live sessions + realtime projector', () => {
       `/api/v1/live-sessions/${sessionId}/public`
     );
     expect(publicRes.body.data.amountRaised).toBeNull();
+  });
+
+  it('serves the pre-live studio preview without a session, framable by the web app', async () => {
+    const res = await request(app)
+      .get('/api/v1/live-sessions/preview/overlay/view?preview=1&token=&title=Friday%20stream&raised=100&goal=400')
+      .expect(200);
+    expect(res.headers['content-type']).toMatch(/text\/html/);
+    expect(res.headers['x-frame-options']).toBeUndefined();
+    expect(res.headers['content-security-policy']).toContain("frame-ancestors 'self'");
+    expect(res.text).toContain('params.get("preview") === "1"');
+  });
+
+  it('treats malformed live-session ids as unknown (404), not a 400 cast error', async () => {
+    await request(app).get('/api/v1/live-sessions/not-a-session/public').expect(404);
+    await request(app).get('/api/v1/live-sessions/not-a-session/overlay?token=x').expect(404);
+    await request(app).get('/api/v1/live-sessions/not-a-session/overlay/view?token=x').expect(404);
+    await request(app).get('/api/v1/live-sessions/not-a-session/events?token=x').expect(404);
+    await request(app).post('/api/v1/live-sessions/not-a-session/video/viewer-token').expect(404);
+    await request(app).get('/api/v1/campaigns/not-a-campaign/active-live').expect(404);
   });
 
   it('rotates the overlay token, revoking the old one', async () => {

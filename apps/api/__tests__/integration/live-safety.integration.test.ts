@@ -8,7 +8,8 @@ import { UserModel } from '../../src/infrastructure/database/models/UserModel.js
 import { LiveSessionModel } from '../../src/infrastructure/database/models/LiveSessionModel.js';
 import { SafetyReportModel } from '../../src/infrastructure/database/models/SafetyReportModel.js';
 import { UserBlockModel } from '../../src/infrastructure/database/models/UserBlockModel.js';
-import { MongoLiveSafety } from '../../src/infrastructure/adapters/outbound/persistence/MongoLiveSafety.js';
+import { MAX_LIVE_SESSION_MS, MongoLiveSafety } from '../../src/infrastructure/adapters/outbound/persistence/MongoLiveSafety.js';
+import { CampaignModel } from '../../src/infrastructure/database/models/CampaignModel.js';
 import { MongoUserBlockRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoUserBlockRepository.js';
 import { LEGAL_ACCEPTANCE_VERSION } from '@ubuntu-fund/types';
 let app: Express;
@@ -73,4 +74,81 @@ it('does not mark a previously issued provider room clean when credentials are m
   expect((await LiveSessionModel.findById(session.id))?.providerStopPending).toBe(true);
   await safety.reconcile({ ...provider, enabled: true });
   expect((await LiveSessionModel.findById(session.id))?.providerStopPending).toBe(false);
+});
+async function openCampaign(owner: { id: string; token: string }, patch: Record<string, unknown> = {}) {
+  const session = await live(owner);
+  await CampaignModel.updateOne({ _id: session.campaignId }, { $set: { status: 'active', ...patch } });
+  return session;
+}
+it('ends a broadcast before touching the provider, revokes the host and retries provider failures', async () => {
+  const owner = await user('Ending host');
+  const session = await openCampaign(owner);
+  const safety = new MongoLiveSafety(new MongoUserBlockRepository());
+  const statusAtCall: string[] = [];
+  const provider = {
+    enabled: true,
+    removeIdentity: vi.fn(async () => { statusAtCall.push(String((await LiveSessionModel.findById(session.id))?.status)); }),
+    closeRoom: vi.fn(async () => { statusAtCall.push(String((await LiveSessionModel.findById(session.id))?.status)); throw new Error('Provider unavailable'); }),
+  };
+  expect(await safety.end(session.id, provider)).toBe(true);
+  // Persisted first: join() refuses new tokens before any provider call runs.
+  expect(statusAtCall).toEqual(['ended', 'ended']);
+  expect(provider.removeIdentity).toHaveBeenCalledWith(session.id, `host-${owner.id}`);
+  const ended = await LiveSessionModel.findById(session.id);
+  // A normal end is not a moderation stop: the overlay link keeps working to show "ended".
+  expect(ended).toMatchObject({ status: 'ended', providerStopPending: true, overlayToken: 'private-overlay' });
+  expect(ended?.endedAt).toBeInstanceOf(Date);
+  expect(ended?.moderationStoppedAt).toBeUndefined();
+  expect(await safety.end(session.id, provider)).toBe(false);
+  expect(provider.removeIdentity).toHaveBeenCalledTimes(1);
+  provider.closeRoom.mockResolvedValue(undefined);
+  await safety.reconcile(provider);
+  expect((await LiveSessionModel.findById(session.id))?.providerStopPending).toBe(false);
+  await request(app).get(`/api/v1/live-sessions/${session.id}/public`).expect(200).expect(res => expect(res.body.data.status).toBe('ended'));
+});
+it('ends a session through PATCH even when the provider is down', async () => {
+  const owner = await user('Patch host');
+  const session = await openCampaign(owner);
+  await LiveSessionModel.updateOne({ _id: session.id }, { $set: { providerRoomIssuedAt: new Date() } });
+  // Test env has no LiveKit credentials: the provider cleanup cannot run yet.
+  const res = await request(app).patch(`/api/v1/live-sessions/${session.id}`).set('Authorization', owner.token).send({ status: 'ended' }).expect(200);
+  expect(res.body.data.status).toBe('ended');
+  expect(await LiveSessionModel.findById(session.id)).toMatchObject({ status: 'ended', providerStopPending: true });
+});
+it('shows a broadcast on an expired campaign as ended and closes its overlay feed', async () => {
+  const owner = await user('Expired host');
+  const session = await openCampaign(owner, { endDate: new Date(Date.now() - 60_000) });
+  const view = await request(app).get(`/api/v1/live-sessions/${session.id}/public`).expect(200);
+  expect(view.body.data.status).toBe('ended');
+  const overlay = await request(app).get(`/api/v1/live-sessions/${session.id}/overlay?token=private-overlay`).expect(200);
+  expect(overlay.body.data.status).toBe('ended');
+  await request(app).get(`/api/v1/live-sessions/${session.id}/events?token=private-overlay`).expect(409);
+  expect((await request(app).get(`/api/v1/campaigns/${session.campaignId}/active-live`).expect(200)).body.data).toBeNull();
+});
+it('sweeps broadcasts whose campaign closed or that ran too long, and leaves healthy ones alone', async () => {
+  // One owner per campaign: plan limits cap a free owner's open campaigns.
+  const expired = await openCampaign(await user('Sweep expired'), { endDate: new Date(Date.now() - 60_000) });
+  const paused = await openCampaign(await user('Sweep paused'), { status: 'pending_review' });
+  const deleted = await openCampaign(await user('Sweep deleted'), { deletedAt: new Date() });
+  const abandoned = await openCampaign(await user('Sweep abandoned'));
+  await LiveSessionModel.updateOne({ _id: abandoned.id }, { $set: { startedAt: new Date(Date.now() - MAX_LIVE_SESSION_MS - 60_000) } });
+  const healthy = await openCampaign(await user('Sweep healthy'));
+  const funded = await openCampaign(await user('Sweep funded'), { status: 'funded' });
+  const safety = new MongoLiveSafety(new MongoUserBlockRepository());
+  const provider = { enabled: true, removeIdentity: vi.fn().mockResolvedValue(undefined), closeRoom: vi.fn().mockResolvedValue(undefined) };
+  await safety.endStale(provider);
+  for (const stale of [expired, paused, deleted, abandoned]) {
+    const current = await LiveSessionModel.findById(stale.id);
+    expect(current).toMatchObject({ status: 'ended', providerStopPending: false, overlayToken: 'private-overlay' });
+    expect(current?.moderationStoppedAt).toBeUndefined();
+    expect(provider.closeRoom).toHaveBeenCalledWith(stale.id);
+  }
+  for (const fine of [healthy, funded]) expect((await LiveSessionModel.findById(fine.id))?.status).toBe('active');
+  expect(provider.closeRoom).not.toHaveBeenCalledWith(healthy.id);
+  // Idempotent: nothing further to end, and the ended rooms are not closed again.
+  const closes = (id: string) => provider.closeRoom.mock.calls.filter(([sessionId]) => sessionId === id).length;
+  expect(await safety.endStale(provider)).toBe(0);
+  await safety.reconcile(provider);
+  for (const stale of [expired, paused, deleted, abandoned]) expect(closes(stale.id)).toBe(1);
+  expect((await LiveSessionModel.findById(healthy.id))?.status).toBe('active');
 });

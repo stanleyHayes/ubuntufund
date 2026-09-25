@@ -63,6 +63,7 @@ export function createCampaignLiveSessionRoutes(
  *   POST  /live-sessions/:id/overlay-token/rotate → rotate overlay token (owner)
  *   GET   /live-sessions/:id/public              → PUBLIC donor sheet
  *   GET   /live-sessions/:id/overlay?token=…     → token-gated overlay payload
+ *   GET   /live-sessions/preview/overlay/view    → static pre-live overlay preview
  *   GET   /live-sessions/:id/events?token=…      → token-gated SSE feed
  */
 export function createLiveSessionRoutes(
@@ -83,6 +84,10 @@ export function createLiveSessionRoutes(
   router.post('/:id/video/viewer-token', optionalAuth, guard, liveSessionController.viewerVideoToken);
   router.get('/:id/public', optionalAuth, guard, liveSessionController.getPublic);
   router.get('/:id/overlay', optionalAuth, guard, liveSessionController.getOverlay);
+  // Pre-live studio preview (`?preview=1&title=…`). No session exists yet, so it
+  // must not reach the per-session guard below ('preview' is not a session id).
+  // The page is static and, in preview mode, renders only its query params.
+  router.get('/preview/overlay/view', liveSessionController.getOverlayView);
   router.get('/:id/overlay/view', optionalAuth, guard, liveSessionController.getOverlayView);
   router.get('/:id/events', optionalAuth, guard, realtimeController.liveSessionEvents);
   router.post(

@@ -27,6 +27,11 @@ import InputAdornment from '@mui/material/InputAdornment'
 import Switch from '@mui/material/Switch'
 import FormGroup from '@mui/material/FormGroup'
 import FormControlLabel from '@mui/material/FormControlLabel'
+import Dialog from '@mui/material/Dialog'
+import DialogTitle from '@mui/material/DialogTitle'
+import DialogContent from '@mui/material/DialogContent'
+import DialogContentText from '@mui/material/DialogContentText'
+import DialogActions from '@mui/material/DialogActions'
 import { keyframes } from '@emotion/react'
 import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded'
 import StopCircleRoundedIcon from '@mui/icons-material/StopCircleRounded'
@@ -122,6 +127,8 @@ export function CampaignLivePage() {
   useEffect(() => { api.get<{ enabled: boolean }>('/live-sessions/video/config').then(value => setVideoEnabled(value.enabled)).catch(() => setVideoEnabled(false)) }, [])
   const [starting, setStarting] = useState(false)
   const [ending, setEnding] = useState(false)
+  // Ending closes the room for every viewer, so it is confirmed first.
+  const [confirmEndOpen, setConfirmEndOpen] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
   const isOwner = !!currentUser && !!campaign && currentUser.id === campaign.creatorId
@@ -359,7 +366,7 @@ export function CampaignLivePage() {
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1.65fr) minmax(340px, 1fr)' }, gap: { xs: 3, md: 4 }, alignItems: 'start' }}>
         <Box sx={{ ...PANEL_SX, minWidth: 0, gridColumn: sessionActive ? '1 / -1' : undefined }}>
           {sessionActive && session && <Box sx={{ mb: 3 }}><LiveVideoPanel sessionId={session.id} host /><Typography sx={{ mt: 2, mb: 1, fontWeight: 700 }}>Share your broadcast</Typography><TextField label="Viewer link" fullWidth value={`${window.location.origin}/live/${session.id}`} InputProps={{ readOnly: true }} onFocus={e => e.target.select()} /></Box>}
-          <LiveBroadcastPreview session={sessionActive ? session : null} title={title.trim() || campaign.title} raised={campaign.raisedAmount} goal={campaign.goalAmount} />
+          <LiveBroadcastPreview session={sessionActive ? session : null} title={title.trim() || campaign.title} raised={campaign.raisedAmount} goal={campaign.goalAmount} sessionGoal={Number(targetAmount) || undefined} />
         </Box>
         {!sessionActive ? (
           /* ================= Start panel ================= */
@@ -516,13 +523,31 @@ export function CampaignLivePage() {
               <Button
                 brandVariant="outline"
                 color="error"
-                onClick={handleEnd}
+                onClick={() => setConfirmEndOpen(true)}
                 disabled={ending}
                 startIcon={ending ? <LoadingDots size={6} /> : <StopCircleRoundedIcon />}
                 sx={{ textTransform: 'none', fontWeight: 700, borderRadius: SHAPE.sm, color: 'var(--text-error)', borderColor: '#A5432F' }}
               >
                 {ending ? 'Ending…' : 'End session'}
               </Button>
+              <Dialog open={confirmEndOpen} onClose={() => setConfirmEndOpen(false)} maxWidth="xs" fullWidth aria-labelledby="end-broadcast-title">
+                <DialogTitle id="end-broadcast-title" sx={{ fontWeight: 700 }}>End broadcast?</DialogTitle>
+                <DialogContent>
+                  <DialogContentText>This closes the live session for viewers.</DialogContentText>
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 2 }}>
+                  <Button variant="text" onClick={() => setConfirmEndOpen(false)} sx={{ textTransform: 'none', fontWeight: 700 }}>Cancel</Button>
+                  <Button
+                    variant="contained"
+                    color="error"
+                    disabled={ending}
+                    onClick={() => { setConfirmEndOpen(false); void handleEnd() }}
+                    sx={{ textTransform: 'none', fontWeight: 700 }}
+                  >
+                    End broadcast
+                  </Button>
+                </DialogActions>
+              </Dialog>
             </Box>
 
             {/* Overlay link (optional external broadcasting) */}
@@ -537,7 +562,7 @@ export function CampaignLivePage() {
                 <Typography sx={{ fontWeight: 800, fontSize: '1.05rem' }}>Donor privacy</Typography>
               </Stack>
               <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem', mb: 1.5 }}>
-                Changes apply live to the overlay and donor feed.
+                Changes apply live to the overlay and donor feed. Hiding amounts hides each gift’s amount and this broadcast’s total; your campaign’s overall progress stays visible, as it is on your campaign page.
               </Typography>
               <FormGroup>
                 <FormControlLabel

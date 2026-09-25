@@ -22,6 +22,19 @@ export function walletFundingUrl(origin = DEFAULT_ORIGIN) {
   return new URL('/wallet', websiteBase(origin).origin).toString()
 }
 
+/**
+ * The watch screen's line for the host's session goal (a stretch goal for the
+ * broadcast, distinct from the campaign goal), or null when none was set.
+ * Progress is left out while the host hides amounts (`amountRaised` null).
+ */
+export function sessionGoalLine(view: { targetAmount?: number | null; amountRaised: number | null; currency?: string }): string | null {
+  const goal = Number(view.targetAmount)
+  if (!Number.isFinite(goal) || goal <= 0) return null
+  const label = `Session goal: ${view.currency || 'GHS'} ${goal.toLocaleString()}`
+  if (view.amountRaised === null || !Number.isFinite(view.amountRaised)) return label
+  return `${label} · ${Math.min(100, Math.round((view.amountRaised / goal) * 100))}% reached`
+}
+
 /** Public campaign page on the web app; the marketing domain serves only its own landing routes. */
 export function campaignShareUrl(campaign: { id: string; slug?: string }, origin = DEFAULT_ORIGIN) {
   const path = campaign.slug ? `/c/${encodeURIComponent(campaign.slug)}` : `/campaigns/${encodeURIComponent(campaign.id)}`

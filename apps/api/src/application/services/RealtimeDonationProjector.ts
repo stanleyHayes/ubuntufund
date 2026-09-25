@@ -52,9 +52,10 @@ export interface DonationRealtimeInput {
  * session) the session channel — and increments that session's stats.
  *
  * The campaign channel carries public-appropriate data (donor name honoring the
- * donation's own anonymity, amounts shown). The session channel honors the
- * host's overlay privacy toggles (hidden names → `Anonymous`, hidden amounts →
- * `null`).
+ * donation's own anonymity, amounts shown — the same fields as the public
+ * donations list — but never the session's own running total). The session
+ * channel honors the host's overlay privacy toggles (hidden names →
+ * `Anonymous`, hidden amounts → `null`).
  *
  * This is the single reusable seam the wallet rail (today) and the hosted
  * payment phases (later) both call after a donation settles. It never throws —
@@ -87,36 +88,46 @@ export class RealtimeDonationProjector {
 
       const donorName = await this.resolveDonorName(donation);
 
-      // Attribute to a live session (atomic stat bump) when one was supplied.
+      // Attribute to a live session when one was supplied. The stat bump is
+      // exactly-once per donation: the outbox delivers at least once, so a
+      // replayed delivery (`replay`) only refreshes totals — it never counts the
+      // gift again, re-announces it, or re-fires milestones from stale figures.
       let session: LiveSessionEntity | null = null;
+      let replay = false;
       if (liveSessionId) {
-        session = await this.liveSessionRepo.incrementStats(liveSessionId, {
-          successfulDonations: 1,
-          amountRaised: donation.amount,
-        });
+        const credited = await this.liveSessionRepo.applyDonationStats(
+          liveSessionId,
+          donation.donationId,
+          donation.amount
+        );
+        session = credited.session;
+        replay = credited.duplicate;
       }
 
       // ── Whole-campaign channel (public) ──────────────────────────────
       const campaignCh = campaignChannel(campaignId);
 
-      this.eventBus.publish(campaignCh, 'donation', {
-        donationId: donation.donationId,
-        name: donation.isAnonymous ? 'Anonymous' : donorName,
-        amount: donation.amount,
-        message: donation.message,
-        createdAt: donation.createdAt.toISOString(),
-      } satisfies LiveDonationEventData);
+      if (!replay) {
+        this.eventBus.publish(campaignCh, 'donation', {
+          donationId: donation.donationId,
+          name: donation.isAnonymous ? 'Anonymous' : donorName,
+          amount: donation.amount,
+          message: donation.message,
+          createdAt: donation.createdAt.toISOString(),
+        } satisfies LiveDonationEventData);
+      }
 
+      // The session's own total is deliberately NOT on this public channel: it
+      // has no delivery-time session guard, so it cannot honor a host who hides
+      // amounts (the session channel below does, and the /public view nulls it).
       this.eventBus.publish(campaignCh, 'total', {
         campaignId,
         raisedAmount,
         goalAmount,
         currency,
-        liveSessionId,
-        sessionAmountRaised: session ? session.stats.amountRaised : undefined,
       } satisfies LiveTotalEventData);
 
-      for (const percent of milestones) {
+      for (const percent of replay ? [] : milestones) {
         this.eventBus.publish(campaignCh, 'milestone', {
           campaignId,
           percent,
@@ -132,16 +143,18 @@ export class RealtimeDonationProjector {
         const liveCh = liveChannel(session.id);
         const amountsVisible = session.amountsVisible();
 
-        this.eventBus.publish(liveCh, 'donation', {
-          donationId: donation.donationId,
-          name:
-            !donation.isAnonymous && session.namesVisible()
-              ? donorName
-              : 'Anonymous',
-          amount: amountsVisible ? donation.amount : null,
-          message: session.messagesVisible() ? donation.message : undefined,
-          createdAt: donation.createdAt.toISOString(),
-        } satisfies LiveDonationEventData);
+        if (!replay) {
+          this.eventBus.publish(liveCh, 'donation', {
+            donationId: donation.donationId,
+            name:
+              !donation.isAnonymous && session.namesVisible()
+                ? donorName
+                : 'Anonymous',
+            amount: amountsVisible ? donation.amount : null,
+            message: session.messagesVisible() ? donation.message : undefined,
+            createdAt: donation.createdAt.toISOString(),
+          } satisfies LiveDonationEventData);
+        }
 
         this.eventBus.publish(liveCh, 'total', {
           campaignId,
@@ -152,7 +165,7 @@ export class RealtimeDonationProjector {
           sessionAmountRaised: amountsVisible ? session.stats.amountRaised : null,
         } satisfies LiveTotalEventData);
 
-        for (const percent of milestones) {
+        for (const percent of replay ? [] : milestones) {
           this.eventBus.publish(liveCh, 'milestone', {
             campaignId,
             percent,
