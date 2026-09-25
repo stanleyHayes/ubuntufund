@@ -13,6 +13,7 @@ import { BrandedDateField } from '@/components/BrandedDateField'
 import { SelectionField } from '@/components/SelectionField'
 import { MediaUploadField } from '@/components/MediaUploadField'
 import { Button } from '@/components/Loading'
+import { OpenSettingsButton, permissionNeedsSettings } from '@/components/OpenSettingsButton'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import { api } from '@/lib/api'
 import { withExternalActivity } from '@/lib/session'
@@ -32,6 +33,7 @@ function IdentityKYCScreen() {
   const [busy, setBusy] = useState(false)
   const [uploads, setUploads] = useState(0)
   const [locating, setLocating] = useState(false)
+  const [locationSettings, setLocationSettings] = useState(false)
   const [acknowledged, setAcknowledged] = useState(false)
   const [error, setError] = useState('')
   const [submitted, setSubmitted] = useState(false)
@@ -42,9 +44,14 @@ function IdentityKYCScreen() {
   const cities = region ? City.getCitiesOfState(country!.isoCode, region.isoCode) : []
   function next() { const issue = validateKycStep(draft, step); if (issue) { setError(issue); return } setError(''); setStep(s => s + 1) }
   async function locate() {
-    setLocating(true)
+    setLocating(true); setLocationSettings(false)
     try {
-      if (!(await withExternalActivity(() => Location.requestForegroundPermissionsAsync())).granted) throw new Error('Location permission was declined. You can choose your address manually.')
+      const permission = await withExternalActivity(() => Location.requestForegroundPermissionsAsync())
+      if (!permission.granted) {
+        const settings = permissionNeedsSettings(permission)
+        setLocationSettings(settings)
+        throw new Error(settings ? 'Location access is off for Ujimora. Open Settings to allow it, or choose your address manually.' : 'Location permission was declined. You can choose your address manually.')
+      }
       const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
       const [address] = await Location.reverseGeocodeAsync(position.coords)
       if (!address) throw new Error('No address was found. Choose your address manually.')
@@ -79,6 +86,7 @@ function IdentityKYCScreen() {
           </>}
           {step === 2 && <>
             <Button icon="crosshairs-gps" loading={locating} disabled={locating} onPress={() => void locate()}>Use my location</Button>
+            {locationSettings && <OpenSettingsButton label="Open Settings to allow location" />}
             <Text style={{ color: p.textSecondary }}>Your location is read once, only when you tap this button, to fill in the address fields; coordinates are not saved. Check the address found by GPS. A location reading does not generate a GhanaPost digital address.</Text>
             <SelectionField label="Country" value={draft.country} options={countries} onChange={v => setDraft(d => ({ ...d, country: v, state: '', city: '', proofMethod: v === 'Ghana' ? d.proofMethod : 'document' }))} />
             {states.length ? <SelectionField label="State or province" value={draft.state} options={states.map(s => ({ value: s.name, label: s.name }))} onChange={v => setDraft(d => ({ ...d, state: v, city: '' }))} /> : field('State or province', 'state')}

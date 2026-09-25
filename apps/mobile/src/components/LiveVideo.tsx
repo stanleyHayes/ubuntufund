@@ -7,6 +7,7 @@ import { Track } from 'livekit-client'
 import { api } from '@/lib/api'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import { Button } from './Loading'
+import { OpenSettingsButton } from './OpenSettingsButton'
 registerGlobals()
 
 function Tracks({ host }: { host: boolean }) {
@@ -15,9 +16,19 @@ function Tracks({ host }: { host: boolean }) {
   const { localParticipant, isCameraEnabled, isMicrophoneEnabled, isScreenShareEnabled } = useLocalParticipant()
   const screenCapture = useRef<View>(null)
   const [error, setError] = useState('')
+  const [needsSettings, setNeedsSettings] = useState(false)
   const [busy, setBusy] = useState(false)
   const p = usePalette()
-  async function toggle(action: () => Promise<unknown>) { setBusy(true); setError(''); try { await action() } catch (e) { setError(e instanceof Error ? e.message : 'Media access failed. Check permissions.') } finally { setBusy(false) } }
+  async function toggle(action: () => Promise<unknown>) {
+    setBusy(true); setError(''); setNeedsSettings(false)
+    try { await action() }
+    catch (e) {
+      // A denied camera/microphone surfaces as NotAllowedError / a permission message.
+      const denied = e instanceof Error && /notallowed|permission|denied/i.test(`${e.name} ${e.message}`)
+      setNeedsSettings(denied)
+      setError(denied ? 'Camera or microphone access is off. Open Settings to allow it, then turn the device on.' : e instanceof Error ? e.message : 'Media access failed. Check permissions.')
+    } finally { setBusy(false) }
+  }
   useEffect(() => {
     if (!host) return
     const listener = AppState.addEventListener('change', state => {
@@ -37,6 +48,7 @@ function Tracks({ host }: { host: boolean }) {
     {!tracks.length && <Text>Waiting for video. {host ? 'Enable your camera or screen sharing below.' : 'The host may have their camera off.'}</Text>}
     {host && isScreenShareEnabled && <Text>Your screen and enabled microphone are shared. Other apps’ audio is not included.</Text>}
     {error ? <Text accessibilityRole="alert" style={{ color: p.error }}>{error}</Text> : null}
+    {needsSettings ? <OpenSettingsButton /> : null}
     {host && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
       <Button disabled={busy} icon={isCameraEnabled ? 'camera-off' : 'camera'} onPress={() => void toggle(() => localParticipant.setCameraEnabled(!isCameraEnabled))}>{isCameraEnabled ? 'Camera off' : 'Camera on'}</Button>
       <Button disabled={busy} icon={isMicrophoneEnabled ? 'microphone-off' : 'microphone'} onPress={() => void toggle(() => localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled))}>{isMicrophoneEnabled ? 'Mute' : 'Unmute'}</Button>
@@ -56,6 +68,7 @@ export function LiveVideo({ sessionId, host = false }: { sessionId: string; host
   const [connection, setConnection] = useState<{ serverUrl: string; token: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [deviceFailure, setDeviceFailure] = useState(false)
   const lifecycle = useRef(0)
   const joining = useRef(false)
   useEffect(() => {
@@ -68,7 +81,7 @@ export function LiveVideo({ sessionId, host = false }: { sessionId: string; host
     if (joining.current) return
     joining.current = true
     const ticket = lifecycle.current
-    setBusy(true); setError('')
+    setBusy(true); setError(''); setDeviceFailure(false)
     try {
       const result = await api.post<{ serverUrl: string; token: string }>(`/live-sessions/${sessionId}/video/${host ? 'host' : 'viewer'}-token`, {})
       if (ticket !== lifecycle.current) return
@@ -77,11 +90,12 @@ export function LiveVideo({ sessionId, host = false }: { sessionId: string; host
       setConnection(result)
     } catch (e) { if (ticket === lifecycle.current) setError(e instanceof Error ? e.message : 'Could not join broadcast.') } finally { joining.current = false; if (ticket === lifecycle.current) setBusy(false) }
   }
-  function leave() { lifecycle.current++; setConnection(null); setBusy(false); void AudioSession.stopAudioSession().catch(() => {}) }
+  function leave() { lifecycle.current++; setConnection(null); setBusy(false); setDeviceFailure(false); void AudioSession.stopAudioSession().catch(() => {}) }
   return <View style={{ ...neu.raised, backgroundColor: p.surface, borderRadius: 24, padding: 16, gap: 16 }}>
     {error ? <Text accessibilityRole="alert" style={{ color: p.error }}>{error}</Text> : null}
+    {deviceFailure ? <OpenSettingsButton /> : null}
     {connection ? <>
-      <LiveKitRoom serverUrl={connection.serverUrl} token={connection.token} connect audio={host} video={host} options={{ adaptiveStream: { pixelDensity: 'screen' } }} onDisconnected={leave} onError={e => setError(e.message)} onMediaDeviceFailure={() => setError('Camera or microphone access failed. Allow access in Settings, then enable the device.')}><Tracks host={host} /></LiveKitRoom>
+      <LiveKitRoom serverUrl={connection.serverUrl} token={connection.token} connect audio={host} video={host} options={{ adaptiveStream: { pixelDensity: 'screen' } }} onDisconnected={leave} onError={e => setError(e.message)} onMediaDeviceFailure={() => { setDeviceFailure(true); setError('Camera or microphone access is off. Open Settings to allow it, then turn the device on.') }}><Tracks host={host} /></LiveKitRoom>
       <Button onPress={leave}>{host ? 'Disconnect camera' : 'Leave broadcast'}</Button>
     </> : <><Text variant="titleLarge">{host ? 'Ready to broadcast' : 'Watch live on Ujimora'}</Text><Text>{host ? 'Your enabled camera and microphone will be shared with viewers.' : 'Join as a viewer. Your camera and microphone remain off.'}</Text><Button mode="contained" loading={busy} disabled={busy} onPress={() => void join()}>{host ? 'Start camera and microphone' : 'Watch broadcast'}</Button></>}
   </View>
