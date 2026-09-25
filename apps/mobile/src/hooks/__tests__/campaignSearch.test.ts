@@ -7,7 +7,9 @@ import { exploreSearchParams } from '@/lib/exploreSearch'
 import { api } from '@/lib/api'
 
 vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ user: null }) }))
-vi.mock('expo-router', () => ({ useFocusEffect: (callback: () => void | (() => void)) => useEffect(callback, [callback]) }))
+const m = vi.hoisted(() => ({ focus: null as null | (() => void | (() => void)) }))
+// Like expo-router: runs the callback while focused and again whenever it changes; m.focus() simulates a later refocus.
+vi.mock('expo-router', () => ({ useFocusEffect: (callback: () => void | (() => void)) => { m.focus = callback; useEffect(callback, [callback]) } }))
 vi.mock('react-native', () => ({ AppState: { currentState: 'active', addEventListener: () => ({ remove: () => {} }) } }))
 
 const row = (id: string) => ({ id, title: `Campaign ${id}` })
@@ -60,4 +62,60 @@ it('starts again from page one when the search changes and drops the stale list'
   await act(async () => finish({ items: [row('z')], total: 1, totalPages: 1 }))
   expect(result.result.current.campaigns.map(item => item.id)).toEqual(['z'])
   expect(String(vi.mocked(api.get).mock.calls.at(-1)?.[0])).toContain('q=second')
+})
+
+const pages = (path: string) => {
+  const page = Number(new URL(path, 'https://app.test').searchParams.get('page'))
+  return { items: [row(`p${page}a`), row(`p${page}b`)], total: 6, totalPages: 3 }
+}
+
+it('keeps every loaded page when Explore regains focus (back from a campaign)', async () => {
+  vi.mocked(api.get).mockImplementation(async (path: string) => pages(path))
+  const result = renderHook(() => useCampaignSearch({ pageSize: 2 }))
+  await waitFor(() => expect(result.result.current.campaigns).toHaveLength(2))
+  act(() => result.result.current.loadMore())
+  await waitFor(() => expect(result.result.current.campaigns).toHaveLength(4))
+  act(() => result.result.current.loadMore())
+  await waitFor(() => expect(result.result.current.campaigns).toHaveLength(6))
+  act(() => { m.focus?.() })
+  await act(async () => {})
+  expect(result.result.current.campaigns.map(item => item.id)).toEqual(['p1a', 'p1b', 'p2a', 'p2b', 'p3a', 'p3b'])
+  expect(vi.mocked(api.get)).toHaveBeenCalledTimes(3)
+})
+
+it('keeps the list and reports the error when a refresh or "Load more" fails', async () => {
+  vi.mocked(api.get).mockImplementation(async (path: string) => pages(path))
+  const result = renderHook(() => useCampaignSearch({ pageSize: 2 }))
+  await waitFor(() => expect(result.result.current.campaigns).toHaveLength(2))
+  vi.mocked(api.get).mockRejectedValueOnce(new Error('Ujimora took too long to respond.'))
+  act(() => result.result.current.loadMore())
+  await waitFor(() => expect(result.result.current.loadMoreError).toBe('Ujimora took too long to respond.'))
+  expect(result.result.current).toMatchObject({ hasMore: true, isLoadingMore: false, error: null })
+  expect(result.result.current.campaigns).toHaveLength(2)
+  act(() => result.result.current.loadMore())
+  await waitFor(() => expect(result.result.current.campaigns).toHaveLength(4))
+  expect(result.result.current.loadMoreError).toBeNull()
+  vi.mocked(api.get).mockRejectedValueOnce(new Error('Could not reach Ujimora.'))
+  act(() => result.result.current.refetch())
+  await waitFor(() => expect(result.result.current.error).toBe('Could not reach Ujimora.'))
+  expect(result.result.current).toMatchObject({ isRefreshing: false, isLoading: false })
+  expect(result.result.current.campaigns).toHaveLength(4)
+  // A successful pull-to-refresh starts again from fresh page one data.
+  act(() => result.result.current.refetch())
+  await waitFor(() => expect(result.result.current.error).toBeNull())
+  expect(result.result.current.campaigns.map(item => item.id)).toEqual(['p1a', 'p1b'])
+})
+
+it('shows a failed first load as an error (not "no campaigns") and retries it on focus or retry', async () => {
+  vi.mocked(api.get).mockRejectedValueOnce(new Error('Could not reach Ujimora.'))
+  const result = renderHook(() => useCampaignSearch({ pageSize: 2 }))
+  await waitFor(() => expect(result.result.current.error).toBe('Could not reach Ujimora.'))
+  expect(result.result.current).toMatchObject({ campaigns: [], isLoading: false })
+  vi.mocked(api.get).mockRejectedValueOnce(new Error('Still offline.'))
+  act(() => { m.focus?.() })
+  await waitFor(() => expect(result.result.current.error).toBe('Still offline.'))
+  vi.mocked(api.get).mockImplementation(async (path: string) => pages(path))
+  act(() => result.result.current.refetch())
+  await waitFor(() => expect(result.result.current.campaigns).toHaveLength(2))
+  expect(result.result.current).toMatchObject({ error: null, hasMore: true })
 })

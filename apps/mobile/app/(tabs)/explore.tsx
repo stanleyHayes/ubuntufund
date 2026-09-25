@@ -1,7 +1,7 @@
 import { TouchableOpacity } from '@/components/RoundedControls'
 import { SkeletonLoader } from '@/components/Loading'
 import { useState, useEffect, useMemo } from 'react'
-import { View, ScrollView, StyleSheet, Animated, TextInput } from 'react-native'
+import { View, ScrollView, StyleSheet, Animated, TextInput, RefreshControl } from 'react-native'
 import { Text, Icon } from 'react-native-paper'
 import { router } from 'expo-router'
 import { CampaignCategory, CampaignStatus } from '@ubuntu-fund/types'
@@ -100,7 +100,7 @@ export default function ExploreTab() {
   const [sort, setSort] = useState<SortKey>('newest')
   // Search, filters and paging run on the server, so every public campaign is
   // reachable rather than only the newest page.
-  const { campaigns: filtered, total, hasMore, isLoading, isLoadingMore, loadMore } = useCampaignSearch(
+  const { campaigns: filtered, total, hasMore, isLoading, isLoadingMore, isRefreshing, error, loadMoreError, loadMore, refetch } = useCampaignSearch(
     exploreSearchParams(query, selectedCategory, selectedStatus, sort),
   )
 
@@ -200,8 +200,18 @@ export default function ExploreTab() {
       </View>
 
       {/* Campaign list */}
-      {isLoading ? (
+      {isLoading || (isRefreshing && filtered.length === 0) ? (
         <SkeletonLoader size="large" style={{ marginTop: 60 }} color={p.primary} />
+      ) : filtered.length === 0 && error ? (
+        <EmptyState
+          variant="error"
+          icon="alert-circle-outline"
+          title="Couldn't load campaigns"
+          subtitle={error}
+          ctaLabel="Try again"
+          ctaIcon="refresh"
+          onCtaPress={refetch}
+        />
       ) : filtered.length === 0 ? (
         <EmptyState
           icon="magnify"
@@ -209,10 +219,20 @@ export default function ExploreTab() {
           subtitle="Try adjusting your search or filters"
         />
       ) : (
-        <ScrollView contentContainerStyle={styles.results} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.results}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refetch} tintColor={p.primary} colors={[p.primary]} />}
+        >
+          {error ? (
+            <Text accessibilityRole="alert" style={styles.inlineError}>Couldn't refresh campaigns: {error} Pull down to try again.</Text>
+          ) : null}
           {filtered.map((c, i) => (
             <CampaignRow key={c.id} campaign={c} index={i % 20} />
           ))}
+          {hasMore && loadMoreError ? (
+            <Text accessibilityRole="alert" style={[styles.inlineError, styles.centered]}>Couldn't load more campaigns: {loadMoreError}</Text>
+          ) : null}
           {hasMore && (
             <TouchableOpacity
               style={styles.loadMore}
@@ -221,7 +241,7 @@ export default function ExploreTab() {
               accessibilityRole="button"
               accessibilityLabel="Load more campaigns"
             >
-              <Text style={styles.loadMoreText}>{isLoadingMore ? 'Loading…' : 'Load more'}</Text>
+              <Text style={styles.loadMoreText}>{isLoadingMore ? 'Loading…' : loadMoreError ? 'Try again' : 'Load more'}</Text>
             </TouchableOpacity>
           )}
           <View style={{ height: 20 }} />
@@ -302,6 +322,8 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
       marginTop: 4,
     },
     loadMoreText: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: p.text },
+    inlineError: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.error, marginBottom: 10 },
+    centered: { textAlign: 'center' },
 
     // Campaign row
     campaignRow: {

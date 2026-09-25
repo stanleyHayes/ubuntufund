@@ -37,6 +37,7 @@ acceptance. The requirement ledger is [READINESS](../../docs/compliance/READINES
 - [ ] Confirm the legal seller/operator, parent-company relationship, supported countries, required Ghana registrations and payment/crowdfunding permissions.
 - [ ] Configure final HTTPS API, payment providers, email sender/keys, store catalog/notifications, processor contracts and operational review queues.
 - [ ] Verify final domains, public Privacy/Support/deletion URLs and universal/app links. Custom scheme configuration alone does not prove domain association.
+- [ ] Set up verified https app links before relying on shared links opening the app. Today `app.json` registers only the `ujimora://` scheme, so tapped `https://app.ujimora.com/...` links (referral `?ref=` links from GetAffiliateDashboardUseCase, `/c/:slug`, `/campaigns/:id`) open the website. Needs the Apple Team ID and the EAS signing-certificate SHA-256: add an Android `intentFilters` entry with `autoVerify` for `https://app.ujimora.com`, `ios.associatedDomains: ["applinks:app.ujimora.com"]`, and serve `/.well-known/assetlinks.json` and `/.well-known/apple-app-site-association` from the web app (outside the SPA rewrite, JSON content type). Until then the affiliate share text spells out the referral code for app sign-ups, and the native `/?ref=` / `/register?ref=` routes stay covered by tests.
 - [ ] Complete Apple App Privacy and Google Data safety using [the data inventory](../../docs/compliance/STORE_DATA_INVENTORY.md), actual processor terms and final binary/network evidence.
 - [ ] Complete financial features, account-deletion, encryption/export, age-rating, content rights, territories and business verification declarations.
 - [ ] Configure and test actual App Store/Google Play products, purchase notifications and sandbox review accounts. Repository tests use doubles and cannot certify store acceptance.
@@ -46,6 +47,17 @@ acceptance. The requirement ledger is [READINESS](../../docs/compliance/READINES
 Account closure preserves relational and financial integrity; it is not an excuse
 to retain personal data indefinitely. Retention schedules, lawful exceptions,
 processor erasure and outstanding legal holds require documented operator review.
+
+### Retiring old builds (minimum supported version)
+
+EAS production builds use `appVersionSource: "remote"` with `autoIncrement`, which bumps only the build number (iOS `CFBundleVersion`, Android `versionCode`). `expo.version` in `app.json` (1.0.0) changes only when someone edits it. App Store Connect needs a new version string once a version is approved; Google Play does not, so successive Android builds can all report 1.0.0.
+
+The "Update required" gate compares the API's `MIN_APP_VERSION_IOS` / `MIN_APP_VERSION_ANDROID` with `<expo.version>.<build number>`:
+
+- Set a three-part value (`1.2.0`) to retire every build older than that marketing version.
+- Set a four-part value (`1.0.0.7`) to retire builds 1-6 of 1.0.0 while build 7 of 1.0.0 stays usable. Read the build number of the fixed build from the EAS build page or the store console.
+- Raise the minimum only after the required build is live in that store, for example after bumping `LEGAL_ACCEPTANCE_VERSION`. Setting `1.0.1` when every install reports 1.0.0 blocks all of them, the newest included.
+- Prefer bumping `expo.version` for each store release, so three-part minimums stay enough.
 
 ### Android screen-sharing foreground service
 

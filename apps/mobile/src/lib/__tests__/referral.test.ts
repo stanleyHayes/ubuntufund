@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { signupReferralCode } from '../referral'
+import { referralShareMessage, signupReferralCode } from '../referral'
 
 describe('sign-up referral code', () => {
   it('sends a valid code normalised', () => {
@@ -12,5 +12,12 @@ describe('sign-up referral code', () => {
     expect(signupReferralCode('admin')).toBeUndefined()
     expect(signupReferralCode('')).toBeUndefined()
     expect(signupReferralCode(undefined)).toBeUndefined()
+  })
+})
+
+describe('referral share text', () => {
+  it('spells out the code for people who sign up in the app, since the https link opens the website', () => {
+    expect(referralShareMessage('https://app.ujimora.com?ref=ama-fund', 'ama-fund'))
+      .toBe('https://app.ujimora.com?ref=ama-fund\nSigning up in the Ujimora app? Enter referral code ama-fund.')
   })
 })

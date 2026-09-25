@@ -23,6 +23,7 @@
     "@ubuntu-fund/types": "*",
     "country-state-city": "^3.2.1",
     "expo": "~55.0.28",
+    "expo-application": "~55.0.19",
     "expo-blur": "~55.0.18",
     "expo-clipboard": "~55.0.17",
     "expo-constants": "~55.0.9",

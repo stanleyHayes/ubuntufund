@@ -92,7 +92,10 @@ export function campaignSearchPath(params: CampaignSearchParams, page: number): 
 }
 
 interface CampaignPageResponse { items?: Campaign[]; total?: number; totalPages?: number }
-interface CampaignSearchState { scope: string; campaigns: Campaign[]; page: number; total: number; totalPages: number; error: string | null }
+interface CampaignSearchState { scope: string; campaigns: Campaign[]; page: number; total: number; totalPages: number; error: string | null; moreError: string | null }
+
+const firstPage = (scope: string, data: CampaignPageResponse): CampaignSearchState =>
+  ({ scope, campaigns: data.items ?? [], page: 1, total: data.total ?? 0, totalPages: data.totalPages ?? 0, error: null, moreError: null })
 
 interface UseCampaignSearchResult {
   campaigns: Campaign[]
@@ -100,35 +103,55 @@ interface UseCampaignSearchResult {
   hasMore: boolean
   isLoading: boolean
   isLoadingMore: boolean
+  /** A pull-to-refresh or retry of page one is in flight; the current list stays. */
+  isRefreshing: boolean
+  /** Loading or refreshing page one failed. Any list already shown is kept. */
   error: string | null
+  /** The last "Load more" failed; the pages already shown are kept. */
+  loadMoreError: string | null
   loadMore: () => void
+  /** Reload page one of the current search, keeping the list until it arrives. */
   refetch: () => void
 }
 
 export function useCampaignSearch(params: CampaignSearchParams): UseCampaignSearchResult {
   const { user } = useAuth()
-  const [retry, setRetry] = useState(0)
   const query = campaignSearchQuery(params)
-  const scope = `${user?.id ?? 'guest'}:${user?.role ?? 'guest'}:${retry}:${query}`
-  const [state, setState] = useState<CampaignSearchState>({ scope: '', campaigns: [], page: 0, total: 0, totalPages: 0, error: null })
+  const scope = `${user?.id ?? 'guest'}:${user?.role ?? 'guest'}:${query}`
+  const [state, setState] = useState<CampaignSearchState>({ scope: '', campaigns: [], page: 0, total: 0, totalPages: 0, error: null, moreError: null })
   const [loadingMore, setLoadingMore] = useState('')
-  const refetch = useCallback(() => setRetry(value => value + 1), [])
+  const [refreshing, setRefreshing] = useState('')
+  const current = state.scope === scope
+  const loaded = current && state.page > 0
 
   useFocusEffect(useCallback(() => {
+    // Coming back to Explore (e.g. from a campaign) keeps every page already
+    // loaded, and so the scroll position. Only a new search, filter or account
+    // loads page one here; a load that failed is retried on the next focus.
+    if (loaded) return
     let cancelled = false
     api
       .get<CampaignPageResponse>(`/campaigns?page=1&${query}`)
       .then((data) => {
-        if (!cancelled) setState({ scope, campaigns: data.items ?? [], page: 1, total: data.total ?? 0, totalPages: data.totalPages ?? 0, error: null })
+        if (!cancelled) setState(firstPage(scope, data))
       })
       .catch((err: Error) => {
-        if (!cancelled) setState({ scope, campaigns: [], page: 0, total: 0, totalPages: 0, error: err.message })
+        if (!cancelled) setState({ scope, campaigns: [], page: 0, total: 0, totalPages: 0, error: err.message, moreError: null })
       })
     return () => { cancelled = true }
-  }, [scope, query]))
+  }, [loaded, scope, query]))
 
-  const current = state.scope === scope
-  const hasMore = current && state.page > 0 && state.page < state.totalPages
+  const refetch = useCallback(() => {
+    setRefreshing(scope)
+    api
+      .get<CampaignPageResponse>(`/campaigns?page=1&${query}`)
+      // A failed refresh keeps the list on screen and only reports the error.
+      .then((data) => setState(value => value.scope === scope ? firstPage(scope, data) : value))
+      .catch((err: Error) => setState(value => value.scope === scope ? { ...value, error: err.message } : value))
+      .finally(() => setRefreshing(value => value === scope ? '' : value))
+  }, [scope, query])
+
+  const hasMore = loaded && state.page < state.totalPages
   const loadMore = useCallback(() => {
     if (!hasMore || loadingMore === scope) return
     const next = state.page + 1
@@ -141,10 +164,10 @@ export function useCampaignSearch(params: CampaignSearchParams): UseCampaignSear
           if (value.scope !== scope || value.page !== next - 1) return value
           const seen = new Set(value.campaigns.map(campaign => campaign.id))
           const added = (data.items ?? []).filter(campaign => !seen.has(campaign.id))
-          return { ...value, campaigns: [...value.campaigns, ...added], page: next, total: data.total ?? value.total, totalPages: data.totalPages ?? value.totalPages }
+          return { ...value, campaigns: [...value.campaigns, ...added], page: next, total: data.total ?? value.total, totalPages: data.totalPages ?? value.totalPages, moreError: null }
         })
       })
-      .catch((err: Error) => setState(value => value.scope === scope ? { ...value, error: err.message } : value))
+      .catch((err: Error) => setState(value => value.scope === scope ? { ...value, moreError: err.message } : value))
       .finally(() => setLoadingMore(value => value === scope ? '' : value))
   }, [hasMore, loadingMore, scope, state.page, query])
 
@@ -154,7 +177,9 @@ export function useCampaignSearch(params: CampaignSearchParams): UseCampaignSear
     hasMore,
     isLoading: !current,
     isLoadingMore: loadingMore === scope,
+    isRefreshing: refreshing === scope,
     error: current ? state.error : null,
+    loadMoreError: current ? state.moreError : null,
     loadMore,
     refetch,
   }

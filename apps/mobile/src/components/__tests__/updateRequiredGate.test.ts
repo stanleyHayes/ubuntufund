@@ -43,3 +43,18 @@ it('fails open when the policy cannot be fetched and re-checks when the app resu
   act(() => m.change('active'))
   expect(await screen.findByText('Update required')).toBeTruthy()
 })
+
+it('blocks an older build of the same marketing version once a build-level minimum is set', async () => {
+  vi.mocked(api.get).mockResolvedValue({ minSupportedVersion: { android: '1.0.0.7' } })
+  render(createElement(UpdateRequiredGate, { version: '1.0.0', build: '6' }))
+  expect(await screen.findByText('Update required')).toBeTruthy()
+  expect(screen.getByText(/Ujimora \(1\.0\.0, build 6\) is no longer supported\. Update to version 1\.0\.0, build 7 or later/)).toBeTruthy()
+})
+
+it('lets the fixed build of the same marketing version through', async () => {
+  vi.mocked(api.get).mockResolvedValue({ minSupportedVersion: { android: '1.0.0.7' } })
+  render(createElement(UpdateRequiredGate, { version: '1.0.0', build: '7' }))
+  await waitFor(() => expect(api.get).toHaveBeenCalledWith('/app/config'))
+  await act(async () => {})
+  expect(screen.queryByText('Update required')).toBeNull()
+})

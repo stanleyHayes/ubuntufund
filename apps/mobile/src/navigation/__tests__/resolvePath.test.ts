@@ -35,8 +35,10 @@ it('sends a legacy creator /u/:id link to the member profile instead of not-foun
 it('keeps referral codes on native sign-up links', () => {
   expect(resolveNativePath('ujimora://register?ref=abc')).toBe('/(auth)/register?ref=abc')
   expect(resolveNativePath('https://app.ujimora.com/register?ref=abc')).toBe('/(auth)/register?ref=abc')
-  expect(resolveNativePath('https://app.ujimora.com/?ref=abc')).toBe('/(auth)/register?ref=abc')
-  expect(resolveNativePath('https://app.ujimora.com/?ref=a%26b')).toBe('/(auth)/register?ref=a%26b')
+  // Root referral links keep only the code; app/index.tsx picks sign-up or Home once the session is known.
+  expect(resolveNativePath('https://app.ujimora.com/?ref=abc')).toBe('/?ref=abc')
+  expect(resolveNativePath('https://app.ujimora.com/?ref=a%26b&utm_source=x')).toBe('/?ref=a%26b')
+  expect(resolveNativePath('ujimora://?ref=abc')).toBe('/?ref=abc')
   expect(resolveNativePath('https://app.ujimora.com/login?returnTo=%2Fwallet')).toBe('/(auth)/login?returnTo=%2Fwallet')
   expect(resolveNativePath('https://app.ujimora.com/')).toBe('/')
 })
