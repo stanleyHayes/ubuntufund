@@ -636,6 +636,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     // the referrer's affiliate.
     affiliateRepo,
     affiliateReferralRepo,
+    accountEmails,
   )
   const mfa = new MongoMfa(process.env.MFA_ENCRYPTION_KEY ?? '', tokenService, config.publicWebUrl)
   const loginUserUseCase = new LoginUserUseCase(userRepo, tokenService, mfa)

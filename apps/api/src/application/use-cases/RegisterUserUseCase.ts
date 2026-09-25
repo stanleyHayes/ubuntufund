@@ -23,6 +23,7 @@ import type { AffiliateReferralRepositoryPort } from '../../domain/ports/outboun
 import type { AuthTokenService } from '../services/AuthTokenService.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { logger } from '../../infrastructure/logging/logger.js';
+import type { AccountEmails } from '../../infrastructure/adapters/outbound/AccountEmails.js';
 
 export class RegisterUserUseCase {
   constructor(
@@ -32,7 +33,10 @@ export class RegisterUserUseCase {
     // Optional: when wired, a `?ref=` referral code on signup links the new user
     // to the referrer's affiliate. Absent, referral capture is simply skipped.
     private readonly affiliateRepo?: AffiliateRepositoryPort,
-    private readonly affiliateReferralRepo?: AffiliateReferralRepositoryPort
+    private readonly affiliateReferralRepo?: AffiliateReferralRepositoryPort,
+    // Optional: when email delivery is configured, a verification link is sent
+    // at signup (payouts and organization invitations need a verified email).
+    private readonly emails?: Pick<AccountEmails, 'configured' | 'enqueue'>
   ) {}
 
   async execute(
@@ -118,6 +122,17 @@ export class RegisterUserUseCase {
           { err, referralCode: input.referralCode, userId: savedUser.id },
           'failed to capture affiliate referral at signup'
         );
+      }
+    }
+
+    // Best-effort, like referral capture: the account already exists, so a
+    // queueing failure must never fail signup. The user can resend the link
+    // from Settings; enqueue applies its own per-account cooldown.
+    if (this.emails?.configured) {
+      try {
+        await this.emails.enqueue(savedUser, 'verification');
+      } catch (err) {
+        logger.warn({ err, userId: savedUser.id }, 'failed to queue signup verification email');
       }
     }
 
