@@ -1,7 +1,7 @@
 import { TouchableOpacity } from '@/components/RoundedControls'
 import { SkeletonLoader, PageSkeleton, Button } from '@/components/Loading'
 import { useState, useEffect, useMemo } from 'react'
-import { View, ScrollView, StyleSheet, Animated, Dimensions, FlatList } from 'react-native'
+import { View, ScrollView, StyleSheet, Animated, FlatList, useWindowDimensions } from 'react-native'
 import { Text, Icon } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
@@ -16,10 +16,8 @@ import { FadeInUp } from '@/components/anim/FadeInUp'
 import { PressableScale } from '@/components/anim/PressableScale'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
+import { homeCardWidths } from '@/lib/layout'
 
-const { width } = Dimensions.get('window')
-const CARD_WIDTH = width * 0.78
-const SMALL_CARD_WIDTH = width * 0.6
 
 // ─── Category config ─────────────────────────────────────────
 
@@ -161,6 +159,7 @@ function SectionHeader({ title, onSeeAll }: { title: string; onSeeAll?: () => vo
 export default function HomeTab() {
   const p = usePalette()
   const styles = useStyles()
+  const cards = homeCardWidths(useWindowDimensions().width)
   const { campaigns, isLoading, error, refetch } = useCampaigns()
   const { user } = useAuth()
   const insets = useSafeAreaInsets()
@@ -265,7 +264,7 @@ export default function HomeTab() {
                 keyExtractor={(c) => c.id}
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}
-                snapToInterval={CARD_WIDTH + 14}
+                snapToInterval={cards.card + 14}
                 decelerationRate="fast"
                 renderItem={({ item, index }) => <FeaturedCard campaign={item} index={index} />}
               />
@@ -296,7 +295,7 @@ export default function HomeTab() {
                 keyExtractor={(c) => c.id}
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
-                snapToInterval={SMALL_CARD_WIDTH + 12}
+                snapToInterval={cards.small + 12}
                 decelerationRate="fast"
                 renderItem={({ item }) => (
                   <TouchableOpacity
@@ -338,7 +337,8 @@ export default function HomeTab() {
 
 // ─── Styles ──────────────────────────────────────────────────
 
-function makeStyles(p: Palette, neu: NeuRecipes) {
+function makeStyles(p: Palette, neu: NeuRecipes, width: number) {
+  const { card: CARD_WIDTH, small: SMALL_CARD_WIDTH } = homeCardWidths(width)
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: p.background },
 
@@ -503,5 +503,6 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
 function useStyles() {
   const p = usePalette()
   const neu = useNeu()
-  return useMemo(() => makeStyles(p, neu), [p, neu])
+  const { width } = useWindowDimensions()
+  return useMemo(() => makeStyles(p, neu, width), [p, neu, width])
 }
