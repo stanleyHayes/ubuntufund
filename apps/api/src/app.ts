@@ -1151,7 +1151,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     new MongoCommentCreation(),
   )
 
-  const shareCampaignUseCase = new ShareCampaignUseCase(shareRepo)
+  const shareCampaignUseCase = new ShareCampaignUseCase(shareRepo, campaignRepo)
   const reportCampaignUseCase = new ReportCampaignUseCase(campaignRepo, reportRepo)
 
   const listRecentDonationsUseCase = new ListRecentDonationsUseCase(

@@ -3,6 +3,7 @@ import Alert from '@mui/material/Alert'
 import { AccountPageSkeleton, AccountHeading } from '@/components/account/AccountPage'
 import { useState } from 'react'
 import { useMyCampaigns } from '@/hooks/useCampaigns'
+import { api } from '@/lib/api'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -413,6 +414,8 @@ export function MyCampaignsPage() {
   function handleShare(campaignId: string) {
     navigator.clipboard.writeText(`${window.location.origin}/campaigns/${campaignId}`)
     setShareSnack(true)
+    // Best-effort share record, as on the campaign page; never blocks the copy.
+    api.post(`/campaigns/${campaignId}/share`, { platform: 'web-copy' }).catch(() => {})
   }
 
   if (isLoading) return <AccountPageSkeleton layout="cards" />
