@@ -110,16 +110,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
   useEffect(() => {
     if (!signedInUserId) return
-    let last = Date.now()
-    void refreshLegalStatus()
-    const appState = AppState.addEventListener('change', value => {
-      if (value !== 'active' || Date.now() - last < 60_000) return
+    let active = true, last = Date.now()
+    const load = () => {
       last = Date.now()
-      void refreshLegalStatus()
+      fetchLegalStatus().then(status => {
+        if (active && status && sessionSnapshot()?.user.id === signedInUserId) setLegalStatus({ ...status, userId: signedInUserId })
+      }).catch(() => { /* Keep the cached view; the next foreground retries. */ })
+    }
+    load()
+    const appState = AppState.addEventListener('change', value => {
+      if (value === 'active' && Date.now() - last >= 60_000) load()
     })
-    const unsubscribe = onAgreementRequired(() => { last = Date.now(); void refreshLegalStatus() })
-    return () => { appState.remove(); unsubscribe() }
-  }, [signedInUserId, refreshLegalStatus])
+    const unsubscribe = onAgreementRequired(load)
+    return () => { active = false; appState.remove(); unsubscribe() }
+  }, [signedInUserId])
 
   const replaceTokens = useCallback(async (tokens: AuthTokens, userId: string) => {
     const current = sessionSnapshot()
