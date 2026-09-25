@@ -132,6 +132,31 @@ promote it directly in Atlas:
 db.users.updateOne({ email: 'you@example.com' }, { $set: { role: 'admin' } })
 ```
 
+### Site content (CMS) after a release
+
+On its first boot the API fills an empty `sitecontents` collection from
+`apps/api/src/infrastructure/database/siteContentDefaults.json`; after that
+it never reseeds. On every boot it also replaces FAQ entries that still match,
+word for word, an earlier default that has since been corrected (listed in
+`apps/api/src/infrastructure/database/supersededFaqDefaults.ts`), and removes
+the old trust-score entry. Entries an admin has edited are left alone.
+
+After deploying a release that changes FAQ defaults:
+
+1. Check the API log for `Replaced superseded default FAQ answers`. No
+   message means nothing matched an earlier default.
+2. Open `https://ujimora.com/help` and confirm it shows none of the claims in
+   `FALSE_CLAIMS` in `apps/marketing/__tests__/publicClaims.test.ts` (for
+   example a 24-48 hour review time, a one-time extension, editing a live
+   campaign, or "reviews every campaign").
+3. Any claim still shown is in an entry someone edited in the CMS. Correct it
+   in the admin console under Content → FAQ (`/content/faq`), using the text in
+   `siteContentDefaults.json`.
+
+When you change a default FAQ answer, add its previous text to
+`supersededFaqDefaults.ts` in the same change so existing deployments pick it
+up.
+
 ## 3. Frontends — Vercel
 
 Each app is its own Vercel project pointing at this monorepo:
