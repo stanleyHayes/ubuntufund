@@ -8,6 +8,7 @@ import { CreateSubscriptionCheckoutUseCase } from '../../src/application/use-cas
 import { SettleSubscriptionUseCase } from '../../src/application/use-cases/SettleSubscriptionUseCase.js';
 import { ReconcileSubscriptionCheckoutsUseCase } from '../../src/application/use-cases/ReconcileSubscriptionCheckoutsUseCase.js';
 import { GetSubscriptionCheckoutUseCase } from '../../src/application/use-cases/GetSubscriptionCheckoutUseCase.js';
+import { HandlePaystackWebhookUseCase } from '../../src/application/use-cases/HandlePaystackWebhookUseCase.js';
 import { CouponService } from '../../src/application/services/CouponService.js';
 import { MongoUnitOfWork } from '../../src/infrastructure/adapters/outbound/persistence/MongoUnitOfWork.js';
 import { MongoBillingOwnership } from '../../src/infrastructure/adapters/outbound/persistence/MongoBillingOwnership.js';
@@ -59,7 +60,12 @@ function build(plans: Record<string, Partial<SubscriptionPlan>> = {}) {
     undefined, subscriptionRepo);
   const sweep = new ReconcileSubscriptionCheckoutsUseCase(checkoutRepo, gateway as never, settle, redemptionRepo);
   const status = new GetSubscriptionCheckoutUseCase(checkoutRepo, gateway as never, settle, redemptionRepo);
-  return { gateway, checkoutRepo, settle, create, sweep, status };
+  const webhook = new HandlePaystackWebhookUseCase({ ...gateway, verifyWebhookSignature: () => true } as never, {} as never, {} as never,
+    {} as never, {} as never, {} as never, {} as never, checkoutRepo, settle, {} as never, undefined, undefined, undefined, undefined,
+    undefined, redemptionRepo);
+  const charge = (event: 'charge.success' | 'charge.failed', reference: string, amount: number) => webhook.execute({ signature: 'signed',
+    rawBody: Buffer.from(JSON.stringify({ event, data: { reference, amount: Math.round(amount * 100), currency: 'GHS', status: event === 'charge.success' ? 'success' : 'failed' } })) });
+  return { gateway, checkoutRepo, settle, create, sweep, status, charge };
 }
 const buy = (s: ReturnType<typeof build>, userId: string, tier = SubscriptionTier.PRO, extra: Record<string, unknown> = {}) =>
   s.create.execute({ tier, billingCycle: BillingCycle.MONTHLY, ...extra }, userId);
@@ -223,6 +229,40 @@ describe('subscription checkout reconciliation sweep', () => {
     await s.settle.execute((await s.checkoutRepo.findByProviderRef(late.reference!))!, late.reference!);
     expect((await SubscriptionCheckoutModel.findById(late.checkout.id))?.status).toBe('succeeded');
     expect((await SubscriptionModel.findOne({ userId }))?.tier).toBe(SubscriptionTier.PRO);
+  });
+
+  // R2-005: a declined first attempt fails the checkout; a paid retry on the
+  // same Paystack checkout must still activate the plan, once verified.
+  it('activates a verified late success on a FAILED checkout and re-uses its coupon seat', async () => {
+    const s = build(); const userId = randomUUID();
+    const coupon = await CouponModel.create({ code: `RETRY${randomUUID().slice(0, 6)}`.toUpperCase(), discountType: CouponDiscountType.PERCENT,
+      amount: 10, currency: 'GHS', maxRedemptions: 10, perUserLimit: 1 });
+    const first = await buy(s, userId, SubscriptionTier.PRO, { couponCode: coupon.code });
+    const amount = first.checkout.finalAmount;
+    await s.charge('charge.failed', first.reference!, amount);
+    expect((await SubscriptionCheckoutModel.findById(first.checkout.id))?.status).toBe('failed');
+    expect((await CouponRedemptionModel.findOne({ checkoutId: first.checkout.id }))?.status).toBe('released');
+
+    s.gateway.statuses.set(first.reference!, 'success');
+    await s.charge('charge.success', first.reference!, amount);
+    await s.charge('charge.success', first.reference!, amount); // redelivery
+    expect(s.gateway.verifyTransaction).toHaveBeenCalledWith(first.reference);
+    expect((await SubscriptionCheckoutModel.findById(first.checkout.id))?.status).toBe('succeeded');
+    expect((await SubscriptionModel.findOne({ userId }))?.tier).toBe(SubscriptionTier.PRO);
+    expect(await CouponRedemptionModel.findOne({ checkoutId: first.checkout.id }).lean()).toMatchObject({ status: 'consumed', seat: 0 });
+  });
+
+  it('keeps a FAILED checkout failed when Paystack does not confirm the success', async () => {
+    const s = build(); const userId = randomUUID();
+    const first = await buy(s, userId);
+    await s.charge('charge.failed', first.reference!, first.checkout.finalAmount);
+    s.gateway.statuses.set(first.reference!, 'failed');
+    await s.charge('charge.success', first.reference!, first.checkout.finalAmount);
+    expect((await SubscriptionCheckoutModel.findById(first.checkout.id))?.status).toBe('failed');
+    expect(await SubscriptionModel.findOne({ userId })).toBeNull();
+    // A provider error is not swallowed: the webhook fails so Paystack redelivers.
+    s.gateway.verifyTransaction.mockRejectedValueOnce(new Error('Paystack unreachable'));
+    await expect(s.charge('charge.success', first.reference!, first.checkout.finalAmount)).rejects.toThrow('Paystack unreachable');
   });
 
   it('lets the member see an old abandoned checkout as expired when they check it', async () => {

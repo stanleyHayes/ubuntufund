@@ -62,6 +62,15 @@ export interface CouponRedemptionRepositoryPort {
    * the status `countByCouponAndUser` excludes — is never reachable.
    */
   markReleased(id: string): Promise<CouponRedemption | null>;
+  /**
+   * A checkout that released its slot (failed/expired) was paid after all and
+   * settled with the coupon applied: RELEASED → CONSUMED, so the user's usage
+   * matches the discounts actually granted. Re-takes a free seat below
+   * `perUserLimit` when one exists; otherwise consumes without a seat (it still
+   * counts against the limit, since only RELEASED rows are excluded) and the
+   * caller logs the over-use. Null when the slot is no longer RELEASED.
+   */
+  reconsumeReleased(id: string, perUserLimit: number | undefined): Promise<CouponRedemption | null>;
   /** Link the activated subscription once the checkout settles. */
   attachSubscription(
     id: string,

@@ -48,7 +48,7 @@ export default function RefundOperationsPage() {
     setBusy(id); setError(''); setNotice(null)
     try {
       const result = await api.post<{ status: string }>(`/admin/refund-operations/${encodeURIComponent(id)}/${verify ? 'verify' : 'retry-accounting'}`, suppliedReference ? { providerReference: suppliedReference } : {})
-      const complete = result.status === 'REFUNDED' || result.status === 'PARTIALLY_REFUNDED'
+      const complete = result.status === 'REFUNDED' || result.status === 'PARTIALLY_REFUNDED' || result.status === 'CHARGEBACK'
       setNotice({ complete, text: complete ? 'Local accounting completed. No additional provider refund was requested.' : result.status === 'PROCESSING' ? 'The provider is still processing this refund. No replacement refund was requested.' : 'Accounting still needs review. The refund reservation remains in place.' })
       await load()
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not complete accounting.') }

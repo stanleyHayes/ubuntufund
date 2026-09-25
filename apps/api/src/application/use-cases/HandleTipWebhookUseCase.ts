@@ -4,6 +4,7 @@ import type { CreatorBalanceRepositoryPort } from '../../domain/ports/outbound/C
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
 import { chargeMatches } from '../services/providerCharge.js';
 import { logger } from '../../infrastructure/logging/logger.js';
+import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
 /**
  * What the provider says it actually charged for a `tip-` reference, in MAJOR
@@ -93,8 +94,42 @@ export class HandleTipWebhookUseCase {
     const won = await this.tipRepo.transitionToSucceeded(reference, {
       allowFromFailed: tip.status === 'FAILED',
     });
-    if (!won) return; // a concurrent caller settled it first
-    await this.applyCredit(won);
+    if (won) {
+      await this.applyCredit(won);
+      return;
+    }
+    await this.afterLostTransition(reference, tip, charge);
+  }
+
+  /**
+   * The transition matched nothing. Either a concurrent success settled the
+   * tip (done), or a concurrent failure — a charge.failed webhook, the stale
+   * sweep, a verify — moved it PENDING → FAILED between our read and the
+   * update. The provider still reports this charge as paid, so that case runs
+   * the verified late-success path instead of acknowledging and dropping the
+   * money. Anything unexpected throws so the provider redelivers.
+   */
+  private async afterLostTransition(reference: string, seen: TipEntity, charge: TipCharge): Promise<void> {
+    const fresh = await this.tipRepo.findByProviderRef(reference);
+    if (!fresh || fresh.status === 'SUCCEEDED') return;
+    if (fresh.status === 'FAILED' && seen.status === 'PENDING') {
+      if (!(await this.lateSuccessConfirmed(fresh, charge))) return;
+      const revived = await this.tipRepo.transitionToSucceeded(reference, { allowFromFailed: true });
+      if (revived) {
+        logger.warn(
+          { tipId: fresh.id, providerRef: reference },
+          'tip was failed concurrently with its success — crediting after verification'
+        );
+        await this.applyCredit(revived);
+        return;
+      }
+      if ((await this.tipRepo.findByProviderRef(reference))?.status === 'SUCCEEDED') return;
+    }
+    if (fresh.status !== 'PENDING' && fresh.status !== 'FAILED') {
+      logger.warn({ tipId: fresh.id, providerRef: reference, status: fresh.status }, 'tip success arrived for a tip in a closed state — not crediting');
+      return;
+    }
+    throw new AppError('Tip settlement changed concurrently; retry', 409);
   }
 
   async handleFailed(reference: string): Promise<void> {

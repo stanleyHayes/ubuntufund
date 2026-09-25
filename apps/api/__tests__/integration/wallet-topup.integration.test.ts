@@ -11,16 +11,20 @@ import { JournalLineModel } from '../../src/infrastructure/database/models/Journ
 import { LedgerAccountModel } from '../../src/infrastructure/database/models/LedgerAccountModel.js';
 import type { PaymentGatewayPort } from '../../src/domain/ports/outbound/PaymentGatewayPort.js';
 import { AccountDeletionRequestModel } from '../../src/infrastructure/database/models/AccountDeletionRequestModel.js';
+import { ProviderTransactionNotFoundError } from '../../src/domain/errors/ProviderTransactionNotFoundError.js';
 
 beforeAll(async () => { await connectTestDatabase(); await Promise.all([WalletTopUpModel.init(), WalletModel.init(), JournalEntryModel.init(), JournalLineModel.init(), LedgerAccountModel.init(), WalletTransactionModel.init()]); });
 afterAll(async () => { await dropTestDatabase(); await disconnectTestDatabase(); });
 let userId: string, walletId: string;
-let verifiedStatus = 'success', amount = 100, currency = 'GHS';
+let verifiedStatus = 'success', amount = 100, currency = 'GHS', unknownAtProvider = false;
 const init = vi.fn(async (p: { reference: string }) => ({ reference: p.reference, authorizationUrl: 'https://checkout.paystack.com/test', accessCode: 'test' }));
-const gateway = { isConfigured: () => true, initializeCharge: init, verifyTransaction: async (reference: string) => ({ reference, amount, currency, fees: 1.5, status: verifiedStatus, raw: {} }) } as unknown as PaymentGatewayPort;
+const gateway = { isConfigured: () => true, initializeCharge: init, verifyTransaction: async (reference: string) => {
+  if (unknownAtProvider) throw new ProviderTransactionNotFoundError(reference);
+  return { reference, amount, currency, fees: 1.5, status: verifiedStatus, raw: {} };
+} } as unknown as PaymentGatewayPort;
 const service = new WalletTopUpService(gateway, true);
 beforeEach(async () => {
-  amount = 100; currency = 'GHS'; verifiedStatus = 'success'; init.mockClear();
+  amount = 100; currency = 'GHS'; verifiedStatus = 'success'; unknownAtProvider = false; init.mockClear();
   const user = await UserModel.create({ name: 'Test', email: `${randomUUID()}@example.test`, passwordHash: 'unused', country: 'Ghana' }); userId = user.id;
   const wallet = await WalletModel.create({ userId, type: 'local', balance: 0, currency: 'GHS' }); walletId = wallet.id;
 });
@@ -75,6 +79,38 @@ describe('verified wallet top-ups', () => {
     await WalletTopUpModel.collection.updateOne({ reference: topup.reference }, { $set: { createdAt: new Date(Date.now() - 25 * 3600_000) } });
     verifiedStatus = 'abandoned';
     expect((await service.status(userId, topup.reference)).status).toBe('failed');
+  });
+  // R2-007: a top-up whose checkout never opened must not stay pending forever.
+  it('re-opens the checkout for a retried key whose first provider call failed', async () => {
+    const key = randomUUID();
+    init.mockRejectedValueOnce(new Error('Payment provider is unreachable'));
+    await expect(service.initialize(userId, walletId, 100, key)).rejects.toThrow('unreachable');
+    const orphan = await WalletTopUpModel.findOne({ userId, idempotencyKey: key }).lean();
+    expect(orphan).toMatchObject({ status: 'pending' });
+    expect(orphan?.authorizationUrl).toBeUndefined();
+    // Nothing exists at Paystack yet: the status check answers, it does not 500.
+    unknownAtProvider = true;
+    expect((await service.status(userId, orphan!.reference)).status).toBe('pending');
+    unknownAtProvider = false;
+    const retried = await service.initialize(userId, walletId, 100, key);
+    expect(retried).toMatchObject({ reference: orphan!.reference, status: 'pending', authorizationUrl: 'https://checkout.paystack.com/test' });
+    expect(init).toHaveBeenLastCalledWith(expect.objectContaining({ reference: orphan!.reference }));
+    expect(await service.initialize(userId, walletId, 100, key)).toEqual(retried);
+    expect(init).toHaveBeenCalledTimes(2);
+  });
+  it('closes a top-up the provider never registered once it is past the TTL', async () => {
+    init.mockRejectedValueOnce(new Error('Payment provider is unreachable'));
+    await expect(service.initialize(userId, walletId, 100, randomUUID())).rejects.toThrow();
+    const orphan = (await WalletTopUpModel.findOne({ userId }).sort({ createdAt: -1 }).lean())!;
+    unknownAtProvider = true;
+    await WalletTopUpModel.collection.updateOne({ reference: orphan.reference }, { $set: { updatedAt: new Date(Date.now() - 3600_000) } });
+    await service.reconcile();
+    expect((await WalletTopUpModel.findOne({ reference: orphan.reference }))!.status).toBe('pending');
+    await WalletTopUpModel.collection.updateOne({ reference: orphan.reference }, { $set: { createdAt: new Date(Date.now() - 25 * 3600_000), updatedAt: new Date(Date.now() - 3600_000) } });
+    const summary = await service.reconcile();
+    expect(summary.failed).toBeGreaterThanOrEqual(1);
+    expect((await WalletTopUpModel.findOne({ reference: orphan.reference }))!.status).toBe('failed');
+    expect((await WalletModel.findById(walletId))!.balance).toBe(0);
   });
   it('the sweep credits a failed top-up that was paid after all, exactly once', async () => {
     const topup = await service.initialize(userId, walletId, 100, randomUUID());

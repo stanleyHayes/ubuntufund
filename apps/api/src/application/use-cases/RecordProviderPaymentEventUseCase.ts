@@ -33,17 +33,21 @@ const date = (value: unknown): Date | undefined => {
  *    requested (e.g. one issued from the provider dashboard) opens a case too,
  *    because the campaign balance was not reduced;
  *  - anything else (tips, subscriptions, wallet top-ups, unknown references) is
- *    recorded for the admin provider-events list and logged as an alert.
+ *    recorded for the admin Provider events list and logged as an alert.
  *
- * Reversing balances (holds, clawbacks, chargeback ledger entries) is left to
- * staff through the existing refund tools until an owner-approved phase 2.
+ * Nothing here reverses balances. For a campaign case, staff record the
+ * reversal the provider already made with the dispute's "Record provider
+ * reversal" action (RecordProviderReversalUseCase): accounting only, never a
+ * provider call. Staff must never answer these cases with a console refund —
+ * that would send the donor a second, real refund. Non-campaign events have no
+ * balance adjustment yet; staff handle them manually from the Provider events list.
  */
 export class RecordProviderPaymentEventUseCase {
   constructor(
     private readonly events: ProviderPaymentEventRepositoryPort,
     private readonly intents: DonationIntentRepositoryPort,
     private readonly disputes: DisputeRepositoryPort,
-    private readonly refundOperations: Pick<RefundOperationRepositoryPort, 'existsForTransaction'>
+    private readonly refundOperations: Pick<RefundOperationRepositoryPort, 'claimProviderRefund'>
   ) {}
 
   async handleDispute(event: string, data: Data): Promise<void> {
@@ -105,7 +109,9 @@ export class RecordProviderPaymentEventUseCase {
         (amount !== undefined ? ` for ${currency} ${amount.toFixed(2)}` : '') +
         (dueAt ? `; respond in the Paystack dashboard before ${dueAt.toISOString()}` : '') +
         '. Automatic payouts for this campaign stay paused while this case is open. ' +
-        'If the donor is refunded (resolution merchant-accepted), reverse the donation with the refund tools before closing this case.',
+        'Do NOT issue a refund from the console: if the donor gets the money back (e.g. resolution merchant-accepted), ' +
+        'Paystack has already returned it. Use "Record provider reversal" on this case to take it out of the campaign ' +
+        'balance (accounting only; no money moves). If the funds were already paid out, escalate to finance for a manual clawback.',
     });
   }
 
@@ -138,8 +144,14 @@ export class RecordProviderPaymentEventUseCase {
 
     const processed = event === 'refund.processed' || event === 'charge.refund';
     if (!processed) return;
-    // A refund Ujimora requested is already accounted by the refund operation.
-    if (await this.refundOperations.existsForTransaction(reference, amountMinor)) return;
+    // A refund Ujimora requested is accounted by its own refund operation. One
+    // provider refund matches at most one operation, so a second refund of the
+    // same amount (e.g. from the dashboard) still opens a case below.
+    const providerRefundId = typeof data.id === 'number' || (typeof data.id === 'string' && /^\d{1,30}$/.test(data.id)) ? String(data.id) : undefined;
+    const note = typeof data.merchant_note === 'string' ? /^Ujimora refund ([a-f0-9-]{36})$/.exec(data.merchant_note.trim()) : null;
+    if (await this.refundOperations.claimProviderRefund({
+      transactionReference: reference, amountMinor, providerRefundId, operationId: note?.[1], refundKey: refundRef,
+    })) return;
 
     if (created) {
       logger.error(
@@ -165,8 +177,10 @@ export class RecordProviderPaymentEventUseCase {
         `Paystack processed a refund` +
         (amount !== undefined ? ` of ${currency} ${amount.toFixed(2)}` : '') +
         ` on transaction ${reference} that no Ujimora refund requested (for example from the Paystack dashboard). ` +
-        'The campaign balance has NOT been reduced. Account for it with the refund tools before any further payout; ' +
-        'automatic payouts for this campaign stay paused while this case is open.',
+        'The campaign balance has NOT been reduced. Do NOT issue another refund from the console: Paystack has already ' +
+        'returned this money to the donor. Use "Record provider reversal" on this case to take it out of the campaign ' +
+        'balance (accounting only; no money moves). If the funds were already paid out, escalate to finance for a manual ' +
+        'clawback. Automatic payouts for this campaign stay paused while this case is open.',
     });
   }
 

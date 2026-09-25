@@ -34,6 +34,7 @@ function toDomain(doc: DisputeDocument): DisputeRecord {
     dueAt: doc.dueAt,
     providerStatus: doc.providerStatus,
     providerResolution: doc.providerResolution,
+    reversalOperationId: doc.reversalOperationId,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   };
@@ -126,6 +127,11 @@ export class MongoDisputeRepository implements DisputeRepositoryPort {
       );
       return { record: toDomain(doc ?? existing), created: false };
     });
+  }
+
+  async linkReversal(id: string, operationId: string): Promise<DisputeRecord | null> {
+    const doc = await DisputeModel.findByIdAndUpdate(id, { $set: { reversalOperationId: operationId } }, { new: true });
+    return doc ? toDomain(doc) : null;
   }
 
   async findById(id: string): Promise<DisputeRecord | null> {

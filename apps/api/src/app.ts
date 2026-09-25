@@ -299,6 +299,7 @@ import { GetEnabledPaymentProvidersUseCase } from './application/use-cases/GetEn
 import { TogglePaymentProviderUseCase } from './application/use-cases/TogglePaymentProviderUseCase.js'
 import { GetDisputeUseCase } from './application/use-cases/GetDisputeUseCase.js'
 import { ResolveDisputeUseCase } from './application/use-cases/ResolveDisputeUseCase.js'
+import { RecordProviderReversalUseCase } from './application/use-cases/RecordProviderReversalUseCase.js'
 import { ListReportsUseCase } from './application/use-cases/ListReportsUseCase.js'
 import { ReviewReportUseCase } from './application/use-cases/ReviewReportUseCase.js'
 import { ReviewCampaignUseCase } from './application/use-cases/ReviewCampaignUseCase.js'
@@ -1647,7 +1648,12 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     togglePaymentProviderUseCase,
   )
   const planController = new PlanController(listPlansUseCase, updatePlanUseCase, createPlanUseCase)
-  const disputeController = new DisputeController(getDisputeUseCase, resolveDisputeUseCase)
+  const disputeController = new DisputeController(
+    getDisputeUseCase,
+    resolveDisputeUseCase,
+    // Records a chargeback / dashboard refund the provider already made (no provider call).
+    new RecordProviderReversalUseCase(disputeRepo, processRefundUseCase),
+  )
   const adminReportController = new AdminReportController(listReportsUseCase, reviewReportUseCase)
   const campaignModerationController = new CampaignModerationController(reviewCampaignUseCase)
   const adminUserController = new AdminUserController(

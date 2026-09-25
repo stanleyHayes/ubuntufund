@@ -1,6 +1,8 @@
 import {
   BillingCycle,
   CouponCommissionBase,
+  CouponRedemptionStatus,
+  SubscriptionCheckoutStatus,
   SubscriptionStatus,
   type SubscriptionCheckout,
 } from '@ubuntu-fund/types';
@@ -51,25 +53,40 @@ export class SettleSubscriptionUseCase {
     private readonly affiliateCommissionService?: AffiliateCommissionService
   ) {}
 
+  /**
+   * `allowFromFailed` settles a FAILED checkout too; pass it only after a
+   * server-side verification that the provider collected this exact charge.
+   */
   async execute(
     checkout: SubscriptionCheckout,
-    reference: string
+    reference: string,
+    opts: { allowFromFailed?: boolean } = {}
   ): Promise<SubscriptionCheckout | null> {
-    return this.unitOfWork.run(() => this.settle(checkout, reference));
+    return this.unitOfWork.run(() => this.settle(checkout, reference, opts));
   }
 
   private async settle(
     checkout: SubscriptionCheckout,
-    reference: string
+    reference: string,
+    opts: { allowFromFailed?: boolean }
   ): Promise<SubscriptionCheckout | null> {
     // ── 1. Exactly-once settlement gate ──────────────────────────────────
     const settled = await this.subscriptionCheckoutRepo.transitionToSucceeded(
-      checkout.id
+      checkout.id,
+      opts
     );
     if (!settled) {
       // Already settled by a prior call (or terminal) — idempotent no-op.
       const existing = await this.subscriptionCheckoutRepo.findById(checkout.id);
       if (existing && existing.providerRef !== reference) throw new AppError('Subscription payment reference does not match.', 409);
+      if (existing && existing.status !== SubscriptionCheckoutStatus.SUCCEEDED) {
+        // Callers only settle a charge they believe was paid. Never swallow
+        // that silently: the member may have paid for a plan they do not have.
+        logger.error(
+          { alert: 'subscription_paid_not_active', checkoutId: existing.id, reference, status: existing.status },
+          'a paid subscription charge reached a checkout that cannot settle — needs staff review'
+        );
+      }
       return existing;
     }
     if (settled.providerRef !== reference) throw new AppError('Subscription payment reference does not match.', 409);
@@ -122,7 +139,19 @@ export class SettleSubscriptionUseCase {
       const redemption =
         await this.couponRedemptionRepo.findByProviderRef(reference);
       if (redemption) {
-        await this.couponRedemptionRepo.markConsumed(redemption.id);
+        const consumed = await this.couponRedemptionRepo.markConsumed(redemption.id);
+        if (!consumed && redemption.status === CouponRedemptionStatus.RELEASED) {
+          // The checkout expired or failed (seat released) and was paid after
+          // all: the member got the discount, so the slot is used again.
+          const coupon = await this.couponRepo.findById(settled.couponId);
+          const reconsumed = await this.couponRedemptionRepo.reconsumeReleased(redemption.id, coupon?.perUserLimit);
+          if (reconsumed && coupon?.perUserLimit && reconsumed.seat === undefined) {
+            logger.warn(
+              { alert: 'coupon_seat_overuse', couponId: settled.couponId, checkoutId: settled.id, reference },
+              'late subscription settled with a coupon after its seat was reused — the member is now over the per-user limit'
+            );
+          }
+        }
         await this.couponRedemptionRepo.attachSubscription(
           redemption.id,
           subscription.id

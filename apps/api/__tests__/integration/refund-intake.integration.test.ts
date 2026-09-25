@@ -36,7 +36,9 @@ it('records the full requested amount without a fee, preserves the donation and 
 
 it('answers concurrent duplicate refund requests with 409, not 500, and stores one refund', async () => {
   const owner = await user();
-  const donation = await DonationModel.create({ campaignId: 'aaaaaaaaaaaaaaaaaaaaaaaa', donorId: owner.id, amount: 50, currency: 'GHS', paymentMethod: 'wallet' });
+  // A card gift: wallet-funded gifts are refused at intake (I045, below), so
+  // they cannot exercise the duplicate-request race.
+  const donation = await DonationModel.create({ campaignId: 'aaaaaaaaaaaaaaaaaaaaaaaa', donorId: owner.id, amount: 50, currency: 'GHS', paymentMethod: 'card' });
   const body = { donationId: donation.id, reason: 'Duplicate donation' };
   const responses = await Promise.all(Array.from({ length: 5 }, () =>
     request(app).post('/api/v1/refunds').set('Authorization', owner.token).send(body)));

@@ -22,8 +22,28 @@ export interface DisputeDTO {
   resolution?: string;
   resolvedBy?: string;
   resolvedAt?: Date;
+  /** Provider-originated case details (absent on staff disputes). */
+  source?: 'staff' | 'paystack';
+  /** 'chargeback' or 'external_refund' for a provider case. */
+  providerCaseKind?: 'chargeback' | 'external_refund';
+  transactionReference?: string;
+  donationIntentId?: string;
+  amount?: number;
+  currency?: string;
+  dueAt?: Date;
+  providerStatus?: string;
+  providerResolution?: string;
+  reversalOperationId?: string;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/** Which kind of provider case a dispute is, from its provider id. */
+export function providerCaseKind(dispute: Pick<DisputeRecord, 'source' | 'providerDisputeId'>): 'chargeback' | 'external_refund' | undefined {
+  if (dispute.source !== 'paystack' || !dispute.providerDisputeId) return undefined;
+  if (dispute.providerDisputeId.startsWith('paystack:dispute:')) return 'chargeback';
+  if (dispute.providerDisputeId.startsWith('paystack:refund:')) return 'external_refund';
+  return undefined;
 }
 
 export class GetDisputeUseCase {
@@ -86,6 +106,16 @@ export class GetDisputeUseCase {
       resolution: dispute.resolution,
       resolvedBy: dispute.resolvedBy,
       resolvedAt: dispute.resolvedAt,
+      source: dispute.source,
+      providerCaseKind: providerCaseKind(dispute),
+      transactionReference: dispute.transactionReference,
+      donationIntentId: dispute.donationIntentId,
+      amount: dispute.amount,
+      currency: dispute.currency,
+      dueAt: dispute.dueAt,
+      providerStatus: dispute.providerStatus,
+      providerResolution: dispute.providerResolution,
+      reversalOperationId: dispute.reversalOperationId,
       createdAt: dispute.createdAt,
       updatedAt: dispute.updatedAt,
     };

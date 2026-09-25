@@ -16,6 +16,8 @@ import Divider from '@mui/material/Divider'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
 import Skeleton from '@mui/material/Skeleton'
+import Checkbox from '@mui/material/Checkbox'
+import FormControlLabel from '@mui/material/FormControlLabel'
 import NavigateNextIcon from '@mui/icons-material/NavigateNext'
 import GavelRoundedIcon from '@mui/icons-material/GavelRounded'
 import CampaignIcon from '@mui/icons-material/Campaign'
@@ -45,8 +47,23 @@ interface DisputeDetail {
   resolution?: string
   resolvedBy?: string
   resolvedAt?: string
+  source?: 'staff' | 'paystack'
+  providerCaseKind?: 'chargeback' | 'external_refund'
+  transactionReference?: string
+  donationIntentId?: string
+  amount?: number
+  currency?: string
+  dueAt?: string
+  providerStatus?: string
+  providerResolution?: string
+  reversalOperationId?: string
   createdAt: string
   updatedAt: string
+}
+
+interface ProviderReversalResult {
+  dispute: Partial<DisputeDetail>
+  reversal: { status: string; operationId: string; amount: number }
 }
 
 const STATUS_CONFIG: Record<DisputeStatus, { color: 'warning' | 'info' | 'success' | 'default' }> = {
@@ -68,6 +85,9 @@ export default function DisputeDetailPage() {
   const [resolutionNotes, setResolutionNotes] = useState('')
   const [resolutionType, setResolutionType] = useState<'resolved' | 'dismissed'>('resolved')
   const [submitting, setSubmitting] = useState(false)
+  const [reversalAmount, setReversalAmount] = useState('')
+  const [reversalConfirmed, setReversalConfirmed] = useState(false)
+  const [recordingReversal, setRecordingReversal] = useState(false)
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
     message: '',
@@ -114,6 +134,35 @@ export default function DisputeDetailPage() {
     }
   }
 
+  // Accounting only: records money Paystack already returned. It never sends a
+  // refund — a console refund here would pay the donor a second time.
+  async function handleRecordReversal() {
+    if (!id) return
+    const trimmed = reversalAmount.trim()
+    const amount = trimmed ? Number(trimmed) : undefined
+    if (amount !== undefined && (!Number.isFinite(amount) || amount <= 0)) {
+      setSnackbar({ open: true, message: 'Enter a positive amount, or leave it blank to use the provider amount.', severity: 'error' })
+      return
+    }
+    setRecordingReversal(true)
+    try {
+      const result = await api.post<ProviderReversalResult>(`/disputes/${id}/provider-reversal`, amount !== undefined ? { amount } : {})
+      setDispute((current) => current ? { ...current, reversalOperationId: result.dispute.reversalOperationId ?? current.reversalOperationId } : current)
+      setReversalConfirmed(false)
+      setSnackbar({
+        open: true,
+        severity: result.reversal.status === 'PENDING_REVIEW' ? 'error' : 'success',
+        message: result.reversal.status === 'PENDING_REVIEW'
+          ? 'The reversal was saved but its accounting did not finish. Try again.'
+          : `Reversal recorded (${result.reversal.amount.toFixed(2)}). You can now resolve this case.`,
+      })
+    } catch (error) {
+      setSnackbar({ open: true, message: error instanceof Error ? error.message : 'Unable to record the reversal.', severity: 'error' })
+    } finally {
+      setRecordingReversal(false)
+    }
+  }
+
   if (loading) {
     return (
       <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
@@ -135,6 +184,8 @@ export default function DisputeDetailPage() {
   }
 
   const isClosed = dispute.status === 'resolved' || dispute.status === 'dismissed'
+  const providerCase = dispute.source === 'paystack' && !!dispute.providerCaseKind && !!dispute.donationIntentId
+  const providerAmount = dispute.amount !== undefined && dispute.currency ? `${dispute.currency} ${dispute.amount.toFixed(2)}` : undefined
 
   return (
     <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto', animation: `${fadeSlide} 0.4s ease both` }}>
@@ -181,9 +232,74 @@ export default function DisputeDetailPage() {
                   <Typography variant="caption" color="text.secondary">Last updated</Typography>
                   <Typography>{formatDate(dispute.updatedAt)}</Typography>
                 </Box>
+                {dispute.source === 'paystack' && (
+                  <>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">Transaction</Typography>
+                      <Typography sx={{ wordBreak: 'break-all' }}>{dispute.transactionReference || 'Not reported'}</Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">Provider amount</Typography>
+                      <Typography>{providerAmount ?? 'Not reported'}</Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">Provider status</Typography>
+                      <Typography>{[dispute.providerStatus, dispute.providerResolution].filter(Boolean).join(' · ') || 'Not reported'}</Typography>
+                    </Box>
+                    {dispute.dueAt && (
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">Respond by</Typography>
+                        <Typography>{formatDate(dispute.dueAt)}</Typography>
+                      </Box>
+                    )}
+                  </>
+                )}
               </Box>
             </CardContent>
           </Card>
+
+          {providerCase && (
+            <Card sx={{ mb: 3 }}>
+              <CardContent sx={{ p: 3 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Record provider reversal</Typography>
+                {dispute.reversalOperationId ? (
+                  <Alert severity="success">
+                    The reversal is recorded (operation {dispute.reversalOperationId}). The campaign balance, ledger and donation status already reflect it.
+                  </Alert>
+                ) : isClosed ? (
+                  <Alert severity="info">This case is closed without a recorded reversal.</Alert>
+                ) : (
+                  <>
+                    <Alert severity="warning" sx={{ mb: 2 }}>
+                      Do not refund this donation from Payments. Paystack has already returned {dispute.providerCaseKind === 'chargeback' ? 'the disputed money (once the chargeback is accepted or lost)' : 'this money'} to the donor, so a console refund would pay them a second time.
+                      Recording the reversal only updates Ujimora&apos;s books: it takes the amount out of the campaign balance, posts the compensating ledger entry and marks the donation {dispute.providerCaseKind === 'chargeback' ? 'charged back' : 'refunded'}. If the funds were already paid out, escalate to finance for a manual clawback and dismiss this case with a note.
+                    </Alert>
+                    <TextField
+                      optionContext="dispute"
+                      label="Campaign amount to reverse (optional)"
+                      value={reversalAmount}
+                      onChange={(event) => setReversalAmount(event.target.value)}
+                      slotProps={{ htmlInput: { inputMode: 'decimal' } }}
+                      helperText={`Leave blank to use the provider amount${providerAmount ? ` (${providerAmount})` : ''}, less any separate platform tip.`}
+                      fullWidth
+                      size="small"
+                      sx={{ mb: 1 }}
+                    />
+                    <FormControlLabel
+                      control={<Checkbox checked={reversalConfirmed} onChange={(event) => setReversalConfirmed(event.target.checked)} />}
+                      label="I checked in the Paystack dashboard that this money was returned to the donor"
+                      sx={{ mb: 2 }}
+                    />
+                    <Box>
+                      <Button variant="contained" color="warning" onClick={handleRecordReversal} disabled={!reversalConfirmed || recordingReversal}>
+                        {recordingReversal ? 'Recording…' : 'Record provider reversal'}
+                      </Button>
+                    </Box>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {isClosed ? (
             <Card>

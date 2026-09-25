@@ -1,6 +1,6 @@
 import type { DonationIntentRepositoryPort } from '../../domain/ports/outbound/DonationIntentRepositoryPort.js';
 import type { DonationIntentEntity } from '../../domain/entities/DonationIntent.js';
-import type { DonationIntentStatus } from '@ubuntu-fund/types';
+import { SubscriptionCheckoutStatus, type DonationIntentStatus } from '@ubuntu-fund/types';
 import type { PaymentAttemptRepositoryPort } from '../../domain/ports/outbound/PaymentAttemptRepositoryPort.js';
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
 import type { FeePolicy } from '../services/FeePolicy.js';
@@ -276,6 +276,26 @@ export class HandlePaystackWebhookUseCase {
         },
         'subscription settlement mismatch — not activating; left for manual review'
       );
+      return;
+    }
+    if (checkout.status === SubscriptionCheckoutStatus.FAILED) {
+      // A declined first attempt failed the checkout, then the member paid on
+      // the same Paystack checkout. Settle only once our own verification
+      // confirms this exact charge; a provider error throws for a redelivery.
+      const verified = await this.paymentGateway.verifyTransaction(reference);
+      if (verified.status !== 'success' || verified.reference !== reference ||
+          !chargeMatches({ amount: checkout.finalAmount, currency: checkout.currency }, verified)) {
+        logger.warn(
+          { checkoutId: checkout.id, providerRef: reference, providerStatus: verified.status },
+          'late subscription success on a FAILED checkout could not be verified — not activating'
+        );
+        return;
+      }
+      logger.warn(
+        { checkoutId: checkout.id, providerRef: reference },
+        'late provider success on a FAILED subscription checkout — settling after verification'
+      );
+      await this.settleSubscriptionUseCase.execute(checkout, reference, { allowFromFailed: true });
       return;
     }
     await this.settleSubscriptionUseCase.execute(checkout, reference);

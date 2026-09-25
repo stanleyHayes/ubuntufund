@@ -3,6 +3,7 @@ import type { WalletTransactionRepositoryPort } from '../../domain/ports/outboun
 import type { UnitOfWorkPort } from '../../domain/ports/outbound/UnitOfWorkPort.js';
 import type { OutboxRecord } from '@ubuntu-fund/types';
 import {
+  CouponRedemptionStatus,
   PaymentMethod,
   TransactionType,
   type DonationSettlementBreakdown,
@@ -250,7 +251,21 @@ export class SettleDonationUseCase {
         );
       }
       const redemption = await this.couponRedemptionRepo.findByProviderRef(settled.id);
-      if (redemption) await this.couponRedemptionRepo.markConsumed(redemption.id);
+      if (redemption && !(await this.couponRedemptionRepo.markConsumed(redemption.id)) &&
+          redemption.status === CouponRedemptionStatus.RELEASED) {
+        // A late success on a checkout that was failed/expired released its
+        // seat, yet settled with the waiver: consume that slot again so the
+        // donor's usage matches the waivers actually granted.
+        const coupon = await this.couponRepo?.findById(settled.couponId);
+        const perUserLimit = coupon?.perUserLimit;
+        const reconsumed = await this.couponRedemptionRepo.reconsumeReleased(redemption.id, perUserLimit);
+        if (reconsumed && perUserLimit && reconsumed.seat === undefined) {
+          logger.warn(
+            { alert: 'coupon_seat_overuse', couponId: settled.couponId, donationIntentId: settled.id, redemptionId: redemption.id },
+            'late donation settled with a fee waiver after its seat was reused — the donor is now over the per-user limit'
+          );
+        }
+      }
     } catch (error) {
       logger.error(
         { err: error, donationIntentId: settled.id, couponId: settled.couponId },

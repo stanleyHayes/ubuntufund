@@ -15,6 +15,8 @@ import { UserModel } from '../../src/infrastructure/database/models/UserModel.js
 import { CampaignModel } from '../../src/infrastructure/database/models/CampaignModel.js';
 import { JournalEntryModel } from '../../src/infrastructure/database/models/JournalEntryModel.js';
 import { DonationIntentModel } from '../../src/infrastructure/database/models/DonationIntentModel.js';
+import { CouponModel } from '../../src/infrastructure/database/models/CouponModel.js';
+import { CouponRedemptionModel } from '../../src/infrastructure/database/models/CouponRedemptionModel.js';
 import { CampaignCategory, CampaignPriority } from '@ubuntu-fund/types';
 
 const HOUR = 60 * 60 * 1000;
@@ -176,6 +178,55 @@ describe('Hosted checkout expiry, sweep fairness and late successes (I007, I008,
     const res = await request(app).post(`/api/v1/donation-intents/${intentId}/verify`).send({ reference }).expect(200);
     expect(res.body.data.status).toBe('SUCCEEDED');
     expect(await JournalEntryModel.countDocuments({ donationIntentId: intentId })).toBe(1);
+  });
+
+  // R2-003: a late success on a checkout whose coupon seat was released must
+  // use that seat up again, so perUserLimit matches the waivers granted.
+  describe('fee-waiver coupon seats on a late success', () => {
+    async function donorWithCoupon(code: string) {
+      await CouponModel.create({ code, discountType: 'percent', amount: 100, currency: 'GHS', redemptions: 0, appliesToSurfaces: ['donation'], active: true, perUserLimit: 1 });
+      const reg = await request(app).post('/api/v1/auth/register').send({ legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true }, email: uniqueEmail('waiverdonor'), password: 'SecurePass123', name: 'Donor' }).expect(201);
+      const token = reg.body.data.tokens.accessToken as string;
+      const open = () => request(app).post('/api/v1/donation-intents').set('Authorization', `Bearer ${token}`).send({
+        campaignId, amount: 200, tip: 20, provider: 'paystack', couponCode: code, donorEmail: 'waiver@example.com',
+        legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true },
+      });
+      return { userId: reg.body.data.user.id as string, open };
+    }
+    async function expireBySweep(intentId: string) {
+      await backdate(intentId, 2 * HOUR, 25 * HOUR);
+      await sweep();
+      expect((await DonationIntentModel.findById(intentId))?.status).toBe('EXPIRED');
+    }
+
+    it('re-takes the released seat, so the coupon cannot be used again', async () => {
+      const donor = await donorWithCoupon('LATESEAT');
+      const a = (await donor.open().expect(201)).body.data;
+      await expireBySweep(a.intent.id);
+      expect((await CouponRedemptionModel.findOne({ providerRef: a.intent.id }).lean())?.status).toBe('released');
+
+      verifyReplies.set(a.reference, { status: 'success' });
+      await webhook(a.reference).expect(200);
+      expect((await DonationIntentModel.findById(a.intent.id))?.status).toBe('SUCCEEDED');
+      expect(await CouponRedemptionModel.findOne({ providerRef: a.intent.id }).lean()).toMatchObject({ status: 'consumed', seat: 0 });
+      await donor.open().expect(422);
+    });
+
+    it('counts a late success whose seat another checkout took, and blocks further use', async () => {
+      const donor = await donorWithCoupon('LATEOVER');
+      const a = (await donor.open().expect(201)).body.data;
+      await expireBySweep(a.intent.id);
+      const b = (await donor.open().expect(201)).body.data; // reuses the freed seat
+      verifyReplies.set(a.reference, { status: 'success' });
+      await webhook(a.reference).expect(200);
+      await webhook(b.reference).expect(200);
+
+      const rows = await CouponRedemptionModel.find({ userId: donor.userId }).lean();
+      expect(rows.map((r) => r.status).sort()).toEqual(['consumed', 'consumed']);
+      expect(rows.find((r) => r.providerRef === b.intent.id)?.seat).toBe(0);
+      expect(rows.find((r) => r.providerRef === a.intent.id)?.seat).toBeUndefined();
+      await donor.open().expect(422);
+    });
   });
 
   it('acknowledges a redelivered charge.success for a refunded intent instead of failing (I009)', async () => {

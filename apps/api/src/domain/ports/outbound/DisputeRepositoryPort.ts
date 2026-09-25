@@ -26,6 +26,8 @@ export interface DisputeRecord {
   /** Latest provider status / resolution for the case (e.g. 'merchant-accepted'). */
   providerStatus?: string;
   providerResolution?: string;
+  /** The accounting-only refund operation that recorded this provider reversal. */
+  reversalOperationId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -83,4 +85,6 @@ export interface DisputeRepositoryPort {
   ): Promise<DisputeRecord | null>;
   /** Open or update a provider-originated case (see {@link ProviderDisputeInput}). */
   upsertProviderDispute(input: ProviderDisputeInput): Promise<{ record: DisputeRecord; created: boolean }>;
+  /** Link a recorded provider reversal to its case. Null when the case does not exist. */
+  linkReversal(id: string, operationId: string): Promise<DisputeRecord | null>;
 }

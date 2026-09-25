@@ -20,6 +20,7 @@ export interface DisputeDocument extends Document {
   dueAt?: Date;
   providerStatus?: string;
   providerResolution?: string;
+  reversalOperationId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -57,6 +58,7 @@ const disputeSchema = new Schema<DisputeDocument>(
     dueAt: { type: Date },
     providerStatus: { type: String },
     providerResolution: { type: String },
+    reversalOperationId: { type: String },
   },
   { timestamps: true }
 );
