@@ -104,6 +104,7 @@ export class MongoPublicationAdmission implements PublicationAdmissionPort {
       return;
     }
     if (review.status === 'rejected') throw new AppError('This version was declined in safety review. Check Publication reviews, revise your draft, or contact support@ujimora.com to appeal.', 422);
-    throw new AppError('Saved privately for safety review. Your content has not been published. Keep your draft and check Publication reviews before submitting this same version again.', 409);
+    // `errors.publication` lets clients show this as a neutral "waiting for review" notice, not a failure.
+    throw new AppError('Saved privately for safety review. Your content has not been published. Keep your draft and check Publication reviews before submitting this same version again.', 409, { publication: ['held'] });
   }
 }

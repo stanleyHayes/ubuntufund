@@ -83,7 +83,9 @@ it('serializes a block started during comment commit and hides the earlier comme
 it('reviews comment attribution and media without sharing private account fields', async () => {
   const f = await fixture();
   await UserModel.updateOne({ _id: f.owner.id }, { $set: { name: 'Unreviewed registration name', avatarUrl: 'https://example.test/avatar.png' } });
-  await request(app).post(f.comments).set('Authorization', f.owner.auth).send({ content: 'A proposed comment', automatedReviewConsent: true }).expect(409);
+  const response = await request(app).post(f.comments).set('Authorization', f.owner.auth).send({ content: 'A proposed comment', automatedReviewConsent: true }).expect(409);
+  // Clients render this as a neutral "waiting for review" notice, not an error.
+  expect(response.body.errors).toEqual({ publication: ['held'] });
   const held = await PublicationReviewModel.findOne({ actorId: f.owner.id, action: 'comment.create' });
   expect(JSON.parse(held!.text)).toEqual({ authorName: 'Unreviewed registration name', comment: 'A proposed comment' });
   expect(held!.mediaUrls).toEqual(['https://example.test/avatar.png']);
