@@ -354,7 +354,7 @@ export default function CampaignDetailScreen() {
           <Text variant="titleMedium" style={styles.sectionTitle}>
             Updates
           </Text>
-          <CampaignUpdatesList campaignId={campaign.id} isCreator={false} />
+          <CampaignUpdatesList campaignId={campaign.id} isCreator={!!signedInUser && signedInUser.id === campaign.creatorId} />
 
           <Text variant="titleMedium" style={styles.sectionTitle}>
             Comments
