@@ -7,6 +7,7 @@ import type { UserRepositoryPort } from '../../domain/ports/outbound/UserReposit
 import type { LiveSessionEntity } from '../../domain/entities/LiveSession.js';
 import { GUEST_DONOR_ID, type DonationEntity } from '../../domain/entities/Donation.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import { overlayTokenMatches } from '../utils/overlayToken.js';
 
 /** How many recent donors the overlay renders. */
 const RECENT_DONORS_LIMIT = 10;
@@ -31,7 +32,7 @@ export class GetLiveSessionOverlayUseCase {
     if (!session) {
       throw new AppError('Live session not found', 404);
     }
-    if (!token || token !== session.overlayToken) {
+    if (!overlayTokenMatches(session.overlayToken, token)) {
       throw new AppError('Invalid overlay token', 403);
     }
 
