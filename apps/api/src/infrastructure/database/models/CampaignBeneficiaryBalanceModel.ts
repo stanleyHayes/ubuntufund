@@ -9,6 +9,8 @@ export interface CampaignBeneficiaryBalanceDocument extends Document {
   availableBalance: number;
   paidOutBalance: number;
   settledRefs: string[];
+  /** Bumped by each payout request so concurrent requests serialise. */
+  requestWriteVersion?: number;
   updatedAt: Date;
 }
 
@@ -22,6 +24,7 @@ const schema = new Schema<CampaignBeneficiaryBalanceDocument>(
     availableBalance: { type: Number, default: 0 },
     paidOutBalance: { type: Number, default: 0 },
     settledRefs: { type: [String], default: [] },
+    requestWriteVersion: { type: Number },
     updatedAt: { type: Date, default: Date.now },
   },
   { collection: 'campaign_beneficiary_balances', timestamps: false }

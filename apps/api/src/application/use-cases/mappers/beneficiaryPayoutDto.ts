@@ -20,6 +20,7 @@ export function toBeneficiaryPayoutDto(
     approvedBy: p.approvedBy,
     firstApprovedBy: p.firstApprovedBy,
     firstApprovedAt: p.firstApprovedAt,
+    closure: p.closure,
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
   };

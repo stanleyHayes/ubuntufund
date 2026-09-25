@@ -1,5 +1,5 @@
 import type { BeneficiaryPayoutEntity } from '../../entities/BeneficiaryPayout.js';
-import type { PayoutStatus } from '@ubuntu-fund/types';
+import type { PayoutClosure, PayoutStatus } from '@ubuntu-fund/types';
 
 export interface BeneficiaryPayoutRepositoryPort {
   create(payout: BeneficiaryPayoutEntity): Promise<BeneficiaryPayoutEntity>;
@@ -14,6 +14,15 @@ export interface BeneficiaryPayoutRepositoryPort {
     campaignId: string,
     beneficiaryId: string
   ): Promise<BeneficiaryPayoutEntity[]>;
+
+  /**
+   * Atomically PENDING → FAILED with the closure record (rejected/cancelled
+   * before any transfer), flagged settlement-applied. Null when no longer PENDING.
+   */
+  closePending?(id: string, closure: PayoutClosure): Promise<BeneficiaryPayoutEntity | null>;
+
+  /** Sum of a beneficiary's PENDING request amounts, optionally excluding one. */
+  sumPendingAmount?(campaignId: string, beneficiaryId: string, excludeId?: string): Promise<number>;
 
   /** Payouts stuck in PROCESSING since before `olderThan` (missed webhook). */
   findStuckProcessing(olderThan: Date): Promise<BeneficiaryPayoutEntity[]>;

@@ -82,6 +82,25 @@ export class MongoCampaignBeneficiaryBalanceRepository
     });
   }
 
+  async fenceRequests(campaignId: string, beneficiaryId: string, currency: string): Promise<void> {
+    await CampaignBeneficiaryBalanceModel.updateOne(
+      { campaignId, beneficiaryId, currency },
+      { $inc: { requestWriteVersion: 1 } }
+    );
+  }
+
+  returnAvailableToPending(
+    campaignId: string,
+    beneficiaryId: string,
+    currency: string,
+    amount: number
+  ): Promise<boolean> {
+    return this.guardedMove(campaignId, beneficiaryId, currency, 'availableBalance', amount, {
+      availableBalance: -amount,
+      pendingBalance: amount,
+    });
+  }
+
   reserveForPayout(
     campaignId: string,
     beneficiaryId: string,

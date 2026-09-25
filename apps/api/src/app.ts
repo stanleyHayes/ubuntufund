@@ -1571,6 +1571,8 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     new MongoUnitOfWork(),
     config.payouts.dualApprovalAmount,
     new MongoBeneficiaryPayoutAuthorization(),
+    payoutEligibility,
+    new MongoPayoutClosureTransaction(),
   )
   const beneficiaryPayoutController = new BeneficiaryPayoutController(beneficiaryPayoutUseCase)
   const leaderboardController = new LeaderboardController(

@@ -1,4 +1,4 @@
-import type { PayoutProvider, PayoutStatus } from '@ubuntu-fund/types';
+import type { PayoutClosure, PayoutProvider, PayoutStatus } from '@ubuntu-fund/types';
 
 export interface BeneficiaryPayoutProps {
   id: string;
@@ -16,6 +16,15 @@ export interface BeneficiaryPayoutProps {
   firstApprovedBy?: string;
   firstApprovedAt?: Date;
   firstApprovalFingerprint?: string;
+  /**
+   * Fingerprint of the destination this payout was requested against. Approval
+   * pays only that destination; a replaced one needs a new request.
+   */
+  destinationFingerprint?: string;
+  /** What the request moved pending → available; a close returns exactly this. */
+  clearedAmount?: number;
+  /** Set when a PENDING request was rejected or cancelled before any transfer. */
+  closure?: PayoutClosure;
   /** For a REVERSED payout, the status it reversed from (G7 repair). */
   reversedFrom?: 'PAID' | 'PROCESSING';
   createdAt: Date;
@@ -26,7 +35,8 @@ export interface BeneficiaryPayoutProps {
  * A single disbursement of one beneficiary's cleared share (spec §17 / ADR-3).
  * Single-transfer only, reusing the Payout status machine:
  *
- *   PENDING    → PROCESSING (admin approves + transfer initiated) | FAILED
+ *   PENDING    → PROCESSING (admin approves + transfer initiated)
+ *              | FAILED (rejected by an admin or cancelled before any transfer)
  *   PROCESSING → PAID | FAILED | REVERSED
  *   PAID       → REVERSED
  *
@@ -93,6 +103,15 @@ export class BeneficiaryPayoutEntity {
   }
   get firstApprovedBy(): string | undefined {
     return this.props.firstApprovedBy;
+  }
+  get destinationFingerprint(): string | undefined {
+    return this.props.destinationFingerprint;
+  }
+  get clearedAmount(): number | undefined {
+    return this.props.clearedAmount;
+  }
+  get closure(): PayoutClosure | undefined {
+    return this.props.closure;
   }
   get reversedFrom(): 'PAID' | 'PROCESSING' | undefined {
     return this.props.reversedFrom;

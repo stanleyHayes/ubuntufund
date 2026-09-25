@@ -1,6 +1,6 @@
 import { trackActivity } from '../plugins/trackActivity.js';
 import mongoose, { Schema, type Document } from 'mongoose';
-import type { PayoutProvider, PayoutStatus } from '@ubuntu-fund/types';
+import type { PayoutClosure, PayoutProvider, PayoutStatus } from '@ubuntu-fund/types';
 
 export interface BeneficiaryPayoutReview {
   stage: 'first' | 'final';
@@ -24,6 +24,12 @@ export interface BeneficiaryPayoutDocument extends Document {
   firstApprovedBy?: string;
   firstApprovedAt?: Date;
   firstApprovalFingerprint?: string;
+  /** The destination the request was made against; approval pays only that one. */
+  destinationFingerprint?: string;
+  /** What the request moved pending → available; a close returns exactly this. */
+  clearedAmount?: number;
+  /** Set when a PENDING request was rejected or cancelled before any transfer. */
+  closure?: PayoutClosure;
   /** Each approver's destination review note (maker first, then the approval that disbursed). */
   reviews?: BeneficiaryPayoutReview[];
   settlementApplied?: boolean;
@@ -67,6 +73,20 @@ const schema = new Schema<BeneficiaryPayoutDocument>(
     firstApprovedBy: { type: String },
     firstApprovedAt: { type: Date },
     firstApprovalFingerprint: { type: String },
+    destinationFingerprint: { type: String },
+    clearedAmount: { type: Number },
+    closure: {
+      type: new Schema<PayoutClosure>(
+        {
+          kind: { type: String, enum: ['rejected', 'cancelled'], required: true },
+          reason: { type: String, required: true },
+          closedBy: { type: String, required: true },
+          closedAt: { type: Date, required: true },
+        },
+        { _id: false }
+      ),
+      default: undefined,
+    },
     reviews: {
       type: [new Schema<BeneficiaryPayoutReview>({
         stage: { type: String, enum: ['first', 'final'], required: true },

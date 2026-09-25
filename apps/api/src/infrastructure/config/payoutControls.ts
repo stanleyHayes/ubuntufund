@@ -11,7 +11,7 @@ export function payoutControlWarnings(nodeEnv: string, payouts: Pick<PayoutsConf
   if (nodeEnv === 'production' && !(payouts.dualApprovalAmount > 0))
     warnings.push(
       'PAYOUT_DUAL_APPROVAL_AMOUNT is 0: every campaign and beneficiary payout needs only one admin approval (maker-checker is off). ' +
-        'Compensating controls: destination binding to the owner-registered recipient, recorded review notes, current-KYC and self-approval checks, and after-the-fact audit review. ' +
+        'Compensating controls: each payout pays only the destination it was requested against, entered by the campaign owner (or, for a beneficiary payout, the beneficiary or owner) and never by staff; recorded review notes; current-KYC, campaign-status and self-approval checks; and after-the-fact audit review. ' +
         'Set a GHS threshold once a second approving admin exists.',
     )
   return warnings

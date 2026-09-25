@@ -31,6 +31,23 @@ export interface CampaignBeneficiaryBalanceRepositoryPort {
     amount: number
   ): Promise<boolean>;
 
+  /**
+   * Undo a request's clearing (available → pending) when a PENDING payout is
+   * rejected or cancelled; false when available is short.
+   */
+  returnAvailableToPending?(
+    campaignId: string,
+    beneficiaryId: string,
+    currency: string,
+    amount: number
+  ): Promise<boolean>;
+
+  /**
+   * Write-fence the balance row inside a payout-request transaction so two
+   * concurrent requests for one beneficiary serialise on it.
+   */
+  fenceRequests?(campaignId: string, beneficiaryId: string, currency: string): Promise<void>;
+
   /** Reserve available → in-transit on payout approval; false when available short. */
   reserveForPayout(
     campaignId: string,

@@ -4,6 +4,7 @@ import type { BeneficiaryPayoutController } from '../controllers/BeneficiaryPayo
 import { validate } from '../../middleware/validate.js';
 import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
 import type { requireAdmin } from '../../middleware/requireRole.js';
+import { BENEFICIARY_REJECTION_REASON_MIN } from '../../../../../application/use-cases/BeneficiaryPayoutUseCase.js';
 
 const registerRecipientSchema = z.object({
   type: z.enum(['ghipss', 'mobile_money']),
@@ -14,12 +15,16 @@ const registerRecipientSchema = z.object({
 
 const requestPayoutSchema = z.object({ amount: z.number().positive() });
 const approveSchema = z.object({ reviewNote: z.string().trim().min(20).max(2000) });
+const rejectSchema = z.object({ reason: z.string().trim().min(BENEFICIARY_REJECTION_REASON_MIN).max(2000) });
+const cancelSchema = z.object({ reason: z.string().trim().max(500).optional() });
 
 /**
  * Per-beneficiary payout routes composed onto /campaigns (spec §17):
  *   POST /campaigns/:id/split/beneficiaries/:beneficiaryId/recipient   (owner/beneficiary)
  *   POST /campaigns/:id/split/beneficiaries/:beneficiaryId/verify-kyc  (admin)
  *   POST /campaigns/:id/split/beneficiaries/:beneficiaryId/payouts     (owner/beneficiary)
+ *   POST /campaigns/:id/split/beneficiaries/:beneficiaryId/payouts/:payoutId/cancel
+ *                                                                      (owner/beneficiary)
  *   GET  /campaigns/:id/split/payouts                                  (owner/admin)
  */
 export function createCampaignBeneficiaryPayoutRoutes(
@@ -46,6 +51,13 @@ export function createCampaignBeneficiaryPayoutRoutes(
     validate(requestPayoutSchema),
     controller.requestPayout
   );
+  // Withdraw a request still awaiting review (e.g. before changing the destination).
+  router.post(
+    '/:id/split/beneficiaries/:beneficiaryId/payouts/:payoutId/cancel',
+    authMiddleware,
+    validate(cancelSchema),
+    controller.cancel
+  );
   router.get('/:id/split/payouts', authMiddleware, controller.listByCampaign);
   return router;
 }
@@ -54,6 +66,7 @@ export function createCampaignBeneficiaryPayoutRoutes(
  * The admin beneficiary-payout resource:
  *   GET  /beneficiary-payouts/:payoutId/recipient  (admin) destination to review
  *   POST /beneficiary-payouts/:payoutId/approve    (admin) requires reviewNote
+ *   POST /beneficiary-payouts/:payoutId/reject     (admin) closes a PENDING request
  */
 export function createBeneficiaryPayoutRoutes(
   controller: BeneficiaryPayoutController,
@@ -66,5 +79,6 @@ export function createBeneficiaryPayoutRoutes(
   router.get('/:payoutId/recipient', authMiddleware, adminGuard, controller.recipient);
   // Mirrors campaign payouts: each approver records the destination review.
   router.post('/:payoutId/approve', authMiddleware, adminGuard, validate(approveSchema), controller.approve);
+  router.post('/:payoutId/reject', authMiddleware, adminGuard, validate(rejectSchema), controller.reject);
   return router;
 }

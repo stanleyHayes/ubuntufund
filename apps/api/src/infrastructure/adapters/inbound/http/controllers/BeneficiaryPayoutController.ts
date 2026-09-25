@@ -100,6 +100,44 @@ export class BeneficiaryPayoutController {
     }
   };
 
+  /** POST /beneficiary-payouts/:payoutId/reject — close a PENDING request with a reason (admin). */
+  reject = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const payout = await this.useCase.rejectPayout(
+        req.params.payoutId as string,
+        this.requester(req),
+        typeof req.body?.reason === 'string' ? req.body.reason : ''
+      );
+      res.json({ data: payout, message: 'Payout rejected', status: 200 });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /** POST /campaigns/:id/split/beneficiaries/:beneficiaryId/payouts/:payoutId/cancel. */
+  cancel = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const payout = await this.useCase.cancelPayout(
+        req.params.id as string,
+        req.params.beneficiaryId as string,
+        req.params.payoutId as string,
+        this.requester(req),
+        typeof req.body?.reason === 'string' ? req.body.reason : undefined
+      );
+      res.json({ data: payout, message: 'Payout request cancelled', status: 200 });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   /** GET /beneficiary-payouts/:payoutId/recipient — destination to review (admin). */
   recipient = async (
     req: AuthenticatedRequest,
