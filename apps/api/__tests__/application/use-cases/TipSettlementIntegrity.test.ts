@@ -99,6 +99,50 @@ describe('tip webhook settlement checks the charged amount (I042)', () => {
     expect(credited).toEqual([]);
   });
 
+  // R2-002: a failure written between the read and the transition must not
+  // swallow a paid charge.
+  it('credits a success that raced a concurrent PENDING → FAILED write, after verification', async () => {
+    const { repo, balance, credited, status } = tipStore('PENDING');
+    const gateway = { verifyTransaction: vi.fn(async () => ({ status: 'success', reference: REF, amount: 500, currency: 'GHS', fees: 0, raw: {} })) };
+    const transition = repo.transitionToSucceeded.getMockImplementation()!;
+    repo.transitionToSucceeded.mockImplementationOnce(async (ref, opts) => {
+      await repo.transitionToFailed(); // charge.failed / the sweep lands first
+      return transition(ref, opts);
+    });
+    const uc = new HandleTipWebhookUseCase(repo as never, balance as never, gateway);
+    await uc.handleSuccess(REF, { amount: 500, currency: 'GHS' });
+    expect(gateway.verifyTransaction).toHaveBeenCalledWith(REF);
+    expect(status()).toBe('SUCCEEDED');
+    expect(credited).toEqual([500]);
+  });
+
+  it('leaves a raced tip FAILED when the provider does not confirm the success', async () => {
+    const { repo, balance, credited, status } = tipStore('PENDING');
+    const gateway = { verifyTransaction: vi.fn(async () => ({ status: 'failed', reference: REF, amount: 500, currency: 'GHS', fees: 0, raw: {} })) };
+    const transition = repo.transitionToSucceeded.getMockImplementation()!;
+    repo.transitionToSucceeded.mockImplementationOnce(async (ref, opts) => {
+      await repo.transitionToFailed();
+      return transition(ref, opts);
+    });
+    const uc = new HandleTipWebhookUseCase(repo as never, balance as never, gateway);
+    await uc.handleSuccess(REF, { amount: 500, currency: 'GHS' });
+    expect(status()).toBe('FAILED');
+    expect(credited).toEqual([]);
+  });
+
+  it('asks for a redelivery when a raced tip cannot be verified here', async () => {
+    const { repo, balance, credited } = tipStore('PENDING');
+    const transition = repo.transitionToSucceeded.getMockImplementation()!;
+    repo.transitionToSucceeded.mockImplementationOnce(async (ref, opts) => {
+      await repo.transitionToFailed();
+      return transition(ref, opts);
+    });
+    const gateway = { verifyTransaction: vi.fn(async () => { throw new Error('provider timeout'); }) };
+    const uc = new HandleTipWebhookUseCase(repo as never, balance as never, gateway);
+    await expect(uc.handleSuccess(REF, { amount: 500, currency: 'GHS' })).rejects.toThrow('provider timeout');
+    expect(credited).toEqual([]);
+  });
+
   it('does not revive a FAILED tip without a way to verify it', async () => {
     const { repo, balance, credited, status } = tipStore('FAILED');
     const uc = new HandleTipWebhookUseCase(repo as never, balance as never);
