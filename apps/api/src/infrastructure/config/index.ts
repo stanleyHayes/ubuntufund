@@ -355,3 +355,12 @@ export const config: AppConfig = {
     process.env.PUBLIC_API_URL ??
     `http://localhost:${envNumber(process.env.PORT, 4000)}`,
 };
+
+// app.ts reflects ANY origin (with credentials) when this list is empty, which
+// is convenient for tests and ad-hoc runs but must never be production's
+// behaviour — and the overlay's frame-ancestors are derived from it too. Fail
+// closed at boot instead of silently opening CORS if the variable is dropped
+// or blanked in the dashboard.
+if (nodeEnv === 'production' && config.corsOrigins.length === 0) {
+  throw new Error('CORS_ORIGINS is required in production (comma-separated browser origins)');
+}
