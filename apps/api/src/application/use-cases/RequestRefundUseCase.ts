@@ -4,7 +4,7 @@ import type {
   RefundStatus,
 } from '../../domain/ports/outbound/RefundRepositoryPort.js';
 import { roundToCurrency } from '../../domain/value-objects/Money.js';
-import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import { AppError, isDuplicateKeyError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 
 export interface RequestRefundInput {
   donationId: string;
@@ -48,6 +48,8 @@ export class RequestRefundUseCase {
     const fee = 0;
     const netAmount = roundToCurrency(amount, currency);
 
+    // findByDonationId above is check-then-insert; a concurrent request for
+    // the same donation loses on the unique donationId index.
     const saved = await this.refundRepo.save({
       id: '', // Assigned by repository
       donationId: donation.id,
@@ -62,6 +64,9 @@ export class RequestRefundUseCase {
       status: 'pending',
       createdAt: new Date(),
       updatedAt: new Date(),
+    }).catch((error: unknown) => {
+      if (isDuplicateKeyError(error, 'donationId')) throw new AppError('Refund already requested for this donation', 409);
+      throw error;
     });
 
     return { id: saved.id, status: saved.status };

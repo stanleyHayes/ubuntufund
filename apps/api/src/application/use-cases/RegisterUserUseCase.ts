@@ -21,7 +21,7 @@ import type { WalletRepositoryPort } from '../../domain/ports/outbound/WalletRep
 import type { AffiliateRepositoryPort } from '../../domain/ports/outbound/AffiliateRepositoryPort.js';
 import type { AffiliateReferralRepositoryPort } from '../../domain/ports/outbound/AffiliateReferralRepositoryPort.js';
 import type { AuthTokenService } from '../services/AuthTokenService.js';
-import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import { AppError, isDuplicateKeyError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 
 export class RegisterUserUseCase {
@@ -72,7 +72,15 @@ export class RegisterUserUseCase {
       updatedAt: now,
     });
 
-    const savedUser = await this.userRepo.save(user);
+    // findByEmail above is check-then-insert and bcrypt widens the window: a
+    // concurrent registration for the same email loses on the unique index.
+    let savedUser: UserEntity;
+    try {
+      savedUser = await this.userRepo.save(user);
+    } catch (error) {
+      if (isDuplicateKeyError(error, 'email')) throw new AppError('Email already registered', 409);
+      throw error;
+    }
 
     // Create default local wallet
     const wallet = new WalletEntity({

@@ -34,6 +34,17 @@ it('records the full requested amount without a fee, preserves the donation and 
   expect(list.body.data.find((r: { currency: string }) => r.currency === 'KWD')).toMatchObject({ amount: 10.123, status: 'pending' });
 });
 
+it('answers concurrent duplicate refund requests with 409, not 500, and stores one refund', async () => {
+  const owner = await user();
+  const donation = await DonationModel.create({ campaignId: 'aaaaaaaaaaaaaaaaaaaaaaaa', donorId: owner.id, amount: 50, currency: 'GHS', paymentMethod: 'wallet' });
+  const body = { donationId: donation.id, reason: 'Duplicate donation' };
+  const responses = await Promise.all(Array.from({ length: 5 }, () =>
+    request(app).post('/api/v1/refunds').set('Authorization', owner.token).send(body)));
+  expect(responses.map((r) => r.status).sort()).toEqual([201, 409, 409, 409, 409]);
+  for (const r of responses.filter((r) => r.status === 409)) expect(r.body.message).toBe('Refund already requested for this donation');
+  expect(await RefundModel.countDocuments({ donationId: donation.id })).toBe(1);
+});
+
 it('preserves historical fee snapshots when a later request uses the free intake policy', async () => {
   const owner = await user();
   const old = await RefundModel.create({ donationId: 'bbbbbbbbbbbbbbbbbbbbbbbb', campaignId: 'aaaaaaaaaaaaaaaaaaaaaaaa', requesterId: owner.id, reason: 'Other', amount: 100, fee: 2, netAmount: 98, currency: 'GHS', status: 'pending' });
