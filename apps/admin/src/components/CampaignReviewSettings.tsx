@@ -81,19 +81,15 @@ export function CampaignReviewSettings({ canEdit }: { canEdit: boolean }) {
     setError('')
     setMessage('')
     try {
-      await api.put(`/admin/commercial-config/${TIER_KEY}`, {
-        value: Number(tier),
-        reason: 'Campaign auto-approval updated from platform settings',
-      })
-      for (const [i, key] of THRESHOLD_KEYS.entries()) {
-        await api.put(`/admin/commercial-config/${key}`, {
-          value: numbers[i],
-          reason: 'Campaign tier threshold updated from platform settings',
-        })
-      }
-      await api.put(`/admin/commercial-config/${ALERT_EMAIL_KEY}`, {
-        value: trimmedEmail,
-        reason: 'Review alert recipient updated from platform settings',
+      // One all-or-nothing request: a failure part-way can no longer leave the
+      // new tier live beside old thresholds or the old alert address.
+      await api.put('/admin/commercial-config', {
+        changes: [
+          { key: TIER_KEY, value: Number(tier) },
+          ...THRESHOLD_KEYS.map((key, i) => ({ key, value: numbers[i] })),
+          { key: ALERT_EMAIL_KEY, value: trimmedEmail },
+        ],
+        reason: 'Campaign review settings updated from platform settings',
       })
       setMessage(
         trimmedEmail

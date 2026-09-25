@@ -53,6 +53,9 @@ const loginSchema = z.object({
   mfaCode: z.string().trim().min(6).max(64).optional(),
   email: accountEmail,
   password: z.string().min(1),
+  // The staff console sends 'admin' so non-admin accounts are refused before
+  // any token is issued.
+  audience: z.literal('admin').optional(),
 });
 
 const refreshTokenSchema = z.object({

@@ -7,6 +7,8 @@ import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
 
 const reviewReportSchema = z.object({
   status: z.enum(['reviewed', 'dismissed']),
+  // Every decision records why; ReviewReportUseCase re-checks the trimmed length.
+  notes: z.string().trim().min(20).max(2000),
 });
 
 /**

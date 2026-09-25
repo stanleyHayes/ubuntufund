@@ -55,13 +55,17 @@ export interface BeneficiaryPayoutRepositoryPort {
     id: string,
     makerId: string,
     fingerprint: string,
-    expected: BeneficiaryPayoutEntity
+    expected: BeneficiaryPayoutEntity,
+    reviewNote: string
   ): Promise<BeneficiaryPayoutEntity | null>;
 
-  /** Atomically PENDING → PROCESSING, stamping approver + transfer reference. */
+  /**
+   * Atomically PENDING → PROCESSING, stamping approver + transfer reference and
+   * appending the approver's destination review note.
+   */
   transitionToProcessing(
     id: string,
-    fields: { approvedBy: string; providerRef: string },
+    fields: { approvedBy: string; providerRef: string; reviewNote: string },
     expected: BeneficiaryPayoutEntity
   ): Promise<BeneficiaryPayoutEntity | null>;
   attachTransferCode(

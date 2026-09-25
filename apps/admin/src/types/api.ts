@@ -4,7 +4,7 @@ export interface PaymentProvider {
   id: string
   name: string
   slug: string
-  type: 'mobile_money' | 'card' | 'bank' | 'crypto' | 'wallet'
+  type: 'mobile_money' | 'card' | 'bank' | 'crypto' | 'wallet' | 'gateway'
   enabled: boolean
   isDefault: boolean
   feePercent: number
@@ -28,9 +28,13 @@ export interface Dispute {
 }
 
 export interface PlatformStats {
+  /** Net GHS raised: GHS donations minus provider refunds. */
   totalRaised: number
+  /** Net raised per currency (after refunds); never summed across currencies. */
+  totalRaisedByCurrency?: Record<string, number>
   activeCampaigns: number
   totalUsers: number
+  /** Pending supporter reports about campaigns (API name kept for compatibility). */
   pendingDisputes: number
   totalDonations: number
   avgDonation: number

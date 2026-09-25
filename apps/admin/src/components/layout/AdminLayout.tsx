@@ -13,6 +13,7 @@ import Sidebar, { DRAWER_WIDTH } from './Sidebar'
 import TopBar, { TOPBAR_HEIGHT } from './TopBar'
 import Tour, { type TourStep } from '@/components/Tour'
 import { useAuth } from '@/context/AuthContext'
+import AdminMfaPrompt from './AdminMfaPrompt'
 
 const ADMIN_TOUR: TourStep[] = [
   {
@@ -24,12 +25,6 @@ const ADMIN_TOUR: TourStep[] = [
     side: 'right',
     title: 'Your sections',
     body: 'Everything lives in five groups: Operations for the daily pulse, Community for campaigns and people, Trust & Safety for reviews, Growth for outreach, and Platform for configuration.',
-  },
-  {
-    selector: '[data-tour="search"]',
-    side: 'bottom',
-    title: 'Search everything',
-    body: 'Jump straight to any campaign, user, or donation without leaving the page you are on.',
   },
   {
     selector: '[data-tour="bell"]',
@@ -119,6 +114,7 @@ export default function AdminLayout() {
               '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
             }}
           >
+            <AdminMfaPrompt />
             <Outlet />
           </Box>
         </Box>

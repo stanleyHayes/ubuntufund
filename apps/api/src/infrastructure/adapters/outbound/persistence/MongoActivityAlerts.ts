@@ -14,6 +14,7 @@ import { TipModel } from '../../../database/models/TipModel.js';
 import { RefundModel } from '../../../database/models/RefundModel.js';
 import { WalletTransactionModel } from '../../../database/models/WalletTransactionModel.js';
 import { SubscriptionModel } from '../../../database/models/SubscriptionModel.js';
+import { logger } from '../../../logging/logger.js';
 
 interface SourceRecord { _id: mongoose.Types.ObjectId; activityRevision: number; activityOccurredAt: Date; [key: string]: unknown }
 interface Event { key: string; userId: string; category: ActivityAlertCategory; title: string; body: string; path: string; occurredAt: Date }
@@ -139,7 +140,10 @@ export class MongoActivityAlerts {
           }
           // Resend keeps idempotency keys for 24h. Never blindly resend an ambiguous older attempt.
           if (row.firstAttemptAt && Date.now() - row.firstAttemptAt.getTime() >= 23 * 60 * 60_000) {
-            await ActivityAlertDeliveryModel.updateOne(match, { $set: { status: 'review', lastError: 'email_delivery_requires_review' }, $unset: { leaseToken: 1, leaseUntil: 1 } }); continue;
+            await ActivityAlertDeliveryModel.updateOne(match, { $set: { status: 'review', lastError: 'email_delivery_requires_review' }, $unset: { leaseToken: 1, leaseUntil: 1 } });
+            // Staff resolve these from the admin console; no address or body is logged.
+            logger.warn({ deliveryId: row._id, category: row.category, attempts: row.attempts, firstAttemptAt: row.firstAttemptAt }, 'activity email needs a delivery check');
+            continue;
           }
           const payload = row.emailRequest ?? { from: this.email.from, reply_to: this.email.replyTo, to: [user.email], subject: row.title,
             text: `${row.body}\n\nView details: ${this.email.webUrl}${row.path}\n\nYou opted in to this activity email. Change your choices: ${this.email.webUrl}/settings\nSupport: ${this.email.replyTo}` };

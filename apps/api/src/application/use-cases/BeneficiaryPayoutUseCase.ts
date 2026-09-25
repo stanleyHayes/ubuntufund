@@ -28,6 +28,21 @@ const CURRENCY = 'GHS';
 const roundMoney = (n: number, currency: string): number =>
   roundToCurrency(n, currency);
 
+/** Minimum length of an approver's destination review note. */
+export const REVIEW_NOTE_MIN = 20;
+
+/** What an approver reviews before approving a beneficiary payout. */
+export interface BeneficiaryPayoutDestination {
+  type: BeneficiaryRecipient['type'];
+  accountName: string;
+  accountNumber: string;
+  bankCode: string;
+  currency: string;
+  kycVerified: boolean;
+  kycVerifiedBy?: string;
+  kycVerifiedAt?: Date;
+}
+
 export interface SplitRequester {
   authVersion?: string;
   userId: string;
@@ -198,14 +213,50 @@ export class BeneficiaryPayoutUseCase {
     });
   }
 
+  /**
+   * Admin: the destination a pending payout would pay, for the review an
+   * approver must record. Reports a replaced destination instead of showing it.
+   */
+  async recipientForReview(
+    payoutId: string,
+    requester: SplitRequester
+  ): Promise<BeneficiaryPayoutDestination> {
+    this.assertEnabled();
+    this.assertAdmin(requester);
+    const payout = await this.payoutRepo.findById(payoutId);
+    if (!payout) throw new AppError('Payout not found', 404);
+    const recipient = await this.recipientRepo.findByCampaignAndBeneficiary(payout.campaignId, payout.beneficiaryId);
+    if (!recipient) throw new AppError('Beneficiary payout recipient not found', 404);
+    if (recipient.id !== payout.recipientId) throw new AppError('Payout destination was replaced; create a new payout request.', 409);
+    return {
+      type: recipient.type,
+      accountName: recipient.accountName,
+      accountNumber: recipient.accountNumber,
+      bankCode: recipient.bankCode,
+      currency: recipient.currency,
+      kycVerified: recipient.kycVerified,
+      kycVerifiedBy: recipient.kycVerifiedBy,
+      kycVerifiedAt: recipient.kycVerifiedAt,
+    };
+  }
+
   /** Admin: approve a KYC-verified beneficiary payout and initiate the transfer. */
   async approvePayout(
     payoutId: string,
-    requester: SplitRequester
+    requester: SplitRequester,
+    reviewNote?: string
   ): Promise<BeneficiaryPayout> {
     this.assertEnabled();
     if (requester.role !== 'admin') {
       throw new AppError('Only an admin can approve a payout', 403);
+    }
+    // Every approval attests to this payout's destination, as on campaign payouts.
+    const note = reviewNote?.trim() ?? '';
+    if (note.length < REVIEW_NOTE_MIN) {
+      throw new AppError(
+        `Record the beneficiary destination and ownership review before approving (at least ${REVIEW_NOTE_MIN} characters).`,
+        422
+      );
     }
     if (!this.paymentGateway.isConfigured()) {
       throw new AppError('Payouts are not configured', 501);
@@ -246,7 +297,7 @@ export class BeneficiaryPayoutUseCase {
       if (!payout.firstApprovedBy || payout.toPlain().firstApprovalFingerprint !== fingerprint || !payout.toPlain().firstApprovedAt) {
         const recorded = await this.unitOfWork.run(async () => {
           await this.authorization!.assertCurrent(requester, recipient);
-          const reviewed = await this.payoutRepo.recordFirstApproval(payout.id, requester.userId, fingerprint, payout);
+          const reviewed = await this.payoutRepo.recordFirstApproval(payout.id, requester.userId, fingerprint, payout, note);
           if (!reviewed) throw new AppError('Payout or its review changed; reload before approving.', 409);
           return reviewed;
         });
@@ -273,7 +324,7 @@ export class BeneficiaryPayoutUseCase {
       const campReserved = await this.campaignBalanceRepo.reserveForPayout(payout.campaignId, payout.amount);
       if (!campReserved) throw new AppError('Payout could not be reserved; campaign balance requires reconciliation.', 409);
       const transitioned = await this.payoutRepo.transitionToProcessing(payout.id, {
-        approvedBy: requester.userId, providerRef: reference,
+        approvedBy: requester.userId, providerRef: reference, reviewNote: note,
       }, payout);
       if (!transitioned) throw new AppError('Payout is no longer pending approval', 409);
       return transitioned;

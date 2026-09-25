@@ -21,6 +21,14 @@ import { api } from '@/lib/api'
 import CryptoOperations from '@/components/payments/CryptoOperations'
 import PageHeader from '@/components/PageHeader'
 
+/**
+ * Gateway rows are the payment rail and the wallet is built in, so both can be
+ * switched either way (the API allows it). Method rows describe what a gateway
+ * checkout offers and have no integration of their own to switch on.
+ */
+const switchable = (provider: PaymentProvider) =>
+  provider.type === PaymentMethod.WALLET || provider.type === PaymentMethod.GATEWAY
+
 export default function PaymentProvidersPage() {
   const { can } = useAdminPermissions()
   const canUpdate = can(Resource.PAYMENT_PROVIDERS, Action.UPDATE)
@@ -34,7 +42,7 @@ export default function PaymentProvidersPage() {
   const enabledCount = useMemo(() => providers.filter((provider) => provider.enabled).length, [providers])
 
   async function toggle(provider: PaymentProvider) {
-    if (!canUpdate || busyId !== null || (!provider.enabled && provider.type !== PaymentMethod.WALLET)) return
+    if (!canUpdate || busyId !== null || (!provider.enabled && !switchable(provider))) return
     setBusyId(provider.id)
     try {
       const updated = await api.patch<PaymentProvider>(`/payment-providers/${provider.id}/toggle`)
@@ -55,7 +63,7 @@ export default function PaymentProvidersPage() {
 
       <CryptoOperations />
       <Alert severity="info" sx={{ mb: 3 }}>
-        These switches manage the legacy wallet provider configuration. Paystack checkout and crypto availability are configured separately; the crypto panel above shows current checkout options.
+        The Paystack and Flutterwave switches stop new donation checkouts on that gateway; the server's deployment settings must also allow the gateway. They do not yet affect wallet top-ups, subscriptions, creator tips or payouts. The Ujimora Wallet switch hides the wallet option on the website only. Method rows (mobile money, card, bank) describe what the gateway checkout offers and can't be switched on by themselves. Crypto availability is shown in the panel above.
       </Alert>
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 
@@ -85,10 +93,11 @@ export default function PaymentProvidersPage() {
                   </Box>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-                  <Chip label={busyId === provider.id ? 'Updating…' : provider.enabled ? 'Enabled' : provider.type !== PaymentMethod.WALLET ? 'Not available yet' : 'Disabled'} color={provider.enabled ? 'success' : 'default'} size="small" />
-                  <Switch checked={provider.enabled} disabled={!canUpdate || busyId !== null || (!provider.enabled && provider.type !== PaymentMethod.WALLET)} onChange={() => toggle(provider)} slotProps={{ input: { role: 'switch', 'aria-label': `Toggle ${provider.name}` } }} />
+                  <Chip label={busyId === provider.id ? 'Updating…' : provider.enabled ? 'Enabled' : switchable(provider) ? 'Disabled' : 'Not available yet'} color={provider.enabled ? 'success' : 'default'} size="small" />
+                  <Switch checked={provider.enabled} disabled={!canUpdate || busyId !== null || (!provider.enabled && !switchable(provider))} onChange={() => toggle(provider)} slotProps={{ input: { role: 'switch', 'aria-label': `Toggle ${provider.name}` } }} />
                 </Box>
-                {provider.type !== PaymentMethod.WALLET && <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Payment integration required before accepting donations.</Typography>}
+                {provider.type === PaymentMethod.GATEWAY && <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>{provider.enabled ? 'Turning this off stops every new donation checkout on this gateway.' : 'New donation checkouts on this gateway are stopped. Switch it on to accept them again.'}</Typography>}
+                {!switchable(provider) && <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Offered through the gateway checkout; it has no integration of its own to switch on.</Typography>}
                 {!canUpdate && <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Your role has view-only access.</Typography>}
               </CardContent>
             </Card>

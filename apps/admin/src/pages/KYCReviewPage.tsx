@@ -11,7 +11,7 @@ import InputAdornment from '@mui/material/InputAdornment'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded'
 import { type KYCVerification } from '@/types/api'
-import { useAdminKYCVerifications } from '@/hooks/useApiData'
+import { useAdminKYCVerifications, useKYCStats } from '@/hooks/useApiData'
 import { api } from '@/lib/api'
 import { Resource, Action } from '@ubuntu-fund/types'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
@@ -53,6 +53,9 @@ const typeLabels: Record<string, string> = {
 
 export default function KYCReviewPage() {
   const { data: kycVerifications, isLoading: loading, error } = useAdminKYCVerifications()
+  // Header counts come from GET /kyc/stats (UTC day, all decisions), not from
+  // this queue, which only ever holds pending and in-review applications.
+  const { data: stats, isLoading: statsLoading, error: statsError, retry: refreshStats } = useKYCStats()
   const { can } = useAdminPermissions()
   const [statusFilter, setStatusFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
@@ -100,6 +103,7 @@ export default function KYCReviewPage() {
       await api.put(`/kyc/${id}/${action === 'approved' ? 'approve' : 'reject'}`, { ...review, reviewVersion: (selected?.id === id && detailOpen ? selected : kycVerifications.find(v => v.id === id))?.reviewVersion })
       setLocalStatuses(prev => ({ ...prev, [id]: action }))
       setDetailOpen(false)
+      refreshStats()
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : 'Could not save the review. Please try again.')
     } finally { setSaving(false) }
@@ -113,15 +117,13 @@ export default function KYCReviewPage() {
       const previous = savedRequests[requestTarget] ?? kycVerifications.find(v => v.id === requestTarget)?.informationRequests ?? []
       setSavedRequests(prev => ({ ...prev, [requestTarget]: [...previous, item] }))
       setLocalStatuses(prev => ({ ...prev, [requestTarget]: 'in_review' }))
+      refreshStats()
       setSelected(prev => prev?.id === requestTarget ? { ...prev, status: 'in_review', informationRequests: [...previous, item] } : prev)
       setRequestTarget(null); setDetailOpen(false)
     } catch (cause) { setActionError(cause instanceof Error ? cause.message : 'Could not save the information request. Please retry.') }
     finally { setSaving(false) }
   }
 
-  const pendingCount = kycVerifications.filter(v => (localStatuses[v.id] ?? v.status) === 'pending').length
-  const approvedToday = kycVerifications.filter(v => (localStatuses[v.id] === 'approved' || (!localStatuses[v.id] && v.status === 'approved' && v.reviewedAt && new Date(v.reviewedAt).toDateString() === new Date().toDateString()))).length
-  const rejectedToday = kycVerifications.filter(v => (localStatuses[v.id] === 'rejected' || (!localStatuses[v.id] && v.status === 'rejected' && v.reviewedAt && new Date(v.reviewedAt).toDateString() === new Date().toDateString()))).length
 
   return (
     <Box sx={{ bgcolor: 'background.default', }}>
@@ -132,9 +134,9 @@ export default function KYCReviewPage() {
         lede="Review identity, address, and business KYC submissions with risk scoring, then approve, reject, or request more information."
         icon={<BadgeRoundedIcon />}
         stats={[
-          { label: 'Pending', value: loading ? <Skeleton width={60} /> : error ? '—' : pendingCount },
-          { label: 'Approved Today', value: loading ? <Skeleton width={60} /> : error ? '—' : approvedToday },
-          { label: 'Rejected Today', value: loading ? <Skeleton width={60} /> : error ? '—' : rejectedToday },
+          { label: 'Pending', value: statsLoading ? <Skeleton width={60} /> : statsError ? '—' : stats.pending },
+          { label: 'Approved today (UTC)', value: statsLoading ? <Skeleton width={60} /> : statsError ? '—' : stats.approvedToday },
+          { label: 'Rejected today (UTC)', value: statsLoading ? <Skeleton width={60} /> : statsError ? '—' : stats.rejectedToday },
         ]}
       actions={<ExportMenu title="KYC review" disabled={loading || !!error} getReport={async progress => { const rows = (await loadAll<KYCVerification>('/kyc/pending', progress)).filter(r => (statusFilter === 'all' || r.status === statusFilter) && (typeFilter === 'all' || r.verificationType === typeFilter) && (!search || [r.id, r.userName, r.verificationType].some(value => value.toLowerCase().includes(search.toLowerCase()))));
 return { title: 'KYC review queue', filters: [`Status: ${statusFilter}`, `Type: ${typeFilter}`, `Search: ${search || 'All'}`], tables: [exportTable('Verification decisions', rows, { ID: r => r.id, Account: r => r.userId, Name: r => r.userName, Type: r => r.verificationType, Status: r => r.status, Risk: r => r.riskLevel, 'Submitted (UTC)': r => dateCell(r.createdAt), 'Reviewed (UTC)': r => dateCell(r.reviewedAt) })] } }} />}
@@ -162,9 +164,6 @@ return { title: 'KYC review queue', filters: [`Status: ${statusFilter}`, `Type: 
             <MenuItem value="all">All Statuses</MenuItem>
             <MenuItem value="pending">Pending</MenuItem>
             <MenuItem value="in_review">In Review</MenuItem>
-            <MenuItem value="approved">Approved</MenuItem>
-            <MenuItem value="rejected">Rejected</MenuItem>
-            <MenuItem value="expired">Expired</MenuItem>
           </TextField>
         </Box>
         <Box sx={{ p: 2, minWidth: 0 }}>
@@ -405,7 +404,7 @@ return { title: 'KYC review queue', filters: [`Status: ${statusFilter}`, `Type: 
         </DialogActions>
       </Dialog>
       {rejectTarget && <KYCRejectDialog key={rejectTarget.id} {...rejectTarget} onClose={() => setRejectTarget(null)} onSaved={() => {
-        setLocalStatuses(previous => ({ ...previous, [rejectTarget.id]: 'rejected' })); setRejectTarget(null); setDetailOpen(false)
+        setLocalStatuses(previous => ({ ...previous, [rejectTarget.id]: 'rejected' })); setRejectTarget(null); setDetailOpen(false); refreshStats()
       }} />}
       {/* Detail Dialog */}
       <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="md" fullWidth PaperProps={{ sx: { ...raisedSurface, color: 'text.primary' } }}>

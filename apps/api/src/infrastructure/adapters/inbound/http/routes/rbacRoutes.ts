@@ -7,11 +7,16 @@ export function createRbacRoutes(
 ): Router {
   const router = Router();
 
+  // Staff-console permissions. Only administrator accounts hold staff
+  // permissions; member and organization accounts get none, so the console
+  // never opens pages to them (the API still enforces every route).
   router.get('/me', authMiddleware, (req: AuthenticatedRequest, res) => {
-    const role = DEFAULT_ROLES.find((candidate) => candidate.slug === req.userRole);
+    const role = req.userRole === 'admin'
+      ? DEFAULT_ROLES.find((candidate) => candidate.slug === 'admin')
+      : undefined;
     res.json({
       data: {
-        roleName: role?.name ?? 'User',
+        roleName: role?.name ?? '',
         permissions: role?.permissions ?? [],
         userId: req.userId,
       },

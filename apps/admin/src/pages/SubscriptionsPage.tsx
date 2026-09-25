@@ -1,32 +1,26 @@
 import TextField from '@/components/AdminTextField'
 import ExportMenu from '@/components/ExportMenu'
 import { exportTable, dateCell } from '@/lib/exports/report'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Skeleton, Box, Typography, MenuItem, InputAdornment, Button } from '@mui/material'
+import { Alert, Skeleton, Box, Typography, MenuItem, InputAdornment, Button } from '@mui/material'
 import { raisedSurface, insetSurface, progressTrack } from '@/lib/surfaces'
 import SearchIcon from '@mui/icons-material/Search'
 import { EmptyState } from '@ubuntu-fund/ui'
 import WorkspacePremiumRoundedIcon from '@mui/icons-material/WorkspacePremiumRounded'
 import VisibilityIcon from '@mui/icons-material/Visibility'
-import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
-import CancelIcon from '@mui/icons-material/Cancel'
 import {
   SubscriptionTier,
   SubscriptionStatus,
-  SUBSCRIPTION_PLANS,
-  type SubscriptionPlan,
-  Resource,
-  Action,
 } from '@ubuntu-fund/types'
 import type { Subscription } from '@ubuntu-fund/types'
-import { useAdminPermissions } from '@/context/AdminPermissionContext'
+import { useAdminPlans } from '@/hooks/useApiData'
+import { buildPlanMap, knownTiers, planName, summarize, type PlanMap } from '@/lib/subscriptionMetrics'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
 import PageHeader from '@/components/PageHeader'
 import { loadAll } from '@/lib/exports/loadAll'
 import { TONES } from '@/lib/tones'
-import { summarizeRevenue } from '@/lib/subscriptionRevenue'
 
 
 // ---------------------------------------------------------------------------
@@ -40,11 +34,6 @@ const tierColors: Record<string, string> = {
   [SubscriptionTier.PRO]: TONES.maroon.text,
   [SubscriptionTier.ORGANIZATION]: '#8B6F4E',
   [SubscriptionTier.ENTERPRISE]: '#C7A24A',
-}
-
-/** Seed plan for a tier id (may be undefined for an admin-added custom tier). */
-function seedPlan(tier: string): SubscriptionPlan | undefined {
-  return (SUBSCRIPTION_PLANS as Record<string, SubscriptionPlan>)[tier]
 }
 
 const statusColors: Record<SubscriptionStatus, string> = {
@@ -89,10 +78,8 @@ function SkeletonRow() {
 // ---------------------------------------------------------------------------
 // SubscriptionRow
 // ---------------------------------------------------------------------------
-function SubscriptionRow({ sub }: { sub: AdminSubscription }) {
+function SubscriptionRow({ sub, plans, now }: { sub: AdminSubscription; plans: PlanMap; now: Date }) {
   const navigate = useNavigate()
-  const { can } = useAdminPermissions()
-  const canUpdate = can(Resource.SUBSCRIPTIONS, Action.UPDATE)
   const tierColor = tierColors[sub.tier] ?? '#78909C'
   const statusColor = statusColors[sub.status]
 
@@ -131,7 +118,7 @@ function SubscriptionRow({ sub }: { sub: AdminSubscription }) {
         }}>
           <Box sx={{ width: 6, height: 6, bgcolor: tierColor, flexShrink: 0 }} />
           <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: tierColor, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            {seedPlan(sub.tier)?.name ?? sub.tier}
+            {planName(sub.tier, plans)}
           </Typography>
         </Box>
       </Box>
@@ -140,6 +127,7 @@ function SubscriptionRow({ sub }: { sub: AdminSubscription }) {
       <Box>
         <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: statusColor, textTransform: 'capitalize' }}>
           {sub.status.replace('_', ' ')}
+          {sub.status === SubscriptionStatus.ACTIVE && new Date(sub.currentPeriodEnd).getTime() <= now.getTime() && ' · period ended'}
         </Typography>
       </Box>
 
@@ -178,32 +166,6 @@ function SubscriptionRow({ sub }: { sub: AdminSubscription }) {
             <VisibilityIcon sx={{ fontSize: 13, mr: 0.3 }} />
             View
           </Button>
-          {canUpdate && (
-            <Button
-              size="small"
-              sx={{
-                minWidth: 0, px: 1, py: 0.3, fontSize: '0.65rem', fontWeight: 700,
-                color: TONES.maroon.text, borderColor: 'rgba(185,138,138,0.3)', textTransform: 'none',
-                border: 0, boxShadow: 'var(--neu-subtle)', '&:hover': { bgcolor: 'rgba(185,138,138,0.08)' },
-              }}
-            >
-              <SwapHorizIcon sx={{ fontSize: 13, mr: 0.3 }} />
-              Tier
-            </Button>
-          )}
-          {canUpdate && sub.status === SubscriptionStatus.ACTIVE && (
-            <Button
-              size="small"
-              sx={{
-                minWidth: 0, px: 1, py: 0.3, fontSize: '0.65rem', fontWeight: 700,
-                color: '#C06B58', borderColor: 'rgba(192,107,88,0.3)', textTransform: 'none',
-                border: 0, boxShadow: 'var(--neu-subtle)', '&:hover': { bgcolor: 'rgba(192,107,88,0.08)' },
-              }}
-            >
-              <CancelIcon sx={{ fontSize: 13, mr: 0.3 }} />
-              Cancel
-            </Button>
-          )}
       </Box>
     </Box>
   )
@@ -234,17 +196,13 @@ export default function SubscriptionsPage() {
     return () => { cancelled = true }
   }, [])
 
-  // Only plans still inside their paid period count as paying users or
-  // revenue; a lapsed web plan keeps its tier but is Free in practice.
-  const revenue = summarizeRevenue(subscriptions)
-  const totalSubscribers = subscriptions.length
-  const paidUsers = revenue.paidUsers
-  const freeUsers = totalSubscribers - paidUsers
-  const monthlyRevenue = revenue.monthlyRevenue
-  const revenueByTier = Object.values(SubscriptionTier).filter((tier) => tier !== SubscriptionTier.FREE).map((tier) => {
-    const { count, revenue: tierRevenue } = revenue.byTier(tier)
-    return { tier, name: seedPlan(tier)?.name ?? tier, count, revenue: tierRevenue, color: tierColors[tier] ?? '#78909C' }
-  })
+  const { data: livePlans } = useAdminPlans()
+  const plans = useMemo(() => buildPlanMap(livePlans), [livePlans])
+  // One clock per page load, so every figure and row agrees on "now".
+  const [now] = useState(() => new Date())
+  const summary = useMemo(() => summarize(subscriptions, plans, now), [subscriptions, plans, now])
+  const tierOptions = useMemo(() => knownTiers(plans, subscriptions), [plans, subscriptions])
+  const revenueByTier = summary.byTier.map(row => ({ ...row, color: tierColors[row.tier] ?? plans[row.tier]?.accentColor ?? '#78909C' }))
   const totalRevForBar = Math.max(1, revenueByTier.reduce((sum, row) => sum + row.revenue, 0))
 
   const filtered = subscriptions.filter(s => {
@@ -272,19 +230,25 @@ export default function SubscriptionsPage() {
         lede="Monitor plan mix, billing health, and recurring revenue across every subscriber."
         icon={<WorkspacePremiumRoundedIcon />}
         stats={[
-          { label: 'Total Subscribers', value: loading ? <Skeleton width={60} /> : totalSubscribers },
-          { label: 'Monthly Revenue', value: loading ? <Skeleton width={90} /> : `GH₵ ${monthlyRevenue.toFixed(0)}` },
-          { label: 'Free Users', value: loading ? <Skeleton width={60} /> : freeUsers },
-          { label: 'Paid Users', value: loading ? <Skeleton width={60} /> : paidUsers },
+          { label: 'Total Subscribers', value: loading ? <Skeleton width={60} /> : summary.total },
+          { label: 'Estimated MRR (list price)', value: loading ? <Skeleton width={90} /> : `GH₵ ${summary.estimatedMrr.toFixed(0)}` },
+          { label: 'Free or lapsed', value: loading ? <Skeleton width={60} /> : summary.free },
+          { label: 'Paying now', value: loading ? <Skeleton width={60} /> : summary.paid },
         ]}
-      actions={<ExportMenu title="Subscriptions" disabled={loading || !!error} getReport={() => ({ title: "Subscriptions", filters: [`Tier: ${tierFilter}`, `Status: ${statusFilter}`, `Search: ${search || 'All'}`], tables: [exportTable("Subscriptions", filtered, { ID: r => r.id, Member: r => r.userName, Email: r => r.email, Tier: r => r.tier, Status: r => r.status, Provider: r => r.billingProvider ?? 'web', Environment: r => r.billingEnvironment ?? 'production', Cycle: r => r.billingCycle, 'Period end (UTC)': r => dateCell(r.currentPeriodEnd) })] })} />}
+      actions={<ExportMenu title="Subscriptions" disabled={loading || !!error} getReport={() => ({ title: "Subscriptions", filters: [`Tier: ${tierFilter}`, `Status: ${statusFilter}`, `Search: ${search || 'All'}`], tables: [exportTable("Subscriptions", filtered, { ID: r => r.id, Member: r => r.userName, Email: r => r.email, Tier: r => r.tier, Status: r => r.status, Provider: r => r.billingProvider ?? 'web', Cycle: r => r.billingCycle, 'Period end (UTC)': r => dateCell(r.currentPeriodEnd) })] })} />}
       />
 
+
+      <Alert severity="info" sx={{ mb: 3 }}>
+        Estimates use current plan list prices for web-billed subscriptions that are active and inside their paid period. Discounts are not reflected, and this is not money collected.
+        {summary.storeBilledPaid > 0 && ` ${summary.storeBilledPaid} paying subscriber${summary.storeBilledPaid === 1 ? ' is' : 's are'} billed by the App Store or Google Play and not priced here.`}
+        {' '}Change or cancel a subscription through its billing provider; this console has no subscription controls.
+      </Alert>
 
       {/* Revenue breakdown by tier */}
       <Box sx={{ ...raisedSurface, mb: 3, px: 3, py: 2 }}>
         <Typography sx={{ fontSize: '0.68rem', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.1em', mb: 1.5 }}>
-          Revenue by Tier
+          Estimated monthly revenue by tier (list price)
         </Typography>
         <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
           {revenueByTier.map((r) => (
@@ -335,8 +299,8 @@ export default function SubscriptionsPage() {
             value={tierFilter} onChange={e => setTierFilter(e.target.value)} fullWidth
           >
             <MenuItem value="all">All Tiers</MenuItem>
-            {Object.values(SubscriptionTier).map(t => (
-              <MenuItem key={t} value={t}>{seedPlan(t)?.name ?? t}</MenuItem>
+            {tierOptions.map(t => (
+              <MenuItem key={t} value={t}>{planName(t, plans)}</MenuItem>
             ))}
           </TextField>
         </Box>
@@ -378,7 +342,7 @@ export default function SubscriptionsPage() {
         {loading
           ? Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)
           : pagination.page.map((sub) => (
-              <SubscriptionRow key={sub.id} sub={sub} />
+              <SubscriptionRow key={sub.id} sub={sub} plans={plans} now={now} />
             ))
         }
       </Box>

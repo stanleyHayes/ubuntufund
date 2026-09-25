@@ -37,7 +37,7 @@ async function fixture() {
   const payout = await BeneficiaryPayoutModel.create({ campaignId, beneficiaryId, recipientId: String(recipient._id), amount: 150, currency: 'GHS', status: 'PENDING', provider: 'paystack', requestedBy: beneficiaryId });
   await CampaignBalanceModel.create({ campaignId, currency: 'GHS', availableBalance: 150, totalRaised: 150 });
   await CampaignBeneficiaryBalanceModel.create({ campaignId, beneficiaryId, currency: 'GHS', availableBalance: 150 });
-  const approve = (who = maker) => request(app).post(`/api/v1/beneficiary-payouts/${payout.id}/approve`).set('Authorization', `Bearer ${who.token}`).send({});
+  const approve = (who = maker) => request(app).post(`/api/v1/beneficiary-payouts/${payout.id}/approve`).set('Authorization', `Bearer ${who.token}`).send({ reviewNote: 'Verified the beneficiary MoMo wallet owner and capacity.' });
   const noTransfer = async () => {
     expect((await BeneficiaryPayoutModel.findById(payout.id))?.status).toBe('PENDING');
     expect((await CampaignBalanceModel.findOne({ campaignId }))?.availableBalance).toBe(150);
@@ -129,4 +129,32 @@ it('serializes simultaneous first reviews without counting a losing stale review
   const stored = await BeneficiaryPayoutModel.findById(f.payout.id).orFail();
   expect([f.maker.id, f.checker.id]).toContain(stored.firstApprovedBy);
   await f.noTransfer();
+});
+it('requires each approver to record a destination review note and keeps both notes', async () => {
+  const f = await fixture();
+  const send = (who: { token: string }, body: object) => request(app).post(`/api/v1/beneficiary-payouts/${f.payout.id}/approve`).set('Authorization', `Bearer ${who.token}`).send(body);
+  await send(f.maker, {}).expect(400);
+  await send(f.maker, { reviewNote: '   looks fine   ' }).expect(400);
+  expect((await BeneficiaryPayoutModel.findById(f.payout.id))?.firstApprovedBy).toBeUndefined();
+  await f.noTransfer();
+
+  await send(f.maker, { reviewNote: 'Called the beneficiary; MoMo name and tier match the request.' }).expect(200);
+  await send(f.checker, { reviewNote: 'Second check: KYC evidence and wallet owner confirmed again.' }).expect(200);
+  const stored = await BeneficiaryPayoutModel.findById(f.payout.id).lean().orFail();
+  expect(stored.status).toBe('PROCESSING');
+  expect(stored.reviews?.map(review => [review.stage, review.by, review.note])).toEqual([
+    ['first', f.maker.id, 'Called the beneficiary; MoMo name and tier match the request.'],
+    ['final', f.checker.id, 'Second check: KYC evidence and wallet owner confirmed again.'],
+  ]);
+});
+it('shows approvers the exact destination under review and refuses members or replaced destinations', async () => {
+  const f = await fixture();
+  const recipient = (token: string) => request(app).get(`/api/v1/beneficiary-payouts/${f.payout.id}/recipient`).set('Authorization', `Bearer ${token}`);
+  const res = await recipient(f.maker.token).expect(200);
+  expect(res.body.data).toMatchObject({ type: 'mobile_money', accountName: 'Beneficiary', accountNumber: '0551234567', bankCode: 'MTN', currency: 'GHS', kycVerified: true, kycVerifiedBy: f.maker.id });
+  expect(res.body.data.recipientCode).toBeUndefined();
+  const member = await request(app).post('/api/v1/auth/register').send({ email: `${randomUUID()}@example.test`, password: 'SecurePass123', name: 'Member', legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true } }).expect(201);
+  await recipient(member.body.data.tokens.accessToken).expect(403);
+  await BeneficiaryPayoutModel.updateOne({ _id: f.payout.id }, { recipientId: randomUUID() });
+  await recipient(f.maker.token).expect(409);
 });

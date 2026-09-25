@@ -110,7 +110,8 @@ export default function AdminProfilePage() {
   return <AdminProfileForViewer key={user?.id ?? 'guest'} />
 }
 function AdminProfileForViewer() {
-  const [tab, setTab] = useState('details')
+  // The MFA reminder links to ?tab=security.
+  const [tab, setTab] = useState(() => new URLSearchParams(window.location.search).get('tab') === 'security' ? 'security' : 'details')
   const live = useRef(true)
   useEffect(() => { live.current = true; return () => { live.current = false } }, [])
   const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)

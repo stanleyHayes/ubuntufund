@@ -111,11 +111,16 @@ export class MongoBeneficiaryPayoutRepository
     id: string,
     makerId: string,
     fingerprint: string,
-    expected: BeneficiaryPayoutEntity
+    expected: BeneficiaryPayoutEntity,
+    reviewNote: string
   ): Promise<BeneficiaryPayoutEntity | null> {
+    const at = new Date();
     const doc = await BeneficiaryPayoutModel.findOneAndUpdate(
       { _id: id, status: 'PENDING', ...approvalFilter(expected) },
-      { $set: { firstApprovedBy: makerId, firstApprovedAt: new Date(), firstApprovalFingerprint: fingerprint } },
+      {
+        $set: { firstApprovedBy: makerId, firstApprovedAt: at, firstApprovalFingerprint: fingerprint },
+        $push: { reviews: { stage: 'first', by: makerId, at, note: reviewNote } },
+      },
       { new: true }
     );
     return doc ? toDomain(doc) : null;
@@ -167,7 +172,7 @@ export class MongoBeneficiaryPayoutRepository
 
   async transitionToProcessing(
     id: string,
-    fields: { approvedBy: string; providerRef: string },
+    fields: { approvedBy: string; providerRef: string; reviewNote: string },
     expected: BeneficiaryPayoutEntity
   ): Promise<BeneficiaryPayoutEntity | null> {
     const doc = await BeneficiaryPayoutModel.findOneAndUpdate(
@@ -178,6 +183,7 @@ export class MongoBeneficiaryPayoutRepository
           approvedBy: fields.approvedBy,
           providerRef: fields.providerRef,
         },
+        $push: { reviews: { stage: 'final', by: fields.approvedBy, at: new Date(), note: fields.reviewNote } },
       },
       { new: true }
     );

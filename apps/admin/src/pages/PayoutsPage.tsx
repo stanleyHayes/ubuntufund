@@ -350,6 +350,21 @@ function Detail({ label, value }: { label: string; value: string }) {
   )
 }
 
+interface BeneficiaryDestination {
+  type: string
+  accountName: string
+  accountNumber: string
+  bankCode: string
+  currency: string
+  kycVerified: boolean
+  kycVerifiedBy?: string
+  kycVerifiedAt?: string
+}
+
+/**
+ * Mirrors the campaign payout review: an approver must load and read the exact
+ * destination, then record why it is safe to pay, before Verify KYC or Approve.
+ */
 function BeneficiaryCard({
   payout,
   onApprove,
@@ -357,11 +372,23 @@ function BeneficiaryCard({
   busy,
 }: {
   payout: BeneficiaryPayout
-  onApprove: (id: string) => void
-  onVerifyKyc: (campaignId: string, beneficiaryId: string) => void
+  onApprove: (id: string, reviewNote: string) => void
+  onVerifyKyc: (campaignId: string, beneficiaryId: string) => Promise<void> | void
   busy: boolean
 }) {
   const awaitingSecond = payout.status === 'PENDING' && Boolean(payout.firstApprovedBy)
+  const [destination, setDestination] = useState<BeneficiaryDestination | null>(null)
+  const [reviewNote, setReviewNote] = useState('')
+  const [reviewError, setReviewError] = useState('')
+  async function loadDestination() {
+    try {
+      setDestination(await api.get<BeneficiaryDestination>(`/beneficiary-payouts/${payout.id}/recipient`))
+      setReviewError('')
+    } catch (e) {
+      setDestination(null)
+      setReviewError(e instanceof Error ? e.message : 'Could not load the payout destination')
+    }
+  }
   return (
     <Box sx={{ ...raisedSurface, p: 3 }}>
       <Box
@@ -407,22 +434,53 @@ function BeneficiaryCard({
         </Alert>
       )}
       {payout.status === 'PENDING' && (
-        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-          <Button
-            size="small"
-            disabled={busy}
-            onClick={() => onVerifyKyc(payout.campaignId, payout.beneficiaryId)}
-          >
-            Verify KYC
-          </Button>
-          <Button
-            variant="contained"
-            size="small"
-            disabled={busy}
-            onClick={() => onApprove(payout.id)}
-          >
-            {awaitingSecond ? 'Give 2nd approval' : 'Approve'}
-          </Button>
+        <Box sx={{ mt: 2 }}>
+          <Button onClick={() => void loadDestination()} disabled={busy}>Review payout destination</Button>
+          {reviewError && <Alert severity="error">{reviewError}</Alert>}
+          {destination && (
+            <>
+              <Alert severity={destination.kycVerified ? 'info' : 'warning'} sx={{ mt: 1 }}>
+                {destination.type === 'mobile_money' ? 'Mobile money' : 'Bank'} account {destination.accountNumber} · {destination.bankCode} · name on request: {destination.accountName} · {destination.currency}.{' '}
+                {destination.kycVerified
+                  ? `KYC verified${destination.kycVerifiedAt ? ` ${new Date(destination.kycVerifiedAt).toLocaleString()}` : ''}. A changed destination resets verification.`
+                  : 'KYC is not verified for this destination.'}{' '}
+                The name on the request is not proof of ownership.
+              </Alert>
+              <TextField
+                fullWidth
+                multiline
+                minRows={3}
+                sx={{ my: 2 }}
+                label="Beneficiary destination review"
+                helperText="Record how you confirmed this beneficiary owns the destination and can receive the payout (at least 20 characters). Do not enter PINs or identity document numbers."
+                value={reviewNote}
+                onChange={(e) => setReviewNote(e.target.value)}
+                slotProps={{ htmlInput: { maxLength: 2000 } }}
+              />
+            </>
+          )}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+            {destination && !destination.kycVerified && (
+              <Button
+                size="small"
+                disabled={busy}
+                onClick={async () => {
+                  await onVerifyKyc(payout.campaignId, payout.beneficiaryId)
+                  await loadDestination()
+                }}
+              >
+                Verify KYC
+              </Button>
+            )}
+            <Button
+              variant="contained"
+              size="small"
+              disabled={busy || !destination?.kycVerified || reviewNote.trim().length < 20}
+              onClick={() => onApprove(payout.id, reviewNote)}
+            >
+              {awaitingSecond ? 'Give 2nd approval' : 'Approve'}
+            </Button>
+          </Box>
         </Box>
       )}
     </Box>
@@ -527,11 +585,11 @@ export default function PayoutsPage() {
   )
 
   const approveBeneficiary = useCallback(
-    async (id: string) => {
+    async (id: string, reviewNote: string) => {
       setApprovingId(id)
       setNotice(null)
       try {
-        const updated = await api.post<BeneficiaryPayout>(`/beneficiary-payouts/${id}/approve`, {})
+        const updated = await api.post<BeneficiaryPayout>(`/beneficiary-payouts/${id}/approve`, { reviewNote })
         setNotice(
           updated.status === 'PENDING'
             ? 'First approval recorded — a second admin must approve.'

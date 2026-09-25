@@ -14,11 +14,16 @@ export interface ReportDTO {
   id: string;
   campaignId: string;
   campaignTitle: string;
+  /** Current campaign status, so staff can see whether it is already blocked. */
+  campaignStatus?: string;
   reporterId: string;
   reason: ReportReason;
   description?: string;
   status: ReportStatus;
   createdAt: Date;
+  reviewedBy?: string;
+  reviewedAt?: Date;
+  reviewNotes?: string;
 }
 
 export class ListReportsUseCase {
@@ -59,11 +64,15 @@ export class ListReportsUseCase {
       id: report.id,
       campaignId: report.campaignId,
       campaignTitle: campaign ? campaign.title : 'Unknown campaign',
+      campaignStatus: campaign?.status,
       reporterId: report.reporterId,
       reason: report.reason,
       description: report.description,
       status: report.status,
       createdAt: report.createdAt,
+      reviewedBy: report.reviewedBy,
+      reviewedAt: report.reviewedAt,
+      reviewNotes: report.reviewNotes,
     };
   }
 }

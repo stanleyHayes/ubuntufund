@@ -2,6 +2,13 @@ import { trackActivity } from '../plugins/trackActivity.js';
 import mongoose, { Schema, type Document } from 'mongoose';
 import type { PayoutProvider, PayoutStatus } from '@ubuntu-fund/types';
 
+export interface BeneficiaryPayoutReview {
+  stage: 'first' | 'final';
+  by: string;
+  at: Date;
+  note: string;
+}
+
 export interface BeneficiaryPayoutDocument extends Document {
   campaignId: string;
   beneficiaryId: string;
@@ -17,6 +24,8 @@ export interface BeneficiaryPayoutDocument extends Document {
   firstApprovedBy?: string;
   firstApprovedAt?: Date;
   firstApprovalFingerprint?: string;
+  /** Each approver's destination review note (maker first, then the approval that disbursed). */
+  reviews?: BeneficiaryPayoutReview[];
   settlementApplied?: boolean;
   settlementWriteVersion?: number;
   /** For a REVERSED payout, the status it reversed from (G7 repair). */
@@ -58,6 +67,15 @@ const schema = new Schema<BeneficiaryPayoutDocument>(
     firstApprovedBy: { type: String },
     firstApprovedAt: { type: Date },
     firstApprovalFingerprint: { type: String },
+    reviews: {
+      type: [new Schema<BeneficiaryPayoutReview>({
+        stage: { type: String, enum: ['first', 'final'], required: true },
+        by: { type: String, required: true },
+        at: { type: Date, required: true },
+        note: { type: String, required: true },
+      }, { _id: false })],
+      default: undefined,
+    },
     settlementWriteVersion: { type: Number },
     settlementApplied: { type: Boolean, default: false, index: true },
     reversedFrom: { type: String, enum: ['PAID', 'PROCESSING'] },

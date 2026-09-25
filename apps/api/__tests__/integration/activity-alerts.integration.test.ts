@@ -185,6 +185,35 @@ it('does not retry an ambiguous email after the provider idempotency window', as
   expect(sender.send).not.toHaveBeenCalled(); expect(await ActivityAlertDeliveryModel.countDocuments({ status: 'review' })).toBe(1);
 });
 
+it('lets staff see and resolve activity emails parked for a delivery check', async () => {
+  const user = await actor(); await UserModel.updateOne({ _id: user.id }, { $set: { emailVerified: true } });
+  await choose(user, 'donationsReceived', 'email'); await donation(user.id, user.id); await alerts.capturePending();
+  await ActivityAlertDeliveryModel.updateMany({}, { $set: { firstAttemptAt: new Date(Date.now() - 24 * 60 * 60_000) } });
+  await alerts.deliverPending();
+  const admin = await actor(); await UserModel.updateOne({ _id: admin.id }, { $set: { role: 'admin' } });
+  await request(app).get('/api/v1/admin/activity-deliveries').set('Authorization', user.auth).expect(403);
+  const count = async () => (await request(app).get('/api/v1/admin/action-center').set('Authorization', admin.auth).expect(200))
+    .body.data.items.find((item: { id: string }) => item.id === 'activity-email-review');
+  expect(await count()).toMatchObject({ count: 1, href: '/activity-email-review', resource: 'settings' });
+  const list = await request(app).get('/api/v1/admin/activity-deliveries?pageSize=12').set('Authorization', admin.auth).expect(200);
+  expect(list.body.data.total).toBe(1);
+  const [item] = list.body.data.items;
+  expect(item).toMatchObject({ category: 'donationsReceived', idempotencyKey: `activity/${item.id}`, lastError: 'email_delivery_requires_review' });
+  expect(JSON.stringify(item)).not.toMatch(/@example\.test|emailRequest/);
+  const note = 'Found the message delivered in the provider log for this key.';
+  await request(app).patch(`/api/v1/admin/activity-deliveries/${item.id}`).set('Authorization', user.auth).send({ action: 'delivered', note }).expect(403);
+  await request(app).patch(`/api/v1/admin/activity-deliveries/${item.id}`).set('Authorization', admin.auth).send({ action: 'resend', note }).expect(400);
+  await request(app).patch(`/api/v1/admin/activity-deliveries/${item.id}`).set('Authorization', admin.auth).send({ action: 'delivered', note: 'short' }).expect(400);
+  await request(app).patch(`/api/v1/admin/activity-deliveries/${item.id}`).set('Authorization', admin.auth).send({ action: 'delivered', note }).expect(200);
+  await request(app).patch(`/api/v1/admin/activity-deliveries/${item.id}`).set('Authorization', admin.auth).send({ action: 'suppress', note }).expect(409);
+  const stored = await ActivityAlertDeliveryModel.findById(item.id).select('+emailRequest').lean();
+  expect(stored).toMatchObject({ status: 'delivered' }); expect(stored?.emailRequest).toBeUndefined();
+  expect((await count()).count).toBe(0);
+  const { AuditLogModel } = await import('../../src/infrastructure/database/models/AuditLogModel.js');
+  expect(await AuditLogModel.findOne({ resource: `activity-delivery:${item.id}` }).lean()).toMatchObject({ actorId: admin.id, action: 'activity_email.delivered', reason: note });
+  expect(sender.send).not.toHaveBeenCalled();
+});
+
 it('tracks withdrawal changes atomically and waits for completion of the settlement effect', async () => {
   const user = await actor(); await choose(user, 'withdrawals', 'inApp');
   const payout = await CreatorPayoutModel.create({ creatorUserId: user.id, amount: 40, currency: 'GHS', status: 'PENDING', provider: 'paystack' });

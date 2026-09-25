@@ -13,6 +13,10 @@ export interface RefundDocument extends Document {
   netAmount: number;
   currency: string;
   status: RefundStatus;
+  staffNote?: string;
+  reviewedBy?: string;
+  reviewedAt?: Date;
+  refundOperationId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -41,6 +45,10 @@ const refundSchema = new Schema<RefundDocument>(
       default: 'pending',
       index: true,
     },
+    staffNote: { type: String },
+    reviewedBy: { type: String },
+    reviewedAt: { type: Date },
+    refundOperationId: { type: String },
   },
   { timestamps: true }
 );

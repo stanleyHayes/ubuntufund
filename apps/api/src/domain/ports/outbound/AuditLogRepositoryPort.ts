@@ -10,6 +10,9 @@ export interface AuditLogEntry {
   changes?: { field: string; before: unknown; after: unknown }[];
   reason?: string;
   severity?: 'info' | 'warning' | 'critical';
+  /** Request origin, for security events such as staff sign-ins. */
+  ip?: string;
+  userAgent?: string;
 }
 
 /**

@@ -267,7 +267,7 @@ describe('Beneficiary payout Integration (flag on, spec §17)', () => {
         }
         return gateway(...args);
       });
-      await request(app).post(`/api/v1/beneficiary-payouts/${payoutId}/approve`).set('Authorization', `Bearer ${admin.token}`).send({}).expect(scenario === 'staff_revoked' ? 403 : 409);
+      await request(app).post(`/api/v1/beneficiary-payouts/${payoutId}/approve`).set('Authorization', `Bearer ${admin.token}`).send({ reviewNote: 'Verified the beneficiary MoMo wallet owner and capacity.' }).expect(scenario === 'staff_revoked' ? 403 : 409);
       expect((await BeneficiaryPayoutModel.findById(payoutId))?.status).toBe('PENDING');
       expect((await CampaignBeneficiaryBalanceModel.findOne({ campaignId, beneficiaryId: ama.beneficiaryId }))?.availableBalance).toBe(before?.availableBalance);
       expect((await CampaignBalanceModel.findOne({ campaignId }))?.availableBalance).toBe(aggregate?.availableBalance);
@@ -286,7 +286,7 @@ describe('Beneficiary payout Integration (flag on, spec §17)', () => {
       }) : undefined;
       vi.mocked(fetch).mockClear();
       try {
-        await request(app).post(`/api/v1/beneficiary-payouts/${payoutId}/approve`).set('Authorization', `Bearer ${admin.token}`).send({}).expect(scenario === 'mirror_short' ? 409 : 500);
+        await request(app).post(`/api/v1/beneficiary-payouts/${payoutId}/approve`).set('Authorization', `Bearer ${admin.token}`).send({ reviewNote: 'Verified the beneficiary MoMo wallet owner and capacity.' }).expect(scenario === 'mirror_short' ? 409 : 500);
         const after = await CampaignBeneficiaryBalanceModel.findOne({ campaignId, beneficiaryId: ama.beneficiaryId });
         const aggregateAfter = await CampaignBalanceModel.findOne({ campaignId });
         expect(after?.availableBalance).toBe(before?.availableBalance);
@@ -316,7 +316,7 @@ describe('Beneficiary payout Integration (flag on, spec §17)', () => {
     const approve = await request(app)
       .post(`/api/v1/beneficiary-payouts/${payoutId}/approve`)
       .set('Authorization', `Bearer ${admin.token}`)
-      .send({});
+      .send({ reviewNote: 'Verified the beneficiary MoMo wallet owner and capacity.' });
     expect(approve.status).toBe(200);
     expect(approve.body.data.status).toBe('PROCESSING');
     const reference = approve.body.data.providerRef as string;
@@ -396,7 +396,7 @@ describe('Beneficiary payout Integration (flag on, spec §17)', () => {
     const approve = await request(app)
       .post(`/api/v1/beneficiary-payouts/${reqRes.body.data.id}/approve`)
       .set('Authorization', `Bearer ${admin.token}`)
-      .send({});
+      .send({ reviewNote: 'Verified the beneficiary MoMo wallet owner and capacity.' });
     expect(approve.status).toBe(422);
   });
 

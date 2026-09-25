@@ -18,6 +18,10 @@ export interface ReportRecord {
   description?: string;
   status: ReportStatus;
   createdAt: Date;
+  /** Staff decision metadata, set once when a pending report is reviewed. */
+  reviewedBy?: string;
+  reviewedAt?: Date;
+  reviewNotes?: string;
 }
 
 export interface ReportRepositoryPort {

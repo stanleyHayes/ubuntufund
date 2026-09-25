@@ -16,6 +16,9 @@ import VolunteerActivismRoundedIcon from '@mui/icons-material/VolunteerActivismR
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import WorkspacePremiumRoundedIcon from '@mui/icons-material/WorkspacePremiumRounded'
 import GavelRoundedIcon from '@mui/icons-material/GavelRounded'
+import FlagRoundedIcon from '@mui/icons-material/FlagRounded'
+import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
+import AssignmentReturnRoundedIcon from '@mui/icons-material/AssignmentReturnRounded'
 import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded'
 import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded'
 import MarkEmailUnreadRoundedIcon from '@mui/icons-material/MarkEmailUnreadRounded'
@@ -57,7 +60,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Dashboard', path: '/', icon: <DashboardRoundedIcon /> },
       { label: 'Overview', path: '/overview', icon: <InsightsRoundedIcon /> },
-      { label: 'Reports', path: '/reports', icon: <AssessmentRoundedIcon /> },
+      { label: 'Analytics reports', path: '/reports', icon: <AssessmentRoundedIcon /> },
       { label: 'Audit Log', path: '/audit', icon: <HistoryEduRoundedIcon /> },
     ],
   },
@@ -73,6 +76,8 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Wallets', path: '/wallets', icon: <AccountBalanceWalletRoundedIcon /> },
       { label: 'Donations', path: '/donations', icon: <VolunteerActivismRoundedIcon /> },
       { label: 'Payouts', path: '/payouts', icon: <PaymentsRoundedIcon /> },
+      { label: 'Payments', path: '/payments', icon: <ReceiptLongRoundedIcon /> },
+      { label: 'Refund requests', path: '/refund-requests', icon: <AssignmentReturnRoundedIcon /> },
       { label: 'Refund recovery', path: '/refund-recovery', icon: <PaymentsRoundedIcon /> },
       { label: 'Subscriptions', path: '/subscriptions', icon: <WorkspacePremiumRoundedIcon /> },
       { label: 'Store billing recovery', path: '/store-billing', icon: <WorkspacePremiumRoundedIcon /> },
@@ -83,6 +88,7 @@ const NAV_GROUPS: NavGroup[] = [
     icon: <VerifiedUserRoundedIcon />,
     items: [
       { label: 'Disputes', path: '/disputes', icon: <GavelRoundedIcon /> },
+      { label: 'Campaign reports', path: '/campaign-reports', icon: <FlagRoundedIcon /> },
       { label: 'Verifications', path: '/verifications', icon: <VerifiedUserRoundedIcon /> },
       { label: 'KYC Review', path: '/kyc-review', icon: <BadgeRoundedIcon /> },
       {
@@ -125,6 +131,7 @@ const NAV_GROUPS: NavGroup[] = [
         icon: <AccountBalanceRoundedIcon />,
       },
       { label: 'Roles', path: '/roles', icon: <AdminPanelSettingsRoundedIcon /> },
+      { label: 'Activity email checks', path: '/activity-email-review', icon: <MarkEmailReadRoundedIcon /> },
     ],
   },
 ]

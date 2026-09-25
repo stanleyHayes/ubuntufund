@@ -329,7 +329,7 @@ export default function OverviewPage() {
         lede="See platform-wide performance across campaigns, donors, and trust signals in one view."
         icon={<InsightsRoundedIcon />}
         stats={[
-          { label: 'Total Raised', value: `GH₵ ${stats.totalRaised.toLocaleString()}` },
+          { label: 'Net raised (GH₵, after refunds)', value: `GH₵ ${stats.totalRaised.toLocaleString()}` },
           { label: 'Active Campaigns', value: String(stats.activeCampaigns) },
           { label: 'Total Users', value: String(stats.totalUsers) },
           { label: 'Avg Donation', value: `GH₵ ${stats.avgDonation.toLocaleString()}` },
@@ -747,7 +747,7 @@ export default function OverviewPage() {
         {[
           { label: 'Total Donations', value: stats.totalDonations, icon: <VolunteerActivismIcon sx={{ fontSize: 16 }} />, color: '#C7A24A' },
           { label: 'Conversion Rate', value: `${stats.conversionRate}%`, icon: <TrendingUpIcon sx={{ fontSize: 16 }} />, color: '#5E8F72' },
-          { label: 'Pending Disputes', value: stats.pendingDisputes, icon: <GavelIcon sx={{ fontSize: 16 }} />, color: '#C06B58' },
+          { label: 'Pending campaign reports', value: stats.pendingDisputes, icon: <GavelIcon sx={{ fontSize: 16 }} />, color: '#C06B58' },
           { label: 'Active Campaigns', value: stats.activeCampaigns, icon: <CampaignIcon sx={{ fontSize: 16 }} />, color: '#74909A' },
           { label: 'Verified Users', value: users.filter((u) => u.verificationLevel !== VerificationLevel.NONE).length, icon: <VerifiedUserIcon sx={{ fontSize: 16 }} />, color: TONES.maroon.text },
           { label: 'Monthly Growth', value: `${stats.monthlyGrowth}%`, icon: <TrendingUpIcon sx={{ fontSize: 16 }} />, color: '#5E8F72' },

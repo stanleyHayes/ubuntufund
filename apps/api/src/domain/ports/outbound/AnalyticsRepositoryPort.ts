@@ -8,7 +8,10 @@ export interface PlatformOverviewRecord {
   /** Campaign counts keyed by CampaignStatus value, e.g. 'active', 'funded'. */
   campaignsByStatus: Record<string, number>;
   totalDonations: number;
+  /** Net GHS raised: GHS donations minus provider refunds of them. */
   totalRaised: number;
+  /** Net raised per currency (after refunds), so other currencies are never summed as GHS. */
+  totalRaisedByCurrency: Record<string, number>;
   avgDonation: number;
   conversionRate: number;
   monthlyGrowth: number;

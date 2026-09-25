@@ -117,7 +117,7 @@ it('keeps a rejected transfer repairable when the immediate reservation return f
   const gateway = { isConfigured: () => true, getBalance: async () => [{ currency: 'GHS', balance: 1000 }], initiateTransfer: transfer } as unknown as import('../../src/domain/ports/outbound/PaymentGatewayPort.js').PaymentGatewayPort;
   const approvals = new BeneficiaryPayoutUseCase(true, new MongoCampaignRepository(), new MongoCampaignSplitRepository(), beneficiaryRepo, campaignRepo, new MongoBeneficiaryRecipientRepository(), payoutRepo, gateway, new MongoUnitOfWork(), 0, { assertCurrent: async () => {} });
   const hook = vi.spyOn(campaignRepo, 'returnToAvailable').mockRejectedValueOnce(new Error('return mirror unavailable'));
-  await expect(approvals.approvePayout(f.payout.id, { userId: 'staff', role: 'admin' })).rejects.toThrow('return mirror unavailable'); hook.mockRestore();
+  await expect(approvals.approvePayout(f.payout.id, { userId: 'staff', role: 'admin' }, 'Verified the beneficiary MoMo wallet owner and capacity.')).rejects.toThrow('return mirror unavailable'); hook.mockRestore();
   let state = await f.inspect();
   expect(state.payout.status).toBe('PROCESSING'); expect(state.payout.settlementApplied).toBe(false);
   expect(state.campaign.availableBalance).toBe(0); expect(state.beneficiary.availableBalance).toBe(0);

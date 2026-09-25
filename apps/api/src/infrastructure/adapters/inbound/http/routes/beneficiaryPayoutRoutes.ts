@@ -13,6 +13,7 @@ const registerRecipientSchema = z.object({
 });
 
 const requestPayoutSchema = z.object({ amount: z.number().positive() });
+const approveSchema = z.object({ reviewNote: z.string().trim().min(20).max(2000) });
 
 /**
  * Per-beneficiary payout routes composed onto /campaigns (spec §17):
@@ -51,7 +52,8 @@ export function createCampaignBeneficiaryPayoutRoutes(
 
 /**
  * The admin beneficiary-payout resource:
- *   POST /beneficiary-payouts/:payoutId/approve  (admin)
+ *   GET  /beneficiary-payouts/:payoutId/recipient  (admin) destination to review
+ *   POST /beneficiary-payouts/:payoutId/approve    (admin) requires reviewNote
  */
 export function createBeneficiaryPayoutRoutes(
   controller: BeneficiaryPayoutController,
@@ -61,6 +63,8 @@ export function createBeneficiaryPayoutRoutes(
   const router = Router();
   router.get('/', authMiddleware, adminGuard, controller.listAll);
   router.get('/review-queue', authMiddleware, adminGuard, controller.reviewQueue);
-  router.post('/:payoutId/approve', authMiddleware, adminGuard, controller.approve);
+  router.get('/:payoutId/recipient', authMiddleware, adminGuard, controller.recipient);
+  // Mirrors campaign payouts: each approver records the destination review.
+  router.post('/:payoutId/approve', authMiddleware, adminGuard, validate(approveSchema), controller.approve);
   return router;
 }

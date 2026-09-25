@@ -91,9 +91,28 @@ export class BeneficiaryPayoutController {
     try {
       const payout = await this.useCase.approvePayout(
         req.params.payoutId as string,
-        this.requester(req)
+        this.requester(req),
+        typeof req.body?.reviewNote === 'string' ? req.body.reviewNote : undefined
       );
       res.json({ data: payout, message: 'Payout approved', status: 200 });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /** GET /beneficiary-payouts/:payoutId/recipient — destination to review (admin). */
+  recipient = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const destination = await this.useCase.recipientForReview(
+        req.params.payoutId as string,
+        this.requester(req)
+      );
+      res.set('Cache-Control', 'private, no-store');
+      res.json({ data: destination, message: 'Payout destination', status: 200 });
     } catch (error) {
       next(error);
     }

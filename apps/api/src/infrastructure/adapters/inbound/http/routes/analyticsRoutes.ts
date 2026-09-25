@@ -3,11 +3,8 @@ import type { AnalyticsController } from '../controllers/AnalyticsController.js'
 import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
 
 /**
- * Mounted at /analytics.
- *
- * GET /overview — authenticated (any role). Returns platform-wide totals
- * consumed by both the admin dashboard (PlatformStats shape) and the web
- * app's profile-impact panel, so this is intentionally NOT admin-gated.
+ * Mounted at /analytics. Both routes return platform-wide totals for the staff
+ * console, so both are admin-only.
  */
 export function createAnalyticsRoutes(
   controller: AnalyticsController,
@@ -16,7 +13,7 @@ export function createAnalyticsRoutes(
 ): Router {
   const router = Router();
 
-  router.get('/overview', authMiddleware, controller.overview);
+  router.get('/overview', authMiddleware, requireAdmin, controller.overview);
   router.get('/reports', authMiddleware, requireAdmin, controller.reports);
 
   return router;

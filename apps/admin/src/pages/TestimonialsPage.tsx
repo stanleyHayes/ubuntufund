@@ -21,6 +21,7 @@ import type { Testimonial, TestimonialStatus, CreateTestimonialInput } from '@ub
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
 import PageHeader from '@/components/PageHeader'
+import { api } from '@/lib/api'
 
 const fadeIn = keyframes`from{opacity:0}to{opacity:1}`
 const slideIn = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`
@@ -80,36 +81,26 @@ function TestimonialsPage() {
 
   const pagination = usePagination({ totalItems, pageSize: 20 })
 
-  const getAuthHeaders = (): Record<string, string> => {
-    const token = localStorage.getItem('uf_admin_token')
-      ?? (() => { try { return JSON.parse(localStorage.getItem('uf_admin_tokens') ?? 'null')?.accessToken } catch { return null } })()
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-    if (token) headers['Authorization'] = `Bearer ${token}`
-    return headers
-  }
+  const [loadError, setLoadError] = useState('')
 
+  // The shared client refreshes the session, sends 401s to sign-in and throws
+  // descriptive errors, so a failed load shows an error instead of an empty list.
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const headers = getAuthHeaders()
       const params = new URLSearchParams({ page: String(pagination.currentPage), pageSize: String(pagination.pageSize) })
       if (statusFilter !== 'all') params.set('status', statusFilter)
 
-      const [listRes, statsRes] = await Promise.all([
-        fetch(`/api/v1/testimonials/admin?${params}`, { headers }),
-        fetch('/api/v1/testimonials/stats', { headers }),
+      const [listData, statsData] = await Promise.all([
+        api.get<{ items: Testimonial[]; total: number }>(`/testimonials/admin?${params}`),
+        api.get<Stats>('/testimonials/stats'),
       ])
-
-      const listData = await listRes.json()
-      const statsData = await statsRes.json()
-
-      if (listRes.ok) {
-        setTestimonials(listData.data.items)
-        setTotalItems(listData.data.total)
-      }
-      if (statsRes.ok) setStats(statsData.data)
-    } catch {
-      // API unavailable
+      setTestimonials(listData.items)
+      setTotalItems(listData.total)
+      setStats(statsData)
+      setLoadError('')
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Could not load testimonials')
     } finally {
       setLoading(false)
     }
@@ -140,41 +131,24 @@ function TestimonialsPage() {
 
   const handleSave = async () => {
     try {
-      const headers = getAuthHeaders()
-      const url = editingId
-        ? `/api/v1/testimonials/${editingId}`
-        : '/api/v1/testimonials'
-      const method = editingId ? 'PUT' : 'POST'
-
-      const res = await fetch(url, {
-        method,
-        headers,
-        body: JSON.stringify(form),
-      })
-      if (res.ok) {
-        setDialogOpen(false)
-        setSnackbar({ open: true, message: editingId ? 'Testimonial updated' : 'Testimonial created', severity: 'success' })
-        fetchData()
-      } else {
-        const err = await res.json().catch(() => ({ message: 'Failed' }))
-        setSnackbar({ open: true, message: err.message || 'Failed to save', severity: 'error' })
-      }
-    } catch {
-      setSnackbar({ open: true, message: 'Network error', severity: 'error' })
+      if (editingId) await api.put(`/testimonials/${editingId}`, form)
+      else await api.post('/testimonials', form)
+      setDialogOpen(false)
+      setSnackbar({ open: true, message: editingId ? 'Testimonial updated' : 'Testimonial created', severity: 'success' })
+      void fetchData()
+    } catch (error) {
+      setSnackbar({ open: true, message: error instanceof Error ? error.message : 'Failed to save', severity: 'error' })
     }
   }
 
   const handleDelete = async (id: string) => {
     try {
-      const headers = getAuthHeaders()
-      const res = await fetch(`/api/v1/testimonials/${id}`, { method: 'DELETE', headers })
-      if (res.ok) {
-        setDeleteConfirm(null)
-        setSnackbar({ open: true, message: 'Testimonial archived and removed from the site', severity: 'success' })
-        fetchData()
-      }
-    } catch {
-      setSnackbar({ open: true, message: 'Failed to delete', severity: 'error' })
+      await api.delete(`/testimonials/${id}`)
+      setDeleteConfirm(null)
+      setSnackbar({ open: true, message: 'Testimonial archived and removed from the site', severity: 'success' })
+      void fetchData()
+    } catch (error) {
+      setSnackbar({ open: true, message: error instanceof Error ? error.message : 'Failed to delete', severity: 'error' })
     }
   }
 
@@ -207,10 +181,10 @@ function TestimonialsPage() {
           </Button>}<ExportMenu title="Testimonials" disabled={loading} getReport={async progress => { const rows = (await loadAll<Testimonial>('/testimonials/admin' + (statusFilter === 'all' ? '' : '?status=' + encodeURIComponent(statusFilter)), progress)).filter(r => !search || [r.name, r.role, r.location].some(value => value.toLowerCase().includes(search.toLowerCase())));
 return { title: 'Testimonials', filters: [`Status: ${statusFilter}`, `Search: ${search || 'All'}`], tables: [exportTable('Testimonials', rows, { ID: r => r.id, Name: r => r.name, Role: r => r.role, Location: r => r.location, Quote: r => r.quote, Rating: r => r.rating, Status: r => r.status, 'Created (UTC)': r => dateCell(r.createdAt) })] } }} /></>}
         stats={[
-          { label: 'Total', value: stats.total.toLocaleString() },
-          { label: 'Published', value: stats.published.toLocaleString() },
-          { label: 'Draft', value: stats.draft.toLocaleString() },
-          { label: 'Archived', value: stats.archived.toLocaleString() },
+          { label: 'Total', value: loadError ? '—' : stats.total.toLocaleString() },
+          { label: 'Published', value: loadError ? '—' : stats.published.toLocaleString() },
+          { label: 'Draft', value: loadError ? '—' : stats.draft.toLocaleString() },
+          { label: 'Archived', value: loadError ? '—' : stats.archived.toLocaleString() },
         ]}
       />
 
@@ -267,6 +241,8 @@ return { title: 'Testimonials', filters: [`Status: ${statusFilter}`, `Search: ${
               <Skel w={60} h={28} />
             </Box>
           ))
+        ) : loadError ? (
+          <Alert severity="error" sx={{ m: 2 }} action={<Button color="inherit" onClick={() => void fetchData()}>Retry</Button>}>{loadError}</Alert>
         ) : filtered.length === 0 ? (
           <EmptyState variant="search" title="No testimonials found" description="No testimonials match your filters." compact />
         ) : (
@@ -312,10 +288,10 @@ return { title: 'Testimonials', filters: [`Status: ${statusFilter}`, `Search: ${
                 }}
               />
               <Box sx={{ display: 'flex', gap: 0.5 }}>
-                <IconButton size="small" onClick={() => openEdit(t)} sx={{ color: 'rgba(255,255,255,0.4)', '&:hover': { color: ACCENT } }}>
+                <IconButton size="small" aria-label={`Edit testimonial from ${t.name}`} onClick={() => openEdit(t)} sx={{ color: 'rgba(255,255,255,0.4)', '&:hover': { color: ACCENT } }}>
                   <EditIcon sx={{ fontSize: 18 }} />
                 </IconButton>
-                <IconButton size="small" onClick={() => setDeleteConfirm(t.id)} sx={{ color: 'rgba(255,255,255,0.4)', '&:hover': { color: '#C06B58' } }}>
+                <IconButton size="small" aria-label={`Remove testimonial from ${t.name}`} onClick={() => setDeleteConfirm(t.id)} sx={{ color: 'rgba(255,255,255,0.4)', '&:hover': { color: '#C06B58' } }}>
                   <DeleteIcon sx={{ fontSize: 18 }} />
                 </IconButton>
               </Box>
