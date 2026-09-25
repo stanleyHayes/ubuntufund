@@ -28,6 +28,7 @@ import { MongoUserBlockRepository } from './infrastructure/adapters/outbound/per
 import { createUserSafetyRoutes } from './infrastructure/adapters/inbound/http/routes/userSafetyRoutes.js'
 import { createPrivacyRequestRoutes } from './infrastructure/adapters/inbound/http/routes/privacyRequestRoutes.js'
 import { MongoAccountErasure } from './infrastructure/adapters/outbound/persistence/MongoAccountErasure.js'
+import { MongoAccountClosureCheck } from './infrastructure/adapters/outbound/persistence/MongoAccountClosureCheck.js'
 import { createOrganizationTeamRoutes } from './infrastructure/adapters/inbound/http/routes/organizationTeamRoutes.js'
 import { AutomaticPayoutService } from './infrastructure/adapters/outbound/payments/AutomaticPayoutService.js'
 import { automaticPayoutRoutes } from './infrastructure/adapters/inbound/http/routes/automaticPayoutRoutes.js'
@@ -1105,7 +1106,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     }, 60_000)
     erasureTimer.unref()
   }
-  const deleteAccountUseCase = new DeleteAccountUseCase(userRepo, tokenService, accountErasure)
+  const deleteAccountUseCase = new DeleteAccountUseCase(userRepo, tokenService, accountErasure, new MongoAccountClosureCheck(), mfa)
 
   const createCampaignUpdateUseCase = new CreateCampaignUpdateUseCase(
     campaignUpdateRepo,

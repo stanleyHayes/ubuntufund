@@ -93,6 +93,18 @@ export class MongoAccountErasure implements AccountErasurePort {
     await TipModel.updateMany({ supporterUserId: userId }, { $set: { isAnonymous: true, checkoutRevokedAt: new Date() }, $unset: { checkout: 1, requestFingerprint: 1, publicContentFingerprint: 1, publicReviewNotes: 1 } });
     const campaigns = await CampaignModel.find({ creatorId: userId }).select('_id');
     await LiveSessionModel.updateMany({ campaignId: { $in: campaigns.map(c => String(c._id)) }, status: 'active' }, { $set: { status: 'ended', endedAt: new Date(), moderationStoppedAt: new Date(), providerStopPending: true, overlayToken: '', privacyMode: true } });
+    // A closed account cannot run a fundraiser: end open campaigns so they stop
+    // accepting donation intents and crypto quotes (canReceiveDonation only
+    // checks status and end date). EXPIRED is the ordinary end state, not a
+    // moderation block; the end date never moves later. Campaigns awaiting
+    // review return to draft so they leave the staff queue. Both are
+    // idempotent, so a retried sweep is safe. Organizations are users, so
+    // `creatorId` covers their campaigns too.
+    const closedAt = new Date();
+    await CampaignModel.updateMany({ creatorId: userId, status: { $in: ['active', 'funded'] } }, [
+      { $set: { status: 'expired', endDate: { $min: ['$endDate', closedAt] } } },
+    ]);
+    await CampaignModel.updateMany({ creatorId: userId, status: 'pending_review' }, { $set: { status: 'draft' } });
     await UserModel.updateOne({ _id: userId }, {
       $set: { name: 'Deleted user', email: `deleted-${userId}@invalid.ujimora`, passwordHash: '!deleted!', needsWebsite: false },
       $unset: { avatarUrl: 1, coverUrl: 1, organizationName: 1, organizationType: 1, registrationNumber: 1, website: 1, websiteRequestedAt: 1, websiteRequestWithdrawnAt: 1, country: 1 },

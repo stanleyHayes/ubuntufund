@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { ProfileController } from '../controllers/ProfileController.js';
 import { validate } from '../../middleware/validate.js';
 import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
+import { authRateLimiter } from '../../middleware/rateLimiter.js';
 
 const notificationPreferencesSchema = z
   .object({
@@ -34,6 +35,13 @@ const updateProfileSchema = z.object({
   anonymousDonations: z.boolean().optional(),
   showLeaderboards: z.boolean().optional(),
   publicProfile: z.boolean().optional(),
+});
+
+// Both optional so a missing password reaches the use case, which explains how
+// to finish deletion (older app builds send no body).
+const deleteAccountSchema = z.object({
+  password: z.string().min(1).max(128).optional(),
+  code: z.string().trim().min(6).max(64).optional(),
 });
 
 export function createProfileRoutes(
@@ -84,7 +92,8 @@ export function createProfileRoutes(
     validate(updateProfileSchema),
     controller.updateMyProfile
   );
-  router.delete('/', authMiddleware, controller.deleteMyAccount);
+  router.get('/closure-check', authMiddleware, controller.getClosureCheck);
+  router.delete('/', authMiddleware, authRateLimiter, validate(deleteAccountSchema), controller.deleteMyAccount);
 
   return router;
 }

@@ -136,7 +136,7 @@ it('removes teammate drafts on organization closure and cannot enqueue them agai
   const { owner, member } = await team();
   await save(owner, member).expect(409);
   expect(await PublicationReviewModel.countDocuments({ action: 'organization.profile', resourceId: owner.id })).toBe(1);
-  await request(app).delete('/api/v1/profile').set('Authorization', owner.auth).expect(200);
+  await request(app).delete('/api/v1/profile').set('Authorization', owner.auth).send({ password: 'SecurePass123' }).expect(200);
   expect(await PublicationReviewModel.countDocuments({ action: 'organization.profile', resourceId: owner.id })).toBe(0);
   const admission = new MongoPublicationAdmission({ screen });
   await expect(admission.assertAllowed({ actorId: member.id, action: 'organization.profile', resourceId: owner.id, text: JSON.stringify(body), mediaUrls: [] })).rejects.toMatchObject({ statusCode: 401 });
@@ -145,7 +145,7 @@ it('removes teammate drafts on organization closure and cannot enqueue them agai
 it('refuses new queued content for a closed author even when an earlier request was authorized', async () => {
   screen.mockReset(); screen.mockResolvedValue('allowed');
   const author = await account();
-  await request(app).delete('/api/v1/profile').set('Authorization', author.auth).expect(200);
+  await request(app).delete('/api/v1/profile').set('Authorization', author.auth).send({ password: 'SecurePass123' }).expect(200);
   const admission = new MongoPublicationAdmission({ screen });
   await expect(admission.assertAllowed({ actorId: author.id, action: 'comment.create', resourceId: 'fixture-campaign', text: 'Late proposed public text', mediaUrls: [] })).rejects.toMatchObject({ statusCode: 401 });
   expect(await PublicationReviewModel.countDocuments({ actorId: author.id })).toBe(0);

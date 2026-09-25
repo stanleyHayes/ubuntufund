@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import * as bcrypt from 'bcryptjs';
 import QRCode from 'qrcode';
 import type { MfaPort } from '../../../../domain/ports/outbound/MfaPort.js';
+import type { StepUpAuthPort } from '../../../../domain/ports/outbound/StepUpAuthPort.js';
 import type { AuthTokenService } from '../../../../application/services/AuthTokenService.js';
 import { TotpCipher, matchTotp, newRecoveryCodes, newTotpSecret, recoveryDigest } from '../../../../application/services/Totp.js';
 import { MfaModel } from '../../../database/models/MfaModel.js';
@@ -11,7 +12,7 @@ import { MongoUnitOfWork } from './MongoUnitOfWork.js';
 import { AppError } from '../../inbound/middleware/errorHandler.js';
 
 const invalid = () => new AppError('Enter a valid authenticator code or an unused recovery code.', 401, { mfaCode: ['required'] });
-export class MongoMfa implements MfaPort {
+export class MongoMfa implements MfaPort, StepUpAuthPort {
   private readonly cipher: TotpCipher;
   constructor(key: string, private readonly tokens: AuthTokenService, private readonly publicWebUrl: string) { this.cipher = new TotpCipher(key); }
   private requireConfigured() { if (!this.cipher.configured) throw new AppError('Authenticator setup is temporarily unavailable.', 503); }
@@ -65,6 +66,14 @@ export class MongoMfa implements MfaPort {
       if (!user || (user.authVersion ?? '') !== authVersion) throw invalid();
       await this.consume(userId, code);
     });
+  }
+  /** Step-up for destructive account actions: the current password, plus a code when MFA is enabled. */
+  async verifyStepUp(userId: string, password: string, code?: string) {
+    await this.password(userId, password);
+    if (!await MfaModel.exists({ userId, enabled: true })) return;
+    if (!code) throw invalid();
+    await this.reserveAttempt(userId);
+    await this.consume(userId, code);
   }
   private async rotateSessions(userId: string, passwordHash: string, action: string) {
     const authVersion = randomUUID();
