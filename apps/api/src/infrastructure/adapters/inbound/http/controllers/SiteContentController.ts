@@ -67,6 +67,7 @@ export class SiteContentController {
         type: req.body?.type,
         data: req.body?.data,
         updatedBy: req.userId,
+        expectedUpdatedAt: req.body?.expectedUpdatedAt ? new Date(req.body.expectedUpdatedAt) : undefined,
       });
       res.json({
         data: block,

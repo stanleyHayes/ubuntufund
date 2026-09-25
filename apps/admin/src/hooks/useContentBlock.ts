@@ -102,7 +102,13 @@ export function useContentBlock<T>(
   const save = useCallback(async () => {
     setSaving(true)
     try {
-      const saved = await api.put<SiteContentRecord<T>>(`/content/${key}`, { type, data })
+      // Send the version this editor loaded so the API refuses (409) to
+      // overwrite another admin's newer save instead of silently losing it.
+      const saved = await api.put<SiteContentRecord<T>>(`/content/${key}`, {
+        type,
+        data,
+        ...(record?.updatedAt ? { expectedUpdatedAt: record.updatedAt } : {}),
+      })
       setRecord(saved)
       setExists(true)
       // Prefer the server's echoed data; fall back to what we sent.
@@ -112,7 +118,7 @@ export function useContentBlock<T>(
     } finally {
       setSaving(false)
     }
-  }, [key, type, data])
+  }, [key, type, data, record?.updatedAt])
 
   const isDirty = JSON.stringify(data) !== baseline
 

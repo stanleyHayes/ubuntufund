@@ -31,6 +31,7 @@ import LinkedInIcon from '@mui/icons-material/LinkedIn'
 import YouTubeIcon from '@mui/icons-material/YouTube'
 import { SHAPE } from '@ubuntu-fund/ui'
 import { useContent } from '../hooks/useContent'
+import { isContactContent } from '../lib/contentShapes'
 import { InternalPageHero } from '../components/InternalPageHero'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 
@@ -91,7 +92,7 @@ function ContactPage() {
   })
   // Runtime CMS: contact details + social links (key 'contact'), falling back to the
   // hardcoded defaults when the CMS is unreachable.
-  const savedContact = useContent('contact', CONTACT_FALLBACK)
+  const savedContact = useContent('contact', CONTACT_FALLBACK, isContactContent)
   const contact = { ...CONTACT_FALLBACK, ...savedContact, socials: { ...CONTACT_FALLBACK.socials, ...savedContact.socials } }
   const responseTimes = (contact.responseTimes ?? []).filter(row => row.label?.trim() && row.time?.trim())
 

@@ -6,6 +6,7 @@ import DevicesRoundedIcon from '@mui/icons-material/DevicesRounded'
 import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded'
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded'
 import { useContent } from '../../hooks/useContent'
+import { isStatsContent } from '../../lib/contentShapes'
 
 const STATS_FALLBACK = {
   items: [
@@ -25,7 +26,7 @@ const foundations = {
 }
 
 function StatsSection() {
-  const { items: stats } = useContent('marketing.stats', STATS_FALLBACK)
+  const { items: stats } = useContent('marketing.stats', STATS_FALLBACK, isStatsContent)
   return (
     <Box component="section" id="platform-foundations" aria-label="Platform foundations" sx={{ py: { xs: 5, md: 7 }, bgcolor: 'background.default' }}>
       <Container maxWidth="lg">

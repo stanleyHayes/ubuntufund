@@ -1,4 +1,5 @@
 import { useContent } from '../hooks/useContent'
+import { isContactContent } from '../lib/contentShapes'
 import { NewsletterSignup } from './NewsletterSignup'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
@@ -94,7 +95,7 @@ const linkStyle = {
 }
 
 function Footer() {
-  const contact = useContent('contact', CONTACT_SOCIALS)
+  const contact = useContent('contact', CONTACT_SOCIALS, isContactContent)
   const socials = { ...CONTACT_SOCIALS.socials, ...contact.socials }
   const socialLinks = [
     { icon: <FacebookIcon />, label: 'Facebook', href: socials.facebook },

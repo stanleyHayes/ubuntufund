@@ -31,6 +31,7 @@ import ForOrganizationsPage from './pages/ForOrganizationsPage'
 import { LEGAL_POLICIES } from './data/legal'
 import NotFoundPage from './pages/NotFoundPage'
 import SplashScreen from './components/SplashScreen'
+import { PageErrorBoundary } from './components/PageErrorBoundary'
 
 const BANNER_CONFIG: Record<string, { title: string; subtitle?: string; description?: string; accentWord?: string; icon?: React.ReactNode }> = {
   '/about': {
@@ -118,7 +119,10 @@ function InnerPageLayout() {
           Outlet must NOT declare their own — nested landmarks are invalid,
           and a screen reader then lists two "main" regions to skip to. */}
       <Box component="main" sx={{ flex: 1 }}>
-        <Outlet />
+        {/* Navbar and footer stay usable if the page itself fails to render. */}
+        <PageErrorBoundary resetKey={pathname}>
+          <Outlet />
+        </PageErrorBoundary>
       </Box>
       <Footer />
     </Box>
@@ -133,7 +137,7 @@ function App() {
           <PageTransitions>{location => (
           <Routes location={location}>
             {/* Landing page is fully self-contained — no banner */}
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/" element={<PageErrorBoundary resetKey="/"><LandingPage /></PageErrorBoundary>} />
             {/* Inner pages get the banner */}
             <Route element={<InnerPageLayout />}>
               <Route path="/about" element={<AboutPage />} />

@@ -14,6 +14,12 @@ export interface UpsertSiteContentInput {
   data: unknown;
   /** Admin user id performing the edit, recorded on the block. */
   updatedBy?: string;
+  /**
+   * The `updatedAt` the editor loaded. When given, the save only applies if
+   * nobody else has saved the block since (409 otherwise), so concurrent
+   * admin edits cannot silently overwrite each other.
+   */
+  expectedUpdatedAt?: Date;
 }
 
 /**
@@ -38,6 +44,11 @@ export class UpsertSiteContentUseCase {
     const existing = await this.siteContentRepo.getByKey(key);
     const type = (input.type ?? existing?.type ?? 'custom').trim() || 'custom';
 
+    if (input.expectedUpdatedAt) {
+      const saved = await this.siteContentRepo.replaceIfUnchanged(key, type, input.data, input.expectedUpdatedAt, input.updatedBy);
+      if (!saved) throw new AppError('This content was changed by someone else since you opened it. Reload the page to see the latest version, then reapply your edits.', 409);
+      return saved;
+    }
     return this.siteContentRepo.upsert(key, type, input.data, input.updatedBy);
   }
 }

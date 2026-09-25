@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NEUMORPHIC_FOREST_VARS, SHAPE, breadcrumbList } from '@ubuntu-fund/ui'
 import { useContent } from '../hooks/useContent'
+import { isFaqContent } from '../lib/contentShapes'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -146,7 +147,7 @@ function HelpPage() {
 
   // Runtime CMS: pull FAQ items and regroup them onto the static category metadata
   // (matched by label). Falls back to the hardcoded defaults when the CMS is unreachable.
-  const faqContent = useContent('faq', FAQ_FALLBACK)
+  const faqContent = useContent('faq', FAQ_FALLBACK, isFaqContent)
   const FAQ_CATEGORIES: FaqCategory[] = FAQ_CATEGORIES_STATIC.map((cat) => ({
     id: cat.id,
     icon: cat.icon,
