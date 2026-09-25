@@ -24,7 +24,8 @@ export class MongoStoreBilling extends MongoBillingOwnership {
     if (purchase.accountToken !== account.accountToken) {
       throw new AppError('This purchase belongs to a different Ujimora account. Sign in to the account used for the purchase.', 403);
     }
-    await this.claimProvider(userId, store);
+    // The verified purchase row is now the durable evidence for this rail.
+    await this.claimProvider(userId, store, { refreshHold: false });
     return this.apply(userId, purchase, revision);
   }
 

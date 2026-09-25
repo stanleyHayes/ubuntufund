@@ -166,7 +166,11 @@ export function SubscriptionPage() {
     return () => { active = false }
   }, [lastCheckout])
   const { subscription, isLoading, refetch } = useMySubscription()
-  const storeManaged = subscription?.billingProvider === 'apple' || subscription?.billingProvider === 'google'
+  // A running App Store / Google Play plan is managed there. Once it has lapsed
+  // the web can sell a plan again; the API still refuses while the store could
+  // renew or charge it.
+  const storeManaged = (subscription?.billingProvider === 'apple' || subscription?.billingProvider === 'google') &&
+    !!subscription && isPaidPlanInForce(subscription)
   const storeName = subscription?.billingProvider === 'apple' ? 'App Store' : 'Google Play'
   const storeManagementUrl = subscription?.billingProvider === 'apple' ? 'https://apps.apple.com/account/subscriptions' : 'https://play.google.com/store/account/subscriptions?package=com.ujimora.app'
   // DB-backed plans (seeded from SUBSCRIPTION_PLANS so nothing flashes empty).

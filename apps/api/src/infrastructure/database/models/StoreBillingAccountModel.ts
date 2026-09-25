@@ -6,6 +6,8 @@ const schema = new Schema({
   userId: { type: String, required: true, unique: true },
   accountToken: { type: String, required: true, unique: true, default: () => randomUUID() },
   provider: { type: String, enum: ['apple', 'google', 'web'] },
+  /** When the provider was last claimed; a recent claim may still have a payment in flight. */
+  providerClaimedAt: Date,
   verificationRevision: { type: Number, required: true, default: 0 },
   appliedRevision: { type: Number, required: true, default: 0 },
 }, { timestamps: true });

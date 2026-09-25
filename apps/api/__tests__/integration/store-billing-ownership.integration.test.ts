@@ -63,6 +63,77 @@ describe('store purchase ownership and recovery', () => {
       .rejects.toMatchObject({ statusCode: 409 });
   });
 
+  const DAY = 86_400_000;
+  const ageClaim = (userId: string, ms = 25 * 60 * 60 * 1000) =>
+    StoreBillingAccountModel.updateOne({ userId }, { $set: { providerClaimedAt: new Date(Date.now() - ms) } });
+
+  it('releases a web claim to store billing once an abandoned checkout is past its lifetime', async () => {
+    const userId = await user();
+    await new MongoBillingOwnership().claimProvider(userId, 'web');
+    const checkout = await SubscriptionCheckoutModel.create({ userId, tier: 'pro', billingCycle: 'monthly', status: 'pending',
+      baseAmount: 100, discountAmount: 0, finalAmount: 100, currency: 'GHS' });
+    // Still inside the hold: a payment could complete.
+    await expect(new MongoBillingOwnership().claimProvider(userId, 'google')).rejects.toMatchObject({ statusCode: 409 });
+    await ageClaim(userId);
+    await expect(new MongoBillingOwnership().claimProvider(userId, 'google')).rejects.toMatchObject({ statusCode: 409 });
+    await SubscriptionCheckoutModel.collection.updateOne({ _id: checkout._id }, { $set: { createdAt: new Date(Date.now() - 2 * DAY) } });
+    await new MongoBillingOwnership().claimProvider(userId, 'google');
+    expect((await StoreBillingAccountModel.findOne({ userId }))?.provider).toBe('google');
+    expect(await new MongoBillingOwnership().activeProvider(userId)).toBe('google');
+  });
+
+  it('releases a store claim to the web after a cancelled store sheet with no purchase', async () => {
+    const userId = await user();
+    await new MongoBillingOwnership().claimProvider(userId, 'apple');
+    await expect(new MongoBillingOwnership().claimProvider(userId, 'web')).rejects.toMatchObject({ statusCode: 409 });
+    await ageClaim(userId);
+    expect(await new MongoBillingOwnership().activeProvider(userId)).toBeNull();
+    await new MongoBillingOwnership().claimProvider(userId, 'web');
+    expect((await StoreBillingAccountModel.findOne({ userId }))?.provider).toBe('web');
+  });
+
+  it('keeps the claim while the holding rail has a live entitlement or a store that could still renew', async () => {
+    const webUser = await user();
+    await new MongoBillingOwnership().claimProvider(webUser, 'web');
+    await SubscriptionModel.create({ userId: webUser, tier: 'pro', billingCycle: 'monthly', status: 'active', billingProvider: 'web',
+      currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + DAY) });
+    await ageClaim(webUser);
+    await expect(new MongoBillingOwnership().claimProvider(webUser, 'apple')).rejects.toMatchObject({ statusCode: 409 });
+
+    const f = await fixture();
+    await f.billing.verifyForUser(f.userId, 'google', f.purchase.reference);
+    await ageClaim(f.userId);
+    await expect(new MongoBillingOwnership().claimProvider(f.userId, 'web')).rejects.toMatchObject({ statusCode: 409 });
+    // Lapsed but auto-renewing: the store may still recover the payment.
+    await StorePurchaseModel.updateOne({ userId: f.userId }, { $set: { active: false, periodEnd: new Date(Date.now() - DAY) } });
+    await SubscriptionModel.updateOne({ userId: f.userId }, { $set: { status: 'expired', currentPeriodEnd: new Date(Date.now() - DAY) } });
+    await expect(new MongoBillingOwnership().claimProvider(f.userId, 'web')).rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  it('moves a lapsed, cancelled store plan to the web so a web payment can settle over it', async () => {
+    const f = await fixture();
+    await f.billing.verifyForUser(f.userId, 'google', f.purchase.reference);
+    await StorePurchaseModel.updateOne({ userId: f.userId }, { $set: { active: false, autoRenew: false, periodEnd: new Date(Date.now() - DAY) } });
+    await SubscriptionModel.updateOne({ userId: f.userId }, { $set: { status: 'expired', currentPeriodEnd: new Date(Date.now() - DAY) } });
+    await ageClaim(f.userId);
+    await new MongoBillingOwnership().claimProvider(f.userId, 'web');
+    const row = (await SubscriptionModel.findOne({ userId: f.userId }))!;
+    expect(row.billingProvider).toBe('web');
+    expect(row.storePurchaseKey).toBeUndefined();
+    const repository = new MongoSubscriptionRepository();
+    const current = (await repository.findByUserId(f.userId))!;
+    await expect(repository.update({ ...current, tier: 'starter', status: 'active' as never })).resolves.toMatchObject({ tier: 'starter' });
+  });
+
+  it('does not restart the in-flight hold when a store purchase is merely re-verified', async () => {
+    const f = await fixture();
+    await f.billing.verifyForUser(f.userId, 'google', f.purchase.reference);
+    await ageClaim(f.userId);
+    const before = (await StoreBillingAccountModel.findOne({ userId: f.userId }))!.providerClaimedAt;
+    await f.billing.verifyForUser(f.userId, 'google', f.purchase.reference);
+    expect((await StoreBillingAccountModel.findOne({ userId: f.userId }))!.providerClaimedAt).toEqual(before);
+  });
+
   it('refuses native checkout while a legacy web payment is pending', async () => {
     const userId = await user();
     await SubscriptionCheckoutModel.create({ userId, tier: 'pro', billingCycle: 'monthly', status: 'pending',

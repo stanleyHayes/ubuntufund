@@ -496,7 +496,9 @@ export default function SubscriptionScreen() {
   const p = usePalette()
   const styles = useStyles()
   const [currentSub, setCurrentSub] = useState<SubscriptionData>(DEFAULT_SUB)
-  const storeManaged = currentSub.billingProvider === 'apple' || currentSub.billingProvider === 'google'
+  // A running store plan is managed in that store; a lapsed one no longer blocks
+  // a web purchase (the API still refuses while the store could charge).
+  const storeManaged = (currentSub.billingProvider === 'apple' || currentSub.billingProvider === 'google') && isPaidPlanInForce(currentSub)
   const storeManagementUrl = currentSub.billingProvider === 'apple' ? 'https://apps.apple.com/account/subscriptions' : 'https://play.google.com/store/account/subscriptions?package=com.ujimora.app'
   const [isLoading, setIsLoading] = useState(true)
   const [checkoutTier, setCheckoutTier] = useState<string | null>(null)
