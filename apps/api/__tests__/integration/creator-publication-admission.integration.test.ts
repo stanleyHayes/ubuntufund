@@ -143,7 +143,7 @@ it('rejects invalid public payloads before admission', async () => {
 
 it('removes a creator photo at once but still holds a new one as media', async () => {
   screen.mockReset(); screen.mockResolvedValue('allowed');
-  const owner = await account(), avatar = 'https://example.test/creator-avatar.jpg', cover = 'https://example.test/creator-cover.jpg';
+  const owner = await account(), avatar = platformMediaUrl('creator-avatar.jpg'), cover = platformMediaUrl('creator-cover.jpg');
   const body = { ...input(), avatarUrl: avatar, coverUrl: cover };
   await save(owner, body).expect(409);
   await approve(owner);
@@ -156,7 +156,8 @@ it('removes a creator photo at once but still holds a new one as media', async (
   expect(await PublicationReviewModel.countDocuments({ actorId: owner.id })).toBe(reviews);
   await ContentRestrictionModel.deleteMany({ userId: owner.id });
   // Text-only edits are screened without re-holding media; a new image is media.
-  await save(owner, { avatarUrl: 'https://example.test/new-creator.jpg', automatedReviewConsent: true }).expect(409);
-  expect(await PublicationReviewModel.findOne({ actorId: owner.id, status: 'pending' }).lean()).toMatchObject({ reason: 'media', mediaUrls: ['https://example.test/new-creator.jpg'] });
+  const next = platformMediaUrl('new-creator.jpg');
+  await save(owner, { avatarUrl: next, automatedReviewConsent: true }).expect(409);
+  expect(await PublicationReviewModel.findOne({ actorId: owner.id, status: 'pending' }).lean()).toMatchObject({ reason: 'media', mediaUrls: [next] });
   expect(screen).not.toHaveBeenCalled();
 });

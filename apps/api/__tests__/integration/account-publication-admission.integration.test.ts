@@ -129,7 +129,7 @@ it('does not treat an unchanged identity payload as permission to overwrite a co
 
 it('removes an avatar or cover at once, without review, consent, agreement or a lifted restriction', async () => {
   screen.mockReset(); screen.mockResolvedValue('allowed');
-  const owner = await account(), avatar = 'https://example.test/avatar.jpg', cover = 'https://example.test/cover.jpg';
+  const owner = await account(), avatar = platformMediaUrl('avatar.jpg'), cover = platformMediaUrl('cover.jpg');
   await save(owner, { avatarUrl: avatar, coverUrl: cover }).expect(409);
   await approve(owner);
   await save(owner, { avatarUrl: avatar, coverUrl: cover }).expect(200);
@@ -154,7 +154,7 @@ it('removes an avatar or cover at once, without review, consent, agreement or a 
 
 it('screens a name change by an avatar user as text and never re-holds the unchanged avatar as media', async () => {
   screen.mockReset(); screen.mockResolvedValue('allowed');
-  const owner = await account(), avatar = 'https://example.test/approved-avatar.jpg';
+  const owner = await account(), avatar = platformMediaUrl('approved-avatar.jpg');
   await save(owner, { avatarUrl: avatar }).expect(409);
   await approve(owner);
   await save(owner, { avatarUrl: avatar }).expect(200);
@@ -165,8 +165,9 @@ it('screens a name change by an avatar user as text and never re-holds the uncha
   expect(review!.mediaUrls).toEqual([]);
   expect(JSON.parse(review!.text)).toMatchObject({ name: 'Screened new name', avatarUrl: avatar });
   // A new image is still media, held for staff even with consent.
-  await save(owner, { avatarUrl: 'https://example.test/next-avatar.jpg', automatedReviewConsent: true }).expect(409);
-  expect(await PublicationReviewModel.findOne({ actorId: owner.id, status: 'pending' }).lean()).toMatchObject({ reason: 'media', mediaUrls: ['https://example.test/next-avatar.jpg'] });
+  const next = platformMediaUrl('next-avatar.jpg');
+  await save(owner, { avatarUrl: next, automatedReviewConsent: true }).expect(409);
+  expect(await PublicationReviewModel.findOne({ actorId: owner.id, status: 'pending' }).lean()).toMatchObject({ reason: 'media', mediaUrls: [next] });
   expect(screen).toHaveBeenCalledTimes(1);
 });
 
@@ -177,7 +178,7 @@ it('lets comments carry a staff-reviewed avatar through text screening but holds
   const owner = await account(), reviewed = await account(), legacy = await account();
   const campaign = await CampaignModel.create({ title: 'Comment media fixture', description: 'A public campaign', goalAmount: 500, currency: 'GHS', category: 'education', status: 'active', creatorId: owner.id, startDate: new Date(), endDate: new Date(Date.now() + 86400000) });
   const comments = `/api/v1/campaigns/${campaign.id}/comments`;
-  const avatar = 'https://example.test/reviewed-commenter.jpg';
+  const avatar = platformMediaUrl('reviewed-commenter.jpg');
   await save(reviewed, { avatarUrl: avatar }).expect(409);
   await approve(reviewed);
   await save(reviewed, { avatarUrl: avatar }).expect(200);
