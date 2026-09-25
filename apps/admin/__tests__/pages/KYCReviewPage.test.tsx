@@ -9,7 +9,8 @@ import { api } from '@/lib/api'
 vi.mock('@/components/ExportMenu', () => ({ default: () => null }))
 vi.mock('@/context/AdminPermissionContext', () => ({ useAdminPermissions: () => ({ can: () => true }) }))
 vi.mock('@/lib/api', () => ({ api: { put: vi.fn() } }))
-vi.mock('@/hooks/useApiData', () => ({ useAdminKYCVerifications: () => ({ data: [{ id: 'kyc-test', reviewVersion: 'a'.repeat(64), userName: 'Applicant', userId: 'user', verificationType: 'identity', status: 'pending', riskLevel: 'low', documents: [], createdAt: '2026-09-12T12:00:00Z' }], isLoading: false, error: null }) }))
+vi.mock('@/hooks/useApiData', () => ({ useKYCStats: () => stats, useAdminKYCVerifications: () => ({ data: [{ id: 'kyc-test', reviewVersion: 'a'.repeat(64), userName: 'Applicant', userId: 'user', verificationType: 'identity', status: 'pending', riskLevel: 'low', documents: [], createdAt: '2026-09-12T12:00:00Z' }], isLoading: false, error: null }) }))
+const stats = vi.hoisted(() => ({ data: { pending: 4, approvedToday: 3, rejectedToday: 2 }, isLoading: false, error: null as string | null, retry: vi.fn() }))
 beforeEach(() => vi.clearAllMocks())
 const mount = () => render(<ThemeProvider theme={ujimoraTheme}><KYCReviewPage /></ThemeProvider>)
 it('preserves pending status on save failure and permits a confirmed retry', async () => {
@@ -68,4 +69,25 @@ it.each([KYCReviewPage, VerificationsPage])('requires an applicant reason and re
   await waitFor(() => expect(screen.queryByRole('button', { name: 'Save rejection' })).not.toBeInTheDocument())
   expect(api.put).toHaveBeenLastCalledWith('/kyc/kyc-test/reject', { reviewVersion: 'a'.repeat(64), rejectionReason })
   expect(screen.queryByRole('button', { name: 'Reject' })).not.toBeInTheDocument()
+})
+
+it('shows server day counts from /kyc/stats and refreshes them after a decision', async () => {
+  vi.mocked(api.put).mockResolvedValueOnce({ status: 'approved' })
+  mount()
+  const header = screen.getByText('Approved today (UTC)').parentElement!
+  expect(header).toHaveTextContent('3')
+  expect(screen.getByText('Rejected today (UTC)').parentElement!).toHaveTextContent('2')
+  expect(screen.getByText('Pending').parentElement!).toHaveTextContent('4')
+  fireEvent.click(screen.getByRole('button', { name: 'Review evidence' }))
+  fireEvent.change(screen.getByLabelText('Internal review findings'), { target: { value: 'Identity documents reviewed against the application.' } })
+  fireEvent.click(screen.getByRole('checkbox', { name: /I reviewed the application/ }))
+  fireEvent.click(screen.getByRole('button', { name: 'Approve' }))
+  await waitFor(() => expect(stats.retry).toHaveBeenCalled())
+})
+
+it('offers only the statuses the review queue can contain', () => {
+  mount()
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Status' }))
+  const options = screen.getAllByRole('option').map(option => option.getAttribute('data-value'))
+  expect(options).toEqual(['all', 'pending', 'in_review'])
 })
