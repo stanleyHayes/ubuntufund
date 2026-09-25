@@ -42,12 +42,15 @@ export function RefundRequestPage() {
   const { donationId } = useParams<{ donationId: string }>()
   const navigate = useNavigate()
   const [donation, setDonation] = useState<{ campaignName: string; amount: number; currency: string; date: string; paymentMethod: string } | null>(null)
+  const [loadingDonation, setLoadingDonation] = useState(true)
 
   useEffect(() => {
-    if (!donationId) return
+    if (!donationId) { setLoadingDonation(false); return }
+    setLoadingDonation(true)
     api.get<{ campaignName: string; amount: number; currency: string; date: string; paymentMethod: string }>(`/donations/${donationId}`)
       .then(setDonation)
       .catch(() => setDonation(null))
+      .finally(() => setLoadingDonation(false))
   }, [donationId])
 
   const refundCampaign = clip(donation?.campaignName ?? '', 28)
@@ -71,13 +74,21 @@ export function RefundRequestPage() {
     if (submitted) window.scrollTo({ top: 0, behavior: 'instant' })
   }, [submitted])
 
+  if (loadingDonation) {
+    return (
+      <Container maxWidth="sm" sx={{ py: 8, display: 'flex', justifyContent: 'center' }} aria-busy="true">
+        <LoadingDots />
+      </Container>
+    )
+  }
+
   if (!donation) {
     return (
       <Container maxWidth="sm" sx={{ py: 8 }}>
         <ItemNotFound
           itemType="Donation"
           message="This donation was not found or is not eligible for a refund."
-          onBack={() => navigate('/my-donations')}
+          onBack={() => navigate('/donations')}
         />
       </Container>
     )

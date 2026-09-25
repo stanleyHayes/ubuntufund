@@ -1,4 +1,7 @@
+import { PaymentMethod } from '@ubuntu-fund/types';
 import type { DonationRepositoryPort } from '../../domain/ports/outbound/DonationRepositoryPort.js';
+import type { DonationPaymentStateReadPort } from '../../domain/ports/outbound/DonationPaymentStateReadPort.js';
+import { myDonationStatus } from './ListMyDonationsUseCase.js';
 import type {
   RefundRepositoryPort,
   RefundStatus,
@@ -20,7 +23,9 @@ export interface RequestRefundResultDTO {
 export class RequestRefundUseCase {
   constructor(
     private readonly refundRepo: RefundRepositoryPort,
-    private readonly donationRepo: DonationRepositoryPort
+    private readonly donationRepo: DonationRepositoryPort,
+    /** Optional: refuses requests for donations already refunded or disputed. */
+    private readonly paymentStates?: DonationPaymentStateReadPort
   ) {}
 
   async execute(
@@ -35,9 +40,30 @@ export class RequestRefundUseCase {
       throw new AppError('Donation not found', 404);
     }
 
+    // Wallet-funded donations have no provider charge to reverse, and the
+    // wallet-credit refund path does not exist yet: do not take a request the
+    // system cannot fulfil.
+    if (donation.paymentMethod === PaymentMethod.WALLET) {
+      throw new AppError(
+        "Wallet donations can't be refunded automatically. Contact support@ujimora.com with the donation ID.",
+        422
+      );
+    }
+
     const existing = await this.refundRepo.findByDonationId(input.donationId);
     if (existing) {
       throw new AppError('Refund already requested for this donation', 409);
+    }
+
+    if (this.paymentStates) {
+      const state = (await this.paymentStates.statesForDonations([donation.id])).get(donation.id);
+      const status = myDonationStatus(state?.intentStatus);
+      if (status !== 'completed') {
+        throw new AppError(
+          status === 'refunded' ? 'This donation has already been refunded' : 'This donation already has a refund or dispute in progress',
+          409
+        );
+      }
     }
 
     const amount = donation.amount.amount;

@@ -18,7 +18,7 @@ async function user() {
 it('records the full requested amount without a fee, preserves the donation and rejects unauthorized/duplicate intake', async () => {
   const owner = await user(), other = await user();
   for (const [currency, amount] of [['GHS', 101.23], ['XOF', 1234], ['KWD', 10.123]] as const) {
-    const donation = await DonationModel.create({ campaignId: 'aaaaaaaaaaaaaaaaaaaaaaaa', donorId: owner.id, amount, currency, paymentMethod: 'wallet' });
+    const donation = await DonationModel.create({ campaignId: 'aaaaaaaaaaaaaaaaaaaaaaaa', donorId: owner.id, amount, currency, paymentMethod: 'card' });
     const body = { donationId: donation.id, reason: 'Duplicate donation' };
     await request(app).post('/api/v1/refunds').send(body).expect(401);
     await request(app).post('/api/v1/refunds').set('Authorization', other.token).send(body).expect(404);
@@ -37,7 +37,16 @@ it('records the full requested amount without a fee, preserves the donation and 
 it('preserves historical fee snapshots when a later request uses the free intake policy', async () => {
   const owner = await user();
   const old = await RefundModel.create({ donationId: 'bbbbbbbbbbbbbbbbbbbbbbbb', campaignId: 'aaaaaaaaaaaaaaaaaaaaaaaa', requesterId: owner.id, reason: 'Other', amount: 100, fee: 2, netAmount: 98, currency: 'GHS', status: 'pending' });
-  const donation = await DonationModel.create({ campaignId: 'aaaaaaaaaaaaaaaaaaaaaaaa', donorId: owner.id, amount: 100, currency: 'GHS', paymentMethod: 'wallet' });
+  const donation = await DonationModel.create({ campaignId: 'aaaaaaaaaaaaaaaaaaaaaaaa', donorId: owner.id, amount: 100, currency: 'GHS', paymentMethod: 'card' });
   await request(app).post('/api/v1/refunds').set('Authorization', owner.token).send({ donationId: donation.id, reason: 'Other' }).expect(201);
   expect(await RefundModel.findById(old.id).lean()).toMatchObject({ fee: 2, netAmount: 98, status: 'pending' });
+});
+
+// I045: wallet donations have no refund path yet, so intake must not promise one.
+it('refuses refund intake for a wallet-funded donation with a support route', async () => {
+  const owner = await user();
+  const donation = await DonationModel.create({ campaignId: 'aaaaaaaaaaaaaaaaaaaaaaaa', donorId: owner.id, amount: 50, currency: 'GHS', paymentMethod: 'wallet' });
+  const res = await request(app).post('/api/v1/refunds').set('Authorization', owner.token).send({ donationId: donation.id, reason: 'Other' }).expect(422);
+  expect(res.body.message).toContain('support@ujimora.com');
+  expect(await RefundModel.countDocuments({ donationId: donation.id })).toBe(0);
 });

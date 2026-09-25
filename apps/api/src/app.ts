@@ -201,6 +201,7 @@ import { ShareCampaignUseCase } from './application/use-cases/ShareCampaignUseCa
 import { ReportCampaignUseCase } from './application/use-cases/ReportCampaignUseCase.js'
 import { ListRecentDonationsUseCase } from './application/use-cases/ListRecentDonationsUseCase.js'
 import { ListMyDonationsUseCase } from './application/use-cases/ListMyDonationsUseCase.js'
+import { MongoDonationPaymentStateRead } from './infrastructure/adapters/outbound/persistence/MongoDonationPaymentStateRead.js'
 import { GetDonationUseCase } from './application/use-cases/GetDonationUseCase.js'
 import { ListCampaignDonationsUseCase } from './application/use-cases/ListCampaignDonationsUseCase.js'
 import { GetLeaderboardUseCase } from './application/use-cases/GetLeaderboardUseCase.js'
@@ -1160,7 +1161,9 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     userRepo,
     publicProfileVisibility,
   )
-  const listMyDonationsUseCase = new ListMyDonationsUseCase(donationRepo, campaignRepo)
+  // Donation history + refund intake read refunds/disputes from the settling intent.
+  const donationPaymentStates = new MongoDonationPaymentStateRead()
+  const listMyDonationsUseCase = new ListMyDonationsUseCase(donationRepo, campaignRepo, donationPaymentStates)
   const getDonationUseCase = new GetDonationUseCase(donationRepo, campaignRepo)
   const listCampaignDonationsUseCase = new ListCampaignDonationsUseCase(
     donationRepo,
@@ -1179,7 +1182,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
 
   const getOrganizationUseCase = new GetOrganizationUseCase(organizationRepo, campaignRepo, publicProfileVisibility, kycRepo)
 
-  const requestRefundUseCase = new RequestRefundUseCase(refundRepo, donationRepo)
+  const requestRefundUseCase = new RequestRefundUseCase(refundRepo, donationRepo, donationPaymentStates)
   const listMyRefundsUseCase = new ListMyRefundsUseCase(refundRepo, campaignRepo)
 
   const submitKYCIdentityUseCase = new SubmitKYCIdentityUseCase(kycRepo)
