@@ -222,6 +222,10 @@ function PricingPage() {
             const isPro = plan.popular === true
             const isEnterprise = tier === SubscriptionTier.ENTERPRISE
             const price = yearly ? plan.priceYearly : plan.priceMonthly
+            // Free by tier: a zero price on a paid plan means this cycle is not offered.
+            const isFree = tier === SubscriptionTier.FREE
+            const notOffered = !isFree && !isEnterprise && !(price > 0)
+            const cycleName = yearly ? 'Yearly' : 'Monthly'
             const tc = accentOf()
 
             return (
@@ -238,7 +242,7 @@ function PricingPage() {
                 }}
               >
                 <Box sx={{ px: 3, py: 1.5, borderBottom: '1px solid', borderColor: 'divider', bgcolor: isPro ? 'action.hover' : 'transparent' }}>
-                  <Chip size="small" label={isPro ? 'Recommended for growth' : tier === SubscriptionTier.ORGANIZATION ? 'Best fit for organisations' : isEnterprise ? 'For complex needs' : plan.priceMonthly === 0 ? 'Start here' : 'For a growing cause'} sx={{ color: 'text.primary', fontWeight: 700, maxWidth: '100%' }} />
+                  <Chip size="small" label={isPro ? 'Recommended for growth' : tier === SubscriptionTier.ORGANIZATION ? 'Best fit for organisations' : isEnterprise ? 'For complex needs' : isFree ? 'Start here' : 'For a growing cause'} sx={{ color: 'text.primary', fontWeight: 700, maxWidth: '100%' }} />
                 </Box>
                 <CardContent sx={{ p: 3.5, flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <Typography sx={{ fontWeight: 800, fontSize: '1.15rem', mb: 0.25 }}>
@@ -252,12 +256,14 @@ function PricingPage() {
                   <Box sx={{ mb: 2.5 }}>
                     {isEnterprise ? (
                       <Typography sx={{ fontWeight: 800, fontSize: '1.4rem' }}>Custom</Typography>
+                    ) : notOffered ? (
+                      <Typography sx={{ fontWeight: 800, fontSize: '1.4rem' }}>{cycleName} not offered</Typography>
                     ) : (
                       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
                         <Typography sx={{ fontWeight: 900, fontSize: { xs: '1.85rem', md: '2.2rem' }, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
                           GH₵ {new Intl.NumberFormat('en-GH', { maximumFractionDigits: 2 }).format(yearly ? price / 12 : price)}
                         </Typography>
-                        <Typography sx={{ color: 'text.secondary', fontSize: '0.82rem' }}>{yearly || price === 0 ? '/mo' : '/ 30 days'}</Typography>
+                        <Typography sx={{ color: 'text.secondary', fontSize: '0.82rem' }}>{yearly || isFree ? '/mo' : '/ 30 days'}</Typography>
                       </Box>
                     )}
                     {!isEnterprise && price > 0 && (
@@ -294,7 +300,8 @@ function PricingPage() {
                     variant={isPro ? 'contained' : 'outlined'}
                     fullWidth
                     size="large"
-                    href={isEnterprise ? '/contact' : price === 0 ? WEB_APP_REGISTER : `${WEB_APP_URL}/subscription`}
+                    disabled={notOffered}
+                    href={notOffered ? undefined : isEnterprise ? '/contact' : isFree ? WEB_APP_REGISTER : `${WEB_APP_URL}/subscription`}
                     sx={{
                       borderRadius: SHAPE.sm,
                       fontWeight: 700,
@@ -303,7 +310,7 @@ function PricingPage() {
                       ...(isPro && { bgcolor: 'secondary.main', color: 'secondary.contrastText', '&:hover': { bgcolor: 'secondary.light' } }),
                     }}
                   >
-                    {price === 0 ? 'Get Started Free' : isEnterprise ? 'Contact sales' : `Choose ${plan.name}`}
+                    {isFree ? 'Get Started Free' : isEnterprise ? 'Contact sales' : notOffered ? `${cycleName} not offered` : `Choose ${plan.name}`}
                   </Button>
                 </CardContent>
               </Card>

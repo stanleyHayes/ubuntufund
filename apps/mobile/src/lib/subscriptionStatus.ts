@@ -26,3 +26,22 @@ export function isCurrentPlanTier(tier: string, subscription: PeriodFields, now:
   if (tier === SubscriptionTier.FREE) return subscription.tier === SubscriptionTier.FREE || !inForce
   return tier === subscription.tier && inForce
 }
+
+/** What a plan card shows as the price: an amount and the period it buys. */
+export interface PlanPriceTag {
+  amount: number
+  per: 'month' | '30 days' | '1 year'
+}
+
+/**
+ * The price a plan card shows. Free is decided by tier, not by a zero price: a
+ * zero price on a paid plan means that billing cycle is not offered, so a plan
+ * sold only yearly shows its yearly price. Null when a paid plan is sold on
+ * neither cycle.
+ */
+export function planCardPrice(plan: { tier: string; priceMonthly: number; priceYearly: number }): PlanPriceTag | null {
+  if (plan.tier === SubscriptionTier.FREE) return { amount: 0, per: 'month' }
+  if (plan.priceMonthly > 0) return { amount: plan.priceMonthly, per: '30 days' }
+  if (plan.priceYearly > 0) return { amount: plan.priceYearly, per: '1 year' }
+  return null
+}

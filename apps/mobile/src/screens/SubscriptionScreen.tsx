@@ -26,7 +26,7 @@ import {
   isPaymentsNotConfigured,
 } from '@/lib/subscriptions'
 import { previewCoupon } from '@/lib/coupons'
-import { isCurrentPlanTier, isPaidPlanInForce } from '@/lib/subscriptionStatus'
+import { isCurrentPlanTier, isPaidPlanInForce, planCardPrice } from '@/lib/subscriptionStatus'
 import { useAuth } from '@/context/AuthContext'
 import { SignInRequired } from '@/components/SignInRequired'
 import { GlassSurface } from '@/components/GlassSurface'
@@ -148,6 +148,8 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
       marginTop: 'auto',
     },
     currentChipText: { fontSize: 14, fontFamily: 'Outfit_700Bold', color: p.text },
+    // Sits right under the docked "Current Plan" chip.
+    renewButton: { borderRadius: 999, marginTop: 8 },
 
     // Upgrade CTA
     upgradeCta: {
@@ -322,6 +324,8 @@ function CheckoutSheet({
   // Buying a different plan while one is running replaces it immediately, with
   // no credit for unused time; the member confirms that by paying from here.
   const switching = isPaidPlanInForce(current) && current.tier !== tier
+  // Buying the plan you have while it runs adds the time to its end.
+  const renewing = isPaidPlanInForce(current) && current.tier === tier
   const payLabel = !offered ? 'Not offered' : finalAmount === 0 ? 'Activate plan' : switching ? `Replace plan and pay ${formatGhs(finalAmount)}` : `Pay ${formatGhs(finalAmount)}`
 
   const handleCheckout = async () => {
@@ -421,6 +425,11 @@ function CheckoutSheet({
           <Text style={styles.sheetSub}>
             One-time payment for {billingCycle === BillingCycle.YEARLY ? '1 year (365 days)' : '30 days'}. Your plan does not renew automatically.
           </Text>
+          {renewing ? (
+            <Text style={styles.sheetSub}>
+              Adds {billingCycle === BillingCycle.YEARLY ? '1 year' : '30 days'} after your current plan ends on {new Date(current.currentPeriodEnd as string).toLocaleDateString()}.
+            </Text>
+          ) : null}
           {switching ? (
             <Text style={styles.couponError}>
               Your {plans[current.tier]?.name ?? 'current'} plan is active until {new Date(current.currentPeriodEnd as string).toLocaleDateString()}. {plan.name} replaces it as soon as payment is confirmed, and unused time is not refunded or credited.
@@ -612,7 +621,11 @@ export default function SubscriptionScreen() {
           const isCurrent = isCurrentPlanTier(tier, currentSub)
           const isPro = plan.popular === true
           const isEnterprise = tier === SubscriptionTier.ENTERPRISE
-          const isFree = plan.priceMonthly === 0
+          // Free by tier: a zero price on a paid plan means that cycle is not offered.
+          const isFree = tier === SubscriptionTier.FREE
+          const price = planCardPrice(plan)
+          // The server adds a same-plan purchase to the end of the running period.
+          const canRenew = isCurrent && paidInForce && !storeManaged && !isFree && !isEnterprise && !!price
 
           return (
             <FadeInUp key={tier} index={i}>
@@ -633,11 +646,13 @@ export default function SubscriptionScreen() {
 
               {isEnterprise ? (
                 <Text style={styles.planPrice}>Contact Us</Text>
-              ) : (
+              ) : price ? (
                 <View style={styles.priceRow}>
-                  <Text style={styles.planPrice}>GH₵ {plan.priceMonthly}</Text>
-                  <Text style={styles.priceUnit}>{isFree ? '/mo' : ' / 30 days'}</Text>
+                  <Text style={styles.planPrice}>GH₵ {price.amount}</Text>
+                  <Text style={styles.priceUnit}>{price.per === 'month' ? '/mo' : ` / ${price.per}`}</Text>
                 </View>
+              ) : (
+                <Text style={styles.planPrice}>Not offered</Text>
               )}
 
               <Text style={styles.feeLabel}>{plan.platformFeePercent}% fee</Text>
@@ -659,9 +674,21 @@ export default function SubscriptionScreen() {
               </View>
 
               {isCurrent ? (
-                <View style={styles.currentChip}>
-                  <Text style={styles.currentChipText}>Current Plan</Text>
-                </View>
+                <>
+                  <View style={styles.currentChip}>
+                    <Text style={styles.currentChipText}>Current Plan</Text>
+                  </View>
+                  {canRenew ? (
+                    <Button
+                      mode="outlined"
+                      textColor={p.primary}
+                      style={styles.renewButton}
+                      onPress={() => setCheckoutTier(tier)}
+                    >
+                      Renew {plan.name}
+                    </Button>
+                  ) : null}
+                </>
               ) : isFree ? (
                 // Web plans end on their own; there is nothing to cancel.
                 <Button
@@ -680,6 +707,15 @@ export default function SubscriptionScreen() {
                   onPress={() => Linking.openURL(ENTERPRISE_CONTACT)}
                 >
                   Contact us
+                </Button>
+              ) : !price ? (
+                <Button
+                  mode="text"
+                  textColor={p.textSecondary}
+                  style={styles.planButton}
+                  disabled
+                >
+                  Not offered
                 </Button>
               ) : (
                 <Button
@@ -726,7 +762,7 @@ export default function SubscriptionScreen() {
       {/* Web plans are one-time purchases: nothing renews, so nothing to cancel. */}
       {paidInForce && !storeManaged && (
         <Text style={styles.renewText}>
-          Your plan does not renew automatically. Buy again before {new Date(currentSub.currentPeriodEnd as string).toLocaleDateString()} to keep your benefits.
+          Your plan does not renew automatically. Renew it before {new Date(currentSub.currentPeriodEnd as string).toLocaleDateString()} to keep your benefits; the new time is added after the current period.
         </Text>
       )}
     </ScrollView>
