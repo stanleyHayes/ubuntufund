@@ -155,7 +155,8 @@ export const LEGAL_POLICIES: LegalPolicy[] = [
 Organizers must have authority to raise and receive funds for the stated purpose.
 Organizers must provide requested KYC/KYB, beneficiary, banking and supporting documents.
 Organizers must use funds consistently with the campaign representation and applicable law.
-Material changes must be disclosed promptly to contributors and to Ujimora.`,
+Material changes must be disclosed promptly to contributors and to Ujimora.
+Organizers must also follow the Campaign Organizer Agreement, which supplements these Terms and which you accept when you submit a campaign.`,
       },
       {
         title: '5. Contributions',
@@ -399,7 +400,7 @@ Send marketing only where permitted and with applicable choice or consent.`,
       {
         title: '10. Acceptance',
         content:
-          'Acceptance is captured electronically when you accept the account agreement, recording your user ID, the agreement version and a timestamp. It applies to each campaign you create or control while that version is current.',
+          'You accept this Agreement when you submit a campaign. On the website and in the mobile app, the last step of campaign creation links to this Agreement and states that submitting the campaign means you agree to it. Ujimora’s records show which account submitted each campaign and when; Ujimora does not keep a separate signature or acceptance record for this Agreement. Submitting a campaign also requires your current acceptance of the Terms of Use, which is recorded with your user ID, the version you accepted and a timestamp. This Agreement continues to apply while you control the campaign.',
       },
       {
         title: '11. Split beneficiary allocation',
