@@ -1,4 +1,4 @@
-import { donationIntentRateLimiter } from '../../middleware/rateLimiter.js'
+import { payoutDestinationRateLimiter } from '../../middleware/rateLimiter.js'
 import { Router } from 'express'
 import { z } from 'zod'
 import type { PayoutController } from '../controllers/PayoutController.js'
@@ -57,7 +57,7 @@ export function createCampaignPayoutRoutes(
   router.post(
     '/:id/payout-recipient',
     authMiddleware,
-    donationIntentRateLimiter,
+    payoutDestinationRateLimiter,
     validate(z.union([z.object({ savedAccountId: z.string().uuid() }), createRecipientSchema])),
     payoutController.createRecipient,
   )

@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { validate } from '../../middleware/validate.js'
-import { donationIntentRateLimiter } from '../../middleware/rateLimiter.js'
+import { payoutDestinationRateLimiter } from '../../middleware/rateLimiter.js'
 import type { AuthenticatedRequest, createAuthMiddleware } from '../../middleware/authMiddleware.js'
 import type { PayoutAccountService } from '../../../../../application/services/PayoutAccountService.js'
 export function createPayoutAccountRoutes(
@@ -19,7 +19,7 @@ export function createPayoutAccountRoutes(
   })
   r.post(
     '/',
-    donationIntentRateLimiter,
+    payoutDestinationRateLimiter,
     validate(
       z.object({
         type: z.enum(['ghipss', 'mobile_money']),
