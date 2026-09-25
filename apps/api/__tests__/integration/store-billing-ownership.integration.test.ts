@@ -126,6 +126,53 @@ describe('store purchase ownership and recovery', () => {
     await expect(repository.update({ ...current, tier: 'starter', status: 'active' as never })).resolves.toMatchObject({ tier: 'starter' });
   });
 
+  it('never lets a background re-check of a dead store purchase take the rail back from a web plan', async () => {
+    const f = await fixture();
+    await f.billing.verifyForUser(f.userId, 'google', f.purchase.reference);
+    // The Google subscription ended long ago and will not renew.
+    const dead = { ...f.purchase, active: false, autoRenew: false, periodEnd: new Date(Date.now() - 90 * DAY) };
+    f.verifier.verify.mockImplementation(async () => ({ ...dead }));
+    await StorePurchaseModel.updateOne({ userId: f.userId }, { $set: { active: false, autoRenew: false, periodEnd: dead.periodEnd } });
+    await SubscriptionModel.updateOne({ userId: f.userId }, { $set: { status: 'expired', currentPeriodEnd: dead.periodEnd } });
+    await ageClaim(f.userId);
+    // The member buys a web plan.
+    await new MongoBillingOwnership().claimProvider(f.userId, 'web');
+    await SubscriptionModel.updateOne({ userId: f.userId }, { $set: { tier: 'starter', status: 'active',
+      currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 30 * DAY) } });
+    const due = () => StorePurchaseModel.updateOne({ userId: f.userId }, { $set: { nextCheckAt: new Date(0) } });
+
+    // While the web plan runs: no false "review required" alarm.
+    await due(); await f.billing.reconcile();
+    const observed = (await StorePurchaseModel.findOne({ userId: f.userId }))!;
+    expect(observed).toMatchObject({ reviewRequired: false, active: false, autoRenew: false });
+    expect(observed.lastError).toBeUndefined();
+    // Dormant purchases are not re-verified every 15 minutes.
+    expect(observed.nextCheckAt.getTime()).toBeGreaterThan(Date.now() + 29 * DAY);
+
+    // After the web plan lapses (and its hold is long gone), the sweep still leaves the rail on the web.
+    await SubscriptionModel.updateOne({ userId: f.userId }, { $set: { currentPeriodEnd: new Date(Date.now() - DAY) } });
+    await ageClaim(f.userId);
+    await due(); await f.billing.reconcile();
+    expect((await StoreBillingAccountModel.findOne({ userId: f.userId }))?.provider).toBe('web');
+    expect(await SubscriptionModel.findOne({ userId: f.userId })).toMatchObject({ billingProvider: 'web', tier: 'starter' });
+    await expect(new MongoBillingOwnership().claimProvider(f.userId, 'web')).resolves.toBeUndefined();
+
+    // The same goes for a store notification about that dead purchase.
+    await f.billing.enqueueNotification('google', f.purchase.reference);
+    await f.billing.reconcileNotifications();
+    expect((await StoreBillingAccountModel.findOne({ userId: f.userId }))?.provider).toBe('web');
+    expect(await StoreBillingNotificationModel.countDocuments()).toBe(0);
+  });
+
+  it('still lets the member restore a store purchase onto a lapsed web account', async () => {
+    const f = await fixture();
+    await new MongoBillingOwnership().claimProvider(f.userId, 'web');
+    await ageClaim(f.userId);
+    await f.billing.verifyForUser(f.userId, 'google', f.purchase.reference);
+    expect((await StoreBillingAccountModel.findOne({ userId: f.userId }))?.provider).toBe('google');
+    expect(await SubscriptionModel.findOne({ userId: f.userId })).toMatchObject({ billingProvider: 'google', tier: 'pro' });
+  });
+
   it('does not restart the in-flight hold when a store purchase is merely re-verified', async () => {
     const f = await fixture();
     await f.billing.verifyForUser(f.userId, 'google', f.purchase.reference);
