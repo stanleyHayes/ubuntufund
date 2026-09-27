@@ -8,15 +8,12 @@ import { SHAPE, breadcrumbList } from '@ubuntu-fund/ui'
 import { InternalPageHero } from '../components/InternalPageHero'
 import { LEGAL_ENTITY, LEGAL_POLICIES } from '../data/legal'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
+import { pageHead } from '@/lib/pageSeo'
 
 /** The `/legal` hub: one card per policy, linking to its dedicated page. */
 function LegalIndexPage() {
   useSeo({
-    title: 'Legal policies and agreements | Ujimora',
-    description:
-      'Every policy that governs Ujimora in one place: terms of use, privacy, organizer and contributor terms, payouts and refunds, acceptable use and cookies.',
-    path: '/legal',
-    type: 'website',
+    ...pageHead('/legal'),
     jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'Legal' }]),
   })
 

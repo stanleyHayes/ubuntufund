@@ -20,7 +20,9 @@
       "@/*": ["./src/*"]
     },
     "ignoreDeprecations": "6.0",
-    "noEmit": true
+    "noEmit": true,
+    // scripts/ is loaded by vite.config.ts under Node, which needs explicit .ts extensions.
+    "allowImportingTsExtensions": true
   },
-  "include": ["src", "test", "__tests__", "vite-env.d.ts"]
+  "include": ["src", "scripts", "test", "__tests__", "vite-env.d.ts"]
 }

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "env": ["VERCEL", "PRERENDER_BLOG", "PRERENDER_API_URL"]
+    }
+  }
+}

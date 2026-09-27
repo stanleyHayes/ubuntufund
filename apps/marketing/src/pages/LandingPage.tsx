@@ -10,14 +10,10 @@ import TestimonialsSection from '../components/sections/TestimonialsSection'
 import OrganizationsSection from '../components/sections/OrganizationsSection'
 import CTASection from '../components/sections/CTASection'
 import { useSeo } from '@/lib/seo'
+import { pageHead } from '@/lib/pageSeo'
 
 function LandingPage() {
-  useSeo({
-    title: "Ujimora - Ghana's Trust Infrastructure for Giving",
-    description: "Ghana's crowdfunding platform built on trust: reviewed campaigns, verified organizers, transparent donation records and cedi-first giving. Together, we fund what matters.",
-    path: '/',
-    type: 'website',
-  })
+  useSeo(pageHead('/'))
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>

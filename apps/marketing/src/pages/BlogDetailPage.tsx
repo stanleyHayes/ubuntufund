@@ -16,19 +16,7 @@ import { useParams, useNavigate, useLocation, Link as RouterLink } from 'react-r
 import { SHAPE, ItemNotFound, breadcrumbList } from '@ubuntu-fund/ui'
 import { CATEGORY_COLORS } from './BlogPage'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
-
-function clampText(text: string, max: number): string {
-  if (text.length <= max) return text
-  const cut = text.slice(0, max - 1)
-  const space = cut.lastIndexOf(' ')
-  return `${(space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s,.;:—-]+$/, '')}…`
-}
-
-/** Post titles run long, so the brand suffix is dropped before the title is. */
-function brandedTitle(title: string): string {
-  const branded = `${title} | Ujimora`
-  return branded.length <= 60 ? branded : clampText(title, 60)
-}
+import { blogPostHead } from '@/lib/pageSeo'
 
 function BlogDetailPage() {
   const { slug } = useParams<{ slug: string }>()
@@ -40,16 +28,16 @@ function BlogDetailPage() {
   const { pathname } = useLocation()
 
   useSeo({
-    title: post ? brandedTitle(post.title) : 'Article not found | Ujimora blog',
-    description: post
-      ? clampText(post.excerpt, 158)
-      : 'This article is no longer available. Browse the Ujimora journal for current guidance on verification, campaign records and fundraising in Ghana.',
     // An unknown slug still returns HTTP 200 from the SPA rewrite, so it needs
     // the same soft-404 defence as the catch-all page: noindex, plus a canonical
     // that stays self-referential. Pointing a noindexed URL's canonical at /blog
     // invites Google to apply that noindex to /blog itself.
-    path: post ? `/blog/${post.slug}` : pathname.replace(/\/+$/, '') || '/blog',
-    type: post ? 'article' : 'website',
+    ...(post ? blogPostHead(post) : {
+      title: 'Article not found | Ujimora blog',
+      description: 'This article is no longer available. Browse the Ujimora journal for current guidance on verification, campaign records and fundraising in Ghana.',
+      path: pathname.replace(/\/+$/, '') || '/blog',
+      type: 'website' as const,
+    }),
     robots: post ? undefined : 'noindex, follow',
     jsonLd: post
       ? breadcrumbList(SITE_ORIGIN, [

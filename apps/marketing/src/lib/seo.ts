@@ -1,6 +1,7 @@
 import { createUseSeo } from '@ubuntu-fund/ui'
+import { SITE_ORIGIN } from './pageSeo'
 
-export const SITE_ORIGIN = 'https://ujimora.com'
+export { SITE_ORIGIN }
 
 /**
  * Per-route head for the marketing site.

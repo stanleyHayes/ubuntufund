@@ -18,6 +18,7 @@ import { NEUMORPHIC_FOREST_VARS, SHAPE, breadcrumbList } from '@ubuntu-fund/ui'
 import AutoStoriesRoundedIcon from '@mui/icons-material/AutoStoriesRounded'
 import { InternalPageHero } from '../components/InternalPageHero'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
+import { pageHead } from '@/lib/pageSeo'
 
 // ─── Data ──────────────────────────────────────────────────
 
@@ -506,11 +507,7 @@ function BlogPage() {
   const [activeCategory, setActiveCategory] = useState('All')
 
   useSeo({
-    title: 'Fundraising field notes | Ujimora blog',
-    description:
-      'Practical guidance on campaign records, verification, diaspora giving and responsible fundraising in Ghana, from the Ujimora editorial team.',
-    path: '/blog',
-    type: 'website',
+    ...pageHead('/blog'),
     jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'Blog' }]),
   })
 

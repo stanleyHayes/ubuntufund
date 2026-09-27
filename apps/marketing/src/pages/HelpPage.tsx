@@ -31,6 +31,7 @@ import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded'
 import { InternalPageHero } from '../components/InternalPageHero'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
+import { pageHead } from '@/lib/pageSeo'
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -136,10 +137,7 @@ const CONTACT_OPTIONS = [
 
 function HelpPage() {
   useSeo({
-    title: 'Help center: campaigns, giving, payouts | Ujimora',
-    description: 'Search answers on starting a campaign, donating in cedis, wallet and mobile money payments, identity verification, and organization accounts.',
-    path: '/help',
-    type: 'website',
+    ...pageHead('/help'),
     jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'Help center' }]),
   })
   const [search, setSearch] = useState('')

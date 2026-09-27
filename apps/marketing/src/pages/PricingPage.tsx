@@ -22,6 +22,7 @@ import {
   type SubscriptionPlan,
 } from '@ubuntu-fund/types'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
+import { pageHead } from '@/lib/pageSeo'
 
 // Use semantic colours so accents remain readable in every skin and mode.
 function accentOf() {
@@ -145,10 +146,7 @@ function PricingPage() {
   }, [retry])
   // Before the early return below: the head must be set even while plans load.
   useSeo({
-    title: 'Pricing and plans | Ujimora',
-    description: 'Compare Ujimora plans side by side: active campaign limits, cedi goal caps, platform fees, team seats and included tools, paid for 30 days or a year at a time.',
-    path: '/pricing',
-    type: 'website',
+    ...pageHead('/pricing'),
     jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'Pricing' }]),
   })
   if (!plans) return <Container maxWidth="lg" sx={{ py: 8 }}>

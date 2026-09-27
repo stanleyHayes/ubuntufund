@@ -34,6 +34,7 @@ import { useContent } from '../hooks/useContent'
 import { isContactContent } from '../lib/contentShapes'
 import { InternalPageHero } from '../components/InternalPageHero'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
+import { pageHead } from '@/lib/pageSeo'
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -84,10 +85,7 @@ const eyebrowSx = {
 
 function ContactPage() {
   useSeo({
-    title: 'Contact support and partnerships | Ujimora',
-    description: 'Message the Ujimora team about your account, a campaign problem, a partnership idea, or a bug, and see the response times we publish for each request.',
-    path: '/contact',
-    type: 'website',
+    ...pageHead('/contact'),
     jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'Contact' }]),
   })
   // Runtime CMS: contact details + social links (key 'contact'), falling back to the

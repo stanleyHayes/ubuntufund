@@ -1,9 +1,10 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { fileURLToPath } from 'node:url'
+import { prerenderHeads } from './scripts/prerenderHeads.ts'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), prerenderHeads()],
   resolve: {
     // Force a single React instance. packages/ui is consumed as source and
     // resolves the hoisted root react, while the app has its own nested copy

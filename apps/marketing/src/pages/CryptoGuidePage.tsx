@@ -3,6 +3,7 @@ import CurrencyExchangeRoundedIcon from '@mui/icons-material/CurrencyExchangeRou
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
 import { InternalPageHero } from '../components/InternalPageHero'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
+import { pageHead } from '@/lib/pageSeo'
 import { breadcrumbList } from '@ubuntu-fund/ui'
 
 const questions = [
@@ -15,10 +16,7 @@ const questions = [
 
 export default function CryptoGuidePage() {
   useSeo({
-    title: 'Crypto contribution guide | Ujimora',
-    description: 'How the optional crypto checkout works: pick a supported currency and network, check the quote before it expires, then send with any required memo or tag.',
-    path: '/crypto',
-    type: 'website',
+    ...pageHead('/crypto'),
     jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'Crypto guide' }]),
   })
   return <>

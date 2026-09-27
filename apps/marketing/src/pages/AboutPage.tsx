@@ -22,6 +22,7 @@ import { InternalPageHero } from '../components/InternalPageHero'
 import { useContent } from '../hooks/useContent'
 import { isAboutContent } from '../lib/contentShapes'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
+import { pageHead } from '@/lib/pageSeo'
 
 interface TeamMember { name: string; role: string; initials: string; bio: string; image?: string; /** Only the built-in profile ships one; a CMS record renders its single image. */ imageSrcSet?: string; website?: string; companyUrl?: string; socials?: { label: string; href: string }[] }
 
@@ -50,10 +51,7 @@ const COMMITMENTS = [
 
 function AboutPage() {
   useSeo({
-    title: 'About Ujimora: our mission, model and team',
-    description: 'Why Ujimora exists, how campaign records, review and updates fit together, and the Ghanaian team building clearer trust infrastructure for giving.',
-    path: '/about',
-    type: 'website',
+    ...pageHead('/about'),
     jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'About' }]),
   })
   const about = useContent('about', ABOUT_FALLBACK, isAboutContent)

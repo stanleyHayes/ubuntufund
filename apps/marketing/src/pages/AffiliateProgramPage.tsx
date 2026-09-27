@@ -29,6 +29,7 @@ import { keyframes } from '@mui/material/styles'
 import { NEUMORPHIC_FOREST_VARS, SHAPE, breadcrumbList } from '@ubuntu-fund/ui'
 import { InternalPageHero } from '../components/InternalPageHero'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
+import { pageHead } from '@/lib/pageSeo'
 
 // ─── Animations ──────────────────────────────────────────────────────────────
 
@@ -156,10 +157,7 @@ const FAQS = [
 
 function AffiliateProgramPage() {
   useSeo({
-    title: 'Affiliate program: 10% referral commission | Ujimora',
-    description: 'Share your Ujimora referral link and earn a one-time 10% commission when someone you refer takes a paid plan. Payouts settle in cedis after a 14-day hold.',
-    path: '/affiliates',
-    type: 'website',
+    ...pageHead('/affiliates'),
     jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'Affiliate program' }]),
   })
   const WEB_APP_URL = import.meta.env.VITE_WEB_APP_URL || 'https://app.ujimora.com'
