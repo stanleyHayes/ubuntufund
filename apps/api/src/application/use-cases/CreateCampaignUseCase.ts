@@ -20,6 +20,20 @@ import {
 import type { CampaignsConfig } from '../../infrastructure/config/index.js';
 import type { KYCRepositoryPort } from '../../domain/ports/outbound/KYCRepositoryPort.js';
 import { isVerifiedReturningOrganizer, STAFF_REVIEW_GOAL_GHS } from '../../domain/services/campaignApproval.js';
+import type { OnBehalfSettings } from '../services/CommercialConfigService.js';
+import type { CampaignOnBehalfProps } from '../../domain/entities/Campaign.js';
+import { campaignOnBehalfSummary } from './mappers/campaignOnBehalf.js';
+
+/** Creating a campaign on someone's behalf: config snapshot and the invitation. */
+export interface OnBehalfCreationPort {
+  readonly invitationsAvailable: boolean;
+  resolveConfig(): Promise<OnBehalfSettings>;
+  issueInvitation(input: {
+    campaignId: string; campaignTitle: string; beneficiaryName: string; email: string;
+    invitedBy: string; payoutArrangement: 'beneficiary' | 'organization'; publicationRequiresConsent: boolean;
+    ttlHours: number; event: 'invited'; actorRole: 'organizer'; organizer?: string;
+  }): Promise<{ invitationId: string; expiresAt: Date }>;
+}
 
 export class CreateCampaignUseCase {
   constructor(
@@ -48,7 +62,8 @@ export class CreateCampaignUseCase {
     },
     private readonly kycRepo?: Pick<KYCRepositoryPort, 'findByUserId'>,
     private readonly admission?: PublicationAdmissionPort,
-    private readonly creation?: { run<T>(userId: string, authVersion: string, work: () => Promise<T>): Promise<T> }
+    private readonly creation?: { run<T>(userId: string, authVersion: string, work: () => Promise<T>): Promise<T> },
+    private readonly onBehalf?: OnBehalfCreationPort,
   ) {}
 
   async campaignAllowance(user: UserEntity): Promise<number> {
@@ -98,12 +113,31 @@ export class CreateCampaignUseCase {
       input.imageUrls?.length ?? 0
     );
 
+    // Campaigns run on someone else's behalf: a paid entitlement, an optional
+    // verification floor, and a working invitation channel, checked before any
+    // screening so an ineligible request never reaches staff review.
+    const onBehalfInput = input.onBehalf;
+    let onBehalfSettings: OnBehalfSettings | undefined;
+    if (onBehalfInput) {
+      if (!this.onBehalf) throw new AppError('Campaigns on behalf of others are unavailable right now.', 503);
+      if (!this.onBehalf.invitationsAvailable) throw new AppError('Beneficiary invitations are temporarily unavailable. Please try again later.', 503);
+      onBehalfSettings = await this.onBehalf.resolveConfig();
+      if (user.verificationLevel < onBehalfSettings.minManagerVerificationLevel)
+        throw new AppError('Complete account verification before creating a campaign on someone else\'s behalf.', 403);
+      if (onBehalfInput.beneficiaryEmail.trim().toLowerCase() === user.email.value.trim().toLowerCase())
+        throw new AppError('Invite the beneficiary\'s own email address, not yours. If the campaign is for you, create it for yourself instead.', 422);
+      await this.planLimits.assertCanCreateOnBehalf(creatorId);
+    }
+
     if (!this.admission) throw new AppError('Campaign safety review is unavailable', 503);
     const submission: PublicationSubmission = {
       actorId: creatorId, action: 'campaign.create', resourceId: creatorId,
       text: JSON.stringify({ title: input.title, description: input.description,
         category: input.category, priority: input.priority, beneficiaries: input.beneficiaries,
-        goalAmount: input.goalAmount, currency: input.currency, endDate: new Date(input.endDate).toISOString() }),
+        goalAmount: input.goalAmount, currency: input.currency, endDate: new Date(input.endDate).toISOString(),
+        // Public on the campaign page; the beneficiary's email never is, so it is not screened.
+        ...(onBehalfInput ? { onBehalf: { beneficiaryName: onBehalfInput.beneficiaryName, beneficiaryType: onBehalfInput.beneficiaryType,
+          relationship: onBehalfInput.relationship, reason: onBehalfInput.reason, payoutArrangement: onBehalfInput.payoutArrangement } } : {}) }),
       mediaUrls: input.imageUrls ?? [], automatedReviewConsent: input.automatedReviewConsent,
     };
     await this.admission.assertAllowed(submission);
@@ -127,6 +161,9 @@ export class CreateCampaignUseCase {
         allowance = await this.campaignAllowance(user);
         if (campaignCount >= allowance) throw new AppError('Campaign creation eligibility changed. Review your verification and retry.', 403);
         await this.planLimits.assertCanCreateCampaign(creatorId, input.goalAmount, user.complianceApprovedCampaignLimit, input.imageUrls?.length ?? 0);
+        // Locked: a concurrent creation or plan change conflicts with this
+        // transaction, so the on-behalf limit cannot be raced past.
+        const entitlement = onBehalfInput ? await this.planLimits.assertCanCreateOnBehalf(creatorId, true) : undefined;
 
         const slug = await generateUniqueSlug(input.title, async (candidate) => {
           const existing = await this.campaignRepo.findBySlug(candidate);
@@ -173,9 +210,35 @@ export class CreateCampaignUseCase {
           }
         }
 
+        // On someone else's behalf: hold for the beneficiary's consent and/or
+        // staff review. If tiering alone would have published it, consent may
+        // publish it later (unless staff review is also required).
+        let onBehalf: CampaignOnBehalfProps | undefined;
+        const tieredStatus = status;
+        if (onBehalfInput && onBehalfSettings && entitlement) {
+          if (onBehalfSettings.publicationRequiresConsent || onBehalfSettings.staffReviewRequired) status = CampaignStatus.PENDING_REVIEW;
+          onBehalf = {
+            beneficiaryType: onBehalfInput.beneficiaryType,
+            beneficiaryName: onBehalfInput.beneficiaryName.trim(),
+            relationship: onBehalfInput.relationship,
+            reason: onBehalfInput.reason.trim(),
+            consentStatus: 'pending',
+            payoutArrangement: onBehalfInput.payoutArrangement,
+            publicationRequiresConsent: onBehalfSettings.publicationRequiresConsent,
+            donationsRequireConsent: onBehalfSettings.donationsRequireConsent,
+            staffReviewRequired: onBehalfSettings.staffReviewRequired,
+            autoPublishOnConsent: tieredStatus === CampaignStatus.ACTIVE && onBehalfSettings.publicationRequiresConsent && !onBehalfSettings.staffReviewRequired,
+            entitlementPlanTier: entitlement.planTier,
+            feePercentApplied: entitlement.feePercent,
+            invitedAt: new Date(),
+          };
+        }
+
         // Lock the platform fee % from the organizer's plan at creation (ADR-5
         // grandfathering), so a later admin fee change never surprises this campaign.
-        const lockedPlatformFeePercent = await this.planLimits.platformFeePercent(creatorId);
+        // An on-behalf campaign adds its plan's surcharge, locked the same way.
+        const baseFeePercent = await this.planLimits.platformFeePercent(creatorId);
+        const lockedPlatformFeePercent = onBehalf ? Math.min(100, baseFeePercent + (onBehalf.feePercentApplied ?? 0)) : baseFeePercent;
 
         const now = new Date();
         const campaign = new CampaignEntity({
@@ -197,10 +260,24 @@ export class CreateCampaignUseCase {
           updatedAt: now,
           tier,
           lockedPlatformFeePercent,
+          creationMode: onBehalf ? 'on_behalf' : 'self',
+          creatorType: user.role === 'organization' ? 'organization' : 'individual',
+          createdByActorId: creatorId,
+          onBehalf,
         });
 
         await this.admission!.assertCurrent!(submission);
-        return { entity: await this.campaignRepo.save(campaign, { creationIdempotencyKey: idempotencyKey }), replayed: false };
+        const saved = await this.campaignRepo.save(campaign, { creationIdempotencyKey: idempotencyKey });
+        // Same transaction: no campaign without its invitation, and no email for a rolled-back campaign.
+        if (onBehalf && onBehalfInput && onBehalfSettings) {
+          await this.onBehalf!.issueInvitation({
+            campaignId: saved.id, campaignTitle: saved.title, beneficiaryName: onBehalf.beneficiaryName,
+            email: onBehalfInput.beneficiaryEmail, invitedBy: creatorId, payoutArrangement: onBehalf.payoutArrangement,
+            publicationRequiresConsent: onBehalf.publicationRequiresConsent, ttlHours: onBehalfSettings.invitationTtlHours,
+            event: 'invited', actorRole: 'organizer', organizer: user.organizationName || user.name,
+          });
+        }
+        return { entity: saved, replayed: false };
       });
     } catch (error) {
       // Lost the insert race to a same-key request: return the winner.
@@ -218,7 +295,9 @@ export class CreateCampaignUseCase {
     // nothing else says so — the organizer just sees "Donations closed". Fired
     // after the save so the alert always names a campaign that exists, and
     // awaited only for its own error handling: the adapter never throws.
-    if (plain.status === CampaignStatus.PENDING_REVIEW && this.reviewAlerts) {
+    // A campaign held only for the beneficiary's consent does not need staff yet.
+    const waitingOnlyForConsent = !!plain.onBehalf && plain.onBehalf.autoPublishOnConsent && !plain.onBehalf.staffReviewRequired;
+    if (plain.status === CampaignStatus.PENDING_REVIEW && this.reviewAlerts && !waitingOnlyForConsent) {
       await this.reviewAlerts.campaignPendingReview({
         campaignId: plain.id,
         title: plain.title,
@@ -263,5 +342,7 @@ function toCampaignDTO(entity: CampaignEntity): Campaign {
     createdAt: plain.createdAt,
     updatedAt: plain.updatedAt,
     tier: plain.tier,
+    creationMode: entity.creationMode,
+    onBehalf: campaignOnBehalfSummary(entity),
   };
 }

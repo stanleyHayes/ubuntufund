@@ -69,7 +69,8 @@ export class CampaignController {
     private readonly planLimits: PlanLimitsService,
     private readonly userRepo: UserRepositoryPort,
     private readonly campaignRepo: CampaignRepositoryPort,
-    private readonly splitEnabled: boolean
+    private readonly splitEnabled: boolean,
+    private readonly onBehalf?: { readonly invitationsAvailable: boolean; resolveConfig(): Promise<{ minManagerVerificationLevel: number }> },
   ) {}
 
   creationOptions = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
@@ -85,12 +86,26 @@ export class CampaignController {
         ? (allowance === 0 ? 'verification_required' : 'verification_limit')
         : plan.maxActiveCampaigns >= 0 && activeCount >= plan.maxActiveCampaigns
           ? 'plan_limit' : null;
+      // Server-computed so the form can offer "on behalf of someone" or show
+      // the upgrade path up front, rather than failing at submit.
+      const [policy, onBehalfConfig] = await Promise.all([
+        this.planLimits.onBehalfPolicy(userId),
+        this.onBehalf?.resolveConfig(),
+      ]);
+      const onBehalfBlockReason = !this.onBehalf ? 'unavailable'
+        : policy.reason === 'plan' ? 'plan_required'
+        : policy.reason === 'limit' ? 'plan_limit'
+        : onBehalfConfig && user.verificationLevel < onBehalfConfig.minManagerVerificationLevel ? 'verification_required'
+        : !this.onBehalf.invitationsAvailable ? 'unavailable'
+        : null;
       res.json({ data: {
         plan, maxGoal: this.planLimits.effectiveGoalCap(plan.maxCampaignGoal, user.complianceApprovedCampaignLimit) ?? null,
         activeCount, totalCount, verificationCampaignLimit: allowance,
         canCreate: creationBlockReason === null, creationBlockReason,
         canSplit: this.splitEnabled && plan.campaignCollaboration && plan.escrowSupport,
         splitEnabled: this.splitEnabled,
+        canCreateOnBehalf: onBehalfBlockReason === null, onBehalfBlockReason,
+        onBehalf: { limit: policy.limit, active: policy.active, feePercent: policy.feePercent },
       } });
     } catch (error) { next(error); }
   };

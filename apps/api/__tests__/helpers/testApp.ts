@@ -1,5 +1,6 @@
 import type { PublicationAdmissionPort } from '../../src/domain/ports/outbound/PublicationAdmissionPort.js';
 import type { Express } from 'express';
+import type { ActivityEmailSender } from '../../src/infrastructure/adapters/outbound/persistence/MongoActivityAlerts.js';
 import { testDatabaseUri } from './testDatabase.js';
 
 /**
@@ -32,7 +33,7 @@ process.env.JWT_REFRESH_SECRET ??= 'test-jwt-refresh-secret-do-not-use-in-produc
 process.env.MONGODB_URI ??= testDatabaseUri();
 
 /** Build a fresh, fully-wired Express app (no listening, no DB connection). */
-export async function createTestApp(options: { publicationAdmission?: PublicationAdmissionPort } = {}): Promise<Express> {
+export async function createTestApp(options: { publicationAdmission?: PublicationAdmissionPort; emailSender?: ActivityEmailSender; accountEmailKey?: Buffer } = {}): Promise<Express> {
   const { createApp } = await import('../../src/app.js');
   // Existing integration suites isolate their feature; publication tests inject the real admission service.
   const app = createApp({ publicationAdmission: { assertAllowed: async () => {}, assertCurrent: async () => {} }, ...options });

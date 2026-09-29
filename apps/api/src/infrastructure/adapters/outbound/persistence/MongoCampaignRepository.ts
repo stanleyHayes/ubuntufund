@@ -263,6 +263,18 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
     });
   }
 
+  async countActiveOnBehalfByCreator(creatorId: string): Promise<number> {
+    return CampaignModel.countDocuments({
+      creatorId,
+      creationMode: 'on_behalf',
+      deletedAt: { $exists: false },
+      status: {
+        $in: [CampaignStatus.ACTIVE, CampaignStatus.PENDING_REVIEW, CampaignStatus.FUNDED],
+      },
+      endDate: { $gt: new Date() },
+    });
+  }
+
   async expireEnded(now: Date): Promise<number> {
     // Status only: balances and splits key on the ledger, and donations were
     // already refused once the end date passed. Payout rails do check the

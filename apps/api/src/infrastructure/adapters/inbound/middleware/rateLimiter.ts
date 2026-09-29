@@ -200,3 +200,15 @@ export const subscriptionVerifyRateLimiter = createRateLimiter({
 });
 
 export const dataRightsRateLimiter = createRateLimiter({ windowMs: 15 * 60_000, max: 20, scope: 'data-rights' });
+
+/** Public beneficiary-invitation links (preview, accept, decline): 30 per 15 min per client. */
+export const beneficiaryInvitationRateLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 30, scope: 'beneficiary-invitation' });
+
+/** Organizer invitation management (resend, change beneficiary): 20 per 15 min per user. */
+export const beneficiaryManageRateLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 20, scope: 'beneficiary-manage', key: byUser });
+
+/** Donor thank-you drafts, previews, sends and retries: 60 per 15 min per user. */
+export const donorThankYouRateLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 60, scope: 'donor-thank-you', key: byUser });
+
+/** One-click unsubscribe links from donor messages: 30 per 15 min per client. */
+export const donorMessageUnsubscribeRateLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 30, scope: 'donor-message-unsubscribe' });

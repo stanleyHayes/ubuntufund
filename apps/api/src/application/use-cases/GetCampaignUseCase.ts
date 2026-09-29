@@ -4,6 +4,7 @@ import type { Campaign, PaginatedResponse } from '@ubuntu-fund/types';
 import type { CampaignListQuery, CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { DonationRepositoryPort } from '../../domain/ports/outbound/DonationRepositoryPort.js';
 import type { CampaignEntity } from '../../domain/entities/Campaign.js';
+import { campaignOnBehalfSummary, campaignViewerAccess } from './mappers/campaignOnBehalf.js';
 
 function toDTO(entity: CampaignEntity): Campaign {
   const plain = entity.toPlain();
@@ -26,19 +27,29 @@ function toDTO(entity: CampaignEntity): Campaign {
     createdAt: plain.createdAt,
     updatedAt: plain.updatedAt,
     tier: plain.tier,
+    creationMode: entity.creationMode,
+    onBehalf: campaignOnBehalfSummary(entity),
   };
 }
 
 export class GetCampaignUseCase {
   constructor(
     private readonly campaignRepo: CampaignRepositoryPort,
-    private readonly donationRepo?: DonationRepositoryPort
+    private readonly donationRepo?: DonationRepositoryPort,
+    /** Resolves org admins/editors as managers. Absent: only the creator manages. */
+    private readonly access?: { managerRole(campaign: { creatorId: string }, userId: string | undefined): Promise<string | null> }
   ) {}
 
   async getById(id: string, viewerId?: string, isAdmin = false): Promise<Campaign | null> {
     const entity = await this.campaignRepo.findById(id);
-    if (!entity || (!isPublicCampaign(entity.status) && entity.creatorId !== viewerId && !isAdmin)) return null;
+    // The linked beneficiary may see a campaign run for them before it is public.
+    const isBeneficiary = !!viewerId && entity?.onBehalf?.beneficiaryUserId === viewerId;
+    if (!entity || (!isPublicCampaign(entity.status) && entity.creatorId !== viewerId && !isBeneficiary && !isAdmin)) return null;
     const dto = toDTO(entity);
+    if (viewerId) {
+      const isManager = entity.creatorId === viewerId || (!!this.access && !!(await this.access.managerRole(entity, viewerId)));
+      dto.viewerAccess = campaignViewerAccess(entity, viewerId, isManager);
+    }
     if (isAdmin) { dto.reviewVersion = campaignReviewVersion(entity); dto.lockedPlatformFeePercent = entity.lockedPlatformFeePercent; }
     if (this.donationRepo) {
       const counts = await this.donationRepo.countDistinctDonorsByCampaignIds([dto.id]);

@@ -3,6 +3,7 @@ import type { Campaign, CampaignPublicView } from '@ubuntu-fund/types';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { DonationRepositoryPort } from '../../domain/ports/outbound/DonationRepositoryPort.js';
 import type { CampaignEntity } from '../../domain/entities/Campaign.js';
+import { campaignOnBehalfSummary } from './mappers/campaignOnBehalf.js';
 
 function toDTO(entity: CampaignEntity): Campaign {
   const plain = entity.toPlain();
@@ -24,6 +25,8 @@ function toDTO(entity: CampaignEntity): Campaign {
     endDate: plain.endDate,
     createdAt: plain.createdAt,
     updatedAt: plain.updatedAt,
+    creationMode: entity.creationMode,
+    onBehalf: campaignOnBehalfSummary(entity),
   };
 }
 

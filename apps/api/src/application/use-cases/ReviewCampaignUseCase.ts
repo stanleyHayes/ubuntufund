@@ -5,6 +5,7 @@ import { AppError } from '../../infrastructure/adapters/inbound/middleware/error
 export type { CampaignReviewAction, ReviewCampaignInput } from '../../domain/ports/outbound/CampaignReviewPort.js';
 import type { CampaignReviewPort, ReviewCampaignInput } from '../../domain/ports/outbound/CampaignReviewPort.js';
 import { campaignReviewVersion } from '../../domain/services/campaignReviewVersion.js';
+import { campaignOnBehalfSummary } from './mappers/campaignOnBehalf.js';
 
 function toDTO(entity: CampaignEntity): Campaign {
   const plain = entity.toPlain();
@@ -28,6 +29,8 @@ function toDTO(entity: CampaignEntity): Campaign {
     createdAt: plain.createdAt,
     updatedAt: plain.updatedAt,
     tier: plain.tier,
+    creationMode: entity.creationMode,
+    onBehalf: campaignOnBehalfSummary(entity),
   };
 }
 
