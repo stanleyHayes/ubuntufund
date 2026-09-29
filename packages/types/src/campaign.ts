@@ -1,3 +1,5 @@
+import type { CampaignCreationMode, CampaignOnBehalfSummary, CampaignViewerAccess, OnBehalfCampaignInput } from './on-behalf'
+
 export enum CampaignStatus {
   DRAFT = 'draft',
   PENDING_REVIEW = 'pending_review',
@@ -67,6 +69,12 @@ export interface Campaign {
    * Legacy campaigns without a lock fall back to the organizer's live plan rate.
    */
   lockedPlatformFeePercent?: number
+  /** Absent on campaigns created before on-behalf campaigns existed: read as 'self'. */
+  creationMode?: CampaignCreationMode
+  /** Present when the campaign is run on someone else's behalf. */
+  onBehalf?: CampaignOnBehalfSummary
+  /** Present on reads by a signed-in viewer. */
+  viewerAccess?: CampaignViewerAccess
 }
 
 /**
@@ -114,6 +122,8 @@ export interface CreateCampaignInput {
   endDate: Date
   /** Cover/gallery image URLs (first is the cover). Optional; defaults to none. */
   imageUrls?: string[]
+  /** Run the campaign on someone else's behalf (plan entitlement required). */
+  onBehalf?: OnBehalfCampaignInput
 }
 
 /** Campaign with donation details, returned by the get-by-id endpoint */

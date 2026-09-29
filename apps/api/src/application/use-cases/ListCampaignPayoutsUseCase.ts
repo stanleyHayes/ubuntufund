@@ -4,6 +4,7 @@ import type { PayoutRepositoryPort } from '../../domain/ports/outbound/PayoutRep
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { toPayoutDto } from './mappers/payoutDto.js';
 import type { PayoutRequester } from './CreatePayoutRecipientUseCase.js';
+import { payoutAuthorityOf } from '../../domain/services/campaignPayoutAuthority.js'
 
 /** List a campaign's payouts (owner or admin). */
 export class ListCampaignPayoutsUseCase {
@@ -21,7 +22,9 @@ export class ListCampaignPayoutsUseCase {
       throw new AppError('Campaign not found', 404);
     }
 
-    const isOwner = campaign.creatorId === requester.userId;
+    // The manager may see payout history (read-only) even where the
+    // beneficiary, not the manager, holds payout authority.
+    const isOwner = campaign.creatorId === requester.userId || payoutAuthorityOf(campaign) === requester.userId;
     const isAdmin = requester.role === 'admin';
     if (!isOwner && !isAdmin) {
       throw new AppError('Only the campaign owner can view its payouts', 403);

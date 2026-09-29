@@ -8,6 +8,7 @@ import { AppError } from '../../infrastructure/adapters/inbound/middleware/error
 import { toTransferRecipientDto } from './mappers/payoutDto.js'
 import { payoutNamesMatch } from '../../domain/services/payoutNameMatch.js'
 import type { PaystackMode } from '../../domain/value-objects/PaystackMode.js'
+import { NO_PAYOUT_AUTHORITY_MESSAGE, payoutAuthorityOf } from '../../domain/services/campaignPayoutAuthority.js'
 
 export interface PayoutRequester {
   userId: string
@@ -51,12 +52,16 @@ export class CreatePayoutRecipientUseCase {
     // to have been registered by the campaign owner (createdBy), so a recipient
     // an admin registered could never be paid — and letting staff enter bank
     // details under an owner's campaign would defeat that ownership check.
-    if (campaign.creatorId !== requester.userId) {
-      throw new AppError('Only the campaign owner can add a payout recipient', 403)
+    // The payout authority, not the campaign manager: on a campaign run on
+    // someone's behalf, only the account the beneficiary's consent named may
+    // choose where the money goes.
+    const authority = payoutAuthorityOf(campaign)
+    if (!authority || authority !== requester.userId) {
+      throw new AppError(campaign.creationMode === 'on_behalf' ? NO_PAYOUT_AUTHORITY_MESSAGE : 'Only the campaign owner can add a payout recipient', 403)
     }
 
     if (this.accounts) {
-      const account = 'savedAccountId' in input ? await this.accounts.get(campaign.creatorId, input.savedAccountId) : await this.accounts.add(campaign.creatorId, input);
+      const account = 'savedAccountId' in input ? await this.accounts.get(authority, input.savedAccountId) : await this.accounts.add(authority, input);
       const saved = await this.transferRecipientRepo.create(new TransferRecipientEntity({ ...account, id: '', campaignId: campaign.id, createdBy: requester.userId, currency: CURRENCY, createdAt: new Date() }));
       return toTransferRecipientDto(saved);
     }

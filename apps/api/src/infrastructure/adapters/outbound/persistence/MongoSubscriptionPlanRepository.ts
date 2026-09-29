@@ -34,6 +34,12 @@ function toDomain(doc: SubscriptionPlanDocument): SubscriptionPlan {
     campaignCollaboration: doc.campaignCollaboration,
     maxPayoutAccounts: doc.maxPayoutAccounts ?? SUBSCRIPTION_PLANS[doc.tier as SubscriptionTier]?.maxPayoutAccounts ?? 1,
     maxCollaboratorsPerCampaign: doc.maxCollaboratorsPerCampaign,
+    // A paid capability that decides who can collect money for someone else
+    // is never inherited from seed data: rows written before it existed read
+    // as "not included" until an admin turns it on (an audited plan update).
+    onBehalfCampaigns: doc.onBehalfCampaigns ?? false,
+    maxOnBehalfCampaigns: doc.maxOnBehalfCampaigns ?? 0,
+    onBehalfFeePercent: doc.onBehalfFeePercent ?? 0,
     sortOrder: doc.sortOrder ?? 0,
     active: doc.active ?? true,
     isPublic: doc.isPublic ?? true,

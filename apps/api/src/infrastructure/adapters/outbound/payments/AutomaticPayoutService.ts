@@ -17,6 +17,7 @@ import type { PayoutRepositoryPort } from '../../../../domain/ports/outbound/Pay
 import { toPayoutDto } from '../../../../application/use-cases/mappers/payoutDto.js'
 import type { Payout } from '@ubuntu-fund/types'
 import type { PayoutsConfig } from '../../../config/index.js'
+import { payoutAuthorityOf } from '../../../../domain/services/campaignPayoutAuthority.js'
 
 /** Only new owner requests enter this policy. Existing manual queue entries are never drained automatically. */
 export class AutomaticPayoutService {
@@ -70,7 +71,7 @@ export class AutomaticPayoutService {
           !campaign ||
           campaign.deletedAt ||
           !PAYABLE_CAMPAIGN_STATUSES.includes(campaign.status) ||
-          campaign.creatorId !== current.requestedBy
+          payoutAuthorityOf(campaign) !== current.requestedBy
         ) {
           reason = 'Campaign requires review.'
           return

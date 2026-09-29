@@ -44,6 +44,72 @@ export const CAMPAIGN_TIER_THRESHOLD_KEYS = [
 ] as const;
 
 /**
+ * Campaigns run on someone else's behalf. Switches are stored as 0/1 because
+ * the store holds numbers. Each is copied onto a campaign at creation, so a
+ * change only affects campaigns created afterwards.
+ */
+export const ON_BEHALF_CONFIG_DEFAULTS = {
+  /** The beneficiary must accept before staff can publish the campaign. */
+  'onBehalf.publicationRequiresConsent': 1,
+  /** No donations until the beneficiary accepts, even if the campaign is live. */
+  'onBehalf.donationsRequireConsent': 1,
+  /** Every on-behalf campaign waits for staff review, whatever its tier. */
+  'onBehalf.staffReviewRequired': 1,
+  /** How long a beneficiary invitation link stays valid. */
+  'onBehalf.invitationTtlHours': 168,
+  /** Minimum verification level of the creating account (0 = the normal campaign rules). */
+  'onBehalf.minManagerVerificationLevel': 0,
+} as const
+
+/** Post-campaign donor thank-you messages. */
+export const THANK_YOU_CONFIG_DEFAULTS = {
+  'thankYou.enabled': 1,
+  /** Unlock the thank-you once the campaign has ended. */
+  'thankYou.afterCampaignEnd': 1,
+  /** Unlock the thank-you once any payout from the campaign has been paid. */
+  'thankYou.afterPayoutPaid': 1,
+  /** Completion thank-yous a campaign may send. */
+  'thankYou.maxSendsPerCampaign': 1,
+} as const
+
+export type OnBehalfConfigKey = keyof typeof ON_BEHALF_CONFIG_DEFAULTS
+export type ThankYouConfigKey = keyof typeof THANK_YOU_CONFIG_DEFAULTS
+
+export interface OnBehalfSettings {
+  publicationRequiresConsent: boolean
+  donationsRequireConsent: boolean
+  staffReviewRequired: boolean
+  invitationTtlHours: number
+  minManagerVerificationLevel: number
+}
+
+export interface ThankYouSettings {
+  enabled: boolean
+  afterCampaignEnd: boolean
+  afterPayoutPaid: boolean
+  maxSendsPerCampaign: number
+}
+
+const FEATURE_DEFAULTS: Record<string, number> = { ...ON_BEHALF_CONFIG_DEFAULTS, ...THANK_YOU_CONFIG_DEFAULTS }
+
+/** Keys that are on/off switches: only 0 or 1 is valid. */
+const SWITCH_KEYS: ReadonlySet<string> = new Set([
+  'onBehalf.publicationRequiresConsent',
+  'onBehalf.donationsRequireConsent',
+  'onBehalf.staffReviewRequired',
+  'thankYou.enabled',
+  'thankYou.afterCampaignEnd',
+  'thankYou.afterPayoutPaid',
+])
+
+/** Whole-number ranges for the remaining feature keys. */
+const RANGES: Record<string, [number, number]> = {
+  'onBehalf.invitationTtlHours': [1, 720],
+  'onBehalf.minManagerVerificationLevel': [0, 4],
+  'thankYou.maxSendsPerCampaign': [1, 10],
+}
+
+/**
  * Resolves the effective commercial config (ADR-5): each key is the currently
  * effective versioned override, falling back to the env default when unset — so
  * behaviour is IDENTICAL to today until an admin explicitly sets a value. Reads
@@ -87,7 +153,53 @@ export class CommercialConfigService {
     const campaigns = this.campaignDefaults
       ? [CAMPAIGN_AUTO_APPROVE_TIER_KEY, ...CAMPAIGN_TIER_THRESHOLD_KEYS]
       : [];
-    return [...(this.keys as string[]), ...affiliate, ...campaigns];
+    return [...(this.keys as string[]), ...affiliate, ...campaigns, ...Object.keys(FEATURE_DEFAULTS)];
+  }
+
+  /** Defaults for the on-behalf and thank-you keys, for admin display. */
+  getFeatureDefaults(): Record<string, number> {
+    return { ...FEATURE_DEFAULTS };
+  }
+
+  /** Why a value is invalid for a feature key, or null when it is fine (or not a feature key). */
+  featureValueError(key: string, value: number): string | null {
+    if (SWITCH_KEYS.has(key)) return value === 0 || value === 1 ? null : 'Use 1 to turn this on or 0 to turn it off.';
+    const range = RANGES[key];
+    if (!range) return null;
+    if (!Number.isInteger(value) || value < range[0] || value > range[1]) return `Use a whole number from ${range[0]} to ${range[1]}.`;
+    return null;
+  }
+
+  /** Effective values of every on-behalf and thank-you key. Read per call so a change applies at once. */
+  async resolveFeatureValues(): Promise<Record<string, number>> {
+    const map = await this.repo.getEffectiveMap(Object.keys(FEATURE_DEFAULTS), new Date());
+    const values: Record<string, number> = {};
+    for (const [key, fallback] of Object.entries(FEATURE_DEFAULTS)) {
+      const stored = map[key];
+      values[key] = typeof stored === 'number' && this.featureValueError(key, stored) === null ? stored : fallback;
+    }
+    return values;
+  }
+
+  async resolveOnBehalfConfig(): Promise<OnBehalfSettings> {
+    const v = await this.resolveFeatureValues();
+    return {
+      publicationRequiresConsent: v['onBehalf.publicationRequiresConsent'] === 1,
+      donationsRequireConsent: v['onBehalf.donationsRequireConsent'] === 1,
+      staffReviewRequired: v['onBehalf.staffReviewRequired'] === 1,
+      invitationTtlHours: v['onBehalf.invitationTtlHours'],
+      minManagerVerificationLevel: v['onBehalf.minManagerVerificationLevel'],
+    };
+  }
+
+  async resolveThankYouConfig(): Promise<ThankYouSettings> {
+    const v = await this.resolveFeatureValues();
+    return {
+      enabled: v['thankYou.enabled'] === 1,
+      afterCampaignEnd: v['thankYou.afterCampaignEnd'] === 1,
+      afterPayoutPaid: v['thankYou.afterPayoutPaid'] === 1,
+      maxSendsPerCampaign: v['thankYou.maxSendsPerCampaign'],
+    };
   }
 
   /**

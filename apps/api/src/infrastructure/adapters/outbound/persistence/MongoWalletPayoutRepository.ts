@@ -22,6 +22,7 @@ import { JournalLineModel } from '../../../database/models/JournalLineModel.js'
 import { LedgerAccountModel } from '../../../database/models/LedgerAccountModel.js'
 import { assertCampaignPayable, assertCurrentOwnerVerification } from './MongoPayoutEligibility.js'
 import { SELF_APPROVAL_MESSAGE } from '../../../../application/use-cases/ApprovePayoutUseCase.js'
+import { NO_PAYOUT_AUTHORITY_MESSAGE, payoutAuthorityOf } from '../../../../domain/services/campaignPayoutAuthority.js'
 
 export class MongoWalletPayoutRepository implements WalletPayoutPort {
   constructor(private readonly plans?: Pick<PlanLimitsService, 'creatorPolicy'>) {}
@@ -148,12 +149,14 @@ export class MongoWalletPayoutRepository implements WalletPayoutPort {
           { new: true, session, timestamps: false },
         )
         if (!campaign) throw new AppError('Campaign not found', 404)
-        if (payout.recipientId !== `wallet:${campaign.creatorId}`)
+        const authority = payoutAuthorityOf(campaign)
+        if (!authority) throw new AppError(NO_PAYOUT_AUTHORITY_MESSAGE, 409)
+        if (payout.recipientId !== `wallet:${authority}`)
           throw new AppError('Wallet destination must belong to the campaign owner', 409)
-        if (campaign.creatorId === approvedBy || payout.requestedBy === approvedBy)
+        if (campaign.creatorId === approvedBy || authority === approvedBy || payout.requestedBy === approvedBy)
           throw new AppError(SELF_APPROVAL_MESSAGE, 403)
         await assertCampaignPayable(campaign, session)
-        await assertCurrentOwnerVerification(campaign.creatorId, { session })
+        await assertCurrentOwnerVerification(authority, { session })
         if (campaignNeedsEarlyCashout({
           endDate: campaign.endDate,
           raisedAmount: { amount: campaign.raisedAmount },

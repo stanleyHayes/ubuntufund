@@ -2,8 +2,36 @@ import type {
   CampaignStatus,
   CampaignCategory,
   CampaignPriority,
+  BeneficiaryPartyType,
+  BeneficiaryRelationship,
+  CampaignCreationMode,
+  OnBehalfConsentStatus,
+  OnBehalfPayoutArrangement,
 } from '@ubuntu-fund/types';
 import { Money } from '../value-objects/Money.js';
+import { payoutAuthorityOf } from '../services/campaignPayoutAuthority.js';
+
+/** The beneficiary side of a campaign run on someone's behalf. */
+export interface CampaignOnBehalfProps {
+  beneficiaryType: BeneficiaryPartyType;
+  beneficiaryName: string;
+  relationship: BeneficiaryRelationship;
+  reason: string;
+  beneficiaryUserId?: string;
+  consentStatus: OnBehalfConsentStatus;
+  consentVersion?: string;
+  consentAt?: Date;
+  consentBy?: string;
+  payoutArrangement: OnBehalfPayoutArrangement;
+  payoutAuthorityUserId?: string;
+  publicationRequiresConsent: boolean;
+  donationsRequireConsent: boolean;
+  staffReviewRequired: boolean;
+  autoPublishOnConsent: boolean;
+  entitlementPlanTier?: string;
+  feePercentApplied?: number;
+  invitedAt?: Date;
+}
 
 export interface CampaignProps {
   id: string;
@@ -28,6 +56,11 @@ export interface CampaignProps {
   /** Platform fee % locked from the organizer's plan at creation (ADR-5). */
   lockedPlatformFeePercent?: number;
   reviewRevision?: number;
+  /** Absent on campaigns created before this field existed: read as 'self'. */
+  creationMode?: CampaignCreationMode;
+  creatorType?: 'individual' | 'organization';
+  createdByActorId?: string;
+  onBehalf?: CampaignOnBehalfProps;
 }
 
 export class CampaignEntity {
@@ -91,6 +124,16 @@ export class CampaignEntity {
   get lockedPlatformFeePercent(): number | undefined {
     return this.props.lockedPlatformFeePercent;
   }
+  get creationMode(): CampaignCreationMode {
+    return this.props.creationMode ?? 'self';
+  }
+  get onBehalf(): CampaignOnBehalfProps | undefined {
+    return this.props.onBehalf ? { ...this.props.onBehalf } : undefined;
+  }
+  /** Whoever may request payouts now; null when nobody may (see payoutAuthorityOf). */
+  get payoutAuthorityId(): string | null {
+    return payoutAuthorityOf(this.props);
+  }
 
   /**
    * Overfunding is allowed: reaching the goal marks a campaign FUNDED but does
@@ -104,7 +147,17 @@ export class CampaignEntity {
    */
   canReceiveDonation(): boolean {
     const open: CampaignStatus[] = ['active' as CampaignStatus, 'funded' as CampaignStatus];
-    return open.includes(this.props.status) && !this.isExpired();
+    return open.includes(this.props.status) && !this.isExpired() && !this.awaitingBeneficiaryConsent();
+  }
+
+  /**
+   * A campaign run on someone's behalf may be created with "no donations until
+   * the beneficiary accepts" locked on. Every donation rail and settlement ask
+   * canReceiveDonation, so the gate cannot be bypassed by one of them.
+   */
+  awaitingBeneficiaryConsent(): boolean {
+    const onBehalf = this.props.onBehalf;
+    return this.creationMode === 'on_behalf' && !!onBehalf?.donationsRequireConsent && onBehalf.consentStatus !== 'accepted';
   }
 
   isExpired(): boolean {

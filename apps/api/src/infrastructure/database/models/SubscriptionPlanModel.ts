@@ -29,6 +29,9 @@ export interface SubscriptionPlanDocument extends Document {
   campaignCollaboration: boolean;
   maxPayoutAccounts?: number;
   maxCollaboratorsPerCampaign: number;
+  onBehalfCampaigns?: boolean;
+  maxOnBehalfCampaigns?: number;
+  onBehalfFeePercent?: number;
   sortOrder: number;
   active: boolean;
   isPublic: boolean;
@@ -67,6 +70,11 @@ const subscriptionPlanSchema = new Schema<SubscriptionPlanDocument>(
     campaignCollaboration: { type: Boolean, default: false },
     maxPayoutAccounts: { type: Number, min: -1 },
     maxCollaboratorsPerCampaign: { type: Number, required: true, min: -1 },
+    // Optional so plan rows written before these fields existed still load;
+    // the repository reads a missing value as "not included".
+    onBehalfCampaigns: { type: Boolean },
+    maxOnBehalfCampaigns: { type: Number, min: -1 },
+    onBehalfFeePercent: { type: Number, min: 0, max: 100 },
     sortOrder: { type: Number, default: 0 },
     active: { type: Boolean, default: true },
     isPublic: { type: Boolean, default: true },

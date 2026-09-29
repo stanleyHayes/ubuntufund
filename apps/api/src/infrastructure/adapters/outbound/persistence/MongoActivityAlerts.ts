@@ -113,7 +113,9 @@ export class MongoActivityAlerts {
       // A request closed before any transfer is "rejected"/"cancelled", not a failed transfer.
       const closure = (row as { closure?: { kind?: string } }).closure?.kind;
       if (state === 'FAILED' && (closure === 'rejected' || closure === 'cancelled')) labels.FAILED = closure;
-      const owner = kind === 'creatorPayout' ? text(row.creatorUserId) : campaign?.creatorId;
+      // A campaign payout is reported to whoever requested it: on a campaign run
+      // on someone's behalf that is the beneficiary, not the organizer.
+      const owner = kind === 'creatorPayout' ? text(row.creatorUserId) : kind === 'payout' ? text(row.requestedBy) || campaign?.creatorId : campaign?.creatorId;
       return owner ? [event(owner, 'withdrawals', `Your ${kind === 'beneficiaryPayout' ? 'beneficiary payout' : 'withdrawal'} is ${labels[state]}`, `The ${amount(row)} request is ${labels[state]}.${payoutOutcome(row, state)} Open your payout history for fees, net amount and the latest status.`, kind === 'creatorPayout' ? '/creator' : `/campaigns/${row.campaignId}`)] : [];
     }
     if (kind === 'refund') return [event(text(row.requesterId), 'refunds', `Your refund is ${state}`, `Your refund request for ${amount(row)} is ${state}. Check the refund details for the approved amount and payment progress.`, '/refunds')];

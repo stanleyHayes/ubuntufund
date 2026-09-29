@@ -38,6 +38,8 @@ function validateChange(service: CommercialConfigService, key: string, value: un
     throw new AppError('value must be a non-negative number.', 400);
   }
   if ((key.endsWith('Percent') || key === 'earlyMaxWithdrawalPercent') && value > 100) throw new AppError('Percentage cannot exceed 100.', 400);
+  const featureError = service.featureValueError(key, value);
+  if (featureError) throw new AppError(featureError, 400);
   return { key, kind: 'number', value };
 }
 
@@ -124,12 +126,13 @@ export function createCommercialConfigRoutes(deps: {
     deps.requireAdmin,
     async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
       try {
-        const [resolved, referralDiscountPercent, campaigns, reviewAlertEmail] =
+        const [resolved, referralDiscountPercent, campaigns, reviewAlertEmail, features] =
           await Promise.all([
             deps.service.resolvePayoutsConfig(),
             deps.service.resolveReferralDiscountPercent(),
             deps.service.resolveCampaignsConfig(),
             deps.service.resolveReviewAlertEmail(''),
+            deps.service.resolveFeatureValues(),
           ]);
         res.json({
           data: {
@@ -141,8 +144,9 @@ export function createCommercialConfigRoutes(deps: {
                 CAMPAIGN_TIER_THRESHOLD_KEYS.map((k, i) => [k, campaigns.tierThresholds[i]])
               ),
               [REVIEW_ALERT_EMAIL_KEY]: reviewAlertEmail,
+              ...features,
             },
-            defaults: deps.service.getDefaults(),
+            defaults: { ...deps.service.getDefaults(), ...deps.service.getFeatureDefaults() },
             keys: deps.service.allKeys,
           },
           message: 'Commercial config',
