@@ -32,7 +32,7 @@ Branch: `feat/thank-you-and-on-behalf`. This file records the repository discove
 
 Further defaults (all admin-configurable): consent required before publication and before donations; every on-behalf campaign goes to staff review; invitations expire after 168 h; one completion thank-you per campaign; thank-yous unlock when the campaign ends or after a paid payout. The per-campaign fee is an extra platform-fee percentage locked onto on-behalf campaigns at creation (default 0), so no new payment flow is needed.
 
-Out of scope for v1 (documented, not silently dropped): media in thank-you emails (the email stack is plain text), auto-posting the thank-you as a public update, billing-period quotas, and on-behalf creation from the mobile app (mobile gets the thank-you composer and read-only on-behalf status; creation stays on the web).
+Out of scope for v1 (documented, not silently dropped): media in thank-you emails (authors write plain text; the branded email shows it escaped), auto-posting the thank-you as a public update, billing-period quotas, and on-behalf creation from the mobile app (mobile gets the thank-you composer and read-only on-behalf status; creation stays on the web).
 
 ## 3. Data model (all additive)
 
@@ -108,7 +108,7 @@ Staff decisions also go to the audit log. Consent decisions go to the append-onl
 | Spec | Built | Reason |
 |---|---|---|
 | Payout recipient "if configured" may be the organization | The organization receives funds only if the beneficiary accepted that arrangement. Payout authority always requires accepted consent and cannot be switched off. Staff can override it with a written reason, an audit entry and notices. | Safer invariant (spec §14): management never implies money. |
-| Optional media in thank-you messages | Plain text only | The transactional email stack is plain text. Adding HTML and images needs its own sanitizer and review. |
+| Optional media in thank-you messages | Authors write plain text, which every email shows escaped inside the shared branded template (`emailTemplate.ts`: HTML plus a matching text part). No author images or markup. | Accepting author images or HTML would need its own sanitizer and review. |
 | "Delivered" counts | "Sent" means the provider accepted the email | No Resend delivery webhook is integrated yet. |
 | Domain/analytics events | Structured log events | The platform has no analytics pipeline, and the privacy notice says it uses no third-party analytics. |
 | Beneficiary may edit content ("configured") | Beneficiaries can view, thank donors and control payouts. Content editing stays with the organizer and its org admins/editors. | Keeps one editor chain for publication review. It can be added later behind a setting. |

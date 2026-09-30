@@ -88,6 +88,16 @@ it('saves, previews and sends the draft with a fresh Idempotency-Key per click',
   fireEvent.click(within(preview).getByRole('button', { name: 'Close' }))
   await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Preview' })).not.toBeInTheDocument())
 
+  // When the API returns the branded email, it is shown in a locked-down frame.
+  vi.mocked(api.post).mockImplementationOnce(async () => ({ subject: 'Thank you, friends', text: 'plain', html: '<p>Branded thank-you</p>' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Preview' }))
+  const branded = await screen.findByRole('dialog', { name: 'Preview' })
+  const frame = within(branded).getByTitle('Email preview')
+  expect(frame).toHaveAttribute('sandbox', '')
+  expect(frame).toHaveAttribute('srcdoc', '<p>Branded thank-you</p>')
+  fireEvent.click(within(branded).getByRole('button', { name: 'Close' }))
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Preview' })).not.toBeInTheDocument())
+
   fireEvent.click(screen.getByRole('checkbox', { name: /Use OpenAI to check this public text/ }))
   fireEvent.click(screen.getByRole('button', { name: 'Send to donors' }))
   const confirm = await screen.findByRole('dialog', { name: 'Send your thank-you?' })

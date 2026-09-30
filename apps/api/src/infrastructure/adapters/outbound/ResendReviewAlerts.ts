@@ -1,4 +1,5 @@
 import { logger } from '../../logging/logger.js';
+import { renderEmail } from './emailTemplate.js';
 
 /**
  * Tells the review team a campaign is waiting on them.
@@ -27,7 +28,9 @@ export class ResendReviewAlerts {
      * to the next campaign — not after the next deploy. Empty disables alerts.
      */
     private readonly resolveReviewerEmail: () => Promise<string>,
-    private readonly adminUrl: string
+    private readonly adminUrl: string,
+    /** The web app origin, which serves the logo the email template shows. */
+    private readonly webUrl = 'https://app.ujimora.com',
   ) {}
 
   /**
@@ -47,21 +50,26 @@ export class ResendReviewAlerts {
     const to = await this.recipient();
     if (!to) return;
     const oneLine = (value: string) => value.replace(/[\r\n]+/g, ' ').trim();
+    const name = oneLine(input.name);
     await this.send(`contact-staff/${input.id}`, {
       from: this.from,
       to: [to],
       reply_to: input.email,
       subject: `New contact message — ${oneLine(input.subject).slice(0, 150)}`,
-      text: [
-        `From:     ${oneLine(input.name)} <${input.email}>`,
-        `Type:     ${input.inquiryType}`,
-        `Subject:  ${oneLine(input.subject)}`,
-        '',
-        input.message,
-        '',
-        'Reply to this email to answer the sender directly.',
-        `Triage it: ${this.adminUrl}/contact-submissions`,
-      ].join('\n'),
+      ...renderEmail({
+        preheader: `${name} wrote about “${oneLine(input.subject)}”.`,
+        eyebrow: 'Contact message',
+        heading: `New message from ${name}`,
+        details: [
+          { label: 'From', value: `${name} <${input.email}>` },
+          { label: 'Type', value: input.inquiryType },
+          { label: 'Subject', value: oneLine(input.subject) },
+        ],
+        message: { body: input.message },
+        button: { label: 'Open contact messages', url: `${this.adminUrl}/contact-submissions` },
+        after: ['Reply to this email to answer the sender directly.'],
+        footer: ['Sent to the team address set in Admin → Settings.'],
+      }, { webUrl: this.webUrl }),
     }, { contactSubmissionId: input.id }, 'contact alert email failed');
   }
 
@@ -106,16 +114,15 @@ export class ResendReviewAlerts {
       from: this.from,
       to: [reviewerEmail],
       subject: `Campaign awaiting review — ${input.title} (${goal})`,
-      text: [
-        `A tier ${input.tier} campaign needs approval before it can accept donations.`,
-        '',
-        `Title:  ${input.title}`,
-        `Goal:   ${goal}`,
-        '',
-        'It is not visible to donors until it is approved.',
-        '',
-        `Review it: ${this.adminUrl}/campaigns/${input.campaignId}`,
-      ].join('\n'),
+      ...renderEmail({
+        preheader: `“${input.title}” needs approval before it can accept donations.`,
+        eyebrow: 'Review queue',
+        heading: 'A campaign is waiting for review',
+        intro: [`A tier ${input.tier} campaign needs approval before it can accept donations. It is not visible to donors until it is approved.`],
+        details: [{ label: 'Title', value: input.title }, { label: 'Goal', value: goal }],
+        button: { label: 'Review it', url: `${this.adminUrl}/campaigns/${input.campaignId}` },
+        footer: ['Sent to the team address set in Admin → Settings.'],
+      }, { webUrl: this.webUrl }),
     }, { campaignId: input.campaignId }, 'campaign review alert email failed');
   }
 }

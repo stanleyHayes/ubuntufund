@@ -22,6 +22,7 @@ import type { ActivityEmailSender } from './MongoActivityAlerts.js';
 import type { ThankYouSettings } from '../../../../application/services/CommercialConfigService.js';
 import { AppError } from '../../inbound/middleware/errorHandler.js';
 import { EmailDeliveryError } from '../ResendActivityEmails.js';
+import { renderEmail } from '../emailTemplate.js';
 import { MongoUnitOfWork } from './MongoUnitOfWork.js';
 import { campaignManagerRole, organizerName, recordAccountNotice } from './campaignManagers.js';
 import { logger } from '../../../logging/logger.js';
@@ -222,20 +223,21 @@ export class MongoDonorThankYous {
     };
   }
 
-  /** The one renderer: previews and real sends produce the same text. */
+  /** The one renderer: previews and real sends produce the same email. */
   private render(content: DonorThankYouContent, ctx: Awaited<ReturnType<MongoDonorThankYous['context']>>, unsubscribeUrl: string): DonorThankYouPreview {
+    const title = oneLine(ctx.title);
     const who = ctx.onBehalf ? ` It was run by ${oneLine(ctx.organizer)} for ${oneLine(ctx.onBehalf.beneficiaryName)}.` : '';
-    const text = [
-      content.body,
-      '',
-      ...(content.signature ? [`— ${content.signature}`, ''] : []),
-      `You are receiving this because you gave to “${oneLine(ctx.title)}” on Ujimora.${who} Ujimora sent this message for the campaign; your email address was not shared with them.`,
-      '',
-      `See the campaign: ${ctx.url}`,
-      `Stop thank-you messages from campaigns: ${unsubscribeUrl}`,
-      `Help: ${this.deps.sender.replyTo}`,
-    ].join('\n');
-    return { subject: content.subject, text };
+    const email = renderEmail({
+      preheader: oneLine(content.body).slice(0, 140),
+      eyebrow: 'Thank you for giving',
+      heading: content.subject,
+      details: [{ label: 'Campaign', value: title }],
+      message: { body: content.body, signature: content.signature || undefined },
+      button: { label: 'See the campaign', url: ctx.url },
+      footer: [`You are receiving this because you gave to “${title}” on Ujimora.${who} Ujimora sent this message for the campaign; your email address was not shared with them.`],
+      footerLinks: [{ label: 'Stop thank-you messages from campaigns', url: unsubscribeUrl }],
+    }, { webUrl: this.deps.sender.webUrl, supportEmail: this.deps.sender.replyTo });
+    return { subject: content.subject, text: email.text, html: email.html };
   }
 
   async preview(campaignId: string, actor: Actor, content: DonorThankYouContent): Promise<DonorThankYouPreview> {
@@ -456,7 +458,7 @@ export class MongoDonorThankYous {
         const token = this.unsubscribeToken(emailHash);
         const rendered = this.render(job.doc, job.ctx, `${this.deps.sender.webUrl}/unsubscribe/thank-you#token=${token}`);
         const payload = row.emailRequest ?? {
-          from: this.deps.sender.from, reply_to: this.deps.sender.replyTo, to: [address], subject: rendered.subject, text: rendered.text,
+          from: this.deps.sender.from, reply_to: this.deps.sender.replyTo, to: [address], subject: rendered.subject, text: rendered.text, html: rendered.html,
           headers: { 'List-Unsubscribe': `<${this.deps.apiUrl}/api/v1/donor-messages/unsubscribe?token=${token}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' },
         };
         await DonorThankYouDeliveryModel.updateOne(match, { $set: { emailRequest: payload, firstAttemptAt: row.firstAttemptAt ?? new Date() }, $inc: { attempts: 1 } });
