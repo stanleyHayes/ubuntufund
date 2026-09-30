@@ -310,7 +310,7 @@ export default function CampaignDetailPage() {
         </Box>
       )}
 
-      <Snackbar open={!!notice} autoHideDuration={6000} onClose={() => setNotice('')}>
+      <Snackbar open={!!notice} autoHideDuration={4000} onClose={() => setNotice('')}>
         <Alert severity="success" variant="filled" onClose={() => setNotice('')}>{notice}</Alert>
       </Snackbar>
 

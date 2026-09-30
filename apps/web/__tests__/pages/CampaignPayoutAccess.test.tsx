@@ -69,7 +69,7 @@ it('shows payout controls to the payout authority (the beneficiary), naming who 
   // Split proceeds are not available on a campaign run for someone else.
   expect(screen.queryByRole('region', { name: 'Split setup' })).not.toBeInTheDocument()
   expect(screen.getByRole('region', { name: 'Beneficiary panel' })).toBeInTheDocument()
-  expect(screen.getByText('Confirmed by the beneficiary')).toBeInTheDocument()
+  expect(screen.getByText('Confirmed by beneficiary')).toBeInTheDocument()
   expect(screen.getByRole('link', { name: 'Thank your donors' })).toHaveAttribute('href', '/campaigns/campaign-1/thank-you')
 })
 
@@ -82,7 +82,7 @@ it('gives the organizer a read-only payout note instead of the cashout form', as
   expect(screen.getByRole('region', { name: 'Beneficiary panel' })).toBeInTheDocument()
   const organizer = screen.getByRole('region', { name: 'Behind the campaign' })
   expect(organizer).toHaveTextContent('Organized by Hope Foundation on behalf of Ama Mensah')
-  expect(within(organizer).getByText('Awaiting the beneficiary’s confirmation')).toBeInTheDocument()
+  expect(within(organizer).getByText('Awaiting confirmation')).toBeInTheDocument()
   view.unmount()
 
   page.details = { consentStatus: 'revoked', payoutAuthority: 'none', payoutArrangement: 'beneficiary' } as Partial<CampaignBeneficiaryDetails>

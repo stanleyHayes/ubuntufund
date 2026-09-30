@@ -59,10 +59,11 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
     chip: { minHeight: 32, borderRadius: 10, justifyContent: 'center', backgroundColor: 'rgba(168,181,160,0.28)' },
     chipText: { fontSize: 12, lineHeight: 18, marginVertical: 6, fontFamily: 'Outfit_600SemiBold', color: p.text },
     title: { fontFamily: 'Outfit_700Bold', marginBottom: 16 },
-    onBehalfRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: -8, marginBottom: 16 },
-    onBehalfText: { flexShrink: 1, color: p.text },
+    onBehalfBlock: { gap: 8, marginTop: -8, marginBottom: 16 },
+    onBehalfRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+    onBehalfText: { flex: 1, color: p.text },
     onBehalfName: { fontFamily: 'Outfit_700Bold', color: p.text },
-    confirmPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+    confirmPill: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
     confirmText: { fontSize: 12, fontFamily: 'Outfit_700Bold' },
     progressCard: {
       ...neu.raised,
@@ -301,11 +302,13 @@ export default function CampaignDetailScreen() {
           </Text>
 
           {campaign.onBehalf && (
-            <View style={styles.onBehalfRow}>
-              <Icon source="hand-heart-outline" size={18} color={p.primary} />
-              <Text variant="bodyMedium" style={styles.onBehalfText}>
-                Organized on behalf of <Text style={styles.onBehalfName}>{campaign.onBehalf.beneficiaryName}</Text>
-              </Text>
+            <View style={styles.onBehalfBlock}>
+              <View style={styles.onBehalfRow}>
+                <Icon source="hand-heart-outline" size={18} color={p.primary} />
+                <Text variant="bodyMedium" style={styles.onBehalfText}>
+                  Organized on behalf of <Text style={styles.onBehalfName}>{campaign.onBehalf.beneficiaryName}</Text>
+                </Text>
+              </View>
               <View
                 accessible
                 accessibilityLabel={campaign.onBehalf.beneficiaryConfirmed ? 'The beneficiary has confirmed this campaign' : 'Awaiting confirmation from the beneficiary'}

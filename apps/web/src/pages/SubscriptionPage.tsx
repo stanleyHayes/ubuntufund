@@ -166,7 +166,8 @@ function onBehalfCell(plan: SubscriptionPlan): React.ReactNode {
     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25, textAlign: 'center' }}>
       {formatCellValue(true, 'boolean')}
       {[limit, fee].filter(Boolean).map((note) => (
-        <Typography key={note} sx={{ fontSize: '0.72rem', color: 'text.secondary', lineHeight: 1.3 }}>{note}</Typography>
+        // Hidden on phones, where the notes would stretch the columns; the plan cards already state them.
+        <Typography key={note} sx={{ display: { xs: 'none', sm: 'block' }, fontSize: '0.72rem', color: 'text.secondary', lineHeight: 1.3 }}>{note}</Typography>
       ))}
     </Box>
   )

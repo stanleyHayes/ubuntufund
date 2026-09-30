@@ -49,7 +49,16 @@ function OnBehalfChip({ campaign }: { campaign: Campaign }) {
       color={onBehalf.beneficiaryConfirmed ? 'success' : 'warning'}
       icon={<HandshakeRoundedIcon />}
       label={`On behalf of ${onBehalf.beneficiaryName}${onBehalf.beneficiaryConfirmed ? '' : ' · not confirmed'}`}
-      sx={{ maxWidth: '100%', height: 'auto', minHeight: 24, '& .MuiChip-label': { whiteSpace: 'normal', overflowWrap: 'anywhere', py: 0.25 } }}
+      sx={(theme) => ({
+        maxWidth: '100%',
+        height: 'auto',
+        '& .MuiChip-label': { whiteSpace: 'normal', overflowWrap: 'anywhere', py: 0.25 },
+        // AA text tokens in light mode (the icon inherits); the theme's dark-mode chip colours stay in charge.
+        ...(theme.palette.mode === 'light' && {
+          '&.MuiChip-colorWarning': { color: 'var(--text-warning)' },
+          '&.MuiChip-colorSuccess': { color: 'var(--text-success)' },
+        }),
+      })}
     />
   )
 }

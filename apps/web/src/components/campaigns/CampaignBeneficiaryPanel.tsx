@@ -186,10 +186,10 @@ export function CampaignBeneficiaryPanel({ campaignId, details, loading, error, 
             taken off the site. You cannot undo this yourself.
           </DialogContentText>
         </DialogContent>
-        <DialogActions>
-          <Button disabled={busy !== null} onClick={() => setRevokeOpen(false)}>Keep my consent</Button>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button disabled={busy !== null} onClick={() => setRevokeOpen(false)}>Cancel</Button>
           <Button color="error" variant="contained" disabled={busy !== null} onClick={() => void revoke()}>
-            {busy === 'revoke' ? 'Withdrawing…' : 'Withdraw consent'}
+            {busy === 'revoke' ? 'Withdrawing…' : 'Withdraw'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -253,10 +253,10 @@ function ChangeBeneficiaryDialog({ campaignId, details, ownEmail, ownAccountLabe
         />
         {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
       </DialogContent>
-      <DialogActions>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button disabled={saving} onClick={onClose}>Cancel</Button>
         <Button variant="contained" disabled={saving} onClick={() => void save()}>
-          {saving ? 'Saving…' : 'Save and send invitation'}
+          {saving ? 'Saving…' : 'Save and invite'}
         </Button>
       </DialogActions>
     </Dialog>

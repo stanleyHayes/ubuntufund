@@ -372,7 +372,7 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
     actionText: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: p.primary },
 
     // Campaigns run for you
-    sectionTitle: { fontSize: 18, fontFamily: 'Outfit_800ExtraBold', color: p.text, marginTop: 16 },
+    sectionTitle: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: p.text, marginTop: 16 },
     sectionLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 4, marginBottom: 12, lineHeight: 18 },
     organizer: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: -4, marginBottom: 10 },
     forYouLines: { gap: 2, marginTop: 12, borderTopWidth: 1, borderTopColor: p.border, paddingTop: 12 },
