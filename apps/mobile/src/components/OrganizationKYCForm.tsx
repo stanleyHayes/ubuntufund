@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { View, ScrollView } from 'react-native'
 import { Text, Checkbox, Snackbar } from 'react-native-paper'
 import { Stack, router } from 'expo-router'
 import { Country } from 'country-state-city'
-import { latestAdultBirthDate, KYC_COLLECTION_NOTICE, KYC_IDENTITY_DOCUMENT_OPTIONS, type KYCIdentityDocumentType } from '@ubuntu-fund/types'
+import { latestAdultBirthDate, KYC_COLLECTION_NOTICE, KYC_IDENTITY_DOCUMENT_OPTIONS, ORGANIZATION_KYC_FIELD_HELP, ORGANIZATION_KYC_UPLOADS, type KYCIdentityDocumentType } from '@ubuntu-fund/types'
 import { BrandedTextInput } from './BrandedTextInput'
 import { BrandedDateField } from './BrandedDateField'
 import { SelectionField } from './SelectionField'
 import { MediaUploadField } from './MediaUploadField'
+import { FieldHelp, useFieldHelpIcon } from './FieldHelp'
 import { Button } from './Loading'
 import { usePalette } from '@/context/ColorModeContext'
 import { api } from '@/lib/api'
@@ -23,8 +24,10 @@ export function OrganizationKYCForm() {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
   const busy = saving || uploads > 0
+  const idNumberHelp = useFieldHelpIcon(ORGANIZATION_KYC_FIELD_HELP.idNumber, busy)
+  const capacityHelp = useFieldHelpIcon(ORGANIZATION_KYC_FIELD_HELP.representativeCapacity, busy)
   const change = <K extends keyof OrganizationKycDraft>(key: K, value: OrganizationKycDraft[K]) => setDraft(old => ({ ...old, [key]: value }))
-  const field = (key: 'businessName' | 'registrationNumber' | 'businessType' | 'taxId' | 'street' | 'city' | 'fullName' | 'idNumber' | 'representativeCapacity' | 'ownershipExplanation', label: string) => <BrandedTextInput disabled={busy} label={label} value={draft[key]} onChangeText={value => change(key, value)} maxLength={key === 'ownershipExplanation' ? 2000 : ['registrationNumber', 'businessType', 'taxId', 'idNumber'].includes(key) ? 100 : 200} multiline={key === 'ownershipExplanation'} />
+  const field = (key: 'businessName' | 'registrationNumber' | 'businessType' | 'taxId' | 'street' | 'city' | 'fullName' | 'idNumber' | 'representativeCapacity' | 'ownershipExplanation', label: string, right?: ReactNode) => <BrandedTextInput disabled={busy} label={label} value={draft[key]} onChangeText={value => change(key, value)} maxLength={key === 'ownershipExplanation' ? 2000 : ['registrationNumber', 'businessType', 'taxId', 'idNumber'].includes(key) ? 100 : 200} multiline={key === 'ownershipExplanation'} right={right} />
   async function submit() {
     if (busy || saved) return
     setError('')
@@ -50,7 +53,7 @@ export function OrganizationKYCForm() {
         {field('fullName', 'Representative full name')}
         <BrandedDateField disabled={busy} label="Representative date of birth" value={draft.dateOfBirth} onChange={value => { if (!busy) change('dateOfBirth', value) }} maxDate={new Date(latestAdultBirthDate())} />
         <SelectionField disabled={busy} label="Representative nationality" value={draft.nationality} options={countries} onChange={value => change('nationality', value)} />
-        {field('idNumber', 'Representative ID number')}{field('representativeCapacity', 'Role and authority to act')}
+        {field('idNumber', 'Representative ID number', idNumberHelp.icon)}{field('representativeCapacity', 'Role and authority to act', capacityHelp.icon)}
         <Text variant="titleLarge">People who control the organization</Text>
         <Text>List applicable directors, trustees, beneficial owners or other controllers. If there are no shareholders, explain governance and leave ownership percentages empty.</Text>
         {draft.controllers.map((person, index) => {
@@ -67,7 +70,7 @@ export function OrganizationKYCForm() {
         {field('ownershipExplanation', 'Explain ownership and control')}
         <Text variant="titleLarge">Private supporting documents</Text>
         <SelectionField disabled={busy} label="Representative identity document type" value={draft.identityType} options={[...KYC_IDENTITY_DOCUMENT_OPTIONS]} onChange={value => setDraft(old => value === old.identityType ? old : { ...old, identityType: value as KYCIdentityDocumentType, identity: '' })} />
-        {([['registration', 'Organization registration document'], ['authorization', 'Representative authorization document'], ['identity', 'Representative identity document'], ['control', 'Ownership or control register (optional)']] as const).map(([key, label]) => <MediaUploadField disabled={busy} key={`${key}:${key === 'identity' ? draft.identityType : key}`} label={label} value={draft[key]} onChange={value => change(key, value)} folder="kyc" document onBusyChange={value => setUploads(n => n + (value ? 1 : -1))} />)}
+        {ORGANIZATION_KYC_UPLOADS.map(([key, label]) => <MediaUploadField disabled={busy} key={`${key}:${key === 'identity' ? draft.identityType : key}`} label={label} labelAccessory={<FieldHelp help={ORGANIZATION_KYC_FIELD_HELP[key]} disabled={busy} />} value={draft[key]} onChange={value => change(key, value)} folder="kyc" document onBusyChange={value => setUploads(n => n + (value ? 1 : -1))} />)}
         <Text style={{ color: p.textSecondary }}>{KYC_COLLECTION_NOTICE}</Text>
         <Checkbox.Item disabled={busy} status={draft.authorized ? 'checked' : 'unchecked'} onPress={() => change('authorized', !draft.authorized)} label="I am authorized to submit this application and act for the organization." />
         <Checkbox.Item disabled={busy} status={draft.accurate ? 'checked' : 'unchecked'} onPress={() => change('accurate', !draft.accurate)} label="The organization, representative and control details are accurate and complete to the best of my knowledge." />
@@ -75,6 +78,7 @@ export function OrganizationKYCForm() {
         <Button mode="contained" loading={saving} disabled={busy || !draft.authorized || !draft.accurate} onPress={() => void submit()}>{uploads ? 'Uploading documents…' : 'Submit organization verification'}</Button>
       </View>}
     </ScrollView>
+    {idNumberHelp.dialog}{capacityHelp.dialog}
     <Snackbar visible={!!error} onDismiss={() => setError('')} duration={10000} action={{ label: 'Dismiss', onPress: () => setError('') }}>{error}</Snackbar>
   </KeyboardAvoider>
 }

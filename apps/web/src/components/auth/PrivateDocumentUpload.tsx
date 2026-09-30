@@ -1,8 +1,12 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Alert, Box, Button, Dialog, DialogContent, DialogTitle } from '@mui/material'
 import { ImageUpload, type ImageUploadProps } from '@ubuntu-fund/ui'
 import { api } from '@/lib/api'
-export function PrivateDocumentUpload(props: ImageUploadProps) {
+export interface PrivateDocumentUploadProps extends ImageUploadProps {
+  /** Shown inline right after the label, e.g. a FieldHelp button. */
+  help?: ReactNode
+}
+export function PrivateDocumentUpload({ help, ...props }: PrivateDocumentUploadProps) {
   const [preview, setPreview] = useState<{ url: string; mimeType: string } | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -12,7 +16,8 @@ export function PrivateDocumentUpload(props: ImageUploadProps) {
     catch (e) { setError(e instanceof Error ? e.message : 'Could not load document') }
     finally { setLoading(false) }
   }
-  return <Box><ImageUpload {...props} />
+  return <Box>
+    <ImageUpload {...props} labelAdornment={help} />
     {props.value.startsWith('kyc://') && <Button disabled={loading} onClick={() => { void open() }}>{loading ? 'Loading private document…' : 'Preview private document'}</Button>}
     {error && <Alert severity="error">{error}</Alert>}
     <Dialog open={!!preview} onClose={() => setPreview(null)} fullWidth maxWidth="md"><DialogTitle>{props.label || 'Private document'}</DialogTitle><DialogContent>

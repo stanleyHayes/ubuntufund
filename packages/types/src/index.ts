@@ -29,6 +29,7 @@ export * from './referralCode'
 export { payoutAccountBrand, payoutInstitutionName } from './payoutBrand'
 
 export * from './legal-acceptance'
+export * from './organization-kyc-help'
 
 export * from './activity-alerts'
 
