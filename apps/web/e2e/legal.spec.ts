@@ -28,6 +28,8 @@ test('legal reading layout fits a narrow phone and section links work', async ({
   await page.screenshot({ path: '/tmp/ujimora-legal-desktop.png', fullPage: false })
 })
 test('legal pages follow every saved appearance in light and dark', async ({ page }) => {
+  // Sixteen page loads (a visit and a reload per appearance) through the CI dev server.
+  test.slow()
   for (const skin of ['neumorphism', 'claymorphism', 'glassmorphism', 'minimal']) {
     for (const mode of ['light', 'dark']) {
       await page.goto('/legal')
