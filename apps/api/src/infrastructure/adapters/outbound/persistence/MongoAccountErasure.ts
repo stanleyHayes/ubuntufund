@@ -28,6 +28,13 @@ import { LiveSessionModel } from '../../../database/models/LiveSessionModel.js';
 import { ShortLinkModel } from '../../../database/models/ShortLinkModel.js';
 import { logger } from '../../../logging/logger.js';
 import { PrivateKycDocumentModel } from '../../../database/models/PrivateKycDocumentModel.js';
+import { DonorThankYouModel } from '../../../database/models/DonorThankYouModel.js';
+import { DonorThankYouDeliveryModel } from '../../../database/models/DonorThankYouDeliveryModel.js';
+import { CampaignBeneficiaryInvitationModel } from '../../../database/models/CampaignBeneficiaryInvitationModel.js';
+import { CampaignBeneficiaryConsentEventModel } from '../../../database/models/CampaignBeneficiaryConsentEventModel.js';
+import { BENEFICIARY_CONSENT_VERSION } from '@ubuntu-fund/types';
+import { createHash } from 'node:crypto';
+import { recordAccountNotice } from './campaignManagers.js';
 
 /** Retryable erasure of operational profile data. Never deletes money or KYC evidence. */
 export class MongoAccountErasure implements AccountErasurePort {
@@ -88,6 +95,12 @@ export class MongoAccountErasure implements AccountErasurePort {
     await NewsletterSubscriptionModel.deleteMany({ email: request.contactEmail });
     await NotificationModel.deleteMany({ userId });
     await ActivityAlertDeliveryModel.deleteMany({ userId });
+    // Thank-you deliveries keep their counts; the prepared email (with the address) goes.
+    await DonorThankYouDeliveryModel.updateMany({ recipientUserId: userId, emailRequest: { $exists: true } }, { $unset: { emailRequest: 1 } });
+    await DonorThankYouModel.deleteMany({ authorId: userId, status: 'draft' });
+    const contactHash = createHash('sha256').update(request.contactEmail.trim().toLowerCase()).digest('hex');
+    await CampaignBeneficiaryInvitationModel.updateMany({ emailHash: contactHash, email: { $exists: true } }, { $unset: { email: 1 } });
+    await this.withdrawAsBeneficiary(userId);
     await ActivityAlertPreferenceModel.deleteMany({ userId });
     await CreatorProfileModel.deleteMany({ userId });
     // Hide UGC pending safety/legal-hold review; do not silently destroy reported evidence.
@@ -123,5 +136,29 @@ export class MongoAccountErasure implements AccountErasurePort {
     // Cleanup changes the evidence a staff reviewer saw. Invalidate stale
     // review forms without replacing their notes or chosen follow-up date.
     await AccountDeletionRequestModel.updateOne({ userId, status: 'pending' }, { $set: { status: 'review_required', coreRemovedAt: new Date() }, $inc: { revision: 1 } });
+  }
+
+  /**
+   * A beneficiary who closes their account withdraws their consent: campaigns
+   * run for them stop paying out (and, where configured, stop taking
+   * donations) until staff reassign them. Idempotent for retried sweeps.
+   */
+  private async withdrawAsBeneficiary(userId: string): Promise<void> {
+    const campaigns = await CampaignModel.find({ 'onBehalf.beneficiaryUserId': userId, 'onBehalf.consentStatus': 'accepted' }).select('_id title creatorId status onBehalf');
+    for (const campaign of campaigns) {
+      const onBehalf = campaign.onBehalf!;
+      const unpublish = onBehalf.publicationRequiresConsent && ['active', 'funded'].includes(campaign.status);
+      const updated = await CampaignModel.updateOne({ _id: campaign._id, 'onBehalf.consentStatus': 'accepted' }, {
+        $set: { 'onBehalf.consentStatus': 'revoked', ...(unpublish ? { status: 'pending_review' } : {}) },
+        $unset: { 'onBehalf.payoutAuthorityUserId': 1 }, $inc: { payoutWriteVersion: 1 },
+      });
+      if (!updated.modifiedCount) continue;
+      const campaignId = campaign._id.toString();
+      await CampaignBeneficiaryConsentEventModel.create({ campaignId, event: 'revoked', actorRole: 'system', consentVersion: BENEFICIARY_CONSENT_VERSION,
+        payoutArrangement: onBehalf.payoutArrangement, reason: 'The beneficiary closed their Ujimora account.' });
+      await recordAccountNotice({ key: `on-behalf:account-closed:${campaignId}:${userId}`, userId: campaign.creatorId, type: 'on_behalf',
+        title: 'The beneficiary closed their account', path: `/campaigns/${campaignId}`,
+        body: `The beneficiary of “${campaign.title}” closed their Ujimora account, so payouts are paused. Contact support@ujimora.com to decide what happens next.` });
+    }
   }
 }

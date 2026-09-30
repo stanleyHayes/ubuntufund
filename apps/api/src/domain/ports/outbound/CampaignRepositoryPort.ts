@@ -45,6 +45,8 @@ export interface CampaignRepositoryPort {
    * re-labelled it EXPIRED yet.
    */
   countActiveByCreator(creatorId: string): Promise<number>;
+  /** Active campaigns this creator runs on someone else's behalf (same notion of active as above). */
+  countActiveOnBehalfByCreator?(creatorId: string): Promise<number>;
   /**
    * Re-label ACTIVE/FUNDED campaigns whose end date is at or before `now` as
    * EXPIRED. Idempotent; returns how many campaigns changed.

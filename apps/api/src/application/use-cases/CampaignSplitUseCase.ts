@@ -46,6 +46,8 @@ export class CampaignSplitUseCase {
     if (!this.splitEnabled) throw new AppError('Split proceeds are not enabled', 403);
     const campaign = await this.campaignRepo.findById(campaignId);
     if (!campaign) throw new AppError('Campaign not found', 404);
+    // A second money-out path would bypass the beneficiary's payout consent.
+    if (campaign.creationMode === 'on_behalf') throw new AppError('Split proceeds are not available on a campaign run on someone else\'s behalf.', 409);
     await this.planLimits.assertFeature(campaign.creatorId, 'campaignCollaboration', 'shared campaign proceeds');
     await this.planLimits.assertFeature(campaign.creatorId, 'escrowSupport', 'split proceeds');
   }

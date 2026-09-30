@@ -58,7 +58,8 @@ export default function AuditLogPage() {
   const [error, setError] = useState<string | null>(null)
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([])
   const [total, setTotal] = useState(0)
-  const [search, setSearch] = useState('')
+  // Other pages link here pre-filtered, e.g. /audit?search=<campaign id>.
+  const [search, setSearch] = useState(() => new URLSearchParams(window.location.search).get('search') ?? '')
   const [page, setPage] = useState(0)
   const [perPage] = useState(PAGE_SIZE)
 

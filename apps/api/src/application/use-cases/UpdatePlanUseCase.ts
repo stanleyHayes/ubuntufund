@@ -25,6 +25,7 @@ const LIMIT_FIELDS: (keyof UpdateSubscriptionPlanInput)[] = [
   'maxMediaPerCampaign',
   'maxTeamMembers',
   'maxCollaboratorsPerCampaign', 'maxPayoutAccounts',
+  'maxOnBehalfCampaigns',
 ];
 
 /**
@@ -46,6 +47,8 @@ const EDITABLE_FIELDS: (keyof UpdateSubscriptionPlanInput)[] = [
   'escrowSupport',
   'liveStreaming',
   'campaignCollaboration',
+  'onBehalfCampaigns',
+  'onBehalfFeePercent',
   'sortOrder',
   'active',
   'isPublic',
@@ -152,6 +155,12 @@ export class UpdatePlanUseCase {
       (patch.platformFeePercent < 0 || patch.platformFeePercent > 100)
     ) {
       throw new AppError('platformFeePercent must be between 0 and 100', 422);
+    }
+    if (
+      typeof patch.onBehalfFeePercent === 'number' &&
+      (patch.onBehalfFeePercent < 0 || patch.onBehalfFeePercent > 100)
+    ) {
+      throw new AppError('onBehalfFeePercent must be between 0 and 100', 422);
     }
 
     for (const field of LIMIT_FIELDS) {

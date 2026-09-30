@@ -9,6 +9,7 @@ import { MongoUnitOfWork } from './MongoUnitOfWork.js'
 import { UserModel } from '../../../database/models/UserModel.js'
 import { assertCurrentOwnerVerification, PAYABLE_CAMPAIGN_STATUSES } from './MongoPayoutEligibility.js'
 import { AppError } from '../../inbound/middleware/errorHandler.js'
+import { payoutAuthorityOf } from '../../../../domain/services/campaignPayoutAuthority.js'
 
 /** How long an automatic budget claim may be verified after it was taken. */
 export const AUTOMATIC_CLAIM_TTL_MS = 15 * 60_000
@@ -27,7 +28,7 @@ export class MongoAutomaticPayoutVerification {
         )
         // Shared with the manual rail and AutomaticPayoutService.consider, so the
         // expiry sweep flipping FUNDED -> EXPIRED mid-flight cannot fail a claim.
-        if (!campaign || campaign.deletedAt || campaign.creatorId !== userId ||
+        if (!campaign || campaign.deletedAt || payoutAuthorityOf(campaign) !== userId ||
             !PAYABLE_CAMPAIGN_STATUSES.includes(campaign.status))
           throw new AppError('Current campaign eligibility requires manual review.', 409)
         if (campaignNeedsEarlyCashout({

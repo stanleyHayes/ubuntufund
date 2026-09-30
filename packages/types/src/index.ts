@@ -1,4 +1,6 @@
 export * from './campaign'
+export * from './on-behalf'
+export * from './donor-thank-you'
 export * from './adult-age'
 export * from './shortlink'
 export * from './live'

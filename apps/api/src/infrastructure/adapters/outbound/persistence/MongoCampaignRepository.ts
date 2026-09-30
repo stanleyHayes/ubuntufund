@@ -60,6 +60,29 @@ function toDomain(doc: CampaignDocument): CampaignEntity {
     tier: doc.tier,
     lockedPlatformFeePercent: doc.lockedPlatformFeePercent,
     reviewRevision: doc.reviewRevision,
+    creationMode: doc.creationMode,
+    creatorType: doc.creatorType,
+    createdByActorId: doc.createdByActorId,
+    onBehalf: doc.onBehalf ? {
+      beneficiaryType: doc.onBehalf.beneficiaryType,
+      beneficiaryName: doc.onBehalf.beneficiaryName,
+      relationship: doc.onBehalf.relationship,
+      reason: doc.onBehalf.reason,
+      beneficiaryUserId: doc.onBehalf.beneficiaryUserId,
+      consentStatus: doc.onBehalf.consentStatus,
+      consentVersion: doc.onBehalf.consentVersion,
+      consentAt: doc.onBehalf.consentAt,
+      consentBy: doc.onBehalf.consentBy,
+      payoutArrangement: doc.onBehalf.payoutArrangement,
+      payoutAuthorityUserId: doc.onBehalf.payoutAuthorityUserId,
+      publicationRequiresConsent: doc.onBehalf.publicationRequiresConsent,
+      donationsRequireConsent: doc.onBehalf.donationsRequireConsent,
+      staffReviewRequired: doc.onBehalf.staffReviewRequired,
+      autoPublishOnConsent: doc.onBehalf.autoPublishOnConsent ?? false,
+      entitlementPlanTier: doc.onBehalf.entitlementPlanTier,
+      feePercentApplied: doc.onBehalf.feePercentApplied,
+      invitedAt: doc.onBehalf.invitedAt,
+    } : undefined,
   });
 }
 
@@ -86,6 +109,10 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
       endDate: plain.endDate,
       tier: plain.tier,
       lockedPlatformFeePercent: plain.lockedPlatformFeePercent,
+      ...(plain.creationMode ? { creationMode: plain.creationMode } : {}),
+      ...(plain.creatorType ? { creatorType: plain.creatorType } : {}),
+      ...(plain.createdByActorId ? { createdByActorId: plain.createdByActorId } : {}),
+      ...(plain.onBehalf ? { onBehalf: plain.onBehalf } : {}),
     });
     return toDomain(doc);
   }
@@ -228,6 +255,18 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
   async countActiveByCreator(creatorId: string): Promise<number> {
     return CampaignModel.countDocuments({
       creatorId,
+      deletedAt: { $exists: false },
+      status: {
+        $in: [CampaignStatus.ACTIVE, CampaignStatus.PENDING_REVIEW, CampaignStatus.FUNDED],
+      },
+      endDate: { $gt: new Date() },
+    });
+  }
+
+  async countActiveOnBehalfByCreator(creatorId: string): Promise<number> {
+    return CampaignModel.countDocuments({
+      creatorId,
+      creationMode: 'on_behalf',
       deletedAt: { $exists: false },
       status: {
         $in: [CampaignStatus.ACTIVE, CampaignStatus.PENDING_REVIEW, CampaignStatus.FUNDED],

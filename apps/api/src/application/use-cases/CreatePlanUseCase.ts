@@ -9,6 +9,7 @@ const LIMIT_FIELDS: (keyof CreatePlanInput)[] = [
   'maxMediaPerCampaign',
   'maxTeamMembers',
   'maxCollaboratorsPerCampaign', 'maxPayoutAccounts',
+  'maxOnBehalfCampaigns',
 ];
 
 /**
@@ -33,6 +34,9 @@ export class CreatePlanUseCase {
     }
     if (input.platformFeePercent < 0 || input.platformFeePercent > 100) {
       throw new AppError('platformFeePercent must be between 0 and 100', 422);
+    }
+    if (typeof input.onBehalfFeePercent === 'number' && (input.onBehalfFeePercent < 0 || input.onBehalfFeePercent > 100)) {
+      throw new AppError('onBehalfFeePercent must be between 0 and 100', 422);
     }
     for (const field of LIMIT_FIELDS) {
       const value = input[field];

@@ -235,6 +235,33 @@ export class PlanLimitsService {
   }
 
   /**
+   * Whether a user's plan lets them run a campaign on someone else's behalf
+   * now, and on what terms. Plan data decides, never plan names. With `lock`,
+   * the subscription and plan rows are write-fenced so a plan change during
+   * creation conflicts instead of slipping past this check.
+   */
+  async onBehalfPolicy(userId: string, lock = false): Promise<{ allowed: boolean; reason?: 'plan' | 'limit'; planName: string; planTier: string; limit: number; active: number; feePercent: number }> {
+    if (lock) {
+      if (!this.subscriptionRepo.lockForConsumption || !this.planService) throw new AppError('Plan verification unavailable.', 503);
+      await this.subscriptionRepo.lockForConsumption(userId);
+    }
+    const plan = await this.resolvePlan(userId, lock);
+    const limit = plan.maxOnBehalfCampaigns ?? 0;
+    const feePercent = plan.onBehalfFeePercent ?? 0;
+    if (!plan.onBehalfCampaigns) return { allowed: false, reason: 'plan', planName: plan.name, planTier: plan.tier, limit, active: 0, feePercent };
+    const active = this.campaignRepo.countActiveOnBehalfByCreator ? await this.campaignRepo.countActiveOnBehalfByCreator(userId) : 0;
+    if (!isUnlimited(limit) && active >= limit) return { allowed: false, reason: 'limit', planName: plan.name, planTier: plan.tier, limit, active, feePercent };
+    return { allowed: true, planName: plan.name, planTier: plan.tier, limit, active, feePercent };
+  }
+
+  async assertCanCreateOnBehalf(userId: string, lock = false): Promise<{ planTier: string; feePercent: number }> {
+    const policy = await this.onBehalfPolicy(userId, lock);
+    if (policy.reason === 'plan') throw new AppError(`Your ${policy.planName} plan does not include campaigns on behalf of others. Upgrade to unlock it.`, 403);
+    if (policy.reason === 'limit') throw new AppError(`Your ${policy.planName} plan allows ${policy.limit} active ${policy.limit === 1 ? 'campaign' : 'campaigns'} on behalf of others. Upgrade to run more.`, 403);
+    return { planTier: policy.planTier, feePercent: policy.feePercent };
+  }
+
+  /**
    * Guard for a boolean plan feature. Throws {@link AppError} 403 with an
    * upgrade message when the user's plan does not include `feature`. `label` is
    * the human-facing name of the capability (e.g. "LIVE streaming").

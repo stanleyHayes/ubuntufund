@@ -3,7 +3,43 @@ import {
   CampaignStatus,
   CampaignCategory,
   CampaignPriority,
+  BENEFICIARY_RELATIONSHIPS,
+  type BeneficiaryPartyType,
+  type BeneficiaryRelationship,
+  type CampaignCreationMode,
+  type OnBehalfConsentStatus,
+  type OnBehalfPayoutArrangement,
 } from '@ubuntu-fund/types';
+
+/**
+ * The beneficiary of a campaign run on someone else's behalf, their consent,
+ * and who may request payouts. Absent on self-created campaigns.
+ *
+ * The three policy flags are copied from admin config at creation, like the
+ * locked platform fee, so a later config change never re-gates a live campaign.
+ */
+export interface CampaignOnBehalfDocument {
+  beneficiaryType: BeneficiaryPartyType;
+  beneficiaryName: string;
+  relationship: BeneficiaryRelationship;
+  reason: string;
+  beneficiaryUserId?: string;
+  consentStatus: OnBehalfConsentStatus;
+  consentVersion?: string;
+  consentAt?: Date;
+  consentBy?: string;
+  payoutArrangement: OnBehalfPayoutArrangement;
+  /** Set only when consent is accepted; never the manager unless the beneficiary agreed. */
+  payoutAuthorityUserId?: string;
+  publicationRequiresConsent: boolean;
+  donationsRequireConsent: boolean;
+  staffReviewRequired: boolean;
+  /** Tiering would have published it at creation; consent alone may publish it. */
+  autoPublishOnConsent: boolean;
+  entitlementPlanTier?: string;
+  feePercentApplied?: number;
+  invitedAt?: Date;
+}
 
 export interface CampaignDocument extends Document {
   slug?: string;
@@ -33,6 +69,12 @@ export interface CampaignDocument extends Document {
   splitWriteVersion?: number;
   liveCreationWriteVersion?: number;
   commentCreationWriteVersion?: number;
+  /** Absent on campaigns created before this field existed: they are self-created. */
+  creationMode?: CampaignCreationMode;
+  creatorType?: 'individual' | 'organization';
+  /** The signed-in account that submitted the creation (immutable history). */
+  createdByActorId?: string;
+  onBehalf?: CampaignOnBehalfDocument;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -86,9 +128,38 @@ const campaignSchema = new Schema<CampaignDocument>(
     lockedPlatformFeePercent: { type: Number },
     reviewRevision: { type: Number, default: 0 },
     creationIdempotencyKey: { type: String },
+    creationMode: { type: String, enum: ['self', 'on_behalf'], index: true },
+    creatorType: { type: String, enum: ['individual', 'organization'] },
+    createdByActorId: { type: String },
+    onBehalf: {
+      type: new Schema<CampaignOnBehalfDocument>({
+        beneficiaryType: { type: String, enum: ['individual', 'organization'], required: true },
+        beneficiaryName: { type: String, required: true, trim: true },
+        relationship: { type: String, enum: BENEFICIARY_RELATIONSHIPS, required: true },
+        reason: { type: String, required: true },
+        beneficiaryUserId: { type: String },
+        consentStatus: { type: String, enum: ['not_required', 'pending', 'accepted', 'declined', 'expired', 'revoked'], required: true },
+        consentVersion: { type: String },
+        consentAt: { type: Date },
+        consentBy: { type: String },
+        payoutArrangement: { type: String, enum: ['beneficiary', 'organization'], required: true },
+        payoutAuthorityUserId: { type: String },
+        publicationRequiresConsent: { type: Boolean, required: true },
+        donationsRequireConsent: { type: Boolean, required: true },
+        staffReviewRequired: { type: Boolean, required: true },
+        autoPublishOnConsent: { type: Boolean, default: false },
+        entitlementPlanTier: { type: String },
+        feePercentApplied: { type: Number },
+        invitedAt: { type: Date },
+      }, { _id: false }),
+      default: undefined,
+    },
   },
   { timestamps: true }
 );
+
+// "Campaigns for you": a beneficiary's linked campaigns.
+campaignSchema.index({ 'onBehalf.beneficiaryUserId': 1 }, { sparse: true });
 
 // The expiry sweep and the effective-status listing filters select on both.
 campaignSchema.index({ status: 1, endDate: 1 });

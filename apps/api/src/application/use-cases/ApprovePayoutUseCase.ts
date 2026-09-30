@@ -17,6 +17,7 @@ import { toPayoutDto } from './mappers/payoutDto.js'
 import { splitIntoTransferLegs, requiresBatching } from '../services/payoutBatch.js'
 import type { PayoutRequester } from './CreatePayoutRecipientUseCase.js'
 import { isRecipientFromOtherMode, type PaystackMode } from '../../domain/value-objects/PaystackMode.js'
+import { NO_PAYOUT_AUTHORITY_MESSAGE, payoutAuthorityOf } from '../../domain/services/campaignPayoutAuthority.js'
 
 export const SELF_APPROVAL_MESSAGE = 'Another administrator must approve payouts from your own campaign or request.'
 
@@ -118,14 +119,17 @@ export class ApprovePayoutUseCase {
     if (this.campaigns) {
       const campaign = await this.campaigns.findById(payout.campaignId)
       if (!campaign) throw new AppError('Campaign not found', 404)
-      if (!automatic && campaign.creatorId === requester.userId)
+      // Neither the manager nor whoever holds payout authority approves it.
+      if (!automatic && (campaign.creatorId === requester.userId || payoutAuthorityOf(campaign) === requester.userId))
         throw new AppError(SELF_APPROVAL_MESSAGE, 403)
+      if (!payoutAuthorityOf(campaign))
+        throw new AppError(NO_PAYOUT_AUTHORITY_MESSAGE, 409)
       // A payout requested before the campaign was blocked must not be approved after.
       if (campaign.status === CampaignStatus.BLOCKED)
         throw new AppError('This campaign is under review; payouts are paused', 409)
       if (
         payout.provider === 'ujimora_wallet' &&
-        payout.recipientId !== `wallet:${campaign.creatorId}`
+        payout.recipientId !== `wallet:${payoutAuthorityOf(campaign)}`
       )
         throw new AppError('Wallet destination must belong to the campaign owner', 409)
       if (campaignNeedsEarlyCashout(campaign) && !isEarlyWithdrawal(payout.type)) {

@@ -128,6 +128,7 @@ function InAppDonateScreen() {
       <SplitDisclosure campaignId={campaign.id} />
       <TextInput label={`Amount (${campaign.currency})`} keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
       <TextInput label="Email" keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
+      <Text style={{ color: p.textSecondary, fontSize: 12 }}>The organizer may send you one thank-you through Ujimora. You can unsubscribe from it.</Text>
       <TextInput label="Name (optional)" value={name} onChangeText={setName} />
       <TextInput label="Message (optional)" value={message} onChangeText={setMessage} multiline />
       {!!(message.trim() || (!anonymous && name.trim())) && <><Checkbox.Item label="I am at least 18 and agree to the terms for posting my public name and message." status={messageAccepted ? 'checked' : 'unchecked'} onPress={() => setMessageAccepted(v => !v)} /><Text onPress={() => router.push('/terms')}>Read the Terms of Use. Messages must not contain private information, threats or abusive content.</Text></>}

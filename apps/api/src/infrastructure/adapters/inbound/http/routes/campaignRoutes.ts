@@ -2,7 +2,7 @@ import { legalAcceptanceSchema } from './legalAcceptanceSchema.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { platformMediaUrl } from './urlSchemas.js';
-import { CampaignCategory, CampaignPriority, PaymentMethod } from '@ubuntu-fund/types';
+import { BENEFICIARY_RELATIONSHIPS, CampaignCategory, CampaignPriority, PaymentMethod } from '@ubuntu-fund/types';
 import type { CampaignController } from '../controllers/CampaignController.js';
 import { validate } from '../../middleware/validate.js';
 import type { createAuthMiddleware, createOptionalAuthMiddleware } from '../../middleware/authMiddleware.js';
@@ -18,6 +18,14 @@ const createCampaignSchema = z.object({
   beneficiaries: z.array(z.string().max(200)).max(20).default([]),
   endDate: z.string().datetime(),
   imageUrls: z.array(platformMediaUrl).max(10).optional(),
+  onBehalf: z.object({
+    beneficiaryType: z.enum(['individual', 'organization']),
+    beneficiaryName: z.string().trim().min(2).max(120),
+    beneficiaryEmail: z.string().trim().email().max(254),
+    relationship: z.enum(BENEFICIARY_RELATIONSHIPS),
+    reason: z.string().trim().min(10).max(1000),
+    payoutArrangement: z.enum(['beneficiary', 'organization']),
+  }).strict().optional(),
 });
 
 const donateSchema = z.object({

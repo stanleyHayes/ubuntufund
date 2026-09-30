@@ -7,6 +7,7 @@ import { roundToCurrency } from '../../domain/value-objects/Money.js'
 import type { PayoutsConfig } from '../../infrastructure/config/index.js'
 import type { PayoutRequester } from './CreatePayoutRecipientUseCase.js'
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js'
+import { payoutAuthorityOf } from '../../domain/services/campaignPayoutAuthority.js'
 
 export class GetCampaignPayoutOptionsUseCase {
   constructor(
@@ -20,7 +21,8 @@ export class GetCampaignPayoutOptionsUseCase {
   async execute(id: string, requester: PayoutRequester) {
     const campaign = await this.campaigns.findById(id)
     if (!campaign) throw new AppError('Campaign not found', 404)
-    if (campaign.creatorId !== requester.userId && requester.role !== 'admin')
+    // Options drive the request form, so they belong to whoever may request.
+    if (payoutAuthorityOf(campaign) !== requester.userId && requester.role !== 'admin')
       throw new AppError('Only the campaign owner can view payout details', 403)
     const [balance, recipient, fees, pendingTotal] = await Promise.all([
       this.balances.findByCampaignId(id),

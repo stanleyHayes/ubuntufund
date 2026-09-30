@@ -46,19 +46,64 @@ const FEATURE_TOGGLES: { key: keyof SubscriptionPlan; label: string }[] = [
   { key: 'escrowSupport', label: 'Split proceeds' },
   { key: 'liveStreaming', label: 'Live streaming' },
   { key: 'campaignCollaboration', label: 'Campaign collaboration' },
+  { key: 'onBehalfCampaigns', label: 'Campaigns on behalf of others' },
 ]
 
 /** Plan prices only drive web (Paystack) checkout; store prices live on the store products. */
 const WEB_PRICE_HELP = 'Web checkout price. Update store products separately.'
 
-const NUMERIC_LIMITS: { key: keyof SubscriptionPlan; label: string; unlimited?: boolean }[] = [
+const NUMERIC_LIMITS: { key: keyof SubscriptionPlan; label: string; unlimited?: boolean; help?: string; invalid?: (plan: SubscriptionPlan) => boolean }[] = [
   { key: 'maxActiveCampaigns', label: 'Max active campaigns', unlimited: true },
   { key: 'maxCampaignGoal', label: 'Max campaign goal (GH₵)', unlimited: true },
   { key: 'maxMediaPerCampaign', label: 'Max media per campaign', unlimited: true },
   { key: 'maxTeamMembers', label: 'Organization team seats (incl. owner)', unlimited: true },
   { key: 'maxPayoutAccounts', label: 'Saved payout accounts', unlimited: true },
   { key: 'maxCollaboratorsPerCampaign', label: 'Max collaborators per campaign', unlimited: true },
+  {
+    key: 'maxOnBehalfCampaigns',
+    label: 'Active campaigns on behalf of others',
+    unlimited: true,
+    help: '-1 = unlimited. They also count toward max active campaigns.',
+    invalid: onBehalfLimitInvalid,
+  },
 ]
+
+const LIMIT_ERROR = 'Use a whole number, or -1 for unlimited.'
+
+const FEE_HELP = 'Between 0 and 100. Added to the platform fee and locked onto each campaign on behalf of others when it is created.'
+
+function onBehalfLimitInvalid(plan: SubscriptionPlan): boolean {
+  return !Number.isInteger(plan.maxOnBehalfCampaigns) || plan.maxOnBehalfCampaigns < -1
+}
+
+function onBehalfFeeInvalid(plan: SubscriptionPlan): boolean {
+  return !Number.isFinite(plan.onBehalfFeePercent) || plan.onBehalfFeePercent < 0 || plan.onBehalfFeePercent > 100
+}
+
+/** Why the on-behalf fields cannot be saved (the API's plan schema), or null. */
+function onBehalfError(plan: SubscriptionPlan): string | null {
+  if (onBehalfLimitInvalid(plan)) return 'Active campaigns on behalf of others must be a whole number, or -1 for unlimited.'
+  if (onBehalfFeeInvalid(plan)) return 'The extra fee on campaigns on behalf of others must be between 0 and 100%.'
+  return null
+}
+
+/** Shown beside the on-behalf limit in both plan dialogs. */
+function OnBehalfFeeField({ plan, onChange }: { plan: SubscriptionPlan; onChange: (value: number) => void }) {
+  const invalid = onBehalfFeeInvalid(plan)
+  return (
+    <TextField
+      label="Extra fee on those campaigns"
+      type="number"
+      size="small"
+      value={plan.onBehalfFeePercent}
+      onChange={(e) => onChange(Number(e.target.value))}
+      error={invalid}
+      InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+      inputProps={{ min: 0, max: 100, step: 'any' }}
+      helperText={invalid ? 'Enter a percentage between 0 and 100.' : FEE_HELP}
+    />
+  )
+}
 
 /** The editable subset sent to `PUT /plans/:tier` (tier is immutable). */
 function toPatch(plan: SubscriptionPlan): UpdateSubscriptionPlanInput {
@@ -81,6 +126,7 @@ function blankPlan(nextSortOrder: number): SubscriptionPlan {
     liveStreaming: false, maxTeamMembers: 1, campaignCollaboration: false,
     maxCollaboratorsPerCampaign: 0,
     maxPayoutAccounts: 1,
+    onBehalfCampaigns: false, maxOnBehalfCampaigns: 0, onBehalfFeePercent: 0,
     sortOrder: nextSortOrder, active: true, isPublic: true, accentColor: '#2E3D2F', popular: false,
   }
 }
@@ -131,6 +177,11 @@ export default function ManagePlansPage() {
 
   async function handleSave() {
     if (!form) return
+    const invalid = onBehalfError(form)
+    if (invalid) {
+      setMessage({ text: invalid, severity: 'error' })
+      return
+    }
     setSaving(true)
     try {
       const updated = await api.put<SubscriptionPlan>(`/plans/${form.tier}`, toPatch(form))
@@ -169,6 +220,11 @@ export default function ManagePlansPage() {
       setMessage({ text: 'Tier id must be lowercase letters/digits/-/_ (min 2 chars).', severity: 'error' })
       return
     }
+    const invalid = onBehalfError(createForm)
+    if (invalid) {
+      setMessage({ text: invalid, severity: 'error' })
+      return
+    }
     setSaving(true)
     try {
       const created = await api.post<SubscriptionPlan>('/plans', createForm)
@@ -198,7 +254,7 @@ export default function ManagePlansPage() {
           { label: 'Paid tiers', value: isLoading ? <Skeleton width={40} /> : error ? '—' : paidCount },
           { label: 'Editing', value: canUpdate ? 'Enabled' : 'View only' },
         ]}
-      actions={<ExportMenu title="Subscription plans" disabled={isLoading || !!error} getReport={() => ({ title: "Subscription plans", filters: ['Published configuration'], tables: [exportTable("Subscription plans", plans, { Tier: r => r.tier, Name: r => r.name, 'Monthly (GHS)': r => r.priceMonthly, 'Yearly (GHS)': r => r.priceYearly, 'Platform fee (%)': r => r.platformFeePercent, 'Active campaigns': r => r.maxActiveCampaigns, 'Maximum goal (GHS)': r => r.maxCampaignGoal, Description: r => r.description })] })} />}
+      actions={<ExportMenu title="Subscription plans" disabled={isLoading || !!error} getReport={() => ({ title: "Subscription plans", filters: ['Published configuration'], tables: [exportTable("Subscription plans", plans, { Tier: r => r.tier, Name: r => r.name, 'Monthly (GHS)': r => r.priceMonthly, 'Yearly (GHS)': r => r.priceYearly, 'Platform fee (%)': r => r.platformFeePercent, 'Active campaigns': r => r.maxActiveCampaigns, 'Maximum goal (GHS)': r => r.maxCampaignGoal, 'Campaigns on behalf of others': r => r.onBehalfCampaigns, 'On-behalf active limit': r => r.maxOnBehalfCampaigns, 'On-behalf extra fee (%)': r => r.onBehalfFeePercent, Description: r => r.description })] })} />}
       />
 
 
@@ -267,6 +323,9 @@ export default function ManagePlansPage() {
                       ['Active campaigns', limitDisplay(plan.maxActiveCampaigns)],
                       ['Payout accounts', limitDisplay(plan.maxPayoutAccounts ?? 1)],
                       ['Campaign goal', plan.maxCampaignGoal === -1 ? 'Unlimited' : `GH₵ ${plan.maxCampaignGoal.toLocaleString()}`],
+                      ...(plan.onBehalfCampaigns
+                        ? [['On behalf of others', `${limitDisplay(plan.maxOnBehalfCampaigns)} active · +${plan.onBehalfFeePercent}% fee`]]
+                        : []),
                     ].map(([label, value]) => (
                       <Box key={label}>
                         <Typography component="dt" variant="caption" color="text.secondary">{label}</Typography>
@@ -343,9 +402,11 @@ export default function ManagePlansPage() {
                     size="small"
                     value={form[limit.key] as number}
                     onChange={(e) => setField(limit.key, Number(e.target.value) as SubscriptionPlan[typeof limit.key])}
-                    helperText={limit.unlimited ? '-1 = unlimited' : undefined}
+                    error={limit.invalid?.(form)}
+                    helperText={limit.invalid?.(form) ? LIMIT_ERROR : limit.help ?? (limit.unlimited ? '-1 = unlimited' : undefined)}
                   />
                 ))}
+                <OnBehalfFeeField plan={form} onChange={(value) => setField('onBehalfFeePercent', value)} />
               </Box>
               <Box sx={{ display: 'flex', gap: 2 }}>
                 <TextField label="Sort order" type="number" size="small" fullWidth value={form.sortOrder} onChange={(e) => setField('sortOrder', Number(e.target.value))} helperText="Lower = shown first" />
@@ -417,9 +478,11 @@ export default function ManagePlansPage() {
                     key={limit.key} label={limit.label} type="number" size="small"
                     value={createForm[limit.key] as number}
                     onChange={(e) => setCreateField(limit.key, Number(e.target.value) as SubscriptionPlan[typeof limit.key])}
-                    helperText={limit.unlimited ? '-1 = unlimited' : undefined}
+                    error={limit.invalid?.(createForm)}
+                    helperText={limit.invalid?.(createForm) ? LIMIT_ERROR : limit.help ?? (limit.unlimited ? '-1 = unlimited' : undefined)}
                   />
                 ))}
+                <OnBehalfFeeField plan={createForm} onChange={(value) => setCreateField('onBehalfFeePercent', value)} />
               </Box>
               <Box sx={{ display: 'flex', gap: 2 }}>
                 <TextField label="Sort order" type="number" size="small" fullWidth value={createForm.sortOrder} onChange={(e) => setCreateField('sortOrder', Number(e.target.value))} helperText="Lower = shown first" />

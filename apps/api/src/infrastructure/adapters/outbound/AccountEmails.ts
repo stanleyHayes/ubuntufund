@@ -7,6 +7,7 @@ import { EmailVerificationTokenModel } from '../../database/models/EmailVerifica
 import { UserModel } from '../../database/models/UserModel.js';
 import { NewsletterSubscriptionModel } from '../../database/models/NewsletterSubscriptionModel.js';
 import { NewsletterConsentTokenModel } from '../../database/models/NewsletterConsentTokenModel.js';
+import { CampaignBeneficiaryInvitationModel } from '../../database/models/CampaignBeneficiaryInvitationModel.js';
 import { MongoUnitOfWork } from './persistence/MongoUnitOfWork.js';
 
 const digest = (text: string) => createHash('sha256').update(text).digest('hex');
@@ -66,7 +67,10 @@ export class AccountEmails {
       try {
         const tokenFilter = { tokenHash: job.tokenHash, usedAt: { $exists: false }, expiresAt: { $gt: new Date() } };
         let eligible = false;
-        if (job.purpose === 'newsletter_confirmation') {
+        if (job.purpose === 'beneficiary_invitation') {
+          // A resend, reassignment, decision or expiry makes the old link useless: never send it.
+          eligible = !!(await CampaignBeneficiaryInvitationModel.exists({ _id: job.invitationId, tokenHash: job.tokenHash, emailHash: job.emailHash, status: 'pending', expiresAt: { $gt: new Date() } }));
+        } else if (job.purpose === 'newsletter_confirmation') {
           const subscription = await NewsletterSubscriptionModel.findOne({ _id: job.newsletterId, status: 'pending', confirmationTokenHash: job.tokenHash });
           const token = await NewsletterConsentTokenModel.exists({ subscriptionId: job.newsletterId, tokenHash: job.tokenHash, purpose: 'confirm', expiresAt: { $gt: new Date() } });
           eligible = !!subscription && !!token && digest(subscription.email) === job.emailHash;
@@ -106,6 +110,31 @@ export class AccountEmails {
     const payload = { from: this.sender.from, reply_to: this.sender.replyTo, to: [user.email], subject: 'Your Ujimora privacy request has a response',
       text: `We have responded to your privacy request (reference ${requestId}).\n\nFor your security the response is not included in this email. Sign in and open Settings, then "Your data and privacy requests", to read or download it:\n\n${this.sender.webUrl}/settings\n\nIf you did not make this request, contact ${this.sender.replyTo}.` };
     await AccountEmailJobModel.create({ userId: user.id, purpose, tokenHash, authVersion: user.authVersion ?? '', emailHash: digest(user.email), expiresAt: new Date(Date.now() + 24 * 3600_000), encryptedPayload: this.encrypt(payload, tokenHash, purpose) });
+  }
+
+  /**
+   * Called inside the transaction that creates or re-sends a beneficiary
+   * invitation, so the email is queued only if the invitation commits. The
+   * token appears only in this encrypted payload and the recipient's inbox.
+   */
+  async enqueueBeneficiaryInvitation(input: {
+    invitationId: string; email: string; token: string; expiresAt: Date;
+    organizerName: string; campaignTitle: string; beneficiaryName: string;
+    payoutArrangement: 'beneficiary' | 'organization'; publicationRequiresConsent: boolean;
+  }): Promise<void> {
+    if (!this.configured) throw new Error('Beneficiary invitation email unavailable');
+    const tokenHash = digest(input.token), purpose = 'beneficiary_invitation';
+    const oneLine = (value: string) => value.replace(/[\r\n]+/g, ' ').trim();
+    const organizer = oneLine(input.organizerName), title = oneLine(input.campaignTitle);
+    const expires = input.expiresAt.toUTCString().replace(/ GMT$/, ' GMT');
+    const payout = input.payoutArrangement === 'beneficiary'
+      ? 'Funds raised would be paid to you, into your own verified payout account.'
+      : `Funds raised would be paid to ${organizer}, who asks to receive them on your behalf. Only accept this if you agree to it.`;
+    const gate = input.publicationRequiresConsent ? 'It will not go live, collect donations or pay out money' : 'It will not collect donations or pay out money';
+    const payload = { from: this.sender.from, reply_to: this.sender.replyTo, to: [input.email],
+      subject: `${organizer} created a fundraising campaign for you on Ujimora`.slice(0, 150),
+      text: `${organizer} has created a fundraising campaign on Ujimora for ${oneLine(input.beneficiaryName)}: "${title}".\n\n${gate} until you review it and accept.\n\nReview, accept or decline here:\n${this.sender.webUrl}/beneficiary-invitation#token=${input.token}\n\n${payout}\n\nThis link expires on ${expires} and works once. Do not share it: whoever opens it can accept or decline for you. If you do not recognise this, you can decline or ignore this email.\n\nQuestions: ${this.sender.replyTo}` };
+    await AccountEmailJobModel.create({ invitationId: input.invitationId, purpose, tokenHash, emailHash: digest(input.email.trim().toLowerCase()), expiresAt: input.expiresAt, encryptedPayload: this.encrypt(payload, tokenHash, purpose) });
   }
 
   /** Called in the newsletter consent transaction. */

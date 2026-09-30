@@ -40,12 +40,12 @@ function walk(dir: string): string[] {
 const PUBLISHED: Record<string, { effectiveDate: string; sha256: string }> = {
   'delete-account': { effectiveDate: '12 September 2026', sha256: '48e5b632cb69db39c35b692401529532380183e6d01682c7c65374ad4b8cdb22' },
   terms: { effectiveDate: '25 September 2026', sha256: '1f44b9d86dfe7ac265d93c52089accadca157b563c19dd866bc8aeb10432df7c' },
-  privacy: { effectiveDate: '25 September 2026', sha256: '666da95f215522afe237612fc3441c40ae87d0f2b9c9f1b1d2296c285112677a' },
-  'organizer-agreement': { effectiveDate: '25 September 2026', sha256: '5e0da530417c8997b64dd755734651427d7360f18be4ea5bcd128f534a9a1302' },
-  'contributor-terms': { effectiveDate: '8 September 2026', sha256: '86000771228c6023d82cb8c96cdafcb8ef18a4c304455c0f543235cc8a879cfe' },
+  privacy: { effectiveDate: '29 September 2026', sha256: 'a8f92b3fff93b2c617d926a630225e9c80d4999fbafb41deb00bc3b48a0cf6ed' },
+  'organizer-agreement': { effectiveDate: '29 September 2026', sha256: 'aedef5be09b2bfd0e4f31b95e0f3f86897f55f847c454f4aba025ea293c0e808' },
+  'contributor-terms': { effectiveDate: '29 September 2026', sha256: 'be6e46a7e246dfedebb5d5a7deea945468655fb525cd320cfec15414640530dc' },
   'refund-policy': { effectiveDate: '8 September 2026', sha256: '8391898b228ebf3664bc903b28a30ba398d4e8444600d428092966e15cec7765' },
   'acceptable-use': { effectiveDate: '8 September 2026', sha256: '255d7c5a5c588e8d1a4e650be17a82a4f8f08af1a06209f86c21d7bffa44d78f' },
-  cookies: { effectiveDate: '25 September 2026', sha256: 'd739f21890eca573046d80b24be7b8d911009fc5aa9d7beee10d589860cf242a' },
+  cookies: { effectiveDate: '29 September 2026', sha256: 'bcc4280d7e272264bb715dd96ff7edd19f9bbfaf592bdd6c87e51e5e75334a34' },
   'billing-terms': { effectiveDate: '25 September 2026', sha256: '7c2a73ad1bb1fcd89ae853cf24a79f5d79789ac126aed11c62398c8790630fe3' },
 }
 

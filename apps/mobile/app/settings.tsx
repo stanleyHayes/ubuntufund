@@ -6,6 +6,7 @@ import { isPublicationHeld } from '@/lib/publicationDrafts'
 import { DataRightsRequests } from '@/components/DataRightsRequests'
 import { ActivityAlertSettings } from '@/components/ActivityAlertSettings'
 import { NewsletterSettings } from '@/components/NewsletterSettings'
+import { DonorMessageSettings } from '@/components/DonorMessageSettings'
 import { BlockedUsers } from '@/components/BlockedUsers'
 import { DeleteAccountSection } from '@/components/DeleteAccountSection'
 import { TouchableRipple } from '@/components/RoundedControls'
@@ -324,6 +325,7 @@ export default function SettingsScreen() {
             <View style={styles.card}>
               <ActivityAlertSettings />
               <NewsletterSettings />
+              <DonorMessageSettings key={user.id} />
               <Text>SMS and device push notifications are not available yet. Choose inbox alerts or emails above for supported activity updates.</Text>
             </View>
 

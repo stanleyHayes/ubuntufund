@@ -8,13 +8,15 @@ import type { SavedAccount } from './SavedPayoutAccounts'
 import { useEffect, useState, useRef } from 'react'
 import { AppState, View } from 'react-native'
 import { PayoutHistoryCard } from './PayoutHistoryCard'
-import { Text } from 'react-native-paper'
+import { Icon, Text } from 'react-native-paper'
 import type { Payout, PayoutType } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
+import { confirmAction } from '@/lib/confirmDestructive'
+import { cashoutConfirmPrompt, fundsRaisedFor } from '@/lib/onBehalf'
 import { Button, Skeleton } from './Loading'
 import { BrandedTextInput as Input } from './BrandedTextInput'
 import { SelectionField } from './SelectionField'
-import { useNeu } from '@/context/ColorModeContext'
+import { useNeu, usePalette } from '@/context/ColorModeContext'
 type Options = {
   breakdown?: CampaignPayoutBreakdown
   eligible: number
@@ -28,7 +30,12 @@ type Options = {
   } | null
 }
 const round = (n: number) => Math.round(n * 100) / 100
-export function CampaignCashout({ campaignId }: { campaignId: string }) {
+/**
+ * `beneficiaryName` is set for a campaign run on someone's behalf: the form and
+ * the confirmation name who the money was raised for next to the destination,
+ * so a payout cannot go to the wrong place by mistake.
+ */
+export function CampaignCashout({ campaignId, beneficiaryName }: { campaignId: string; beneficiaryName?: string }) {
   const [destination, setDestination] = useState('paystack')
   const requestKey = useRef({ details: '', key: '' })
   const [accounts, setAccounts] = useState<SavedAccount[]>([])
@@ -46,6 +53,7 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
     }
   }, [])
   const neu = useNeu()
+  const palette = usePalette()
   const [options, setOptions] = useState<Options | null>(null)
   const [history, setHistory] = useState<Payout[]>([])
   const [banks, setBanks] = useState<{ code: string; name: string }[]>([])
@@ -188,6 +196,20 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
       setBusy(false)
     }
   }
+  const paidTo =
+    destination === 'ujimora_wallet'
+      ? 'Your Ujimora Wallet'
+      : options?.recipient
+        ? `${options.recipient.accountName} · ending ${options.recipient.last4}`
+        : 'No verified payout account yet'
+  async function requestCashout() {
+    // On a campaign run for someone else, confirm who the money was raised for and where it goes.
+    if (beneficiaryName) {
+      const prompt = cashoutConfirmPrompt({ beneficiaryName, destination, recipient: options?.recipient, amount: value, receive: round(value - fee) })
+      if (!(await confirmAction(prompt))) return
+    }
+    await submit(false)
+  }
   return (
     <View style={{ ...neu.raised, padding: 20, borderRadius: 20, gap: 16 }}>
       <Text variant="titleLarge">Cashout & payout history</Text>
@@ -254,6 +276,23 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
               { value: 'ujimora_wallet', label: 'Ujimora Wallet' },
             ]}
           />
+          {beneficiaryName && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+                padding: 12,
+                borderRadius: 12,
+                backgroundColor: `${palette.primary}14`,
+              }}
+            >
+              <Icon source="hand-heart-outline" size={20} color={palette.primary} />
+              <Text style={{ flex: 1, fontWeight: '700', color: palette.text }}>
+                {fundsRaisedFor(beneficiaryName)}
+              </Text>
+            </View>
+          )}
           {destination === 'ujimora_wallet' ? (
             <Text>
               The net amount will be credited to your GHS wallet after admin approval. The same fees
@@ -364,6 +403,19 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
           <Text>Maximum GHS {cap.toFixed(2)}</Text>
           {value > 0 && Number.isFinite(fee) && (
             <View style={{ gap: 8, paddingVertical: 12 }}>
+              {beneficiaryName &&
+                [
+                  ['Funds raised for', beneficiaryName],
+                  ['Paid to', paidTo],
+                ].map(([label, text]) => (
+                  <View
+                    key={label}
+                    style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}
+                  >
+                    <Text style={{ flex: 1 }}>{label}</Text>
+                    <Text style={{ flex: 1, fontWeight: '700', textAlign: 'right' }}>{text}</Text>
+                  </View>
+                ))}
               {[
                 ['Amount requested', value],
                 ['Additional cashout service fee', -fee],
@@ -393,7 +445,7 @@ export function CampaignCashout({ campaignId }: { campaignId: string }) {
               value <= fee ||
               value > cap
             }
-            onPress={() => void submit(false)}
+            onPress={() => void requestCashout()}
           >
             Request cashout
           </Button>

@@ -69,6 +69,12 @@ export interface SubscriptionPlan {
   /** Max collaborators per campaign (-1 = unlimited) */
   maxPayoutAccounts?: number
   maxCollaboratorsPerCampaign: number
+  /** Whether the plan can run campaigns on behalf of another beneficiary. */
+  onBehalfCampaigns: boolean
+  /** Active on-behalf campaigns allowed (-1 = unlimited, still within maxActiveCampaigns). */
+  maxOnBehalfCampaigns: number
+  /** Extra platform fee % locked onto each on-behalf campaign at creation (0 = none). */
+  onBehalfFeePercent: number
   // ── Admin-managed presentation & lifecycle (v6 §16) ───────────────────────
   /** Display order, cheapest → richest; admins reorder without a deploy. */
   sortOrder: number
@@ -127,6 +133,9 @@ export interface UpdateSubscriptionPlanInput {
   maxTeamMembers?: number
   maxPayoutAccounts?: number
   maxCollaboratorsPerCampaign?: number
+  onBehalfCampaigns?: boolean
+  maxOnBehalfCampaigns?: number
+  onBehalfFeePercent?: number
   sortOrder?: number
   active?: boolean
   isPublic?: boolean
@@ -159,6 +168,9 @@ export interface CreatePlanInput {
   campaignCollaboration?: boolean
   maxPayoutAccounts?: number
   maxCollaboratorsPerCampaign?: number
+  onBehalfCampaigns?: boolean
+  maxOnBehalfCampaigns?: number
+  onBehalfFeePercent?: number
   sortOrder?: number
   active?: boolean
   isPublic?: boolean
@@ -287,6 +299,9 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     campaignCollaboration: false,
     maxPayoutAccounts: 1,
     maxCollaboratorsPerCampaign: 0,
+    onBehalfCampaigns: false,
+    maxOnBehalfCampaigns: 0,
+    onBehalfFeePercent: 0,
     sortOrder: 0,
     active: true,
     isPublic: true,
@@ -312,6 +327,9 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     campaignCollaboration: false,
     maxPayoutAccounts: 2,
     maxCollaboratorsPerCampaign: 0,
+    onBehalfCampaigns: false,
+    maxOnBehalfCampaigns: 0,
+    onBehalfFeePercent: 0,
     sortOrder: 1,
     active: true,
     isPublic: true,
@@ -337,6 +355,9 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     campaignCollaboration: true,
     maxPayoutAccounts: 3,
     maxCollaboratorsPerCampaign: 3,
+    onBehalfCampaigns: false,
+    maxOnBehalfCampaigns: 0,
+    onBehalfFeePercent: 0,
     sortOrder: 2,
     active: true,
     isPublic: true,
@@ -363,6 +384,9 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     campaignCollaboration: true,
     maxPayoutAccounts: 5,
     maxCollaboratorsPerCampaign: 10,
+    onBehalfCampaigns: true,
+    maxOnBehalfCampaigns: -1,
+    onBehalfFeePercent: 0,
     sortOrder: 3,
     active: true,
     isPublic: true,
@@ -388,6 +412,9 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     campaignCollaboration: true,
     maxPayoutAccounts: -1,
     maxCollaboratorsPerCampaign: -1, // unlimited
+    onBehalfCampaigns: true,
+    maxOnBehalfCampaigns: -1,
+    onBehalfFeePercent: 0,
     sortOrder: 4,
     active: true,
     isPublic: true,

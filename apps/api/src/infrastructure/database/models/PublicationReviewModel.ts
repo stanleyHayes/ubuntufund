@@ -3,7 +3,7 @@ import mongoose, { Schema } from 'mongoose';
 const schema = new Schema({
   actorId: { type: String, required: true, index: true },
   fingerprint: { type: String, required: true, unique: true },
-  action: { type: String, enum: ['live.start', 'account.profile', 'organization.profile', 'creator.profile', 'campaign.create', 'campaign.slug', 'comment.create', 'update.create', 'update.edit'], required: true },
+  action: { type: String, enum: ['live.start', 'account.profile', 'organization.profile', 'creator.profile', 'campaign.create', 'campaign.slug', 'comment.create', 'update.create', 'update.edit', 'thank_you.send'], required: true },
   resourceId: { type: String, required: true },
   baseVersion: String,
   consumptionWriteVersion: { type: Number, default: 0 },

@@ -7,16 +7,29 @@ The legal pack is defined in `packages/types/src/legal.ts` and rendered on the m
 | Policy | Effective | Earlier text |
 | --- | --- | --- |
 | Terms of Use | 25 September 2026 | 8 September 2026 text: `git show 01ccfaa4:packages/types/src/legal.ts` |
-| Privacy Notice | 25 September 2026 | 8 September 2026 text: `git show 01ccfaa4:packages/types/src/legal.ts` |
-| Campaign Organizer Agreement | 25 September 2026 | 8 September 2026 text: `git show 01ccfaa4:packages/types/src/legal.ts` |
-| Cookie Notice | 25 September 2026 | 8 September 2026 text: `git show 01ccfaa4:packages/types/src/legal.ts` |
+| Privacy Notice | 29 September 2026 | 25 September 2026 text: `git show 208dfc56:packages/types/src/legal.ts`. 8 September 2026 text: `git show 01ccfaa4:packages/types/src/legal.ts` |
+| Campaign Organizer Agreement | 29 September 2026 | 25 September 2026 text: `git show 208dfc56:packages/types/src/legal.ts`. 8 September 2026 text: `git show 01ccfaa4:packages/types/src/legal.ts` |
+| Cookie Notice | 29 September 2026 | 25 September 2026 text: `git show 208dfc56:packages/types/src/legal.ts`. 8 September 2026 text: `git show 01ccfaa4:packages/types/src/legal.ts` |
 | Subscription & Billing Terms | 25 September 2026 | 8 September 2026 text: `git show 01ccfaa4:packages/types/src/legal.ts` |
-| Contributor & Donor Terms | 8 September 2026 | None. Unchanged since first published. |
+| Contributor & Donor Terms | 29 September 2026 | 8 September 2026 text: `git show 208dfc56:packages/types/src/legal.ts` |
 | Payout, Refund & Failed Campaign Policy | 8 September 2026 | None. Unchanged since first published. |
 | Acceptable Use & Prohibited Campaigns | 8 September 2026 | None. Unchanged since first published. |
 | Delete your Ujimora account | 12 September 2026 | None. Unchanged since first published. |
 
 Commit `01ccfaa4` is `main` as it stood before the launch fixes were merged. Its policy text is the text dated 8 September 2026. `apps/marketing/__tests__/legalClaims.test.ts` stores a fingerprint of each policy's text. The test fails when a policy's text changes but its date stays the same, and when this table does not list a policy's current date.
+
+## 29 September 2026 revision
+
+These changes come with two features: campaigns run on behalf of a beneficiary, and donor thank-you messages.
+
+- **Privacy Notice:** two new sections. *Thank-you messages from campaigns you support* covers how recipients are chosen and emailed through Resend; organizers see counts only; what the delivery records hold; and unsubscribing by link or in Settings. *Campaigns run for someone else* covers the beneficiary's name, email, relationship and reason; that the email is used only for the invitation and deleted once they decide; and the consent evidence we record (decision, time, terms version, a fingerprint of what they saw, and the IP and browser of the person deciding). The automated-screening section now lists thank-you messages among the texts that can be screened.
+- **Campaign Organizer Agreement:** new section 12 (campaigns run on behalf of a beneficiary). It covers permission and accuracy, the beneficiary's acceptance as a gate, managing a campaign giving no right to its funds, organizations that receive funds for a beneficiary, beneficiary changes, and the on-behalf platform fee. New section 13 sets content rules for thank-you messages to donors.
+- **Contributor & Donor Terms:** new section 11 (what the page shows about a beneficiary, when contributions open, and where funds go) and section 12 (thank-you messages and how to stop them).
+- **Cookie Notice:** discloses `uf_beneficiary_invitation` (session storage), which keeps an invitation open across sign-in.
+
+`LEGAL_ACCEPTANCE_VERSION` does not change. The Organizer Agreement is accepted each time a campaign is submitted, so the new text applies to campaigns submitted after the deploy.
+
+- Deployed to production: _not yet recorded_
 
 ## 25 September 2026 revision
 

@@ -707,6 +707,7 @@ export default function SubscriptionScreen() {
                   // custom branding are not built, so they are not advertised.
                   plan.escrowSupport ? 'Split proceeds' : null,
                   plan.liveStreaming ? 'Live streaming' : null,
+                  plan.onBehalfCampaigns ? 'Campaigns on behalf of others' : null,
                   plan.tier !== 'free' && (plan.priceMonthly > 0 || plan.priceYearly > 0) ? 'Creator profile donations (active paid plan)' : null,
                 ].filter(Boolean).map((feat) => (
                   <View key={feat} style={styles.featureRow}>

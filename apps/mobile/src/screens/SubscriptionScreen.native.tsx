@@ -194,7 +194,7 @@ function StorePlans({ userId }: { userId: string }) {
           <Text variant="titleLarge" style={{ color: p.text }}>{entry.plan.name}</Text>
           <Text style={{ color: p.textSecondary }}>{entry.plan.description}</Text>
           <Text variant="headlineSmall" style={{ color: p.text }}>{price ? `${price.displayPrice} / ${cycle === BillingCycle.MONTHLY ? 'month' : 'year'}` : 'Store price unavailable'}</Text>
-          <Text style={{ color: p.textSecondary }}>{entry.plan.maxActiveCampaigns < 0 ? 'Unlimited active campaigns' : `${entry.plan.maxActiveCampaigns} active campaigns`}{entry.plan.liveStreaming ? ' · Live streaming' : ''}{entry.plan.campaignCollaboration ? ' · Campaign collaboration' : ''}</Text>
+          <Text style={{ color: p.textSecondary }}>{entry.plan.maxActiveCampaigns < 0 ? 'Unlimited active campaigns' : `${entry.plan.maxActiveCampaigns} active campaigns`}{entry.plan.liveStreaming ? ' · Live streaming' : ''}{entry.plan.campaignCollaboration ? ' · Campaign collaboration' : ''}{entry.plan.onBehalfCampaigns ? ' · Campaigns on behalf of others' : ''}</Text>
           <Text style={{ color: p.textSecondary }}>Renews automatically at the store price unless cancelled. Any eligible introductory offer, price change or plan-change adjustment is shown by {storeName} before confirmation.</Text>
           <Button mode="contained" loading={busy} disabled={busy || !price || !iap.connected || !!selected} onPress={() => void buy(entry)}>{selected ? 'Current plan' : paid ? 'Change plan' : 'Subscribe'}</Button>
         </GlassSurface>

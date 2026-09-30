@@ -33,10 +33,12 @@ import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded'
 import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded'
 import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded'
 import AnnouncementRoundedIcon from '@mui/icons-material/AnnouncementRounded'
+import VolunteerActivismRoundedIcon from '@mui/icons-material/VolunteerActivismRounded'
 import { Link as RouterLink } from 'react-router-dom'
 import { formatCurrency, EmptyState, SHAPE } from '@ubuntu-fund/ui'
 import { CampaignStatus, CampaignPriority } from '@ubuntu-fund/types'
 import type { Campaign } from '@ubuntu-fund/types'
+import { BeneficiaryCampaigns } from '@/components/campaigns/BeneficiaryCampaigns'
 
 // ─── Constants ─────────────────────────────────────────────
 
@@ -122,7 +124,10 @@ function CampaignRow({
 }) {
   const [hovered, setHovered] = useState(false)
   const pct = Math.min(Math.round((campaign.raisedAmount / campaign.goalAmount) * 100), 100)
-  const statusCfg = STATUS_CONFIG[effectiveStatus(campaign)] ?? STATUS_CONFIG[CampaignStatus.DRAFT]
+  const status = effectiveStatus(campaign)
+  const statusCfg = STATUS_CONFIG[status] ?? STATUS_CONFIG[CampaignStatus.DRAFT]
+  // Thank-yous open once a campaign ends (or pays out); the page explains which.
+  const canThank = status === CampaignStatus.EXPIRED || status === CampaignStatus.FUNDED
   const priorityCfg = PRIORITY_CONFIG[campaign.priority]
   const hasImage = campaign.imageUrls.length > 0
 
@@ -316,6 +321,19 @@ function CampaignRow({
           </Box>
 
           <Box sx={{ display: 'flex', gap: 0.5 }}>
+            {canThank && (
+              <Tooltip title="Thank your donors" arrow>
+                <IconButton
+                  component={RouterLink}
+                  to={`/campaigns/${campaign.id}/thank-you`}
+                  size="small"
+                  aria-label={`Thank the donors of ${campaign.title}`}
+                  sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main', bgcolor: 'rgba(46, 61, 47,0.06)' } }}
+                >
+                  <VolunteerActivismRoundedIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Tooltip>
+            )}
             <Tooltip title="View" arrow>
               <IconButton
                 component={RouterLink}
@@ -424,6 +442,7 @@ export function MyCampaignsPage() {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <AccountHeading title="My campaigns" description="Manage your fundraisers, track progress, and plan your next update." icon={<CampaignIcon />} />
+      <BeneficiaryCampaigns />
       {/* Summary stats */}
       <Box sx={{ display: 'flex', gap: 2, mb: 4, flexWrap: 'wrap' }}>
         <StatCard label="Total Raised" value={formatCurrency(totalRaised, 'GHS')} color="var(--text-brand)" icon={<TrendingUpIcon />} />

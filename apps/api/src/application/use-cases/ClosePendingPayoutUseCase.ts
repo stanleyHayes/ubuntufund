@@ -9,6 +9,7 @@ import { roundToCurrency } from '../../domain/value-objects/Money.js'
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js'
 import { toPayoutDto } from './mappers/payoutDto.js'
 import type { PayoutRequester } from './CreatePayoutRecipientUseCase.js'
+import { payoutAuthorityOf } from '../../domain/services/campaignPayoutAuthority.js'
 
 /** Minimum length of an admin rejection reason (it is shown to the owner). */
 export const PAYOUT_REJECTION_REASON_MIN = 20
@@ -62,7 +63,9 @@ export class ClosePendingPayoutUseCase {
     // Same 404 for a payout on another campaign: never confirm it exists.
     if (!payout || payout.campaignId !== campaignId) throw new AppError('Payout not found', 404)
     const campaign = await this.campaignRepo.findById(campaignId)
-    if (!campaign || campaign.creatorId !== requester.userId)
+    // Whoever holds payout authority, or whoever made this request (authority
+    // can move by staff decision while a request is still pending).
+    if (!campaign || (payoutAuthorityOf(campaign) !== requester.userId && payout.requestedBy !== requester.userId))
       throw new AppError('Only the campaign owner can cancel this payout request', 403)
     return this.close(payout.id, requester, 'cancelled', reason?.trim() || 'Cancelled by the campaign owner.')
   }

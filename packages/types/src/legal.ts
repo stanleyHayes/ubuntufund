@@ -51,6 +51,7 @@ const E = LEGAL_ENTITY.emails
  * separate owner decision.
  */
 const REVISED_25_SEPTEMBER_2026 = '25 September 2026'
+const REVISED_29_SEPTEMBER_2026 = '29 September 2026'
 
 /**
  * The registered-company clause used in the opening section of the Terms and the
@@ -251,12 +252,12 @@ Circumvention of subscription, campaign, payment or risk controls.`,
     panelBody: 'This notice covers account data, campaign records, payments, security, retention, and your rights under Act 843.',
     introduction:
       'At Ujimora, we are committed to protecting your privacy and the security of your personal information. This notice explains how we collect, use, share, retain, and protect data when you use the platform.',
-    effectiveDate: REVISED_25_SEPTEMBER_2026,
+    effectiveDate: REVISED_29_SEPTEMBER_2026,
     sections: [
       { title: "Blockchain and crypto payment information", content: "Where you use crypto checkout, payment records may include wallet addresses, network, asset, transaction hash, memo or tag, quote, campaign-currency value and provider references. We use relevant records to match and confirm contributions, investigate failures and support required compliance checks with payment partners. Blockchain transactions can be public and persistent; hiding your name on a campaign does not make a blockchain transfer anonymous. We cannot erase records on public blockchains." },
       {
         title: 'AI writing and safety screening',
-        content: 'For account and organization identity changes, creator-page changes, campaign creation, campaign URL changes, comments and campaign updates, automated text screening is optional and requires your permission for that submission. If you opt in, the proposed public text is sent to OpenAI for safety screening. Otherwise staff review it; flagged text and attached media also require staff review. Proposed versions and decisions stay in a private publication-review record for up to 30 days, with scheduled deletion, and operational review records are removed on account closure. An approved version must be submitted again within seven days; an approval does not authorize changed content, a campaign goal or any payment. Staff audit records may be retained separately for accountability. When you explicitly request AI writing, your text, instructions and generated draft are processed by OpenAI for writing assistance and safety screening. Flagged drafts are withheld; unavailable screening does not approve a draft. Ujimora records usage and your request-specific permission without storing raw writing input or output in its usage log. A result fingerprint lets us validate safety reports. If you choose Report on a suggestion, the original generated text and your report are saved in the restricted moderation queue for review and follow-up. Review suggestions before using them. Automated checks can make mistakes and do not verify facts or replace human moderation; contact support if a request needs review.',
+        content: 'For account and organization identity changes, creator-page changes, campaign creation, campaign URL changes, comments, campaign updates and thank-you messages to donors, automated text screening is optional and requires your permission for that submission. If you opt in, the proposed public text is sent to OpenAI for safety screening. Otherwise staff review it; flagged text and attached media also require staff review. Proposed versions and decisions stay in a private publication-review record for up to 30 days, with scheduled deletion, and operational review records are removed on account closure. An approved version must be submitted again within seven days; an approval does not authorize changed content, a campaign goal or any payment. Staff audit records may be retained separately for accountability. When you explicitly request AI writing, your text, instructions and generated draft are processed by OpenAI for writing assistance and safety screening. Flagged drafts are withheld; unavailable screening does not approve a draft. Ujimora records usage and your request-specific permission without storing raw writing input or output in its usage log. A result fingerprint lets us validate safety reports. If you choose Report on a suggestion, the original generated text and your report are saved in the restricted moderation queue for review and follow-up. Review suggestions before using them. Automated checks can make mistakes and do not verify facts or replace human moderation; contact support if a request needs review.',
       },
       {
         title: '1. Controller and scope',
@@ -294,6 +295,14 @@ Send marketing only where permitted and with applicable choice or consent.`,
       {
         title: 'Optional activity alerts and emails',
         content: 'In Settings, you can separately opt in to notification-inbox alerts and emails about donations, creator support, withdrawals and payouts, refunds, wallet activity and subscriptions. Each activity and channel starts off. We store your choices and their change times and use relevant transaction details to prepare the updates you select. Activity emails use our email delivery provider, Resend, and require a verified account email. You can turn a choice off at any time; this stops queued messages that have not already been sent. These choices do not subscribe you to marketing. Account verification, password recovery and password-change security notices remain separate. Decisions our team makes on your own campaigns, verification applications and reports appear in your notification inbox as service notices. Newsletter and promotional emails require a separate request and email confirmation. We record when you request, confirm or withdraw that choice. You can turn newsletter emails off in Settings or use the unsubscribe link without signing in. Confirmation emails use Resend. Previously collected addresses without confirmed consent are excluded from the mailing list.',
+      },
+      {
+        title: 'Thank-you messages from campaigns you support',
+        content: 'After a campaign ends or a payout is made, its organizer or beneficiary may send its donors a thank-you message through Ujimora. Ujimora limits how many each campaign can send (normally one). We choose the recipients from successful donations: fully refunded or reversed donations are excluded, and a donor who gave more than once receives one copy. We email the message through Resend to your verified account email if you gave while signed in, or to the email you gave at checkout. The organizer and beneficiary see only how many people it reached, never names or email addresses, and anonymous donations stay anonymous. To prevent duplicate messages, we keep a delivery record for each recipient with a reference to the donation or account, a one-way hash of the address, the delivery status and times. While a delivery is pending or can still be retried, the prepared email, including your address, is stored with it. You can stop these messages with the unsubscribe link in the email, without signing in, or in Settings; we keep a one-way hash of your address to honour that choice. These messages are not marketing and do not subscribe you to the newsletter.',
+      },
+      {
+        title: 'Campaigns run for someone else',
+        content: 'When an account creates a campaign for another person or organization (the beneficiary), it gives us the beneficiary’s name, email address, relationship to the organizer and the reason for the campaign. We use the email address to invite the beneficiary to accept or decline the campaign and to check that the account accepting it uses that address. It is never shown publicly; the organizer and our staff see only a partly hidden version, and we delete it from the invitation once the beneficiary accepts or declines or a new invitation replaces it. Invitations are emailed through Resend. The campaign page shows the beneficiary’s name and whether they have confirmed the campaign. When a beneficiary accepts, declines or withdraws consent, we record the decision, its time, the version of the terms shown, a fingerprint of the campaign details they saw, and the IP address and browser information of the person deciding, as evidence of the decision.',
       },
       {
         title: 'Optional account protection',
@@ -360,7 +369,7 @@ Send marketing only where permitted and with applicable choice or consent.`,
     panelBody: 'This agreement supplements the Terms of Use and applies to everyone who creates or controls a campaign.',
     introduction:
       'This Campaign Organizer Agreement supplements the Ujimora Terms of Use and applies whenever an individual or organization creates or controls a campaign.',
-    effectiveDate: REVISED_25_SEPTEMBER_2026,
+    effectiveDate: REVISED_29_SEPTEMBER_2026,
     sections: [
       { title: "Campaign credit from crypto contributions", content: "Where crypto contributions are enabled, campaign credit is recorded in the campaign currency after confirmation, using the accepted payment value. A pending transfer or unaccepted quote is not available campaign proceeds. Crypto acceptance does not by itself provide crypto payouts or change beneficiary allocations, payout review or applicable fees." },
       {
@@ -418,6 +427,16 @@ Send marketing only where permitted and with applicable choice or consent.`,
         content:
           'If you configure a campaign to divide proceeds among multiple beneficiaries, you represent that the beneficiary information and percentage allocations are accurate and authorized. Allocations must total 100% before publication.\nYou must not use split functionality to conceal the true recipient of funds, evade verification, disguise a commercial payment, launder funds, or redirect proceeds after donations are received.\nAfter the first successful contribution, allocations are locked by default. You have no unilateral right to reduce, remove, replace or reallocate a beneficiary’s accrued share. Any approved change may apply only prospectively and may require all affected beneficiaries to consent.\nEach beneficiary must satisfy applicable verification and payout requirements. If a beneficiary cannot be paid, Ujimora may hold that beneficiary’s allocated share pending resolution rather than redistribute it automatically.\nYou must disclose the split structure accurately to contributors where Ujimora requires it and must not make representations inconsistent with the configured allocation.',
       },
+      {
+        title: '12. Campaigns run on behalf of a beneficiary',
+        content:
+          'If your plan includes it, you may create a campaign for another person or organization (the beneficiary). You confirm that you have their permission to raise funds for them and that their name, your relationship and the reason you give are accurate. Ujimora emails the beneficiary an invitation to accept or decline. Where Ujimora requires it, the campaign cannot be published or accept contributions until the beneficiary accepts.\nCreating or managing the campaign does not give you the right to withdraw its funds. Payouts are requested by the beneficiary to their own verified account, unless the beneficiary accepted an arrangement under which your organization receives the funds for them. If your organization receives funds for a beneficiary, you must use them for the stated purpose and keep records you can show on request.\nBefore the beneficiary accepts and before any contribution arrives, you may correct the beneficiary; this sends a new invitation and may return the campaign to review. After that, only Ujimora can change the beneficiary or who may request payouts, after a review that is recorded with its reason. Any additional platform fee for these campaigns is shown before you create the campaign and fixed when it is created.',
+      },
+      {
+        title: '13. Thank-you messages to donors',
+        content:
+          'After a campaign ends or a payout is made, you or the campaign’s beneficiary may send its donors a thank-you message through Ujimora. Ujimora delivers it; you do not receive donors’ names or contact details. The message must be genuine thanks or news about the campaign. It must not advertise, ask for money outside Ujimora, or link to pages that collect personal or payment details. Like campaign updates, it is checked before it is sent.',
+      },
     ],
     contact: `Questions about organizer obligations can be sent to ${E.support}.`,
   },
@@ -438,7 +457,7 @@ Send marketing only where permitted and with applicable choice or consent.`,
     panelBody: 'These terms apply whenever you contribute to a campaign — including campaigns with multiple beneficiaries.',
     introduction:
       'These Contributor & Donor Terms apply when you contribute to a Ujimora campaign or creator profile. They explain the nature of a contribution, refunds, disputes, and campaigns with multiple beneficiaries.',
-    effectiveDate: LEGAL_ENTITY.effectiveDate,
+    effectiveDate: REVISED_29_SEPTEMBER_2026,
     sections: [
       { title: 'Creator profile donations and withdrawal fees', content: 'Creator profile donations require an active, unexpired paid subscription. Free plans and trials cannot enable a creator page or accept new tips. If your paid entitlement ends, new tip checkouts are disabled; existing balances remain withdrawable. Each creator withdrawal deducts the current effective plan’s platform-fee percentage from the requested amount. The fee and net transfer are shown before confirmation and fixed for that withdrawal. The same platform fee is not also deducted when a new tip is received. A failed or reversed transfer restores the full requested amount, including the Ujimora fee. Existing withdrawals keep their original fee terms.' },
       { title: "Sending a crypto contribution", content: "Use only the asset, network, address and required memo or tag shown for your payment. Review the quoted campaign-currency value, exchange rate and any fees shown; your wallet may also charge sending fees. Obtain a fresh quote if it expires before you proceed. Do not send after the payment window closes. Wrong-network transfers, incorrect addresses and missing tags can cause permanent loss. If you have already sent and confirmation is delayed, contact support with the campaign, payment reference and transaction hash before sending again. Never share private keys or recovery phrases." },
@@ -489,6 +508,16 @@ Send marketing only where permitted and with applicable choice or consent.`,
         title: '10. Campaigns with multiple beneficiaries',
         content:
           'A campaign may state that its distributable proceeds will be divided among multiple beneficiaries by percentage. Where shown, this allocation is part of the campaign information on which you may rely when deciding whether to contribute.\nCampaign fees, payment-processing charges, refunds, reserves or other disclosed deductions may reduce the amount ultimately available to split among beneficiaries.\nVerification, compliance review, disputes or payout holds may delay payment to one beneficiary without necessarily delaying or reallocating another beneficiary’s share, subject to Ujimora’s payout policy and applicable law.\nA post-launch split amendment, if permitted, follows Ujimora’s controlled amendment process and does not retroactively reassign amounts already accrued under an earlier split version.',
+      },
+      {
+        title: '11. Campaigns run on behalf of a beneficiary',
+        content:
+          'Some campaigns are organized by one account for another person or organization. The campaign page shows who organizes it, who it is for and whether that beneficiary has confirmed it. Where Ujimora requires it, the campaign accepts contributions only after the beneficiary accepts. Funds are paid to the beneficiary’s own verified account, or to the organizer’s organization only where the beneficiary accepted that arrangement, unless Ujimora changes it after a review recorded with its reason.',
+      },
+      {
+        title: '12. Thank-you messages',
+        content:
+          'After a campaign ends or a payout is made, its organizer or beneficiary may send you a thank-you message through Ujimora, normally once per campaign. Ujimora sends it without giving them your name or email address. You can stop these messages with the unsubscribe link in the email or in Settings. The Privacy Notice explains the data involved.',
       },
     ],
     contact: `Contribution questions can be sent to ${E.support} with your transaction reference.`,
@@ -631,7 +660,7 @@ Attempts to bypass KYC/KYB, campaign limits, payment restrictions, subscription 
     panelBody: 'This notice lists what Ujimora keeps in your browser, how long it stays and how to clear it.',
     introduction:
       'This notice explains the cookies and similar technologies used on Ujimora web properties. We do not currently set cookies; we use your browser’s local and session storage only for the purposes listed below.',
-    effectiveDate: REVISED_25_SEPTEMBER_2026,
+    effectiveDate: REVISED_29_SEPTEMBER_2026,
     sections: [
       {
         title: '1. Scope',
@@ -645,6 +674,7 @@ Attempts to bypass KYC/KYB, campaign limits, payment restrictions, subscription 
 • Unsent drafts (ujimora:publication-draft:*): the campaign form until the campaign is created, and profile images held for safety review, so the exact version held for review can be submitted again once approved. Saved per account. A draft older than 30 days is deleted the next time its page is opened, and all drafts are deleted when you sign out. They are not deleted when a session ends through inactivity.
 • Payment recovery, so the confirmation page can pick up your payment after the payment provider sends you back. Donation handoffs (uf_pending_donations, session storage) are removed once the payment succeeds, fails or expires. Wallet top-up references (ujimora-topup-*) stay in session storage until you close the tab. Tip attempts (ujimora:tip-attempt:*) are removed once the payment is resolved. Subscription checkouts (uf_pending_subscriptions) are removed once the checkout is settled, fails or expires, or when you clear site data.
 • Checkout retry keys (ujimora:checkout-attempt:*, session storage): opaque codes that stop a retried donation from being charged twice. They contain no amounts or personal details.
+• Beneficiary invitations (uf_beneficiary_invitation, session storage): if you open an invitation to accept a campaign run for you and need to sign in first, the invitation code is kept so you can return to it. Removed once you accept or decline it, or when you close the tab.
 • Referral attribution (uf_ref), which stores an affiliate code from a ?ref= link so the referrer can be credited if you sign up. Kept until you create an account or clear site data.
 The staff console uses equivalent sign-in and display-preference entries.`,
       },

@@ -458,6 +458,12 @@ import { createAuditLogRoutes } from './infrastructure/adapters/inbound/http/rou
 import { createRbacRoutes } from './infrastructure/adapters/inbound/http/routes/rbacRoutes.js'
 import { createTestimonialRoutes } from './infrastructure/adapters/inbound/http/routes/testimonialRoutes.js'
 import { createContactRoutes } from './infrastructure/adapters/inbound/http/routes/contactRoutes.js'
+import { MongoOnBehalfCampaigns } from './infrastructure/adapters/outbound/persistence/MongoOnBehalfCampaigns.js'
+import { campaignManagerRole } from './infrastructure/adapters/outbound/persistence/campaignManagers.js'
+import { createOnBehalfRoutes } from './infrastructure/adapters/inbound/http/routes/onBehalfRoutes.js'
+import type { ActivityEmailSender } from './infrastructure/adapters/outbound/persistence/MongoActivityAlerts.js'
+import { MongoDonorThankYous } from './infrastructure/adapters/outbound/persistence/MongoDonorThankYous.js'
+import { createDonorThankYouRoutes } from './infrastructure/adapters/inbound/http/routes/donorThankYouRoutes.js'
 
 /** How long browsers may reuse a CORS preflight answer (Chromium caps it at 7200). */
 const CORS_PREFLIGHT_MAX_AGE_SECONDS = 7200
@@ -467,7 +473,13 @@ const CORS_PREFLIGHT_MAX_AGE_SECONDS = 7200
  * connection). Exported separately from bootstrap so integration tests can
  * exercise the real route graph with supertest.
  */
-export function createApp(options: { publicationAdmission?: PublicationAdmissionPort } = {}): express.Express {
+export function createApp(options: {
+  publicationAdmission?: PublicationAdmissionPort
+  /** Tests only: capture outgoing email instead of calling Resend. */
+  emailSender?: ActivityEmailSender
+  /** Tests only: the account-email encryption key (normally AUTH_EMAIL_ENCRYPTION_KEY_BASE64). */
+  accountEmailKey?: Buffer
+} = {}): express.Express {
   if (config.nodeEnv === 'production' && !config.aiWriting.apiKey && !options.publicationAdmission) {
     // Non-fatal so deploys proceed, but loud: every consented submission now
     // waits for staff instead of automated screening.
@@ -632,14 +644,25 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     () => commercialConfigService.resolveReviewAlertEmail(process.env.REVIEW_ALERT_EMAIL ?? ''),
     process.env.ADMIN_WEB_URL ?? 'https://admin.ujimora.com',
   )
-  const activityEmail = new ResendActivityEmails(process.env.RESEND_API_KEY ?? '', process.env.FROM_EMAIL ?? '', config.publicWebUrl, process.env.REPLY_TO_EMAIL || undefined)
+  const activityEmail: ActivityEmailSender = options.emailSender ?? new ResendActivityEmails(process.env.RESEND_API_KEY ?? '', process.env.FROM_EMAIL ?? '', config.publicWebUrl, process.env.REPLY_TO_EMAIL || undefined)
   const activityAlerts = new MongoActivityAlerts(activityEmail)
-  const accountEmails = new AccountEmails(activityEmail, process.env.AUTH_EMAIL_ENCRYPTION_KEY_BASE64 ? Buffer.from(process.env.AUTH_EMAIL_ENCRYPTION_KEY_BASE64, 'base64') : null)
+  const accountEmails = new AccountEmails(activityEmail, options.accountEmailKey ?? (process.env.AUTH_EMAIL_ENCRYPTION_KEY_BASE64 ? Buffer.from(process.env.AUTH_EMAIL_ENCRYPTION_KEY_BASE64, 'base64') : null))
+  // Campaigns run on someone else's behalf. The config lookup is a closure for
+  // the same reason as createCampaignUseCase's: commercialConfigService is
+  // declared further down and only needed once a request arrives.
+  const onBehalfCampaigns = new MongoOnBehalfCampaigns(accountEmails, { resolveOnBehalfConfig: () => commercialConfigService.resolveOnBehalfConfig() })
+  const donorThankYous = new MongoDonorThankYous({
+    sender: activityEmail,
+    accountEmailKey: options.accountEmailKey ?? (process.env.AUTH_EMAIL_ENCRYPTION_KEY_BASE64 ? Buffer.from(process.env.AUTH_EMAIL_ENCRYPTION_KEY_BASE64, 'base64') : null),
+    apiUrl: config.publicApiUrl.replace(/\/+$/, ''),
+    config: { resolveThankYouConfig: () => commercialConfigService.resolveThankYouConfig() },
+    admission: publicationAdmission,
+  })
   let activityAlertsRunning = false
   const reconcileActivityAlerts = async () => {
     if (activityAlertsRunning) return
     activityAlertsRunning = true
-    try { await accountEmails.deliverPending(); await activityAlerts.capturePending(); await activityAlerts.deliverPending() }
+    try { await onBehalfCampaigns.expireDue(); await accountEmails.deliverPending(); await activityAlerts.capturePending(); await activityAlerts.deliverPending(); await donorThankYous.process() }
     finally { activityAlertsRunning = false }
   }
   if (config.nodeEnv !== 'test') {
@@ -699,8 +722,9 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     kycRepo,
     publicationAdmission,
     new MongoCampaignCreation(),
+    onBehalfCampaigns,
   )
-  const getCampaignUseCase = new GetCampaignUseCase(campaignRepo, donationRepo)
+  const getCampaignUseCase = new GetCampaignUseCase(campaignRepo, donationRepo, { managerRole: campaignManagerRole })
   // Ended campaigns are re-labelled EXPIRED so Explore, the sitemap and
   // analytics stop presenting them as open. Plan slots and donation eligibility
   // already follow the end date itself. Payout rails read the label through
@@ -1441,6 +1465,7 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
     userRepo,
     campaignRepo,
     config.splitProceedsEnabled,
+    onBehalfCampaigns,
   )
   const shortLinkController = new ShortLinkController(
     createShortLinkUseCase,
@@ -1821,6 +1846,16 @@ export function createApp(options: { publicationAdmission?: PublicationAdmission
   // The /campaigns resource is composed from sibling routers (Express
   // dispatches across routers sharing a prefix by method + path).
   api.use('/campaigns', createCampaignRoutes(campaignController, authMiddleware, optionalAuthMiddleware))
+  const onBehalfRoutes = createOnBehalfRoutes({ service: onBehalfCampaigns, authMiddleware, optionalAuthMiddleware, requireAdmin })
+  api.use('/beneficiary-invitations', onBehalfRoutes.invitations)
+  api.use('/campaigns', onBehalfRoutes.campaigns)
+  api.use('/beneficiary', onBehalfRoutes.beneficiary)
+  api.use('/admin/campaigns', onBehalfRoutes.admin)
+  const thankYouRoutes = createDonorThankYouRoutes({ service: donorThankYous, authMiddleware, requireAdmin })
+  api.use('/campaigns', thankYouRoutes.campaigns)
+  api.use('/donor-messages', thankYouRoutes.donorMessages)
+  api.use('/profile', thankYouRoutes.profile)
+  api.use('/admin/donor-thank-yous', thankYouRoutes.admin)
   api.use('/campaigns', createCampaignUpdateRoutes(campaignUpdateController, authMiddleware, optionalAuthMiddleware))
   api.use('/publication-reviews', createPublicationReviewRoutes(authMiddleware))
   api.use('/admin/donation-content-reviews', createDonationContentReviewRoutes(authMiddleware, requireAdmin))

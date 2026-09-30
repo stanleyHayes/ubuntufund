@@ -1,6 +1,6 @@
 export interface PublicationSubmission {
   actorId: string;
-  action: 'live.start' | 'account.profile' | 'organization.profile' | 'creator.profile' | 'campaign.create' | 'campaign.slug' | 'comment.create' | 'update.create' | 'update.edit';
+  action: 'live.start' | 'account.profile' | 'organization.profile' | 'creator.profile' | 'campaign.create' | 'campaign.slug' | 'comment.create' | 'update.create' | 'update.edit' | 'thank_you.send';
   resourceId: string;
   baseVersion?: string;
   text: string;

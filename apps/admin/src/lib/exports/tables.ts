@@ -17,8 +17,11 @@ export function usersTable(users: User[]): ExportTable {
     rows: users.map(user => [user.id, user.name, user.email, user.role, user.verificationLevel, user.trustScore, user.needsWebsite ?? false, dateCell(user.createdAt)]) }
 }
 export function campaignsTable(campaigns: Campaign[]): ExportTable {
-  return { title: 'Campaigns', columns: [{ label: 'ID' }, { label: 'Title' }, { label: 'Status' }, { label: 'Category' }, { label: 'Currency' }, { label: 'Goal', type: 'number' }, { label: 'Raised', type: 'number' }, { label: 'End date (UTC)', type: 'date' }],
-    rows: campaigns.map(campaign => [campaign.id, campaign.title, campaign.status, campaign.category, campaign.currency, campaign.goalAmount, campaign.raisedAmount, dateCell(campaign.endDate)]) }
+  return { title: 'Campaigns', columns: [{ label: 'ID' }, { label: 'Title' }, { label: 'Status' }, { label: 'Category' }, { label: 'Currency' }, { label: 'Goal', type: 'number' }, { label: 'Raised', type: 'number' }, { label: 'End date (UTC)', type: 'date' }, { label: 'On behalf of' }, { label: 'Beneficiary confirmed' }],
+    rows: campaigns.map(campaign => {
+      const onBehalf = campaign.creationMode === 'on_behalf' ? campaign.onBehalf : undefined
+      return [campaign.id, campaign.title, campaign.status, campaign.category, campaign.currency, campaign.goalAmount, campaign.raisedAmount, dateCell(campaign.endDate), onBehalf?.beneficiaryName ?? null, onBehalf ? onBehalf.beneficiaryConfirmed : null]
+    }) }
 }
 export function analyticsTables(reports: AnalyticsReports, campaigns: Campaign[]): ExportTable[] {
   const counts = new Map<string, number>()

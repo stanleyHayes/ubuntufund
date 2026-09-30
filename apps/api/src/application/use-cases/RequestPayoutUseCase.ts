@@ -23,6 +23,7 @@ import {
 } from '../services/payoutFee.js'
 import type { PayoutsConfig } from '../../infrastructure/config/index.js'
 import { VERIFY_EMAIL_BEFORE_PAYOUT } from '../services/payoutEligibilityMessages.js'
+import { NO_PAYOUT_AUTHORITY_MESSAGE, payoutAuthorityOf } from '../../domain/services/campaignPayoutAuthority.js'
 
 const CURRENCY = 'GHS'
 
@@ -106,11 +107,15 @@ export class RequestPayoutUseCase {
       throw new AppError('Campaign not found', 404)
     }
 
-    const isOwner = campaign.creatorId === requester.userId
+    // Payout authority, not campaign ownership: on a campaign run on someone's
+    // behalf it is the beneficiary (or the organization only if they agreed).
+    const authority = payoutAuthorityOf(campaign)
+    const isOwner = !!authority && authority === requester.userId
     const isAdmin = requester.role === 'admin'
     if (!isOwner && !isAdmin) {
-      throw new AppError('Only the campaign owner can request a payout', 403)
+      throw new AppError(campaign.creationMode === 'on_behalf' ? NO_PAYOUT_AUTHORITY_MESSAGE : 'Only the campaign owner can request a payout', 403)
     }
+    if (!authority) throw new AppError(NO_PAYOUT_AUTHORITY_MESSAGE, 409)
     // A blocked campaign is under review: donations that still settle keep
     // their ledger and totals, but no money leaves until staff decide.
     if (campaign.status === CampaignStatus.BLOCKED) {
@@ -151,7 +156,7 @@ export class RequestPayoutUseCase {
       }
     }
     const reference = wallet
-      ? `wallet-request:${campaign.creatorId}:${input.idempotencyKey}`
+      ? `wallet-request:${authority}:${input.idempotencyKey}`
       : undefined
     if (reference) {
       const previous = await this.payoutRepo.findByProviderRef(reference)
@@ -169,13 +174,13 @@ export class RequestPayoutUseCase {
       await this.eligibility.assertCampaignPayable(campaignId)
       // The owner is told the step they can take; staff get a neutral message.
       await this.eligibility.assertOwnerVerified(
-        campaign.creatorId,
+        authority,
         undefined,
         isOwner ? VERIFY_EMAIL_BEFORE_PAYOUT : undefined,
       )
     }
     const recipient = wallet
-      ? { id: `wallet:${campaign.creatorId}`, currency: 'GHS' }
+      ? { id: `wallet:${authority}`, currency: 'GHS' }
       : await this.transferRecipientRepo.findLatestByCampaignId(campaignId)
     if (!recipient) {
       throw new AppError('Add a payout recipient before requesting a payout', 400)

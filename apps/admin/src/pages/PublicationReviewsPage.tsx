@@ -13,7 +13,22 @@ import { Alert, Box, Button, MenuItem, Paper, Skeleton, Stack, Typography } from
 import { api } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { PublicationMediaPreview } from '@/components/PublicationMediaPreview'
+/** Readable names for actions whose raw key would puzzle a reviewer. */
+const ACTION_LABELS: Record<string, string> = { 'thank_you.send': 'Donor thank-you message' }
+function actionLabel(action: string): string {
+  return ACTION_LABELS[action] ?? action.replace('.', ' ')
+}
+/** A thank-you is stored as JSON of subject, body and signature: show it the way donors would read it. */
+function thankYouText(text: string): string | null {
+  try {
+    const fields: unknown = JSON.parse(text)
+    if (!fields || typeof fields !== 'object' || Array.isArray(fields)) return null
+    const { subject, body, signature } = fields as Record<string, unknown>
+    return [`Subject: ${String(subject ?? '')}`, String(body ?? ''), signature ? `Signed: ${String(signature)}` : ''].filter(Boolean).join('\n\n')
+  } catch { return null }
+}
 function displayText(action: string, text: string): string {
+  if (action === 'thank_you.send') return thankYouText(text) ?? text
   if (action === 'comment.create' || action === 'donation.public_content' || action === 'tip.public_content' || action === 'campaign.create' || action === 'creator.profile' || action === 'organization.profile' || action === 'account.profile') {
     try { const fields: unknown = JSON.parse(text); if (fields && typeof fields === 'object' && !Array.isArray(fields)) return Object.entries(fields).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : String(value)}`).join('\n\n') } catch { /* Show original evidence. */ }
   }
@@ -66,7 +81,7 @@ export default function PublicationReviewsPage() {
 
 
     {loading ? <ReviewQueueSkeleton label="Loading publication reviews" /> : items.map(item => { const ownSubmission = item.status === 'pending' && !!user?.id && item.actorId === user.id; return <Paper key={item.id} sx={{ ...raisedSurface, p: { xs: 2, sm: 3 } }}><Stack spacing={2}>
-      <Typography variant="h6">{item.action.replace('.', ' ')} · {item.reason.replaceAll('_', ' ')}</Typography>
+      <Typography variant="h6">{actionLabel(item.action)} · {item.reason.replaceAll('_', ' ')}</Typography>
       <Typography variant="caption">Author {item.actorId} · Reference {item.id}</Typography>
       <Typography sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{displayText(item.action, item.text)}</Typography>
       {!!item.mediaUrls.length && <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 2 }}>{item.mediaUrls.map((url, index) => <PublicationMediaPreview key={`${index}:${url}`} url={url} label={mediaLabel(item.action, item.text, url, index)} />)}</Box>}

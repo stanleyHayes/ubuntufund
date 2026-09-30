@@ -25,7 +25,7 @@ export class MongoCampaignReview implements CampaignReviewPort {
       const repo = new MongoCampaignRepository();
       const campaign = await repo.findById(input.campaignId);
       if (!campaign) throw new AppError('Campaign not found', 404);
-      if (campaign.creatorId === input.actorId) throw new AppError('Another administrator must review your campaign', 403);
+      if (campaign.creatorId === input.actorId || campaign.onBehalf?.beneficiaryUserId === input.actorId) throw new AppError('Another administrator must review your campaign', 403);
       const prior = await CampaignReviewModel.findOne({ campaignId: input.campaignId, version: input.expectedVersion });
       if (prior) {
         if (prior.actorId === input.actorId && prior.action === input.action && prior.reason === input.reason &&
@@ -39,6 +39,9 @@ export class MongoCampaignReview implements CampaignReviewPort {
         if (!input.contentReviewed || !input.fundraisingReviewed) throw new AppError('Confirm review of the complete public content, media and fundraising evidence', 400);
         if (campaign.goalAmount.currency !== 'GHS' || !Number.isFinite(campaign.goalAmount.amount) || campaign.goalAmount.amount <= 0) throw new AppError('A valid positive GHS goal is required before approval', 409);
         if (campaign.isExpired()) throw new AppError('An expired campaign cannot be approved', 409);
+        // Locked on at creation: a campaign run on someone's behalf is published only after they accept.
+        if (campaign.creationMode === 'on_behalf' && campaign.onBehalf?.publicationRequiresConsent && campaign.onBehalf.consentStatus !== 'accepted')
+          throw new AppError('The beneficiary has not accepted this campaign yet. It can be approved once they do.', 409);
         const owner = await UserModel.findOneAndUpdate({ _id: campaign.creatorId, deletedAt: null }, { $inc: { publicationWriteVersion: 1 } }, { new: true });
         if (!owner || await ContentRestrictionModel.exists({ userId: campaign.creatorId })) throw new AppError('The organizer is unavailable or publishing is restricted', 409);
         if (owner.role !== 'admin' && !hasCurrentLegalAcceptance(owner.legalAcceptance)) throw new AppError('The organizer must accept the current account agreement first', 409);

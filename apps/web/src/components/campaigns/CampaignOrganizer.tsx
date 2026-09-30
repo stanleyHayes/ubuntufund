@@ -4,6 +4,8 @@ import PlaceOutlined from '@mui/icons-material/PlaceOutlined'
 import CalendarTodayRounded from '@mui/icons-material/CalendarTodayRounded'
 import { SHAPE, TrustBadge } from '@ubuntu-fund/ui'
 import type { ComponentProps } from 'react'
+import type { CampaignOnBehalfSummary } from '@ubuntu-fund/types'
+import { OnBehalfLine } from './OnBehalfLine'
 
 type Organizer = {
   name: string
@@ -16,11 +18,14 @@ export function CampaignOrganizer({
   loading,
   startDate,
   endDate,
+  onBehalf,
 }: {
   creator?: Organizer | null
   loading: boolean
   startDate: string | Date
   endDate: string | Date
+  /** Present when the organizer runs the campaign for someone else. */
+  onBehalf?: CampaignOnBehalfSummary
 }) {
   return (
     <Box
@@ -131,6 +136,9 @@ export function CampaignOrganizer({
             )}
           </Box>
         </Box>
+        {onBehalf && (
+          <OnBehalfLine onBehalf={onBehalf} organizerName={loading ? null : creator?.name} sx={{ mb: 2.5 }} />
+        )}
         {loading ? (
           <Skeleton height={38} />
         ) : (

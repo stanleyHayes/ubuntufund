@@ -596,8 +596,11 @@ export function DonatePage() {
               ? 'Enter a valid email address'
               : 'Used by the payment provider for checkout.'
           }
-          sx={{ mb: 2 }}
+          sx={{ mb: 1 }}
         />
+        <Typography variant="caption" component="p" color="text.secondary" sx={{ mb: 2, mx: 1.75 }}>
+          The organizer may send you one thank-you through Ujimora. You can unsubscribe from it.
+        </Typography>
 
         <TextField
           id="donor-name"

@@ -44,6 +44,9 @@ const WatchLivePage = lazy(() => import('./pages/WatchLivePage').then(m => ({ de
 const CampaignLivePage = lazy(() => import('./pages/CampaignLivePage').then((m) => ({ default: m.CampaignLivePage })))
 const CreatorTipPage = lazy(() => import('./pages/CreatorTipPage').then((m) => ({ default: m.CreatorTipPage })))
 const CreatorDashboardPage = lazy(() => import('./pages/CreatorDashboardPage').then((m) => ({ default: m.CreatorDashboardPage })))
+const BeneficiaryInvitationPage = lazy(() => import('./pages/BeneficiaryInvitationPage').then((m) => ({ default: m.BeneficiaryInvitationPage })))
+const ThankDonorsPage = lazy(() => import('./pages/ThankDonorsPage').then((m) => ({ default: m.ThankDonorsPage })))
+const ThankYouUnsubscribePage = lazy(() => import('./pages/ThankYouUnsubscribePage').then((m) => ({ default: m.ThankYouUnsubscribePage })))
 
 export const router = createBrowserRouter([
   // Auth pages — standalone immersive layout (no header/footer)
@@ -54,6 +57,7 @@ export const router = createBrowserRouter([
   { path: 'verify-email', element: <VerifyEmailPage />, errorElement: <RouteError /> },
   { path: 'newsletter/confirm', element: <NewsletterConsentPage key="confirm" action="confirm" />, errorElement: <RouteError /> },
   { path: 'newsletter/unsubscribe', element: <NewsletterConsentPage key="unsubscribe" action="unsubscribe" />, errorElement: <RouteError /> },
+  { path: 'unsubscribe/thank-you', element: <ThankYouUnsubscribePage />, errorElement: <RouteError /> },
   // Main app — standard layout with header/footer
   {
     path: '/',
@@ -70,6 +74,8 @@ export const router = createBrowserRouter([
       { path: 'live/:sessionId', element: <WatchLivePage /> },
       { path: 'c/:slug/live/:sessionId', element: <WatchLivePage /> },
       { path: 'campaigns/:id/live', element: <RequireAuth><CampaignLivePage /></RequireAuth> },
+      { path: 'campaigns/:id/thank-you', element: <RequireAuth><ThankDonorsPage /></RequireAuth> },
+      { path: 'beneficiary-invitation', element: <BeneficiaryInvitationPage /> },
       { path: 'campaigns/new', element: <RequireAuth><CreateCampaignPage /></RequireAuth> },
       { path: 'c/:slug', element: <CampaignPublicPage /> },
       { path: 'c/:slug/donate', element: <DonatePage /> },

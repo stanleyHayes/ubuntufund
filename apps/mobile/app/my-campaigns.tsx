@@ -14,6 +14,8 @@ import { SignInRequired } from '@/components/SignInRequired'
 import { FadeInUp } from '@/components/anim/FadeInUp'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
+import type { BeneficiaryCampaignListItem } from '@ubuntu-fund/types'
+import { beneficiaryPayoutLine, consentLabel } from '@/lib/onBehalf'
 
 interface Campaign {
   id: string
@@ -133,6 +135,51 @@ function CampaignCard({ campaign }: { campaign: Campaign }) {
   )
 }
 
+// ─── Campaign run for you (read-only) ────────────────────────
+
+function RunForYouCard({ item }: { item: BeneficiaryCampaignListItem }) {
+  const p = usePalette()
+  const styles = useStyles()
+  const pct = item.goalAmount > 0 ? Math.min(item.raisedAmount / item.goalAmount, 1) : 0
+  const statusColor = statusColors(p)[item.status] ?? p.textSecondary
+  const status = item.status.replace(/_/g, ' ')
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.85}
+      onPress={() => router.push(`/campaign/${item.id}`)}
+      style={styles.card}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.title}, organized by ${item.organizerName}`}
+    >
+      <View style={styles.cardContent}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+          <View style={[styles.statusBadge, { backgroundColor: `${statusColor}18` }]}>
+            <Text style={[styles.statusText, { color: statusColor }]}>
+              {status.charAt(0).toUpperCase() + status.slice(1)}
+            </Text>
+          </View>
+        </View>
+        <Text style={styles.organizer}>Organized by {item.organizerName}</Text>
+
+        <ProgressBar progress={pct} height={5} />
+
+        <View style={styles.cardStats}>
+          <Text style={styles.cardRaised}>{formatCurrency(item.raisedAmount)}</Text>
+          <Text style={styles.cardGoal}>{' '}of {formatCurrency(item.goalAmount)}</Text>
+          <Text style={styles.cardPct}>{Math.round(pct * 100)}%</Text>
+        </View>
+
+        <View style={styles.forYouLines}>
+          <Text style={styles.forYouLine}>{consentLabel(item.consentStatus, 'beneficiary')}</Text>
+          <Text style={styles.forYouLine}>{beneficiaryPayoutLine(item)}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  )
+}
+
 // ─── Main ────────────────────────────────────────────────────
 
 export default function MyCampaignsScreen() {
@@ -141,18 +188,23 @@ export default function MyCampaignsScreen() {
   const styles = useStyles()
   const insets = useSafeAreaInsets()
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [runForYou, setRunForYou] = useState<BeneficiaryCampaignListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const fetchCampaigns = useCallback(async () => {
     setLoading(true)
     setError(null)
+    // A secondary list: when it cannot be read the section stays hidden.
+    const forYou = api.get<BeneficiaryCampaignListItem[]>('/beneficiary/campaigns').catch(() => [])
     try {
       const data = await api.get<Campaign[]>('/campaigns/mine')
       setCampaigns(Array.isArray(data) ? data : [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load campaigns')
     } finally {
+      const items = await forYou
+      setRunForYou(Array.isArray(items) ? items : [])
       setLoading(false)
     }
   }, [])
@@ -188,7 +240,7 @@ export default function MyCampaignsScreen() {
         <Text style={styles.pageLede}>Manage and track the causes you've started.</Text>
       </View>
 
-      {!loading && !error && campaigns.length === 0 ? (
+      {!loading && !error && campaigns.length === 0 && runForYou.length === 0 ? (
         /* Empty state — message fills the body, CTA docks at the bottom */
         <View style={{ flex: 1 }}>
           <View style={styles.emptyStateFill}>
@@ -248,9 +300,27 @@ export default function MyCampaignsScreen() {
               />
             ) : (
               <View style={styles.listWrap}>
-                {campaigns.map((c, i) => (
+                {campaigns.length === 0 ? (
+                  <EmptyState
+                    icon="bullhorn-outline"
+                    title="You haven't created any campaigns yet"
+                    subtitle="Start your first campaign and make a difference"
+                  />
+                ) : campaigns.map((c, i) => (
                   <FadeInUp key={c.id} index={i}>
                     <CampaignCard campaign={c} />
+                  </FadeInUp>
+                ))}
+              </View>
+            )}
+
+            {!loading && runForYou.length > 0 && (
+              <View style={styles.listWrap}>
+                <Text style={styles.sectionTitle}>Campaigns run for you</Text>
+                <Text style={styles.sectionLede}>Organizers raising money on your behalf. Payouts follow the arrangement you accepted.</Text>
+                {runForYou.map((item, i) => (
+                  <FadeInUp key={item.id} index={i}>
+                    <RunForYouCard item={item} />
                   </FadeInUp>
                 ))}
               </View>
@@ -300,6 +370,13 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
     cardActions: { flexDirection: 'row', gap: 12, marginTop: 12, borderTopWidth: 1, borderTopColor: p.border, paddingTop: 12 },
     actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 8 },
     actionText: { fontSize: 13, fontFamily: 'Outfit_700Bold', color: p.primary },
+
+    // Campaigns run for you
+    sectionTitle: { fontSize: 18, fontFamily: 'Outfit_800ExtraBold', color: p.text, marginTop: 16 },
+    sectionLede: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: 4, marginBottom: 12, lineHeight: 18 },
+    organizer: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: p.textSecondary, marginTop: -4, marginBottom: 10 },
+    forYouLines: { gap: 2, marginTop: 12, borderTopWidth: 1, borderTopColor: p.border, paddingTop: 12 },
+    forYouLine: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: p.text, lineHeight: 18 },
 
     // Skeleton
     skeletonCard: {

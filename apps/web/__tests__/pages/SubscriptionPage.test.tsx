@@ -97,6 +97,20 @@ describe('advertised plan benefits', () => {
     expect(screen.getAllByText('Live streaming').length).toBeGreaterThan(0)
     expect(screen.getByText('Organization team seats (incl. owner)')).toBeInTheDocument()
   })
+
+  it('shows campaigns on behalf of others with their limit and extra fee', () => {
+    state.subscription = subscription({ currentPeriodEnd: new Date(Date.now() + 10 * DAY) })
+    state.plans = Object.fromEntries(Object.entries(SUBSCRIPTION_PLANS).map(([tier, plan]) => [tier,
+      tier === SubscriptionTier.ORGANIZATION ? { ...plan, onBehalfCampaigns: true, maxOnBehalfCampaigns: 3, onBehalfFeePercent: 2 } : plan]))
+    mount()
+    // The comparison row, and Enterprise's card (unlimited, no extra fee).
+    expect(screen.getAllByText('Campaigns on behalf of others').length).toBeGreaterThanOrEqual(2)
+    expect(within(planCard('Enterprise')).getByText('Campaigns on behalf of others')).toBeInTheDocument()
+    expect(screen.getByText('Up to 3 active')).toBeInTheDocument()
+    expect(screen.getByText('+2% platform fee')).toBeInTheDocument()
+    expect(within(planCard('Organization')).getByText('Campaigns on behalf of others · up to 3 active · +2% platform fee')).toBeInTheDocument()
+    expect(within(planCard('Pro')).queryByText(/Campaigns on behalf of others/)).not.toBeInTheDocument()
+  })
 })
 
 describe('buying over a running plan', () => {
