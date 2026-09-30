@@ -7,7 +7,8 @@ import type { ActivityEmailSender } from './persistence/MongoActivityAlerts.js';
  */
 export class EmailDeliveryError extends Error {
   constructor(readonly status: number) {
-    super(`Email provider refused the request (${status}).`);
+    // Never the provider's response body: it can echo addresses or content.
+    super('Activity email delivery failed.');
     this.name = 'EmailDeliveryError';
   }
   get retryable(): boolean {
