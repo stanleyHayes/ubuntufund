@@ -104,14 +104,20 @@ describe('link-preview middleware', () => {
     expect(await call('/c/pending-review-campaign', WHATSAPP)).toBeUndefined()
   })
 
-  it('falls through when the API is slow or unreachable', async () => {
+  it('falls through quietly when the API is slow', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
     stubFetch(async () => { throw new DOMException('The operation timed out.', 'TimeoutError') })
     expect(await call('/campaigns/a1b2c3d4e5f6a1b2c3d4e5f6', WHATSAPP)).toBeUndefined()
+    expect(logged).not.toHaveBeenCalled()
+    logged.mockRestore()
   })
 
-  it('falls through on a malformed API payload', async () => {
+  it('falls through on a malformed API payload, and logs why', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
     stubFetch(async () => new Response('<html>gateway error</html>', { status: 200 }))
     expect(await call('/c/kofi-surgery', WHATSAPP)).toBeUndefined()
+    expect(logged).toHaveBeenCalledOnce()
+    logged.mockRestore()
   })
 })
 

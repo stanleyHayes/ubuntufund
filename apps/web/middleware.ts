@@ -50,7 +50,10 @@ export default async function middleware(request: Request): Promise<Response | u
         vary: 'user-agent',
       },
     })
-  } catch {
+  } catch (error) {
+    // A slow API just means the plain card. Anything else, such as a helper
+    // module that failed to load, belongs in the function logs.
+    if (!(error instanceof Error && error.name === 'TimeoutError')) console.error('Link-preview middleware fell back to the plain card:', error)
     return undefined
   }
 }
