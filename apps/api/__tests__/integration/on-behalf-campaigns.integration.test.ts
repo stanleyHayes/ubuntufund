@@ -16,6 +16,9 @@ import { AuditLogModel } from '../../src/infrastructure/database/models/AuditLog
 import { NotificationModel } from '../../src/infrastructure/database/models/NotificationModel.js';
 import { MongoCampaignRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoCampaignRepository.js';
 import { KYCVerificationModel } from '../../src/infrastructure/database/models/KYCVerificationModel.js';
+import { CampaignBalanceModel } from '../../src/infrastructure/database/models/CampaignBalanceModel.js';
+import { MongoAccountClosureCheck } from '../../src/infrastructure/adapters/outbound/persistence/MongoAccountClosureCheck.js';
+import { MongoAccountErasure } from '../../src/infrastructure/adapters/outbound/persistence/MongoAccountErasure.js';
 
 // Low tiers auto-approve, so the tests can see consent holding a campaign that tiering alone would publish.
 process.env.CAMPAIGN_AUTO_APPROVE_MAX_TIER = '5';
@@ -73,7 +76,9 @@ it('offers the feature only to plans that include it and never returns the token
   await request(app).post('/api/v1/campaigns').set('Authorization', free.auth).send(campaignInput(beneficiary('ama@example.test'))).expect(403);
 
   const owner = await org();
-  expect((await request(app).get('/api/v1/campaigns/creation-options').set('Authorization', owner.auth).expect(200)).body.data.canCreateOnBehalf).toBe(true);
+  expect((await request(app).get('/api/v1/campaigns/creation-options').set('Authorization', owner.auth).expect(200)).body.data).toMatchObject({
+    canCreateOnBehalf: true, onBehalf: { limit: -1, feePercent: 0, publicationRequiresConsent: true, donationsRequireConsent: true, staffReviewRequired: true },
+  });
   const target = `${randomUUID()}@example.test`;
   const created = await request(app).post('/api/v1/campaigns').set('Authorization', owner.auth).send(campaignInput(beneficiary(target))).expect(201);
   expect(created.body.data).toMatchObject({ creationMode: 'on_behalf', status: 'pending_review', onBehalf: { beneficiaryName: 'Ama Mensah', beneficiaryType: 'individual', beneficiaryConfirmed: false } });
@@ -265,6 +270,13 @@ it('gives staff audited, reasoned overrides and keeps them out of their own camp
   const person = await account({ email });
   await request(app).post('/api/v1/beneficiary-invitations/accept').set('Authorization', person.auth).send({ token }).expect(200);
 
+  // Staff who benefit from a campaign cannot steer it either.
+  await UserModel.findByIdAndUpdate(person.id, { role: UserRole.ADMIN });
+  await request(app).put(`/api/v1/admin/campaigns/${campaign.id}/payout-authority`).set('Authorization', person.auth).send({ target: 'organization', staffReason: 'Moving the payouts of my own campaign elsewhere.' }).expect(403);
+  await request(app).post(`/api/v1/admin/campaigns/${campaign.id}/beneficiary/reassign`).set('Authorization', person.auth)
+    .send({ ...beneficiary(`${randomUUID()}@example.test`), staffReason: 'Handing my own campaign to someone I know.' }).expect(403);
+  await UserModel.findByIdAndUpdate(person.id, { role: UserRole.USER });
+
   await request(app).put(`/api/v1/admin/campaigns/${campaign.id}/payout-authority`).set('Authorization', staff.auth).send({ target: 'none', staffReason: 'short' }).expect(400);
   await request(app).put(`/api/v1/admin/campaigns/${campaign.id}/payout-authority`).set('Authorization', owner.auth).send({ target: 'organization', staffReason: 'Organizer asking to redirect the funds to itself.' }).expect(403);
   await request(app).put(`/api/v1/admin/campaigns/${campaign.id}/payout-authority`).set('Authorization', staff.auth).send({ target: 'none', staffReason: 'Pausing payouts while a fraud report is investigated.' }).expect(200);
@@ -281,4 +293,34 @@ it('gives staff audited, reasoned overrides and keeps them out of their own camp
   expect(stored!.onBehalf!.payoutAuthorityUserId).toBeUndefined();
   await deliveredToken();
   expect((await CampaignBeneficiaryConsentEventModel.find({ campaignId: campaign.id }).lean()).map(e => e.event)).toEqual(['invited', 'accepted', 'payout_authority_changed', 'reassigned']);
+  // Staff read the consent history over HTTP; nobody else can, and it carries no addresses.
+  const history = await request(app).get(`/api/v1/admin/campaigns/${campaign.id}/beneficiary/events`).set('Authorization', staff.auth).expect(200);
+  expect(history.body.data.map((e: { event: string }) => e.event)).toEqual(['invited', 'accepted', 'payout_authority_changed', 'reassigned']);
+  expect(JSON.stringify(history.body)).not.toMatch(/@example\.test/);
+  await request(app).get(`/api/v1/admin/campaigns/${campaign.id}/beneficiary/events`).set('Authorization', owner.auth).expect(403);
+});
+
+it('counts money the beneficiary controls when they close their account, and pauses the campaign once they do', async () => {
+  const owner = await org();
+  const email = `${randomUUID()}@example.test`;
+  const campaign = await createOnBehalf(owner, email);
+  const token = await deliveredToken();
+  const person = await account({ email });
+  await request(app).post('/api/v1/beneficiary-invitations/accept').set('Authorization', person.auth).send({ token }).expect(200);
+  // Once accepted, the invitation no longer keeps the address.
+  expect((await CampaignBeneficiaryInvitationModel.findOne({ campaignId: campaign.id }).select('+email').lean())!.email).toBeUndefined();
+
+  // The beneficiary controls the payouts, so a balance blocks their closure, not the organizer's.
+  await CampaignBalanceModel.create({ campaignId: campaign.id, currency: 'GHS', availableBalance: 120, pendingBalance: 0 });
+  expect((await new MongoAccountClosureCheck().check(person.id)).blockers).toEqual([expect.objectContaining({ kind: 'campaign_balance', amount: 120 })]);
+  expect((await new MongoAccountClosureCheck().check(owner.id)).blockers).toEqual([]);
+  await CampaignBalanceModel.deleteOne({ campaignId: campaign.id });
+
+  await new MongoAccountErasure().request(person.id);
+  const stored = await CampaignModel.findById(campaign.id).lean();
+  expect(stored!.onBehalf!.consentStatus).toBe('revoked');
+  expect(stored!.onBehalf!.payoutAuthorityUserId).toBeUndefined();
+  expect((await CampaignBeneficiaryConsentEventModel.find({ campaignId: campaign.id }).sort({ createdAt: 1 }).lean()).map(e => e.event)).toEqual(['invited', 'accepted', 'revoked']);
+  expect(await NotificationModel.exists({ userId: owner.id, title: 'The beneficiary closed their account' })).toBeTruthy();
+  await request(app).get(`/api/v1/campaigns/${campaign.id}/payout-options`).set('Authorization', owner.auth).expect(403);
 });

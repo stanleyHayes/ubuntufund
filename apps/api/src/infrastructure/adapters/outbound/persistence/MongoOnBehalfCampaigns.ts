@@ -117,6 +117,8 @@ export class MongoOnBehalfCampaigns {
     if (!this.emails.configured) throw new AppError('Beneficiary invitations are temporarily unavailable. Please try again later.', 503);
     const now = new Date();
     await CampaignBeneficiaryInvitationModel.updateMany({ campaignId: input.campaignId, status: 'pending' }, { $set: { status: 'superseded', decidedAt: now } });
+    // Only the newest invitation needs an address (to resend it); older ones drop theirs.
+    await CampaignBeneficiaryInvitationModel.updateMany({ campaignId: input.campaignId, email: { $exists: true } }, { $unset: { email: 1 } });
     const token = randomBytes(32).toString('hex');
     const email = normalizeEmail(input.email);
     const expiresAt = new Date(now.getTime() + input.ttlHours * 3600_000);
@@ -201,7 +203,7 @@ export class MongoOnBehalfCampaigns {
         $inc: { payoutWriteVersion: 1 },
       });
       if (!updated.modifiedCount) throw new AppError('This campaign is no longer waiting for acceptance.', 409);
-      await CampaignBeneficiaryInvitationModel.updateOne({ _id: invitation._id, status: 'pending' }, { $set: { status: 'accepted', decidedAt: now, decidedBy: user.id } });
+      await CampaignBeneficiaryInvitationModel.updateOne({ _id: invitation._id, status: 'pending' }, { $set: { status: 'accepted', decidedAt: now, decidedBy: user.id }, $unset: { email: 1 } });
       const campaignId = campaign._id.toString();
       await event({ campaignId, event: 'accepted', actorId: user.id, actorRole: 'beneficiary', invitationId: invitation._id.toString(), payoutArrangement: campaign.onBehalf.payoutArrangement, termsHash: termsHash(campaign), meta });
       await audit({ actorId: user.id, actorRole: user.role, action: 'campaign.beneficiary_accepted', campaignId, details: `Beneficiary accepted; payouts go to the ${campaign.onBehalf.payoutArrangement}`, path: '/beneficiary-invitations/accept',
@@ -218,7 +220,7 @@ export class MongoOnBehalfCampaigns {
     const found = await this.findInvitation(token);
     if (await this.expireIfDue(found)) throw new AppError('This invitation has expired.', 410);
     await new MongoUnitOfWork().run(async () => {
-      const invitation = await CampaignBeneficiaryInvitationModel.findOneAndUpdate({ _id: found._id, status: 'pending' }, { $set: { status: 'declined', decidedAt: new Date(), ...(actorId ? { decidedBy: actorId } : {}) } }, { new: true });
+      const invitation = await CampaignBeneficiaryInvitationModel.findOneAndUpdate({ _id: found._id, status: 'pending' }, { $set: { status: 'declined', decidedAt: new Date(), ...(actorId ? { decidedBy: actorId } : {}) }, $unset: { email: 1 } }, { new: true });
       if (!invitation) throw new AppError('This invitation is no longer active.', 409);
       const campaign = await CampaignModel.findOneAndUpdate({ _id: invitation.campaignId, 'onBehalf.consentStatus': 'pending' }, { $set: { 'onBehalf.consentStatus': 'declined' }, $unset: { 'onBehalf.payoutAuthorityUserId': 1 } }, { new: true });
       if (!campaign?.onBehalf) return;
@@ -325,6 +327,7 @@ export class MongoOnBehalfCampaigns {
       });
       await audit({ actorId, actorRole: 'organizer', action: 'campaign.beneficiary_changed', campaignId, details: 'Beneficiary changed before acceptance and before donations', method: 'PUT', path: '/campaigns/:id/beneficiary',
         changes: [{ field: 'onBehalf.beneficiaryName', before: onBehalf.beneficiaryName, after: input.beneficiaryName.trim() }, { field: 'onBehalf.payoutArrangement', before: onBehalf.payoutArrangement, after: input.payoutArrangement }, ...(status !== campaign.status ? [{ field: 'status', before: campaign.status, after: status }] : [])] });
+      logger.info({ event: 'on_behalf.beneficiary_changed', campaignId }, 'beneficiary changed before acceptance');
     });
   }
 
@@ -347,6 +350,7 @@ export class MongoOnBehalfCampaigns {
       await recordAccountNotice({ key: `on-behalf:revoked:${campaignId}:${Date.now()}`, userId: campaign.creatorId, type: 'on_behalf',
         title: 'The beneficiary withdrew their consent', path: `/campaigns/${campaignId}`,
         body: `${campaign.onBehalf.beneficiaryName} withdrew consent for “${campaign.title}”. It cannot collect or pay out money for them.` });
+      logger.info({ event: 'on_behalf.consent_revoked', campaignId }, 'beneficiary withdrew consent');
     });
   }
 
@@ -361,6 +365,14 @@ export class MongoOnBehalfCampaigns {
     })));
   }
 
+  /** Staff: the consent history, oldest first. No addresses are stored in it. */
+  async consentEvents(campaignId: string): Promise<{ event: string; actorRole?: string; actorId?: string; payoutArrangement?: string; reason?: string; consentVersion?: string; createdAt: string }[]> {
+    if (!isValidObjectId(campaignId)) throw new AppError('Campaign not found', 404);
+    const events = await CampaignBeneficiaryConsentEventModel.find({ campaignId }).sort({ createdAt: 1 }).limit(500).lean();
+    return events.map(e => ({ event: e.event, actorRole: e.actorRole ?? undefined, actorId: e.actorId ?? undefined, payoutArrangement: e.payoutArrangement ?? undefined,
+      reason: e.reason ?? undefined, consentVersion: e.consentVersion ?? undefined, createdAt: (e.createdAt as Date).toISOString() }));
+  }
+
   /** Staff: point a campaign at a different beneficiary. Consent and payout authority start over. */
   async reassign(campaignId: string, adminId: string, input: BeneficiaryInput, reason: string): Promise<void> {
     if (!isValidObjectId(campaignId)) throw new AppError('Campaign not found', 404);
@@ -370,7 +382,7 @@ export class MongoOnBehalfCampaigns {
       if (!staff) throw new AppError('Current administrator access is required.', 403);
       const campaign = await CampaignModel.findOne({ _id: campaignId, deletedAt: { $exists: false } });
       if (!campaign?.onBehalf || campaign.creationMode !== 'on_behalf') throw new AppError('This campaign is not run on someone\'s behalf.', 404);
-      if (campaign.creatorId === adminId) throw new AppError('Another administrator must change the beneficiary of your campaign.', 403);
+      if (campaign.creatorId === adminId || campaign.onBehalf.beneficiaryUserId === adminId) throw new AppError('Another administrator must change the beneficiary of a campaign you are part of.', 403);
       const before = campaign.onBehalf;
       await CampaignModel.updateOne({ _id: campaign._id }, {
         $set: {
@@ -393,6 +405,7 @@ export class MongoOnBehalfCampaigns {
         body: `The beneficiary of “${campaign.title}” is now ${input.beneficiaryName.trim()}. They have been invited to accept it; payouts are paused until they do.` });
       if (before.beneficiaryUserId) await recordAccountNotice({ key: `on-behalf:unlinked:${campaignId}:${before.beneficiaryUserId}:${Date.now()}`, userId: before.beneficiaryUserId, type: 'on_behalf',
         title: 'A campaign is no longer linked to you', path: '/my-campaigns', body: `Support changed the beneficiary of “${campaign.title}”. Contact support@ujimora.com if you have questions.` });
+      logger.info({ event: 'on_behalf.reassigned', campaignId }, 'staff reassigned the beneficiary');
     });
   }
 
@@ -418,8 +431,9 @@ export class MongoOnBehalfCampaigns {
         changes: [{ field: 'onBehalf.payoutAuthorityUserId', before, after }] });
       const body = `Support changed who can request payouts for “${campaign.title}”: ${target === 'none' ? 'payouts are paused' : target === 'beneficiary' ? 'the beneficiary' : 'the organizer'}.`;
       for (const userId of [campaign.creatorId, campaign.onBehalf.beneficiaryUserId]) {
-        await recordAccountNotice({ key: `on-behalf:authority:${campaignId}:${userId}:${Date.now()}`, userId, type: 'on_behalf', title: 'Payout access changed', path: `/campaigns/${campaignId}`, body });
+        if (userId) await recordAccountNotice({ key: `on-behalf:authority:${campaignId}:${userId}:${Date.now()}`, userId, type: 'on_behalf', title: 'Payout access changed', path: `/campaigns/${campaignId}`, body });
       }
+      logger.info({ event: 'on_behalf.payout_authority_changed', campaignId, target }, 'staff changed payout authority');
     });
   }
 
@@ -432,6 +446,7 @@ export class MongoOnBehalfCampaigns {
       if (campaign?.onBehalf) await recordAccountNotice({ key: `on-behalf:expired:${invitationId}`, userId: campaign.creatorId, type: 'on_behalf',
         title: 'Your beneficiary invitation expired', path: `/campaigns/${invitation.campaignId}`,
         body: `${campaign.onBehalf.beneficiaryName} did not respond to the invitation for “${campaign.title}” in time. Send it again from the campaign page.` });
+      logger.info({ event: 'on_behalf.invitation_expired', campaignId: invitation.campaignId }, 'beneficiary invitation expired');
     });
   }
 

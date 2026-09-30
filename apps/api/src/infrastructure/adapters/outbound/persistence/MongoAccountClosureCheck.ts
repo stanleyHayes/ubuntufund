@@ -45,9 +45,11 @@ const EPSILON = 1e-9;
 export class MongoAccountClosureCheck implements AccountClosureCheckPort {
   async check(userId: string): Promise<AccountClosureCheck> {
     const now = new Date();
-    const [wallets, campaigns, creator, affiliate, creatorPayouts, topUps, tips] = await Promise.all([
+    const [wallets, campaigns, payingTo, creator, affiliate, creatorPayouts, topUps, tips] = await Promise.all([
       WalletModel.find({ userId }).select('currency balance').lean(),
-      CampaignModel.find({ creatorId: userId }).select('_id status endDate deletedAt').lean(),
+      CampaignModel.find({ creatorId: userId }).select('_id status endDate deletedAt creationMode onBehalf.consentStatus onBehalf.payoutAuthorityUserId').lean(),
+      // Campaigns run for this user whose payouts they control.
+      CampaignModel.find({ 'onBehalf.payoutAuthorityUserId': userId, 'onBehalf.consentStatus': 'accepted' }).select('_id').lean(),
       CreatorBalanceModel.findOne({ userId }).select('currency availableBalance pendingBalance').lean(),
       AffiliateModel.findOne({ userId }).select('_id').lean(),
       CreatorPayoutModel.countDocuments({ creatorUserId: userId, status: { $in: IN_FLIGHT } }),
@@ -59,7 +61,14 @@ export class MongoAccountClosureCheck implements AccountClosureCheckPort {
       ] }),
       TipModel.countDocuments({ creatorUserId: userId, ...openPayment }),
     ]);
-    const campaignIds = campaigns.map(campaign => String(campaign._id));
+    // Money is stranded only where this account controls payouts: an organizer's
+    // campaign run for a consenting beneficiary pays the beneficiary instead.
+    const paysSomeoneElse = (campaign: (typeof campaigns)[number]) => campaign.creationMode === 'on_behalf'
+      && campaign.onBehalf?.consentStatus === 'accepted' && !!campaign.onBehalf.payoutAuthorityUserId && campaign.onBehalf.payoutAuthorityUserId !== userId;
+    const campaignIds = [...new Set([
+      ...campaigns.filter(campaign => !paysSomeoneElse(campaign)).map(campaign => String(campaign._id)),
+      ...payingTo.map(campaign => String(campaign._id)),
+    ])];
     const affiliateId = affiliate ? String(affiliate._id) : null;
     const [campaignBalances, beneficiaryBalances, affiliateBalance, campaignPayouts, beneficiaryPayouts, affiliatePayouts, donations] = await Promise.all([
       campaignIds.length ? CampaignBalanceModel.find({ campaignId: { $in: campaignIds } }).select('currency availableBalance pendingBalance').lean() : [],

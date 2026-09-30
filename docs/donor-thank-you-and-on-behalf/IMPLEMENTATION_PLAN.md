@@ -21,7 +21,7 @@ Branch: `feat/thank-you-and-on-behalf`. This file records the repository discove
 | Bulk email | `MongoActivityAlerts`: deterministic delivery ids, leases, saved request, Resend `Idempotency-Key`, 23 h ambiguity cutoff, 30 s worker loop | Thank-you delivery copies this pattern; the Resend adapter now also returns the provider message id and a typed error. |
 | Donors | `DonationIntent` holds status, `donorUserId` (null for guests) and `donorEmail`; eligible = `SUCCEEDED` or `PARTIALLY_REFUNDED` | Canonical recipient key: `user:<id>` or `email:<sha256(lowercase email)>`. |
 | Safety screening | `MongoPublicationAdmission` (`action` is a closed list) | New action `thank_you.send`; a held message shows the existing "waiting for safety review" notice. |
-| Rate limiting | In-memory `createRateLimiter` + DB cooldowns | Per-user limiter plus a 60 s DB cooldown on invitations and sends. |
+| Rate limiting | In-memory `createRateLimiter` + DB cooldowns | Per-user and per-IP limiters (invitation links, management, thank-you calls, unsubscribe), plus a 60 s DB cooldown on invitation resends. The send-slot index and idempotency keys bound thank-you sends. |
 
 ## 2. Decisions (owner-approved 29 Sep 2026)
 
@@ -52,3 +52,72 @@ Out of scope for v1 (documented, not silently dropped): media in thank-you email
 4. Admin: plan fields, settings, campaign filters/detail, thank-you monitor.
 5. Web: creation flow, beneficiary panel, invitation page, beneficiary view, payout display, thank-you composer, unsubscribe page, settings toggle, checkout disclosure, pricing rows. Mobile: thank-you composer and on-behalf status.
 6. Tests (unit, integration, worker idempotency, concurrency, invitations, security, regression), docs, privacy notice, final review, merge.
+
+## 5. As built
+
+The API contract is in [API.md](API.md). This section covers what operators and reviewers need beyond it.
+
+### Where the code lives
+| Concern | Code |
+|---|---|
+| Payout authority (single rule for every payout path) | `apps/api/src/domain/services/campaignPayoutAuthority.ts` |
+| Donation gate | `CampaignEntity.canReceiveDonation()` (consent check) |
+| Invitations, consent, staff overrides, expiry sweep | `persistence/MongoOnBehalfCampaigns.ts`, routes in `routes/onBehalfRoutes.ts` |
+| Entitlement and limit | `PlanLimitsService.onBehalfPolicy` / `assertCanCreateOnBehalf` (re-checked inside the creation transaction) |
+| Thank-you drafts, submit, worker, retry, unsubscribe | `persistence/MongoDonorThankYous.ts`, routes in `routes/donorThankYouRoutes.ts` |
+| Admin settings | `CommercialConfigService` keys `onBehalf.*`, `thankYou.*` |
+| Account closure | `MongoAccountClosureCheck` counts balances the user controls as payout authority; `MongoAccountErasure` withdraws a closing beneficiary's consent and removes stored addresses |
+| Web | creation step, beneficiary panel, invitation page, "campaigns run for you", thank-you composer, unsubscribe page, settings toggle, checkout disclosure, plan rows |
+| Admin | plan fields, settings section, campaign filters and on-behalf panel (consent timeline, reassign, payout authority), Donor thank-yous monitor, publication-review label |
+| Mobile | on-behalf line and status card, payout gating by `viewerAccess`, thank-you composer, "campaigns run for you", settings toggle, Android checkout disclosure, plan row. Creating on-behalf campaigns and answering invitations stay on the web. |
+| Marketing | pricing row and FAQ entry |
+
+### Background work
+The existing 30-second reconcile loop in `app.ts` runs two new steps:
+- `onBehalfCampaigns.expireDue()` expires unanswered invitations.
+- `donorThankYous.process()` resolves recipients, delivers, and finalizes.
+
+There are no new processes or queues. Several API instances can run the loop at once, because every step takes a lease.
+
+### Indexes (created by `initializeDatabaseModels()` at startup, before writes)
+- `campaigns`: `onBehalf.beneficiaryUserId` (sparse).
+- `campaign_beneficiary_invitations`: `tokenHash` (unique), `one_pending_invitation_per_campaign` (unique, partial on `status: 'pending'`), plus `campaignId`, `status` and `expiresAt`.
+- `campaign_beneficiary_consent_events`: `campaignId`.
+- `donor_thank_yous`:
+  - `one_draft_per_campaign` (unique, partial)
+  - `one_message_per_send_slot` (unique, partial; enforces `thankYou.maxSendsPerCampaign` under concurrency)
+  - `thank_you_submit_idempotency` (unique, partial)
+- `donor_thank_you_deliveries`: `one_delivery_per_recipient` (unique on `thankYouId + recipientKey + channel`), plus `{ status, nextAttemptAt }`.
+- `donor_message_suppressions`: `_id` is the email hash.
+
+There is no backfill. Existing campaigns have no `creationMode` and read as `self`. Existing plans have no on-behalf fields and read as "not included".
+
+### Configuration and deployment
+1. No new environment variables. Invitations and thank-you emails use the account-email settings: `RESEND_API_KEY`, `FROM_EMAIL`, `AUTH_EMAIL_ENCRYPTION_KEY_BASE64` and an https `PUBLIC_WEB_URL`. `PUBLIC_API_URL` builds the one-click `List-Unsubscribe` address. A key derived from `AUTH_EMAIL_ENCRYPTION_KEY_BASE64` signs unsubscribe links, so rotating it invalidates links already sent.
+2. After deploying, give the plans that should have the feature `onBehalfCampaigns: true` (with `maxOnBehalfCampaigns` and `onBehalfFeePercent`) in Admin → Plans. The change is audited like any plan edit. The owner chose Organization and Enterprise.
+3. Review the defaults in Admin → Settings → Campaigns. The on-behalf switches start at their strictest: consent before publication and before donations, plus staff review. Thank-you messages are on, one per campaign, and unlock when the campaign ends or a payout is paid.
+
+### Observability
+There is no metrics stack, so structured log events (pino, with request ids) are the metrics source. None of them include donor or beneficiary contact details.
+- On-behalf: `on_behalf.invitation_issued`, `consent_accepted`, `consent_declined`, `consent_revoked`, `invitation_expired`, `beneficiary_changed`, `reassigned`, `payout_authority_changed`.
+- Thank-you: `donor_thank_you.draft_saved`, `send_requested`, `recipients_resolved`, `delivery_failed`, `completed`, `unsubscribed`.
+
+Staff decisions also go to the audit log. Consent decisions go to the append-only consent log, which records IP, user agent, terms version and a fingerprint of what was shown.
+
+### Where the build differs from the spec, and why
+| Spec | Built | Reason |
+|---|---|---|
+| Payout recipient "if configured" may be the organization | The organization receives funds only if the beneficiary accepted that arrangement. Payout authority always requires accepted consent and cannot be switched off. Staff can override it with a written reason, an audit entry and notices. | Safer invariant (spec §14): management never implies money. |
+| Optional media in thank-you messages | Plain text only | The transactional email stack is plain text. Adding HTML and images needs its own sanitizer and review. |
+| "Delivered" counts | "Sent" means the provider accepted the email | No Resend delivery webhook is integrated yet. |
+| Domain/analytics events | Structured log events | The platform has no analytics pipeline, and the privacy notice says it uses no third-party analytics. |
+| Beneficiary may edit content ("configured") | Beneficiaries can view, thank donors and control payouts. Content editing stays with the organizer and its org admins/editors. | Keeps one editor chain for publication review. It can be added later behind a setting. |
+| Billing-period quota | Limit on active on-behalf campaigns only | No billing-period counters exist to extend. |
+| Admin filter by exact consent status | Filters: created for self or others, and beneficiary confirmed or waiting | The list API's public summary only carries `beneficiaryConfirmed`. The detail panel shows the full status and history. |
+| Member leaving the organization | Campaigns are created by the organization account itself, so the creator is the organization. Members manage through their org role and never own the campaign. | Matches the existing organization model. |
+
+### Retention
+- **Invitation addresses** are deleted once the invitation is accepted, declined or replaced, and when the invited person closes their account. Only the hash remains.
+- **Thank-you delivery rows** keep counts and a hash. The prepared email is removed once it is sent, skipped or can no longer be retried, and when the recipient closes their account.
+- **Suppressions** keep only the email hash, which is needed to honour an unsubscribe.
+- **Consent events** are kept, like audit records, as evidence.

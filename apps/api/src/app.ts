@@ -462,6 +462,8 @@ import { MongoOnBehalfCampaigns } from './infrastructure/adapters/outbound/persi
 import { campaignManagerRole } from './infrastructure/adapters/outbound/persistence/campaignManagers.js'
 import { createOnBehalfRoutes } from './infrastructure/adapters/inbound/http/routes/onBehalfRoutes.js'
 import type { ActivityEmailSender } from './infrastructure/adapters/outbound/persistence/MongoActivityAlerts.js'
+import { MongoDonorThankYous } from './infrastructure/adapters/outbound/persistence/MongoDonorThankYous.js'
+import { createDonorThankYouRoutes } from './infrastructure/adapters/inbound/http/routes/donorThankYouRoutes.js'
 
 /** How long browsers may reuse a CORS preflight answer (Chromium caps it at 7200). */
 const CORS_PREFLIGHT_MAX_AGE_SECONDS = 7200
@@ -649,11 +651,18 @@ export function createApp(options: {
   // the same reason as createCampaignUseCase's: commercialConfigService is
   // declared further down and only needed once a request arrives.
   const onBehalfCampaigns = new MongoOnBehalfCampaigns(accountEmails, { resolveOnBehalfConfig: () => commercialConfigService.resolveOnBehalfConfig() })
+  const donorThankYous = new MongoDonorThankYous({
+    sender: activityEmail,
+    accountEmailKey: options.accountEmailKey ?? (process.env.AUTH_EMAIL_ENCRYPTION_KEY_BASE64 ? Buffer.from(process.env.AUTH_EMAIL_ENCRYPTION_KEY_BASE64, 'base64') : null),
+    apiUrl: config.publicApiUrl.replace(/\/+$/, ''),
+    config: { resolveThankYouConfig: () => commercialConfigService.resolveThankYouConfig() },
+    admission: publicationAdmission,
+  })
   let activityAlertsRunning = false
   const reconcileActivityAlerts = async () => {
     if (activityAlertsRunning) return
     activityAlertsRunning = true
-    try { await onBehalfCampaigns.expireDue(); await accountEmails.deliverPending(); await activityAlerts.capturePending(); await activityAlerts.deliverPending() }
+    try { await onBehalfCampaigns.expireDue(); await accountEmails.deliverPending(); await activityAlerts.capturePending(); await activityAlerts.deliverPending(); await donorThankYous.process() }
     finally { activityAlertsRunning = false }
   }
   if (config.nodeEnv !== 'test') {
@@ -1842,6 +1851,11 @@ export function createApp(options: {
   api.use('/campaigns', onBehalfRoutes.campaigns)
   api.use('/beneficiary', onBehalfRoutes.beneficiary)
   api.use('/admin/campaigns', onBehalfRoutes.admin)
+  const thankYouRoutes = createDonorThankYouRoutes({ service: donorThankYous, authMiddleware, requireAdmin })
+  api.use('/campaigns', thankYouRoutes.campaigns)
+  api.use('/donor-messages', thankYouRoutes.donorMessages)
+  api.use('/profile', thankYouRoutes.profile)
+  api.use('/admin/donor-thank-yous', thankYouRoutes.admin)
   api.use('/campaigns', createCampaignUpdateRoutes(campaignUpdateController, authMiddleware, optionalAuthMiddleware))
   api.use('/publication-reviews', createPublicationReviewRoutes(authMiddleware))
   api.use('/admin/donation-content-reviews', createDonationContentReviewRoutes(authMiddleware, requireAdmin))

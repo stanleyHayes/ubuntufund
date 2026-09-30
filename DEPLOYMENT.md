@@ -94,7 +94,7 @@ by missing configuration`, naming (never printing) whatever is missing.
 | Variable | Format | Without it |
 |---|---|---|
 | `RESEND_API_KEY` | Resend API key | No transactional email at all. |
-| `AUTH_EMAIL_ENCRYPTION_KEY_BASE64` | 32 random bytes, base64: `openssl rand -base64 32` | Forgot-password, email verification and newsletter confirmation return 503; password-changed notices are silently skipped. Also needs `FROM_EMAIL` and an `https` `PUBLIC_WEB_URL` (both committed). Keep it stable and backed up. |
+| `AUTH_EMAIL_ENCRYPTION_KEY_BASE64` | 32 random bytes, base64: `openssl rand -base64 32` | Forgot-password, email verification and newsletter confirmation return 503; password-changed notices are silently skipped. Beneficiary invitations return 503, so on-behalf campaigns cannot be created, and donor thank-you messages cannot be sent: the composer says email is unavailable, and messages already queued wait until email works again. Also needs `FROM_EMAIL` and an `https` `PUBLIC_WEB_URL` (both committed). A key derived from it signs thank-you unsubscribe links, so rotating it breaks links already sent. Keep it stable and backed up. |
 | `MFA_ENCRYPTION_KEY` | 32 random bytes, standard base64 (44 chars ending `=`): `openssl rand -base64 32` | Authenticator enrollment returns 503. **Never rotate it**: existing enrollments stay required and fail closed if the key changes. |
 
 Check after deploy: `POST /api/v1/auth/forgot-password` with

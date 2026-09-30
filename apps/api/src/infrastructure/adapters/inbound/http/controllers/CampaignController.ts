@@ -70,7 +70,7 @@ export class CampaignController {
     private readonly userRepo: UserRepositoryPort,
     private readonly campaignRepo: CampaignRepositoryPort,
     private readonly splitEnabled: boolean,
-    private readonly onBehalf?: { readonly invitationsAvailable: boolean; resolveConfig(): Promise<{ minManagerVerificationLevel: number }> },
+    private readonly onBehalf?: { readonly invitationsAvailable: boolean; resolveConfig(): Promise<{ minManagerVerificationLevel: number; publicationRequiresConsent: boolean; donationsRequireConsent: boolean; staffReviewRequired: boolean }> },
   ) {}
 
   creationOptions = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
@@ -105,7 +105,9 @@ export class CampaignController {
         canSplit: this.splitEnabled && plan.campaignCollaboration && plan.escrowSupport,
         splitEnabled: this.splitEnabled,
         canCreateOnBehalf: onBehalfBlockReason === null, onBehalfBlockReason,
-        onBehalf: { limit: policy.limit, active: policy.active, feePercent: policy.feePercent },
+        // The gates a new on-behalf campaign would get, so the form describes them accurately.
+        onBehalf: { limit: policy.limit, active: policy.active, feePercent: policy.feePercent,
+          ...(onBehalfConfig ? { publicationRequiresConsent: onBehalfConfig.publicationRequiresConsent, donationsRequireConsent: onBehalfConfig.donationsRequireConsent, staffReviewRequired: onBehalfConfig.staffReviewRequired } : {}) },
       } });
     } catch (error) { next(error); }
   };

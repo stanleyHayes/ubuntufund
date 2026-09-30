@@ -8,7 +8,9 @@ import type { BeneficiaryInvitationStatus } from '@ubuntu-fund/types';
  * Only the SHA-256 of the token is stored, as for email verification; the raw
  * token exists only in the encrypted email outbox and the recipient's inbox.
  * The address is kept (never selected by default) so the organizer can resend
- * without learning it, and so acceptance can be bound to it.
+ * without learning it. Acceptance is bound to its hash. The address itself is
+ * removed once the invitation is accepted, declined or replaced, and when the
+ * invited person closes their account.
  */
 export interface CampaignBeneficiaryInvitationDocument {
   _id: mongoose.Types.ObjectId;

@@ -18,7 +18,7 @@ import { logger } from '../../../logging/logger.js';
 
 interface SourceRecord { _id: mongoose.Types.ObjectId; activityRevision: number; activityOccurredAt: Date; [key: string]: unknown }
 interface Event { key: string; userId: string; category: ActivityAlertCategory; title: string; body: string; path: string; occurredAt: Date }
-export interface ActivityEmailSender { configured: boolean; send(key: string, payload: Record<string, unknown>): Promise<void>; from: string; replyTo: string; webUrl: string }
+export interface ActivityEmailSender { configured: boolean; send(key: string, payload: Record<string, unknown>): Promise<void | { id?: string }>; from: string; replyTo: string; webUrl: string }
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 const text = (value: unknown) => typeof value === 'string' ? value : '';
 const money = (row: SourceRecord, value: number) => `${text(row.currency) || 'GHS'} ${value.toFixed(2)}`;

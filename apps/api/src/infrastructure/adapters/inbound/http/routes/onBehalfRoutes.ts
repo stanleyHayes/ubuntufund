@@ -79,6 +79,10 @@ export function createOnBehalfRoutes(deps: {
   }));
 
   const admin = Router();
+  admin.get('/:id/beneficiary/events', deps.authMiddleware, deps.requireAdmin, wrap(async (req, res) => {
+    res.set('Cache-Control', 'private, no-store');
+    res.json({ data: await deps.service.consentEvents(String(req.params.id)), status: 200 });
+  }));
   admin.post('/:id/beneficiary/reassign', deps.authMiddleware, deps.requireAdmin, validate(reassignSchema), wrap(async (req, res) => {
     const { staffReason: reason, ...input } = req.body;
     await deps.service.reassign(String(req.params.id), req.userId!, input, reason);

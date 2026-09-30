@@ -5,7 +5,7 @@
  * are off and which variables they need. Names only — never values.
  */
 export interface CapabilityConfiguration {
-  /** Password reset, email verification, newsletter confirmation, security notices. */
+  /** Password reset, email verification, newsletter confirmation, security notices, beneficiary invitations, donor thank-yous. */
   accountEmail: boolean;
   /** Authenticator (TOTP) enrollment. */
   mfa: boolean;
@@ -25,7 +25,7 @@ export function disabledCapabilities(status: CapabilityConfiguration): DisabledC
   const optional: string[] = [];
   if (!status.accountEmail) {
     faults.push(
-      'account email (password reset, email verification, newsletter confirmation, password-changed notices): ' +
+      'account email (password reset, email verification, newsletter confirmation, password-changed notices, beneficiary invitations, donor thank-you messages): ' +
         'needs RESEND_API_KEY, FROM_EMAIL, AUTH_EMAIL_ENCRYPTION_KEY_BASE64 (32 bytes, base64) and an https PUBLIC_WEB_URL',
     );
   }
