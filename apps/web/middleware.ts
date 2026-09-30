@@ -11,8 +11,11 @@
  * not public, a missing index.html — also returns nothing, so the scraper gets
  * the normal static card. Only public campaigns resolve: the API endpoint used
  * here applies the same visibility check as the public page.
+ *
+ * Vercel runs this file as a Node.js ES module, where a relative import must
+ * name its file (.js). The helpers are loaded inside the try so that even a
+ * module that fails to load costs the preview, never the page.
  */
-import { campaignKeyFromPath, campaignShareMeta, injectShareMeta, isLinkPreviewBot } from './src/lib/shareMeta'
 
 export const config = {
   matcher: ['/c/:slug', '/c/:slug/donate', '/campaigns/:id'],
@@ -23,11 +26,13 @@ const API_ORIGIN = 'https://api.ujimora.com'
 const TIMEOUT_MS = 1500
 
 export default async function middleware(request: Request): Promise<Response | undefined> {
-  if (request.method !== 'GET' || !isLinkPreviewBot(request.headers.get('user-agent'))) return undefined
-  const url = new URL(request.url)
-  const key = campaignKeyFromPath(url.pathname)
-  if (!key) return undefined
+  if (request.method !== 'GET') return undefined
   try {
+    const { campaignKeyFromPath, campaignShareMeta, injectShareMeta, isLinkPreviewBot } = await import('./src/lib/shareMeta.js')
+    if (!isLinkPreviewBot(request.headers.get('user-agent'))) return undefined
+    const url = new URL(request.url)
+    const key = campaignKeyFromPath(url.pathname)
+    if (!key) return undefined
     const signal = AbortSignal.timeout(TIMEOUT_MS)
     const [campaignResponse, pageResponse] = await Promise.all([
       fetch(`${API_ORIGIN}/api/v1/campaigns/slug/${encodeURIComponent(key)}/public`, { headers: { accept: 'application/json' }, signal }),
@@ -45,7 +50,12 @@ export default async function middleware(request: Request): Promise<Response | u
         vary: 'user-agent',
       },
     })
-  } catch {
+  } catch (error) {
+    // A slow API just means the plain card. Anything else, such as a helper
+    // module that failed to load, belongs in the function logs.
+    const timedOut = (error as { name?: unknown } | null)?.name === 'TimeoutError'
+    // eslint-disable-next-line no-console -- Vercel's function logs are the middleware's only log sink.
+    if (!timedOut) console.error('Link-preview middleware fell back to the plain card:', error)
     return undefined
   }
 }
