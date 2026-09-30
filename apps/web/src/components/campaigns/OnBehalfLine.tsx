@@ -24,7 +24,7 @@ export function OnBehalfLine({ onBehalf, organizerName, sx }: {
         variant="outlined"
         color={confirmed ? 'success' : 'warning'}
         icon={confirmed ? <VerifiedRoundedIcon /> : <HourglassTopRoundedIcon />}
-        label={confirmed ? 'Confirmed by the beneficiary' : 'Awaiting the beneficiary’s confirmation'}
+        label={confirmed ? 'Confirmed by beneficiary' : 'Awaiting confirmation'}
         sx={{ fontWeight: 600, maxWidth: '100%' }}
       />
     </Box>

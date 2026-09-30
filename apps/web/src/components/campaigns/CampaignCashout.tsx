@@ -4,7 +4,7 @@ import { BankPicker } from '@/components/account/BankPicker'
 import { EmailVerificationNotice } from '@/components/account/EmailVerificationNotice'
 import { campaignPayoutBreakdownRows } from '@ubuntu-fund/types'
 import type { CampaignPayoutBreakdown } from '@ubuntu-fund/types'
-import { EmptyState } from '@ubuntu-fund/ui'
+import { EmptyState, SHAPE } from '@ubuntu-fund/ui'
 import type { Account } from '@/components/account/SavedPayoutAccounts'
 import { useCallback, useEffect, useState, useRef } from 'react'
 import {
@@ -389,9 +389,9 @@ export function CampaignCashout({
                   gap: 1,
                   mb: 2,
                   p: 1.5,
-                  borderRadius: 2,
-                  border: '1px solid',
-                  borderColor: 'divider',
+                  borderRadius: SHAPE.sm,
+                  boxShadow: 'var(--neu-inset)',
+                  border: 'var(--neu-border)',
                 }}
               >
                 <VolunteerActivismRounded sx={{ fontSize: 20, color: 'primary.main' }} aria-hidden />
@@ -589,10 +589,10 @@ export function CampaignCashout({
                     ].map(([label, detail]) => (
                       <Box
                         key={label}
-                        sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, py: 0.5 }}
+                        sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', columnGap: 2, rowGap: 0.25, py: 0.5 }}
                       >
                         <Typography>{label}</Typography>
-                        <Typography fontWeight={700} sx={{ overflowWrap: 'anywhere', textAlign: 'right' }}>
+                        <Typography fontWeight={700} sx={{ ml: 'auto', overflowWrap: 'anywhere', textAlign: 'right' }}>
                           {detail}
                         </Typography>
                       </Box>

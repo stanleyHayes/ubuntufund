@@ -489,7 +489,7 @@ function ReviewItem({ label, children }: { label: string; children: ReactNode })
       <Typography sx={{ fontSize: '0.8rem', color: INK_SECONDARY, fontWeight: 600 }}>
         {label}
       </Typography>
-      <Box sx={{ fontSize: '0.9rem', color: INK, lineHeight: 1.55 }}>{children}</Box>
+      <Box sx={{ fontSize: '0.9rem', color: INK, lineHeight: 1.55, minWidth: 0, overflowWrap: 'anywhere' }}>{children}</Box>
     </Box>
   )
 }
@@ -1024,6 +1024,9 @@ function CampaignFormForViewer({ userId, viewer }: { userId: string | null; view
                   return (
                     <Box
                       key={mode.value}
+                      // `Mui-selected` opts the card into the theme's selected-border
+                      // rule; without it the global `!important` border token wins.
+                      className={selected ? 'Mui-selected' : undefined}
                       sx={{
                         px: 1.75,
                         py: 1.4,
@@ -1035,6 +1038,7 @@ function CampaignFormForViewer({ userId, viewer }: { userId: string | null; view
                         boxShadow: selected ? 'var(--neu-inset)' : 'var(--neu-subtle)',
                         backdropFilter: 'var(--neu-backdrop)',
                         transition: 'box-shadow 160ms ease',
+                        '&:has(input:focus-visible)': { outline: '2px solid var(--focus-ring)', outlineOffset: 2 },
                         '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
                       }}
                     >
@@ -1405,7 +1409,7 @@ function CampaignFormForViewer({ userId, viewer }: { userId: string | null; view
                   {payoutArrangementText(beneficiary.payoutArrangement, beneficiaryName || 'the beneficiary', managerName || undefined)}
                   {beneficiary.payoutArrangement === 'organization' && ', only if they agree'}
                 </ReviewItem>
-                <Alert severity="info" icon={false} sx={{ mt: 0.5 }}>
+                <Alert severity="info" sx={{ mt: 0.5 }}>
                   {creationGateText(options?.onBehalf)} We email them an invitation when you publish.
                   {onBehalfFee > 0 && ` An extra ${onBehalfFee}% platform fee applies to this campaign.`}
                 </Alert>

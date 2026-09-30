@@ -16,6 +16,7 @@ vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ user: m.user }) }))
 vi.mock('@/context/ColorModeContext', () => ({ usePalette: () => ({}), useNeu: () => ({}) }))
 vi.mock('@/components/SignInRequired', () => ({ SignInRequired: () => createElement('p', {}, 'Sign in') }))
 vi.mock('@/components/KeyboardAvoider', () => ({ KeyboardAvoider: m.el('div') }))
+vi.mock('@/components/GlassSurface', () => ({ GlassSurface: m.el('div') }))
 vi.mock('@/components/Loading', () => ({
   PageSkeleton: () => createElement('p', {}, 'Loading'),
   Button: ({ children, onPress }: { children: React.ReactNode; onPress: () => void }) => createElement('button', { onClick: onPress }, children),

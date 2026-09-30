@@ -288,7 +288,7 @@ export function CampaignCashout({ campaignId, beneficiaryName }: { campaignId: s
               }}
             >
               <Icon source="hand-heart-outline" size={20} color={palette.primary} />
-              <Text style={{ flex: 1, fontWeight: '700', color: palette.text }}>
+              <Text style={{ flex: 1, fontFamily: 'Outfit_700Bold', color: palette.text }}>
                 {fundsRaisedFor(beneficiaryName)}
               </Text>
             </View>
@@ -412,7 +412,7 @@ export function CampaignCashout({ campaignId, beneficiaryName }: { campaignId: s
                     key={label}
                     style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}
                   >
-                    <Text style={{ flex: 1 }}>{label}</Text>
+                    <Text style={{ flexShrink: 0 }}>{label}</Text>
                     <Text style={{ flex: 1, fontWeight: '700', textAlign: 'right' }}>{text}</Text>
                   </View>
                 ))}

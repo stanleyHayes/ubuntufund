@@ -39,7 +39,6 @@ import { ApiError } from '@/lib/apiError'
 import { useAuth } from '@/context/AuthContext'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import { insetSurface, raisedSurface } from '@/lib/surfaces'
-import { TONES } from '@/lib/tones'
 
 /** `GET /admin/campaigns/:id/beneficiary/events`, oldest first. It never holds addresses. */
 export interface BeneficiaryConsentEvent {
@@ -73,13 +72,14 @@ const CONSENT_LABELS: Record<OnBehalfConsentStatus, string> = {
   expired: 'Invitation expired',
   revoked: 'Withdrawn by the beneficiary',
 }
-const CONSENT_TONES: Record<OnBehalfConsentStatus, string> = {
-  not_required: TONES.teal.text,
-  pending: TONES.gold.text,
-  accepted: TONES.green.text,
-  declined: TONES.clay.text,
-  expired: TONES.clay.text,
-  revoked: TONES.clay.text,
+/** Text colour on the theme chip: the AA text tokens, which follow every skin and mode. */
+const CONSENT_COLORS: Record<OnBehalfConsentStatus, string> = {
+  not_required: 'text.secondary',
+  pending: 'var(--text-warning)',
+  accepted: 'var(--text-success)',
+  declined: 'var(--text-error)',
+  expired: 'var(--text-error)',
+  revoked: 'var(--text-error)',
 }
 const INVITATION_LABELS: Record<BeneficiaryInvitationStatus, string> = {
   pending: 'Waiting for a response',
@@ -127,6 +127,14 @@ const ACTOR_LABELS: Record<string, string> = {
   invitee: 'Invited person',
 }
 const PAYOUT_TARGET_LABELS: Record<string, string> = { beneficiary: 'Beneficiary', organization: 'Organizer', none: 'Nobody' }
+
+/** The raised panel with the glass skin's border and blur, like the user detail panels. */
+const panelSurface = {
+  ...raisedSurface,
+  border: 'var(--neu-border)',
+  backdropFilter: 'var(--neu-backdrop)',
+  WebkitBackdropFilter: 'var(--neu-backdrop)',
+}
 
 const labelSx = {
   fontSize: '0.75rem',
@@ -279,7 +287,7 @@ function ReassignDialog({
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2, flexWrap: 'wrap', gap: 1 }}>
         <Button disabled={busy} onClick={onClose}>Cancel</Button>
-        <Button variant="contained" color="warning" disabled={!ready} onClick={() => void submit()}>
+        <Button variant="contained" color="error" disabled={!ready} onClick={() => void submit()}>
           {busy ? 'Reassigning…' : 'Reassign and invite'}
         </Button>
       </DialogActions>
@@ -360,7 +368,7 @@ function PayoutAuthorityDialog({
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2, flexWrap: 'wrap', gap: 1 }}>
         <Button disabled={busy} onClick={onClose}>Cancel</Button>
-        <Button variant="contained" color="warning" disabled={!ready} onClick={() => void submit()}>
+        <Button variant="contained" disabled={!ready} onClick={() => void submit()}>
           {busy ? 'Saving…' : 'Change payout authority'}
         </Button>
       </DialogActions>
@@ -372,7 +380,7 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
     <Box sx={{ minWidth: 0, ...insetSurface, p: 2 }}>
       <Typography component="dt" sx={{ fontSize: '.72rem', color: 'text.secondary', mb: 0.75 }}>{label}</Typography>
-      <Typography component="dd" sx={{ m: 0, fontSize: '.92rem', fontWeight: 600, overflowWrap: 'anywhere' }}>{children}</Typography>
+      <Typography component="dd" sx={{ m: 0, fontSize: '.95rem', fontWeight: 600, color: 'text.primary', overflowWrap: 'anywhere' }}>{children}</Typography>
     </Box>
   )
 }
@@ -414,7 +422,7 @@ export default function OnBehalfPanel({ campaign, onChanged }: { campaign: Campa
 
   if (!loaded || loaded.key !== requestKey)
     return (
-      <Box role="status" aria-label="Loading beneficiary details" sx={{ ...raisedSurface, p: 3, mt: 3 }}>
+      <Box role="status" aria-label="Loading beneficiary details" sx={{ ...panelSurface, p: 3, mt: 3 }}>
         <Skeleton width={120} height={20} />
         <Skeleton width="40%" height={32} />
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 2, mt: 2 }}>
@@ -426,7 +434,7 @@ export default function OnBehalfPanel({ campaign, onChanged }: { campaign: Campa
   const { details, detailsError, events, eventsError } = loaded
   if (!details)
     return (
-      <Box sx={{ ...raisedSurface, p: 3, mt: 3 }}>
+      <Box sx={{ ...panelSurface, p: 3, mt: 3 }}>
         <EmptyState
           variant="error"
           title="Beneficiary details couldn’t load"
@@ -439,7 +447,6 @@ export default function OnBehalfPanel({ campaign, onChanged }: { campaign: Campa
 
   const canAct = can(Resource.CAMPAIGNS, Action.UPDATE)
   const selfInvolved = user?.id === campaign.creatorId || details.viewer.beneficiary
-  const tone = CONSENT_TONES[details.consentStatus] ?? TONES.teal.text
   const finish = (message: string) => {
     setDialog(null)
     onChanged(message)
@@ -449,9 +456,9 @@ export default function OnBehalfPanel({ campaign, onChanged }: { campaign: Campa
     <Box
       component="section"
       aria-label={`On behalf of ${details.beneficiaryName}`}
-      sx={{ ...raisedSurface, p: { xs: 2.5, sm: 3 }, mt: 3, position: 'relative', overflow: 'hidden', overflowWrap: 'anywhere' }}
+      sx={{ ...panelSurface, p: { xs: 2.5, sm: 3 }, mt: 3, position: 'relative', overflow: 'hidden', overflowWrap: 'anywhere' }}
     >
-      <Box aria-hidden sx={{ position: 'absolute', right: -18, top: -22, opacity: 0.05, pointerEvents: 'none', '& svg': { fontSize: 150 } }}>
+      <Box aria-hidden sx={{ position: 'absolute', right: -18, bottom: -22, opacity: 0.05, pointerEvents: 'none', '& svg': { fontSize: 150 } }}>
         <HandshakeRoundedIcon />
       </Box>
       <Stack direction={{ xs: 'column', sm: 'row' }} useFlexGap gap={1.5} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} sx={{ position: 'relative' }}>
@@ -462,7 +469,7 @@ export default function OnBehalfPanel({ campaign, onChanged }: { campaign: Campa
             {TYPE_LABELS[details.beneficiaryType] ?? details.beneficiaryType} · {RELATIONSHIP_LABELS[details.relationship] ?? details.relationship}
           </Typography>
         </Box>
-        <Chip label={CONSENT_LABELS[details.consentStatus] ?? details.consentStatus} sx={{ bgcolor: `${tone}20`, color: tone, fontWeight: 700, maxWidth: '100%' }} />
+        <Chip label={CONSENT_LABELS[details.consentStatus] ?? details.consentStatus} sx={{ color: CONSENT_COLORS[details.consentStatus] ?? 'text.secondary', maxWidth: '100%' }} />
       </Stack>
 
       <Typography variant="subtitle2" sx={{ mt: 2 }}>Why the organizer is raising funds for them</Typography>
@@ -505,7 +512,7 @@ export default function OnBehalfPanel({ campaign, onChanged }: { campaign: Campa
         <Stack direction={{ xs: 'column', sm: 'row' }} useFlexGap flexWrap="wrap" gap={1}>
           {canAct && (
             <>
-              <Button variant="outlined" color="warning" disabled={selfInvolved} onClick={() => setDialog('reassign')}>
+              <Button variant="outlined" color="warning" disabled={selfInvolved} onClick={() => setDialog('reassign')} sx={{ color: 'var(--text-warning)' }}>
                 Reassign beneficiary
               </Button>
               <Button variant="outlined" disabled={selfInvolved} onClick={() => setDialog('authority')}>

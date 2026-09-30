@@ -37,6 +37,7 @@ vi.mock('@/components/Loading', () => ({
 }))
 vi.mock('@/components/EmptyState', () => ({ EmptyState: ({ title }: Props) => createElement('p', {}, title as string) }))
 vi.mock('@/components/KeyboardAvoider', () => ({ KeyboardAvoider: m.el('div') }))
+vi.mock('@/components/GlassSurface', () => ({ GlassSurface: m.el('div') }))
 vi.mock('@/components/ProgressBar', () => ({ ProgressBar: () => null }))
 vi.mock('@/components/PublicationConsent', () => ({ PublicationConsent: () => null }))
 vi.mock('@/components/PublicationHeldNotice', () => ({ PublicationHeldNotice: () => createElement('p', {}, 'Waiting for safety review') }))

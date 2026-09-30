@@ -17,7 +17,7 @@ import Typography from '@mui/material/Typography'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import LockRoundedIcon from '@mui/icons-material/LockRounded'
 import VolunteerActivismRoundedIcon from '@mui/icons-material/VolunteerActivismRounded'
-import { BrandedTextField as TextField, ErrorState, LoadingDots, SHAPE } from '@ubuntu-fund/ui'
+import { BrandedTextField as TextField, ErrorState, ItemNotFound, LoadingDots, SHAPE } from '@ubuntu-fund/ui'
 import {
   DONOR_THANK_YOU_LIMITS,
   type DonorThankYouContent,
@@ -57,6 +57,12 @@ const donors = (count: number) => `${count} ${count === 1 ? 'donor' : 'donors'}`
 const formatDate = (value?: string) =>
   value ? new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : ''
 const contentOf = (view: DonorThankYouView): DonorThankYouContent => ({ subject: view.subject, body: view.body, signature: view.signature })
+/** Skin material for a panel: outline and frost only where the skin draws them. */
+const MATERIAL_SX = {
+  border: 'var(--neu-border)',
+  backdropFilter: 'var(--neu-backdrop)',
+  WebkitBackdropFilter: 'var(--neu-backdrop)',
+} as const
 
 export function ThankDonorsPage() {
   const { id = '' } = useParams<{ id: string }>()
@@ -260,7 +266,7 @@ function ThankDonorsContent({ campaignId }: { campaignId: string }) {
         {back}
         {loadError ? (
           loadError.status === 404 ? (
-            <Alert severity="warning">We could not find this campaign, or you cannot thank its donors.</Alert>
+            <ItemNotFound itemType="Campaign" message="We could not find this campaign, or you cannot thank its donors." />
           ) : (
             <ErrorState title="Could not load your thank-you" message={loadError.message} onRetry={() => { setLoadError(null); setRevision((value) => value + 1) }} />
           )
@@ -290,7 +296,7 @@ function ThankDonorsContent({ campaignId }: { campaignId: string }) {
       {!state.eligible ? (
         <Alert severity="info" sx={{ mb: 3 }}>{thankYouBlockText(state.reason, state.sendsAllowed)}</Alert>
       ) : (
-        <Box component="section" aria-labelledby="thank-you-compose-heading" sx={{ p: { xs: 2.5, md: 3.5 }, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-raised)', minWidth: 0 }}>
+        <Box component="section" aria-labelledby="thank-you-compose-heading" sx={{ p: { xs: 2.5, md: 3.5 }, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-raised)', ...MATERIAL_SX, minWidth: 0 }}>
           <Typography id="thank-you-compose-heading" component="h2" variant="h6" sx={{ fontWeight: 800 }}>
             Your message
           </Typography>
@@ -383,12 +389,12 @@ function ThankDonorsContent({ campaignId }: { campaignId: string }) {
       {shown && <DeliveryCard view={shown} retrying={busy === 'retry'} disabled={busy !== null} onRetry={() => void retryFailed(shown)} />}
 
       {earlier.length > 0 && (
-        <Box component="section" aria-labelledby="thank-you-history-heading" sx={{ mt: 4 }}>
+        <Box component="section" aria-labelledby="thank-you-history-heading" sx={{ mt: 4, p: { xs: 2.5, md: 3 }, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-raised)', ...MATERIAL_SX, minWidth: 0 }}>
           <Typography id="thank-you-history-heading" component="h2" variant="h6" sx={{ fontWeight: 800, mb: 1 }}>
             Earlier messages
           </Typography>
           {earlier.map((item) => (
-            <Box key={item.id} sx={{ py: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
+            <Box key={item.id} sx={{ py: 1.5, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                 <Typography sx={{ fontWeight: 700, overflowWrap: 'anywhere' }}>{item.subject}</Typography>
                 <Chip size="small" label={THANK_YOU_STATUS[item.status].label} color={THANK_YOU_STATUS[item.status].tone} />
@@ -401,7 +407,7 @@ function ThankDonorsContent({ campaignId }: { campaignId: string }) {
         </Box>
       )}
 
-      <Dialog open={confirmSend} onClose={() => busy === null && setConfirmSend(false)} aria-labelledby="send-thank-you-title" maxWidth="sm" fullWidth>
+      <Dialog open={confirmSend} onClose={() => busy === null && setConfirmSend(false)} aria-labelledby="send-thank-you-title" maxWidth="xs" fullWidth>
         <DialogTitle id="send-thank-you-title">Send your thank-you?</DialogTitle>
         <DialogContent>
           <DialogContentText>
@@ -413,7 +419,7 @@ function ThankDonorsContent({ campaignId }: { campaignId: string }) {
           </DialogContentText>
           <Typography sx={{ mt: 2, fontWeight: 700, overflowWrap: 'anywhere' }}>{normalized.subject}</Typography>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button disabled={busy !== null} onClick={() => setConfirmSend(false)}>Keep editing</Button>
           <Button variant="contained" color="secondary" disabled={busy !== null} onClick={() => void send()}>
             {busy === 'send' ? <><LoadingDots size={6} /> <span>Sending…</span></> : 'Send now'}
@@ -426,7 +432,7 @@ function ThankDonorsContent({ campaignId }: { campaignId: string }) {
         <DialogContent>
           <DialogContentText>Your message is deleted. This cannot be undone.</DialogContentText>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button disabled={busy !== null} onClick={() => setConfirmDiscard(false)}>Keep it</Button>
           <Button color="error" variant="contained" disabled={busy !== null} onClick={() => void handleDiscard()}>
             {busy === 'discard' ? 'Discarding…' : 'Discard draft'}
@@ -441,28 +447,19 @@ function ThankDonorsContent({ campaignId }: { campaignId: string }) {
             <Typography variant="overline" color="text.secondary">Subject</Typography>
             <Typography sx={{ fontWeight: 700, mb: 2, overflowWrap: 'anywhere' }}>{preview.subject}</Typography>
             <Typography variant="overline" color="text.secondary">Message</Typography>
-            <Box
-              component="pre"
-              sx={{
-                m: 0,
-                p: 2,
-                borderRadius: SHAPE.sm,
-                bgcolor: 'action.hover',
-                whiteSpace: 'pre-wrap',
-                overflowWrap: 'anywhere',
-                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-                fontSize: '0.85rem',
-                lineHeight: 1.65,
-              }}
+            <Typography
+              component="div"
+              variant="body2"
+              sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', p: 2, borderRadius: SHAPE.sm, bgcolor: 'action.hover', lineHeight: 1.7 }}
             >
               {preview.text}
-            </Box>
+            </Typography>
             <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 1.5 }}>
               This is exactly what donors receive. Each email has its own unsubscribe link.
             </Typography>
           </DialogContent>
         )}
-        <DialogActions>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setPreview(null)}>Close</Button>
         </DialogActions>
       </Dialog>
@@ -486,7 +483,7 @@ function DeliveryCard({ view, retrying, disabled, onRetry }: {
       ? `Delivered to ${view.sentCount} of ${donors(total)}.`
       : view.status === 'failed' ? 'We could not deliver this message.' : ''
   return (
-    <Box component="section" aria-labelledby="thank-you-delivery-heading" sx={{ mt: 4, p: { xs: 2.5, md: 3 }, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-inset)', minWidth: 0 }}>
+    <Box component="section" aria-labelledby="thank-you-delivery-heading" sx={{ mt: 4, p: { xs: 2.5, md: 3 }, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-inset)', ...MATERIAL_SX, minWidth: 0 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
         <Typography id="thank-you-delivery-heading" component="h2" variant="h6" sx={{ fontWeight: 800 }}>
           Your thank-you

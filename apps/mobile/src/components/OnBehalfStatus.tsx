@@ -3,7 +3,8 @@ import { View } from 'react-native'
 import { Icon, Text } from 'react-native-paper'
 import type { CampaignBeneficiaryDetails, CampaignOnBehalfSummary } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
-import { useNeu, usePalette } from '@/context/ColorModeContext'
+import { usePalette } from '@/context/ColorModeContext'
+import { GlassSurface } from './GlassSurface'
 import { consentLabel, payoutNote } from '@/lib/onBehalf'
 
 function formatDate(iso?: string) {
@@ -19,7 +20,6 @@ function formatDate(iso?: string) {
  */
 export function OnBehalfStatus({ campaignId, summary, payoutAuthority }: { campaignId: string; summary: CampaignOnBehalfSummary; payoutAuthority: boolean }) {
   const p = usePalette()
-  const neu = useNeu()
   const [details, setDetails] = useState<CampaignBeneficiaryDetails | null>(null)
   useEffect(() => {
     let active = true
@@ -36,7 +36,7 @@ export function OnBehalfStatus({ campaignId, summary, payoutAuthority }: { campa
     ? `Invitation sent to ${details.invitationEmailHint}${details.invitationExpiresAt ? ` · ${details.invitationStatus === 'expired' ? 'expired' : 'expires'} ${formatDate(details.invitationExpiresAt)}` : ''}`
     : ''
   const payout = payoutAuthority ? beneficiaryView ? 'Payouts come to you.' : 'You can request payouts for this campaign.' : payoutNote({ onBehalf: summary }, details)
-  return <View style={{ ...neu.raised, backgroundColor: p.surface, borderRadius: 20, padding: 20, gap: 10 }}>
+  return <GlassSurface style={{ padding: 20, borderRadius: 24, gap: 12 }}>
     <Text variant="titleLarge">Beneficiary</Text>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
       <Icon source="hand-heart-outline" size={20} color={p.primary} />
@@ -46,5 +46,5 @@ export function OnBehalfStatus({ campaignId, summary, payoutAuthority }: { campa
     {invitation ? <Text style={{ color: p.textSecondary }}>{invitation}</Text> : null}
     <Text style={{ color: p.textSecondary }}>{payout}</Text>
     {details?.canResendInvitation || details?.canChangeBeneficiary ? <Text style={{ color: p.textSecondary }}>To resend the invitation or change the beneficiary, use ujimora.com.</Text> : null}
-  </View>
+  </GlassSurface>
 }

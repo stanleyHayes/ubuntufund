@@ -442,7 +442,6 @@ export function MyCampaignsPage() {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <AccountHeading title="My campaigns" description="Manage your fundraisers, track progress, and plan your next update." icon={<CampaignIcon />} />
-      <BeneficiaryCampaigns />
       {/* Summary stats */}
       <Box sx={{ display: 'flex', gap: 2, mb: 4, flexWrap: 'wrap' }}>
         <StatCard label="Total Raised" value={formatCurrency(totalRaised, 'GHS')} color="var(--text-brand)" icon={<TrendingUpIcon />} />
@@ -551,6 +550,8 @@ export function MyCampaignsPage() {
           ))}
         </Box>
       )}
+
+      <BeneficiaryCampaigns />
 
       <Snackbar open={shareSnack} autoHideDuration={2000} onClose={() => setShareSnack(false)}>
         <Alert onClose={() => setShareSnack(false)} severity="success" variant="filled">

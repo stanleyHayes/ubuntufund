@@ -6,7 +6,6 @@ import { ReviewQueueEmpty, ReviewQueueSkeleton, ReviewQueueToolbar } from '@/com
 import { loadAll } from '@/lib/exports/loadAll'
 import { dateCell, exportTable } from '@/lib/exports/report'
 import { insetSurface, raisedSurface } from '@/lib/surfaces'
-import { TONES } from '@/lib/tones'
 import { api } from '@/lib/api'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import { useEffect, useState } from 'react'
@@ -37,13 +36,14 @@ const STATUS_LABELS: Record<DonorThankYouStatus, string> = {
   partially_sent: 'Partly sent',
   failed: 'Failed',
 }
-const STATUS_TONES: Record<DonorThankYouStatus, string> = {
-  draft: TONES.teal.text,
-  queued: TONES.gold.text,
-  sending: TONES.teal.text,
-  sent: TONES.green.text,
-  partially_sent: TONES.clay.text,
-  failed: TONES.clay.text,
+/** Text colour on the theme chip: the AA text tokens, which follow every skin and mode. */
+const STATUS_COLORS: Record<DonorThankYouStatus, string> = {
+  draft: 'text.secondary',
+  queued: 'var(--text-warning)',
+  sending: 'var(--text-info)',
+  sent: 'var(--text-success)',
+  partially_sent: 'var(--text-warning)',
+  failed: 'var(--text-error)',
 }
 const AUTHOR_LABELS: Record<DonorThankYouView['authorRole'], string> = {
   manager: 'Organizer team',
@@ -202,71 +202,68 @@ export default function DonorThankYousPage() {
       )}
       {!loading &&
         !error &&
-        data.items.map((item) => {
-          const tone = STATUS_TONES[item.status] ?? TONES.teal.text
-          return (
-            <Paper
-              key={item.id}
-              component="article"
-              aria-label={`Thank-you message for ${item.campaignTitle}`}
-              sx={{ ...raisedSurface, p: { xs: 2, sm: 3 }, overflowWrap: 'anywhere' }}
-            >
-              <Stack spacing={1.5}>
-                <Stack direction={{ xs: 'column', sm: 'row' }} useFlexGap gap={1} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }}>
-                  <Link component={RouterLink} to={`/campaigns/${item.campaignId}`} variant="h6" underline="hover" sx={{ minWidth: 0 }}>
-                    {item.campaignTitle}
-                  </Link>
-                  <Chip size="small" label={STATUS_LABELS[item.status] ?? item.status} sx={{ color: tone, bgcolor: `${tone}20`, fontWeight: 700 }} />
-                </Stack>
-                <Typography variant="body2" color="text.secondary">
-                  Written by: {AUTHOR_LABELS[item.authorRole] ?? item.authorRole} · Submitted {when(item.submittedAt)} ·{' '}
-                  {item.completedAt ? `Completed ${when(item.completedAt)}` : 'Not completed yet'}
-                </Typography>
-                <Typography variant="body2">Subject: {item.subject}</Typography>
-                <Box component="dl" sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(5, minmax(0, 1fr))' }, gap: 1.5, m: 0 }}>
-                  {(
-                    [
-                      ['Recipients', item.recipientCount],
-                      ['Sent', item.sentCount],
-                      ['Skipped', item.skippedCount],
-                      ['Failed', item.failedCount],
-                      ['Can retry', item.retryableCount],
-                    ] as const
-                  ).map(([label, value]) => (
-                    <Box key={label} sx={{ ...insetSurface, p: 1.5, minWidth: 0 }}>
-                      <Typography component="dt" variant="caption" color="text.secondary">{label}</Typography>
-                      <Typography component="dd" sx={{ m: 0, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{value.toLocaleString()}</Typography>
-                    </Box>
-                  ))}
-                </Box>
-                <Box component="details">
-                  <Typography component="summary" variant="body2" sx={{ cursor: 'pointer' }}>Message text</Typography>
-                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mt: 1 }}>{item.body}</Typography>
-                  {item.signature && <Typography variant="body2" sx={{ mt: 1 }}>— {item.signature}</Typography>}
-                </Box>
-                {canRetry(item) ? (
-                  <Box>
-                    <Button
-                      variant="contained"
-                      startIcon={<ReplayRoundedIcon />}
-                      disabled={!canUpdate || !!busy}
-                      onClick={() => void retry(item)}
-                      sx={{ width: { xs: '100%', sm: 'auto' } }}
-                    >
-                      {busy === item.id ? 'Retrying…' : 'Retry failed deliveries'}
-                    </Button>
-                  </Box>
-                ) : (
-                  item.retryableCount > 0 && (
-                    <Typography variant="caption" color="text.secondary">
-                      Failed deliveries can be retried once this message finishes sending.
-                    </Typography>
-                  )
-                )}
+        data.items.map((item) => (
+          <Paper
+            key={item.id}
+            component="article"
+            aria-label={`Thank-you message for ${item.campaignTitle}`}
+            sx={{ ...raisedSurface, p: { xs: 2, sm: 3 }, overflowWrap: 'anywhere' }}
+          >
+            <Stack spacing={1.5}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} useFlexGap gap={1} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }}>
+                <Link component={RouterLink} to={`/campaigns/${item.campaignId}`} variant="h6" underline="hover" sx={{ minWidth: 0 }}>
+                  {item.campaignTitle}
+                </Link>
+                <Chip size="small" label={STATUS_LABELS[item.status] ?? item.status} sx={{ color: STATUS_COLORS[item.status] ?? 'text.secondary' }} />
               </Stack>
-            </Paper>
-          )
-        })}
+              <Typography variant="body2" color="text.secondary">
+                Written by: {AUTHOR_LABELS[item.authorRole] ?? item.authorRole} · Submitted {when(item.submittedAt)} ·{' '}
+                {item.completedAt ? `Completed ${when(item.completedAt)}` : 'Not completed yet'}
+              </Typography>
+              <Typography variant="body2">Subject: {item.subject}</Typography>
+              <Box component="dl" sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(5, minmax(0, 1fr))' }, gap: 1.5, m: 0 }}>
+                {(
+                  [
+                    ['Recipients', item.recipientCount],
+                    ['Sent', item.sentCount],
+                    ['Skipped', item.skippedCount],
+                    ['Failed', item.failedCount],
+                    ['Can retry', item.retryableCount],
+                  ] as const
+                ).map(([label, value]) => (
+                  <Box key={label} sx={{ ...insetSurface, p: 1.5, minWidth: 0 }}>
+                    <Typography component="dt" variant="caption" color="text.secondary">{label}</Typography>
+                    <Typography component="dd" sx={{ m: 0, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{value.toLocaleString()}</Typography>
+                  </Box>
+                ))}
+              </Box>
+              <Box component="details">
+                <Typography component="summary" variant="body2" sx={{ cursor: 'pointer' }}>Message text</Typography>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mt: 1 }}>{item.body}</Typography>
+                {item.signature && <Typography variant="body2" sx={{ mt: 1 }}>— {item.signature}</Typography>}
+              </Box>
+              {canRetry(item) ? (
+                <Box>
+                  <Button
+                    variant="contained"
+                    startIcon={<ReplayRoundedIcon />}
+                    disabled={!canUpdate || !!busy}
+                    onClick={() => void retry(item)}
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
+                  >
+                    {busy === item.id ? 'Retrying…' : 'Retry failed deliveries'}
+                  </Button>
+                </Box>
+              ) : (
+                item.retryableCount > 0 && (
+                  <Typography variant="caption" color="text.secondary">
+                    Failed deliveries can be retried once this message finishes sending.
+                  </Typography>
+                )
+              )}
+            </Stack>
+          </Paper>
+        ))}
       {!loading && !error && (
         <ReviewQueuePagination
           page={page}

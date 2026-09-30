@@ -236,7 +236,7 @@ export function BeneficiaryInvitationPage() {
           </Typography>
         )}
 
-        <Box component="section" aria-labelledby="invitation-campaign-title" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-raised)', minWidth: 0 }}>
+        <Box component="section" aria-labelledby="invitation-campaign-title" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-raised)', border: 'var(--neu-border)', backdropFilter: 'var(--neu-backdrop)', WebkitBackdropFilter: 'var(--neu-backdrop)', minWidth: 0 }}>
           <Typography id="invitation-campaign-title" component="h2" variant="h5" sx={{ fontWeight: 800, overflowWrap: 'anywhere' }}>
             {preview.campaignTitle}
           </Typography>
@@ -266,15 +266,16 @@ export function BeneficiaryInvitationPage() {
             <Box component="dd" sx={{ whiteSpace: 'pre-line' }}>{preview.reason}</Box>
             {preview.status === 'pending' && <><dt>Invitation expires</dt><dd>{formatDate(preview.expiresAt)}</dd></>}
           </Box>
+          {preview.status === 'pending' && (
+            <Box component="section" aria-labelledby="invitation-money-heading" sx={{ mt: 2.5, p: 2.5, borderRadius: SHAPE.card, boxShadow: 'var(--neu-inset)' }}>
+              <Typography id="invitation-money-heading" component="h3" variant="h6" sx={{ fontWeight: 800 }}>Where the money goes</Typography>
+              <Typography sx={{ mt: 0.5, maxWidth: 680 }}>{moneyText(preview)}</Typography>
+            </Box>
+          )}
         </Box>
 
         {preview.status === 'pending' && (
           <>
-            <Box component="section" aria-labelledby="invitation-money-heading" sx={{ mt: 3 }}>
-              <Typography id="invitation-money-heading" component="h2" variant="h6" sx={{ fontWeight: 800 }}>Where the money goes</Typography>
-              <Typography sx={{ mt: 0.5, maxWidth: 680 }}>{moneyText(preview)}</Typography>
-            </Box>
-
             <Alert severity="info" sx={{ mt: 3 }}>
               <AlertTitle>Before you accept</AlertTitle>
               Accepting confirms that you know about this campaign and agree that {preview.organizerName} runs it for{' '}
@@ -341,7 +342,7 @@ export function BeneficiaryInvitationPage() {
                 />
                 {declineError && <Alert severity="error" sx={{ mt: 2 }}>{declineError}</Alert>}
               </DialogContent>
-              <DialogActions>
+              <DialogActions sx={{ px: 3, pb: 2 }}>
                 <Button disabled={busy !== null} onClick={() => setDeclineOpen(false)}>Cancel</Button>
                 <Button color="error" variant="contained" disabled={busy !== null} onClick={() => void decline()}>
                   {busy === 'decline' ? 'Declining…' : 'Decline campaign'}

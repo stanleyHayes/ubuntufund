@@ -10,6 +10,7 @@ import type { NeuRecipes, Palette } from '@/theme'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { Button, PageSkeleton } from '@/components/Loading'
 import { EmptyState } from '@/components/EmptyState'
+import { GlassSurface } from '@/components/GlassSurface'
 import { KeyboardAvoider } from '@/components/KeyboardAvoider'
 import { ProgressBar } from '@/components/ProgressBar'
 import { PublicationConsent } from '@/components/PublicationConsent'
@@ -266,11 +267,11 @@ function Composer({ campaignId }: { campaignId: string }) {
         {typed && dirty && !problem ? <Text style={styles.muted}>Not saved yet. Sending saves it first.</Text> : null}
         {held && <PublicationHeldNotice retry="send the same message again" openSettings />}
         <View style={styles.actions}>
-          <Button mode="outlined" icon="content-save-outline" loading={busy === 'save'} disabled={!!busy || !!problem || !dirty} onPress={() => void save()}>Save draft</Button>
-          <Button mode="outlined" icon="eye-outline" loading={busy === 'preview'} disabled={!!busy || !!problem} onPress={() => void showPreview()}>Preview</Button>
-          {saved !== null && <Button icon="delete-outline" textColor={p.error} loading={busy === 'discard'} disabled={!!busy} onPress={() => void discard()}>Discard</Button>}
+          <Button mode="outlined" icon="content-save-outline" style={styles.action} loading={busy === 'save'} disabled={!!busy || !!problem || !dirty} onPress={() => void save()}>Save draft</Button>
+          <Button mode="outlined" icon="eye-outline" style={styles.action} loading={busy === 'preview'} disabled={!!busy || !!problem} onPress={() => void showPreview()}>Preview</Button>
         </View>
         <Button mode="contained" icon="send" loading={busy === 'send'} disabled={!!busy || !eligible || !!problem} onPress={() => void send()}>Send to donors</Button>
+        {saved !== null && <Button icon="delete-outline" textColor={p.error} loading={busy === 'discard'} disabled={!!busy} onPress={() => void discard()}>Discard</Button>}
       </View>}
 
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
@@ -305,7 +306,7 @@ function SentMessage({ item, styles, disabled, retrying, onRetry }: { item: Dono
   const tone = item.status === 'sent' ? p.success : item.status === 'failed' ? p.error : item.status === 'partially_sent' ? p.warningText : p.primary
   const date = formatDate(item.completedAt ?? item.submittedAt)
   const progress = deliveryProgress(item)
-  return <View style={styles.card}>
+  return <GlassSurface style={styles.historyCard}>
     <View style={styles.itemHeader}>
       <View style={[styles.pill, { backgroundColor: `${tone}1F` }]}><Text style={[styles.pillText, { color: tone }]}>{THANK_YOU_STATUS_LABELS[item.status]}</Text></View>
       {date ? <Text style={styles.muted}>{date}</Text> : null}
@@ -314,23 +315,26 @@ function SentMessage({ item, styles, disabled, retrying, onRetry }: { item: Dono
     {isDelivering(item.status) && <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: Math.round(progress * 100) }}><ProgressBar progress={progress} height={6} /></View>}
     {deliverySummary(item).map(line => <Text key={line} style={styles.body}>{line}</Text>)}
     {canRetryDeliveries(item) && <Button mode="outlined" icon="refresh" loading={retrying} disabled={disabled} onPress={onRetry}>Retry failed deliveries</Button>}
-  </View>
+  </GlassSurface>
 }
 
 function makeStyles(p: Palette, neu: NeuRecipes) {
   return StyleSheet.create({
-    content: { padding: 16, gap: 16 },
+    content: { padding: 20, gap: 20 },
     title: { fontSize: 26, lineHeight: 32, fontFamily: 'Outfit_800ExtraBold', color: p.text },
     heading: { fontFamily: 'Outfit_700Bold', color: p.text },
-    body: { color: p.text, lineHeight: 20 },
-    muted: { color: p.textSecondary, lineHeight: 20 },
-    card: { ...neu.raised, backgroundColor: p.surface, borderRadius: 20, padding: 16, gap: 12 },
+    body: { fontFamily: 'Outfit_400Regular', color: p.text, lineHeight: 20 },
+    muted: { fontFamily: 'Outfit_400Regular', color: p.textSecondary, lineHeight: 20 },
+    // Composer cards follow the form/flow screens (create, donate, KYC); sent-message history uses GlassSurface.
+    card: { ...neu.raised, backgroundColor: p.surface, borderRadius: 24, padding: 20, gap: 16 },
+    historyCard: { padding: 16, borderRadius: 20, gap: 12 },
     banner: { flexDirection: 'row', gap: 10, padding: 14, borderRadius: 12, backgroundColor: `${p.primary}0F` },
-    bannerText: { flex: 1, color: p.text, lineHeight: 20 },
-    counter: { alignSelf: 'flex-end', fontSize: 12, color: p.textSecondary, marginTop: -6 },
-    actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    error: { color: p.error, lineHeight: 20 },
-    success: { color: p.success, lineHeight: 20 },
+    bannerText: { flex: 1, fontFamily: 'Outfit_400Regular', color: p.text, lineHeight: 20 },
+    counter: { alignSelf: 'flex-end', fontFamily: 'Outfit_400Regular', fontSize: 12, color: p.textSecondary, marginTop: -10 },
+    actions: { flexDirection: 'row', gap: 8 },
+    action: { flex: 1 },
+    error: { fontFamily: 'Outfit_400Regular', color: p.error, lineHeight: 20 },
+    success: { fontFamily: 'Outfit_400Regular', color: p.success, lineHeight: 20 },
     itemHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
     pill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
     pillText: { fontSize: 12, fontFamily: 'Outfit_700Bold' },
