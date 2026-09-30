@@ -59,5 +59,8 @@ export interface DonorThankYouState {
 /** `POST /campaigns/:id/thank-you/preview` */
 export interface DonorThankYouPreview {
   subject: string
+  /** The plain-text part donors receive. */
   text: string
+  /** The branded HTML part donors receive (all author text escaped). */
+  html?: string
 }

@@ -88,6 +88,13 @@ it('unlocks only after the campaign ends, dedupes donors, excludes refunds and n
   expect(preview.body.data.text).toContain('Your gifts paid for the school roof.');
   expect(preview.body.data.text).toContain('— Ama and the Tamale Care team');
   expect(preview.body.data.text).toContain('your email address was not shared with them');
+  expect(preview.body.data.html).toContain('Your gifts paid for the school roof.');
+  // Whatever the author types stays text in the email: no markup, no script links.
+  const hostile = await request(app).post(`/api/v1/campaigns/${campaignId}/thank-you/preview`).set('Authorization', owner.auth)
+    .send({ ...content, body: 'Thanks! <img src=x onerror="alert(1)"> <a href="javascript:alert(1)">click</a>' }).expect(200);
+  expect(hostile.body.data.html).toContain('&lt;img src=x onerror=&quot;alert(1)&quot;&gt;');
+  expect(hostile.body.data.html).not.toContain('<img src=x');
+  expect(hostile.body.data.html).not.toContain('href="javascript:');
 
   await request(app).post(`/api/v1/campaigns/${campaignId}/thank-you/send`).set('Authorization', owner.auth).send({}).expect(400);
   const idempotencyKey = randomUUID();
@@ -108,8 +115,10 @@ it('unlocks only after the campaign ends, dedupes donors, excludes refunds and n
     expect(payload.subject).toBe('Thank you Bcc: someone else');
     expect(String(payload.text)).toMatch(/unsubscribe\/thank-you#token=[a-f0-9]{64}\.[A-Za-z0-9_-]+/);
     expect((payload.headers as Record<string, string>)['List-Unsubscribe-Post']).toBe('List-Unsubscribe=One-Click');
-    // Plain text only: author-written text is never rendered as HTML.
-    expect(payload.html).toBeUndefined();
+    // The branded part shows the author's words as escaped text, with a working unsubscribe link.
+    expect(String(payload.html)).toContain('Your gifts paid for the school roof.');
+    expect(String(payload.html)).toMatch(/href="https:\/\/app\.example\.test\/unsubscribe\/thank-you#token=[a-f0-9]{64}\.[A-Za-z0-9_-]+"/);
+    expect(String(payload.html)).not.toMatch(/<script/i);
   }
   const done = await DonorThankYouModel.findById(queued.body.data.id).lean();
   expect(done).toMatchObject({ status: 'sent', recipientCount: 3, sentCount: 3, skippedCount: 0, failedCount: 0 });

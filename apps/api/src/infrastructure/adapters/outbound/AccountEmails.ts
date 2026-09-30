@@ -9,6 +9,7 @@ import { NewsletterSubscriptionModel } from '../../database/models/NewsletterSub
 import { NewsletterConsentTokenModel } from '../../database/models/NewsletterConsentTokenModel.js';
 import { CampaignBeneficiaryInvitationModel } from '../../database/models/CampaignBeneficiaryInvitationModel.js';
 import { MongoUnitOfWork } from './persistence/MongoUnitOfWork.js';
+import { renderEmail, type EmailContent } from './emailTemplate.js';
 
 const digest = (text: string) => createHash('sha256').update(text).digest('hex');
 
@@ -19,6 +20,10 @@ export class AccountEmails {
     let secureOrigin = false;
     try { const url = new URL(sender.webUrl); secureOrigin = url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash; } catch { /* unavailable */ }
     this.configured = sender.configured && key?.length === 32 && secureOrigin;
+  }
+  /** The sender envelope plus the branded HTML and matching plain-text parts. */
+  private message(to: string, subject: string, content: EmailContent): Record<string, unknown> {
+    return { from: this.sender.from, reply_to: this.sender.replyTo, to: [to], subject, ...renderEmail(content, { webUrl: this.sender.webUrl, supportEmail: this.sender.replyTo }) };
   }
   private encrypt(payload: Record<string, unknown>, tokenHash: string, purpose: string): string {
     const iv = randomBytes(12), cipher = createCipheriv('aes-256-gcm', this.key!, iv);
@@ -41,10 +46,27 @@ export class AccountEmails {
     if (!this.configured) throw new Error('Recovery email unavailable');
     const token = randomBytes(32).toString('hex'), tokenHash = digest(token), expiresAt = new Date(Date.now() + 30 * 60_000);
     const link = `${this.sender.webUrl}/${purpose === 'verification' ? 'verify-email' : 'reset-password'}#token=${token}`;
-    const payload = { from: this.sender.from, reply_to: this.sender.replyTo, to: [user.email.value], subject: purpose === 'verification' ? 'Verify your Ujimora email address' : 'Reset your Ujimora password',
-      text: purpose === 'verification'
-        ? `Confirm that this email address belongs to you:\n\n${link}\n\nThis Ujimora verification link expires in 30 minutes and can be used once. Verification does not subscribe you to activity or marketing emails. If you did not request this, ignore the email.\n\nSupport: ${this.sender.replyTo}`
-        : `You requested a password reset for Ujimora. Open this link to choose a new password:\n\n${link}\n\nThis link expires in 30 minutes and can be used once. If you did not request it, ignore this email. Your password has not changed.\n\nSupport: ${this.sender.replyTo}` };
+    const payload = purpose === 'verification'
+      ? this.message(user.email.value, 'Verify your Ujimora email address', {
+        preheader: 'Confirm this address to finish setting up your Ujimora account.',
+        eyebrow: 'Your account',
+        heading: 'Confirm your email address',
+        intro: ['Confirm that this email address belongs to you. It lets you receive receipts and account notices, and keeps your account recoverable.'],
+        button: { label: 'Verify my email', url: link },
+        showLinkFallback: true,
+        after: ['This link expires in 30 minutes and can be used once. Verification does not subscribe you to activity or marketing emails.'],
+        footer: ['You received this because this address was entered on Ujimora. If that was not you, you can ignore this email.'],
+      })
+      : this.message(user.email.value, 'Reset your Ujimora password', {
+        preheader: 'Choose a new password for your Ujimora account.',
+        eyebrow: 'Account security',
+        heading: 'Reset your password',
+        intro: ['You asked to reset your Ujimora password. Choose a new one with the button below.'],
+        button: { label: 'Choose a new password', url: link },
+        showLinkFallback: true,
+        after: ['This link expires in 30 minutes and can be used once.'],
+        footer: ['If you did not ask for this, ignore this email. Your password has not changed.'],
+      });
     await new MongoUnitOfWork().run(async () => {
       // Per-account cooldown survives multiple API instances and commits with the queue.
       const cooldown = purpose === 'verification' ? 'verificationEmailRequestedAt' : 'recoveryEmailRequestedAt';
@@ -94,8 +116,15 @@ export class AccountEmails {
   async enqueuePasswordChanged(user: UserEntity): Promise<void> {
     if (!this.configured) return;
     const tokenHash = digest(randomUUID()), purpose = 'password_changed';
-    const payload = { from: this.sender.from, reply_to: this.sender.replyTo, to: [user.email.value], subject: 'Your Ujimora password changed',
-      text: `Your Ujimora password was changed and previous sessions have ended.\n\nIf you made this change, no action is needed. If you did not, request a new password at ${this.sender.webUrl}/forgot-password and contact ${this.sender.replyTo}.\n\nThis is an account security notice, not a marketing subscription.` };
+    const payload = this.message(user.email.value, 'Your Ujimora password changed', {
+      preheader: 'Your password was changed and your other sessions were signed out.',
+      eyebrow: 'Account security',
+      heading: 'Your password was changed',
+      intro: ['Your Ujimora password was changed and your previous sessions have ended.', 'If you made this change, you do not need to do anything.'],
+      button: { label: 'I didn’t do this: reset my password', url: `${this.sender.webUrl}/forgot-password` },
+      after: [`If you did not change it, reset your password now and contact ${this.sender.replyTo}.`],
+      footer: ['This is an account security notice, not a marketing subscription.'],
+    });
     await AccountEmailJobModel.create({ userId: user.id, purpose, tokenHash, authVersion: user.authVersion, emailHash: digest(user.email.value), expiresAt: new Date(Date.now() + 30 * 60_000), encryptedPayload: this.encrypt(payload, tokenHash, purpose) });
   }
 
@@ -107,8 +136,16 @@ export class AccountEmails {
   async enqueueDataRightsResponse(user: { id: string; email: string; authVersion?: string | null }, requestId: string): Promise<void> {
     if (!this.configured) return;
     const tokenHash = digest(randomUUID()), purpose = 'data_rights_response';
-    const payload = { from: this.sender.from, reply_to: this.sender.replyTo, to: [user.email], subject: 'Your Ujimora privacy request has a response',
-      text: `We have responded to your privacy request (reference ${requestId}).\n\nFor your security the response is not included in this email. Sign in and open Settings, then "Your data and privacy requests", to read or download it:\n\n${this.sender.webUrl}/settings\n\nIf you did not make this request, contact ${this.sender.replyTo}.` };
+    const payload = this.message(user.email, 'Your Ujimora privacy request has a response', {
+      preheader: 'Sign in to read the response to your privacy request.',
+      eyebrow: 'Your privacy request',
+      heading: 'We have responded to your request',
+      intro: ['For your security the response is not included in this email. Sign in and open Settings, then “Your data and privacy requests”, to read or download it.'],
+      details: [{ label: 'Reference', value: requestId }],
+      button: { label: 'Open Settings', url: `${this.sender.webUrl}/settings` },
+      after: [`If you did not make this request, contact ${this.sender.replyTo}.`],
+      footer: ['This is a notice about a request you made, not a marketing subscription.'],
+    });
     await AccountEmailJobModel.create({ userId: user.id, purpose, tokenHash, authVersion: user.authVersion ?? '', emailHash: digest(user.email), expiresAt: new Date(Date.now() + 24 * 3600_000), encryptedPayload: this.encrypt(payload, tokenHash, purpose) });
   }
 
@@ -131,9 +168,18 @@ export class AccountEmails {
       ? 'Funds raised would be paid to you, into your own verified payout account.'
       : `Funds raised would be paid to ${organizer}, who asks to receive them on your behalf. Only accept this if you agree to it.`;
     const gate = input.publicationRequiresConsent ? 'It will not go live, collect donations or pay out money' : 'It will not collect donations or pay out money';
-    const payload = { from: this.sender.from, reply_to: this.sender.replyTo, to: [input.email],
-      subject: `${organizer} created a fundraising campaign for you on Ujimora`.slice(0, 150),
-      text: `${organizer} has created a fundraising campaign on Ujimora for ${oneLine(input.beneficiaryName)}: "${title}".\n\n${gate} until you review it and accept.\n\nReview, accept or decline here:\n${this.sender.webUrl}/beneficiary-invitation#token=${input.token}\n\n${payout}\n\nThis link expires on ${expires} and works once. Do not share it: whoever opens it can accept or decline for you. If you do not recognise this, you can decline or ignore this email.\n\nQuestions: ${this.sender.replyTo}` };
+    const beneficiary = oneLine(input.beneficiaryName);
+    const payload = this.message(input.email, `${organizer} created a fundraising campaign for you on Ujimora`.slice(0, 150), {
+      preheader: `${gate} until you review it and accept.`,
+      eyebrow: 'Campaign invitation',
+      heading: `${organizer} created a fundraising campaign for you`,
+      intro: [`${organizer} has created a fundraising campaign on Ujimora for ${beneficiary}. ${gate} until you review it and accept.`],
+      details: [{ label: 'Campaign', value: title }, { label: 'For', value: beneficiary }, { label: 'Organized by', value: organizer }],
+      button: { label: 'Review, accept or decline', url: `${this.sender.webUrl}/beneficiary-invitation#token=${input.token}` },
+      showLinkFallback: true,
+      after: [payout, `This link expires on ${expires} and works once. Do not share it: whoever opens it can accept or decline for you.`],
+      footer: ['If you do not recognise this, you can decline or ignore this email.'],
+    });
     await AccountEmailJobModel.create({ invitationId: input.invitationId, purpose, tokenHash, emailHash: digest(input.email.trim().toLowerCase()), expiresAt: input.expiresAt, encryptedPayload: this.encrypt(payload, tokenHash, purpose) });
   }
 
@@ -141,8 +187,17 @@ export class AccountEmails {
   async enqueueNewsletterConfirmation(subscriptionId: string, email: string, confirmToken: string, unsubscribeToken: string): Promise<void> {
     if (!this.configured) throw new Error('Newsletter confirmation email unavailable');
     const tokenHash = digest(confirmToken), purpose = 'newsletter_confirmation';
-    const payload = { from: this.sender.from, reply_to: this.sender.replyTo, to: [email], subject: 'Confirm your Ujimora newsletter subscription',
-      text: `You requested Ujimora stories and promotional updates. Confirm your subscription within 30 minutes:\n\n${this.sender.webUrl}/newsletter/confirm#token=${confirmToken}\n\nUntil you confirm, you will not receive newsletters. If you did not request this, ignore this message or cancel the request:\n${this.sender.webUrl}/newsletter/unsubscribe#token=${unsubscribeToken}\n\nYou can unsubscribe at any time. Contact ${this.sender.replyTo} for help or information about the source of your subscription request.` };
+    const payload = this.message(email, 'Confirm your Ujimora newsletter subscription', {
+      preheader: 'Confirm within 30 minutes to start receiving Ujimora stories.',
+      eyebrow: 'Newsletter',
+      heading: 'Confirm your subscription',
+      intro: ['You asked to receive Ujimora stories and promotional updates. Until you confirm, you will not receive newsletters.'],
+      button: { label: 'Confirm my subscription', url: `${this.sender.webUrl}/newsletter/confirm#token=${confirmToken}` },
+      showLinkFallback: true,
+      after: ['This link expires in 30 minutes. You can unsubscribe at any time.'],
+      footer: [`If you did not request this, ignore this message or cancel the request. Contact ${this.sender.replyTo} for help or information about the source of your subscription request.`],
+      footerLinks: [{ label: 'Cancel this request', url: `${this.sender.webUrl}/newsletter/unsubscribe#token=${unsubscribeToken}` }],
+    });
     await AccountEmailJobModel.create({ newsletterId: subscriptionId, purpose, tokenHash, emailHash: digest(email), expiresAt: new Date(Date.now() + 30 * 60_000), encryptedPayload: this.encrypt(payload, tokenHash, purpose) });
   }
 }

@@ -643,6 +643,7 @@ export function createApp(options: {
     process.env.FROM_EMAIL ?? '',
     () => commercialConfigService.resolveReviewAlertEmail(process.env.REVIEW_ALERT_EMAIL ?? ''),
     process.env.ADMIN_WEB_URL ?? 'https://admin.ujimora.com',
+    config.publicWebUrl,
   )
   const activityEmail: ActivityEmailSender = options.emailSender ?? new ResendActivityEmails(process.env.RESEND_API_KEY ?? '', process.env.FROM_EMAIL ?? '', config.publicWebUrl, process.env.REPLY_TO_EMAIL || undefined)
   const activityAlerts = new MongoActivityAlerts(activityEmail)

@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { createHash, randomUUID } from 'node:crypto';
-import type { ActivityAlertCategory } from '@ubuntu-fund/types';
+import { ACTIVITY_ALERT_LABELS, type ActivityAlertCategory } from '@ubuntu-fund/types';
 import { ActivityAlertPreferenceModel } from '../../../database/models/ActivityAlertPreferenceModel.js';
 import { ActivityAlertDeliveryModel } from '../../../database/models/ActivityAlertDeliveryModel.js';
 import { NotificationModel } from '../../../database/models/NotificationModel.js';
@@ -15,6 +15,7 @@ import { RefundModel } from '../../../database/models/RefundModel.js';
 import { WalletTransactionModel } from '../../../database/models/WalletTransactionModel.js';
 import { SubscriptionModel } from '../../../database/models/SubscriptionModel.js';
 import { logger } from '../../../logging/logger.js';
+import { renderEmail } from '../emailTemplate.js';
 
 interface SourceRecord { _id: mongoose.Types.ObjectId; activityRevision: number; activityOccurredAt: Date; [key: string]: unknown }
 interface Event { key: string; userId: string; category: ActivityAlertCategory; title: string; body: string; path: string; occurredAt: Date }
@@ -160,8 +161,16 @@ export class MongoActivityAlerts {
             logger.warn({ deliveryId: row._id, category: row.category, attempts: row.attempts, firstAttemptAt: row.firstAttemptAt }, 'activity email needs a delivery check');
             continue;
           }
-          const payload = row.emailRequest ?? { from: this.email.from, reply_to: this.email.replyTo, to: [user.email], subject: row.title,
-            text: `${row.body}\n\nView details: ${this.email.webUrl}${row.path}\n\nYou opted in to this activity email. Change your choices: ${this.email.webUrl}/settings\nSupport: ${this.email.replyTo}` };
+          // A retry reuses the saved request, so an email queued before a template change is resent unchanged.
+          const payload = row.emailRequest ?? { from: this.email.from, reply_to: this.email.replyTo, to: [user.email], subject: row.title, ...renderEmail({
+            preheader: row.body,
+            eyebrow: ACTIVITY_ALERT_LABELS[row.category as ActivityAlertCategory] ?? 'Account activity',
+            heading: row.title,
+            intro: [row.body],
+            button: { label: 'View details', url: `${this.email.webUrl}${row.path}` },
+            footer: ['You opted in to this activity email. It is not a marketing subscription.'],
+            footerLinks: [{ label: 'Change your email choices', url: `${this.email.webUrl}/settings` }],
+          }, { webUrl: this.email.webUrl, supportEmail: this.email.replyTo }) };
           await ActivityAlertDeliveryModel.updateOne(match, { $set: { emailRequest: payload, firstAttemptAt: row.firstAttemptAt ?? new Date() }, $inc: { attempts: 1 } });
           await this.email.send(`activity/${row._id}`, payload);
         }

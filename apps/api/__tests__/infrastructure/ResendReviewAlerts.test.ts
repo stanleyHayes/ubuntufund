@@ -15,8 +15,11 @@ it('emails staff about a contact message once, with replies going to the sender'
   expect(body).toMatchObject({ from: 'no-reply@ujimora.com', to: ['info@ujimora.com'], reply_to: 'ama@example.test' });
   // Submitter text cannot add header lines or break the subject.
   expect(body.subject).toBe('New contact message — Help with verification');
-  expect(body.text).toContain('From:     Ama Bcc: spam@example.test <ama@example.test>');
+  expect(body.text).toContain('From: Ama Bcc: spam@example.test <ama@example.test>');
   expect(body.text).toContain('https://admin.ujimora.com/contact-submissions');
+  // The branded part escapes what the sender wrote.
+  expect(body.html).toContain('Ama Bcc: spam@example.test &lt;ama@example.test&gt;');
+  expect(body.html).toContain('href="https://admin.ujimora.com/contact-submissions"');
 });
 
 it('never throws and sends nothing when unconfigured or switched off', async () => {

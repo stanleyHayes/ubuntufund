@@ -446,16 +446,27 @@ function ThankDonorsContent({ campaignId }: { campaignId: string }) {
           <DialogContent>
             <Typography variant="overline" color="text.secondary">Subject</Typography>
             <Typography sx={{ fontWeight: 700, mb: 2, overflowWrap: 'anywhere' }}>{preview.subject}</Typography>
-            <Typography variant="overline" color="text.secondary">Message</Typography>
-            <Typography
-              component="div"
-              variant="body2"
-              sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', p: 2, borderRadius: SHAPE.sm, bgcolor: 'action.hover', lineHeight: 1.7 }}
-            >
-              {preview.text}
-            </Typography>
+            <Typography variant="overline" color="text.secondary">Email</Typography>
+            {preview.html ? (
+              // The branded email exactly as donors receive it. No scripts, forms or same-origin access.
+              <Box
+                component="iframe"
+                title="Email preview"
+                sandbox=""
+                srcDoc={preview.html}
+                sx={{ display: 'block', width: '100%', height: { xs: 520, sm: 600 }, border: 'var(--neu-border)', borderRadius: SHAPE.sm, bgcolor: '#F2EFEA' }}
+              />
+            ) : (
+              <Typography
+                component="div"
+                variant="body2"
+                sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', p: 2, borderRadius: SHAPE.sm, bgcolor: 'action.hover', lineHeight: 1.7 }}
+              >
+                {preview.text}
+              </Typography>
+            )}
             <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 1.5 }}>
-              This is exactly what donors receive. Each email has its own unsubscribe link.
+              This is exactly what donors receive. Each email has its own unsubscribe link, and mail apps that only show plain text get the same words.
             </Typography>
           </DialogContent>
         )}
