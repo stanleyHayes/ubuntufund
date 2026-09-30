@@ -105,3 +105,13 @@ it('explains and blocks review of the signed-in administrator\'s own pending sub
   fireEvent.click(otherDecline)
   await waitFor(() => expect(put).toHaveBeenCalledExactlyOnceWith('/admin/publication-reviews/other/review', { decision: 'rejected', notes: 'Reviewed the other author comment.' }))
 })
+it('names a held donor thank-you message and shows it the way donors would read it', async () => {
+  vi.clearAllMocks()
+  get.mockResolvedValue({ items: [{ id: 'thanks', actorId: 'author', action: 'thank_you.send', text: JSON.stringify({ subject: 'Thank you from Ama', body: 'Your gifts paid for my surgery.\nI am home now.', signature: 'Ama' }), mediaUrls: [], status: 'pending', reason: 'staff_requested' }], total: 1 })
+  render(<PublicationReviewsPage />)
+  expect(await screen.findByRole('heading', { name: 'Donor thank-you message · staff requested' })).toBeInTheDocument()
+  expect(screen.queryByText(/thank_you/)).toBeNull()
+  const text = screen.getByText(/Subject: Thank you from Ama/)
+  expect(text.textContent).toBe('Subject: Thank you from Ama\n\nYour gifts paid for my surgery.\nI am home now.\n\nSigned: Ama')
+  expect(screen.queryByText(/"subject"/)).toBeNull()
+})

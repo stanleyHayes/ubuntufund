@@ -2,10 +2,11 @@ import TextField from '@/components/AdminTextField'
 import { CollectionTable, CollectionViewSwitch, useCollectionView } from '@/components/CollectionView'
 import { useState } from 'react'
 import { useNavigate, Link as RouterLink } from 'react-router-dom'
-import { Alert, Skeleton, Box, Typography, MenuItem, InputAdornment, Button } from '@mui/material'
+import { Alert, Skeleton, Box, Typography, MenuItem, InputAdornment, Button, Chip } from '@mui/material'
 import { raisedSurface, insetSurface, progressTrack } from '@/lib/surfaces'
 import SearchIcon from '@mui/icons-material/Search'
 import RocketLaunchRoundedIcon from '@mui/icons-material/RocketLaunchRounded'
+import HandshakeRoundedIcon from '@mui/icons-material/HandshakeRounded'
 import { EmptyState, SHAPE } from '@ubuntu-fund/ui'
 import { CampaignStatus, CampaignCategory } from '@ubuntu-fund/types'
 import type { Campaign } from '@ubuntu-fund/types'
@@ -24,6 +25,33 @@ const statusColors: Record<string, string> = {
   [CampaignStatus.EXPIRED]: '#78909C',
   [CampaignStatus.BLOCKED]: '#C06B58',
   [CampaignStatus.DRAFT]: '#616161',
+}
+
+type CreatedFor = 'all' | 'self' | 'on_behalf'
+type BeneficiaryFilter = 'all' | 'confirmed' | 'awaiting'
+
+const CREATED_FOR_LABELS: Record<CreatedFor, string> = { all: 'All', self: 'Themselves', on_behalf: 'Someone else' }
+const BENEFICIARY_LABELS: Record<BeneficiaryFilter, string> = { all: 'Any', confirmed: 'Confirmed', awaiting: 'Awaiting' }
+
+/** Older campaigns have no creation mode: they were all created by the organizer for themselves. */
+function onBehalfOf(campaign: Campaign) {
+  return campaign.creationMode === 'on_behalf' ? campaign.onBehalf : undefined
+}
+
+/** Names the beneficiary of a campaign run for someone else; the colour repeats the text. */
+function OnBehalfChip({ campaign }: { campaign: Campaign }) {
+  const onBehalf = onBehalfOf(campaign)
+  if (!onBehalf) return null
+  return (
+    <Chip
+      size="small"
+      variant="outlined"
+      color={onBehalf.beneficiaryConfirmed ? 'success' : 'warning'}
+      icon={<HandshakeRoundedIcon />}
+      label={`On behalf of ${onBehalf.beneficiaryName}${onBehalf.beneficiaryConfirmed ? '' : ' · not confirmed'}`}
+      sx={{ maxWidth: '100%', height: 'auto', minHeight: 24, '& .MuiChip-label': { whiteSpace: 'normal', overflowWrap: 'anywhere', py: 0.25 } }}
+    />
+  )
 }
 
 function Skel({ w, h }: { w?: string | number; h?: number }) {
@@ -104,6 +132,7 @@ function CampaignCard({ campaign }: { campaign: Campaign }) {
       <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', position: 'relative', zIndex: 1 }}>
         {campaign.creatorId}
       </Typography>
+      {onBehalfOf(campaign) && <Box sx={{ mt: 1, position: 'relative', zIndex: 1 }}><OnBehalfChip campaign={campaign} /></Box>}
 
       {/* Separator */}
       <Box sx={{ ...insetSurface, px: 1.5, pb: 1.5, mt: 2, pt: 2, position: 'relative', zIndex: 1 }}>
@@ -143,11 +172,19 @@ export default function CampaignsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [activeTab, setActiveTab] = useState<'all' | 'pending'>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [createdFor, setCreatedFor] = useState<CreatedFor>('all')
+  const [beneficiaryFilter, setBeneficiaryFilter] = useState<BeneficiaryFilter>('all')
 
   const filtered = campaigns.filter(c => {
     if (activeTab === 'pending' && c.status !== CampaignStatus.PENDING_REVIEW) return false
     if (statusFilter !== 'all' && c.status !== statusFilter) return false
     if (categoryFilter !== 'all' && c.category !== categoryFilter) return false
+    const onBehalf = onBehalfOf(c)
+    if (createdFor === 'self' && onBehalf) return false
+    if (createdFor === 'on_behalf' && !onBehalf) return false
+    // Only campaigns run for someone else have a beneficiary who confirms.
+    if (beneficiaryFilter === 'confirmed' && !onBehalf?.beneficiaryConfirmed) return false
+    if (beneficiaryFilter === 'awaiting' && (!onBehalf || onBehalf.beneficiaryConfirmed)) return false
     if (search && !c.title.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
@@ -163,7 +200,7 @@ export default function CampaignsPage() {
           title="Campaigns"
           lede="Review, approve, and moderate every fundraising campaign live on the platform."
           icon={<RocketLaunchRoundedIcon />}
-        actions={<ExportMenu title="Campaigns" disabled={loading || !!error} getReport={() => ({ title: 'Campaigns', filters: [`Queue: ${activeTab}`, `Status: ${statusFilter}`, `Category: ${categoryFilter}`, `Search: ${search || 'All'}`], tables: [campaignsTable(filtered)] })} />}
+        actions={<ExportMenu title="Campaigns" disabled={loading || !!error} getReport={() => ({ title: 'Campaigns', filters: [`Queue: ${activeTab}`, `Status: ${statusFilter}`, `Category: ${categoryFilter}`, `Created for: ${CREATED_FOR_LABELS[createdFor]}`, `Beneficiary: ${BENEFICIARY_LABELS[beneficiaryFilter]}`, `Search: ${search || 'All'}`], tables: [campaignsTable(filtered)] })} />}
       />
       </Box>
 
@@ -211,7 +248,7 @@ export default function CampaignsPage() {
       {error && <Alert severity="error" sx={{ mb: 3 }}>Could not load campaigns. Refresh the page to try again.</Alert>}
 
       {/* Filter bar */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr 1fr' }, ...raisedSurface, mb: 3 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' }, ...raisedSurface, mb: 3 }}>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
           <TextField optionContext="campaign"
             size="small"
@@ -263,6 +300,36 @@ export default function CampaignsPage() {
           </TextField>
         </Box>
         <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
+          <TextField optionContext="campaign"
+            select
+            size="small"
+            variant="outlined"
+            label="Created for"
+            value={createdFor}
+            onChange={e => { setCreatedFor(e.target.value as CreatedFor); pagination.goToPage(1) }}
+            fullWidth
+          >
+            {(Object.keys(CREATED_FOR_LABELS) as CreatedFor[]).map(value => (
+              <MenuItem key={value} value={value}>{CREATED_FOR_LABELS[value]}</MenuItem>
+            ))}
+          </TextField>
+        </Box>
+        <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
+          <TextField optionContext="campaign"
+            select
+            size="small"
+            variant="outlined"
+            label="Beneficiary"
+            value={beneficiaryFilter}
+            onChange={e => { setBeneficiaryFilter(e.target.value as BeneficiaryFilter); pagination.goToPage(1) }}
+            fullWidth
+          >
+            {(Object.keys(BENEFICIARY_LABELS) as BeneficiaryFilter[]).map(value => (
+              <MenuItem key={value} value={value}>{BENEFICIARY_LABELS[value]}</MenuItem>
+            ))}
+          </TextField>
+        </Box>
+        <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center' }}>
           <Typography sx={{ fontFamily: '"Outfit", monospace', fontVariantNumeric: 'tabular-nums', fontSize: '0.82rem', color: 'text.secondary' }}>
             {loading ? <Skeleton width={90} /> : error ? 'Unavailable' : `${filtered.length} campaigns`}
           </Typography>
@@ -271,7 +338,7 @@ export default function CampaignsPage() {
 
       <CollectionViewSwitch view={view} onChange={changeView} />
       {!loading && !error && filtered.length > 0 && view === 'table' ? <CollectionTable label="Campaigns" columns={['Campaign', 'Category', 'Status', 'Raised', 'Goal', 'Created']} rows={pagination.page.map(c => ({ id: c.id, cells: [
-        <Button component={RouterLink} to={`/campaigns/${c.id}`} sx={{ textAlign: 'left', justifyContent: 'flex-start' }}>{c.title}</Button>, c.category, c.status.replaceAll('_', ' '), `GH₵ ${c.raisedAmount.toLocaleString()}`, `GH₵ ${c.goalAmount.toLocaleString()}`, new Date(c.createdAt).toLocaleDateString(),
+        <Box sx={{ display: 'grid', justifyItems: 'start', gap: 0.5 }}><Button component={RouterLink} to={`/campaigns/${c.id}`} sx={{ textAlign: 'left', justifyContent: 'flex-start' }}>{c.title}</Button><OnBehalfChip campaign={c} /></Box>, c.category, c.status.replaceAll('_', ' '), `GH₵ ${c.raisedAmount.toLocaleString()}`, `GH₵ ${c.goalAmount.toLocaleString()}`, new Date(c.createdAt).toLocaleDateString(),
       ] }))} /> : (
       <>
       {/* Grid */}

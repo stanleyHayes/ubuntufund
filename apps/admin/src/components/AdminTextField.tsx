@@ -30,6 +30,10 @@ import LanguageRounded from '@mui/icons-material/LanguageRounded'
 import VisibilityOffRounded from '@mui/icons-material/VisibilityOffRounded'
 import ForumRounded from '@mui/icons-material/ForumRounded'
 import CheckRounded from '@mui/icons-material/CheckRounded'
+import SendRounded from '@mui/icons-material/SendRounded'
+import PauseCircleRounded from '@mui/icons-material/PauseCircleRounded'
+import FamilyRestroomRounded from '@mui/icons-material/FamilyRestroomRounded'
+import MoreHorizRounded from '@mui/icons-material/MoreHorizRounded'
 import { raisedSurface } from '@/lib/surfaces'
 
 type Detail = [typeof TuneRounded, string]
@@ -51,6 +55,10 @@ const details: Record<string, Detail> = {
   account: [PersonRounded, 'Make the response available in the member’s account.'], verified_external: [FactCheckRounded, 'Record delivery already completed through a verified external channel.'], responded: [CheckCircleRounded, 'A response has been provided to the requester.'],
   subscription: [WorkspacePremiumRounded, 'Discount eligible subscription purchases.'], donation: [VolunteerActivismRounded, 'Reduce the platform fee on eligible campaign donations.'], payout_fee: [PaymentsRounded, 'Reduce the platform fee on eligible withdrawals.'],
   percent: [PaymentsRounded, 'Reduce the eligible price by a percentage.'], fixed: [PaymentsRounded, 'Deduct a fixed amount from the eligible price.'], post_coupon: [PaymentsRounded, 'Calculate commission on the discounted amount paid.'], list_price: [PaymentsRounded, 'Calculate commission on the price before discounts.'], monthly: [ScheduleRounded, 'Applies to monthly billing.'], annual: [ScheduleRounded, 'Applies to annual billing.'], yearly: [ScheduleRounded, 'Applies to yearly billing.'],
+  self: [PersonRounded, 'Campaigns the organizer runs for themselves.'], on_behalf: [HandshakeRounded, 'Campaigns run on behalf of another person or organization.'], confirmed: [CheckCircleRounded, 'The beneficiary has accepted the campaign.'], awaiting: [ScheduleRounded, 'The beneficiary has not accepted the campaign yet.'],
+  queued: [ScheduleRounded, 'Waiting for delivery to start.'], sending: [SendRounded, 'Emails are being delivered now.'], sent: [CheckCircleRounded, 'Delivered, or skipped for donors who opted out.'], partially_sent: [WarningRounded, 'Some deliveries failed; the rest were sent.'], failed: [CancelRounded, 'No delivery succeeded.'],
+  individual: [PersonRounded, 'A person, who accepts from a personal account.'], beneficiary: [VolunteerActivismRounded, 'The beneficiary receives the money.'], none: [PauseCircleRounded, 'Nobody can request payouts.'],
+  family: [FamilyRestroomRounded, 'A relative of the organizer.'], community_member: [PeopleRounded, 'Someone from the organizer’s community.'], patient: [LocalHospitalRounded, 'Someone the organizer cares for medically.'], student: [SchoolRounded, 'A learner the organizer supports.'], client: [HandshakeRounded, 'Someone the organizer serves professionally.'], partner_organization: [BusinessRounded, 'An organization working with the organizer.'], other: [MoreHorizRounded, 'Another relationship, explained in the reason.'],
   en: [LanguageRounded, 'English language preference.'], fr: [LanguageRounded, 'French language preference.'], sw: [LanguageRounded, 'Swahili language preference.'], ha: [LanguageRounded, 'Hausa language preference.'], yo: [LanguageRounded, 'Yoruba language preference.'], zu: [LanguageRounded, 'Zulu language preference.'],
 }
 const scoped: Record<string, Record<string, string>> = {
@@ -59,6 +67,10 @@ const scoped: Record<string, Record<string, string>> = {
   coupon: { active: 'Enabled coupons; date and redemption limits still apply.', inactive: 'Disabled coupons that cannot be redeemed.', organization: 'Include the Organization subscription tier.' },
   privacy: { active: 'Requests that are open or being reviewed.' },
   affiliate: { active: 'Affiliates currently enabled to participate.', pending: 'Affiliate applications waiting for review.' },
+  beneficiary: { organization: 'An organization, which accepts from its organization account.' },
+  payout: { organization: 'The organizer receives the money, if the beneficiary agreed to that.' },
+  'payout-authority': { beneficiary: 'The linked beneficiary account can request payouts.', organization: 'The organizer can request payouts on the beneficiary’s behalf.', none: 'Pause payouts: nobody can request them.' },
+  'verification-level': { 0: 'No extra requirement: the normal campaign rules apply.', 1: 'A verified email address and phone number.', 2: 'An approved national identity check.', 3: 'Approved business verification (organization accounts).', 4: 'Approved political or media verification.' },
 }
 function nodeText(node: ReactNode): string {
   return Children.toArray(node).map(child => {

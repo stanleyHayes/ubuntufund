@@ -13,7 +13,22 @@ import { Alert, Box, Button, MenuItem, Paper, Skeleton, Stack, Typography } from
 import { api } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { PublicationMediaPreview } from '@/components/PublicationMediaPreview'
+/** Readable names for actions whose raw key would puzzle a reviewer. */
+const ACTION_LABELS: Record<string, string> = { 'thank_you.send': 'Donor thank-you message' }
+function actionLabel(action: string): string {
+  return ACTION_LABELS[action] ?? action.replace('.', ' ')
+}
+/** A thank-you is stored as JSON of subject, body and signature: show it the way donors would read it. */
+function thankYouText(text: string): string | null {
+  try {
+    const fields: unknown = JSON.parse(text)
+    if (!fields || typeof fields !== 'object' || Array.isArray(fields)) return null
+    const { subject, body, signature } = fields as Record<string, unknown>
+    return [`Subject: ${String(subject ?? '')}`, String(body ?? ''), signature ? `Signed: ${String(signature)}` : ''].filter(Boolean).join('\n\n')
+  } catch { return null }
+}
 function displayText(action: string, text: string): string {
+  if (action === 'thank_you.send') return thankYouText(text) ?? text
   if (action === 'comment.create' || action === 'donation.public_content' || action === 'tip.public_content' || action === 'campaign.create' || action === 'creator.profile' || action === 'organization.profile' || action === 'account.profile') {
     try { const fields: unknown = JSON.parse(text); if (fields && typeof fields === 'object' && !Array.isArray(fields)) return Object.entries(fields).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : String(value)}`).join('\n\n') } catch { /* Show original evidence. */ }
   }
@@ -58,7 +73,7 @@ export default function PublicationReviewsPage() {
       <TextField optionContext="publication" select sx={{ maxWidth: { sm: 420 } }} label="Content queue" value={kind} disabled={!!busy} onChange={event => { setKind(event.target.value); setPage(1); setNotes({}) }}><MenuItem value="publication-reviews">Publication proposals</MenuItem><MenuItem value="tip-content-reviews">Supporter names and messages</MenuItem><MenuItem value="donation-content-reviews">Campaign donor names and messages</MenuItem></TextField>
       <TextField optionContext="publication" select sx={{ maxWidth: { sm: 280 } }} label="Review status" value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}>{['pending', 'approved', 'rejected'].map(value => <MenuItem key={value} value={value}>{value}</MenuItem>)}</TextField>
       <Button variant="outlined" startIcon={<RefreshRoundedIcon />} disabled={loading || !!busy} onClick={() => void load()}>Refresh publication reviews</Button>
-      <ExportMenu title="Publication reviews" disabled={loading || !!error} getReport={async progress => ({ title: "Publication reviews", filters: [`Queue: ${kind}`, `Status: ${status}`], tables: [exportTable("Publication reviews", await loadAll<Item>(`${endpoint}?status=${status}`, progress), { ID: r => r.id, Action: r => r.action, Author: r => r.actorId, Status: r => r.status, Reason: r => r.reason, Text: r => displayText(r.action, r.text), Notes: r => r.reviewNotes })] })} />
+      <ExportMenu title="Publication reviews" disabled={loading || !!error} getReport={async progress => ({ title: "Publication reviews", filters: [`Queue: ${kind}`, `Status: ${status}`], tables: [exportTable("Publication reviews", await loadAll<Item>(`${endpoint}?status=${status}`, progress), { ID: r => r.id, Action: r => actionLabel(r.action), Author: r => r.actorId, Status: r => r.status, Reason: r => r.reason, Text: r => displayText(r.action, r.text), Notes: r => r.reviewNotes })] })} />
     </ReviewQueueToolbar>
 
     {kind !== 'publication-reviews' ? <Typography>Review the exact public name and message. Approval makes this text eligible for public display. The payment has already settled; decisions do not change funds. Anonymous names remain hidden.</Typography> : <Typography>Review the complete proposed text and every attached media item before deciding. Approval applies only to this author and version for seven days; the author must submit it again. It does not publish content, authorize a campaign goal or move funds. Review notes are visible to the author.</Typography>}
@@ -66,7 +81,7 @@ export default function PublicationReviewsPage() {
 
 
     {loading ? <ReviewQueueSkeleton label="Loading publication reviews" /> : items.map(item => { const ownSubmission = item.status === 'pending' && !!user?.id && item.actorId === user.id; return <Paper key={item.id} sx={{ ...raisedSurface, p: { xs: 2, sm: 3 } }}><Stack spacing={2}>
-      <Typography variant="h6">{item.action.replace('.', ' ')} · {item.reason.replaceAll('_', ' ')}</Typography>
+      <Typography variant="h6">{actionLabel(item.action)} · {item.reason.replaceAll('_', ' ')}</Typography>
       <Typography variant="caption">Author {item.actorId} · Reference {item.id}</Typography>
       <Typography sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{displayText(item.action, item.text)}</Typography>
       {!!item.mediaUrls.length && <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 2 }}>{item.mediaUrls.map((url, index) => <PublicationMediaPreview key={`${index}:${url}`} url={url} label={mediaLabel(item.action, item.text, url, index)} />)}</Box>}

@@ -7,7 +7,7 @@ import { DonationCard } from './DonationsPage'
 import Skeleton from '@mui/material/Skeleton'
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Box, Typography, Chip } from '@mui/material'
+import { Alert, Box, Typography, Chip, Snackbar } from '@mui/material'
 import Button from '@mui/material/Button'
 import { keyframes } from '@mui/system'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
@@ -19,6 +19,7 @@ import { ItemNotFound, EmptyState } from '@ubuntu-fund/ui'
 import { api } from '@/lib/api'
 import PageHeader from '@/components/PageHeader'
 import SplitProceedsSection from '@/components/SplitProceedsSection'
+import OnBehalfPanel from '@/components/OnBehalfPanel'
 
 const ROLE_LABELS: Record<CollaboratorRole, string> = {
   [CollaboratorRole.CO_OWNER]: 'Co-Owner',
@@ -54,6 +55,7 @@ export default function CampaignDetailPage() {
   const navigate = useNavigate()
   const [collaborators, setCollaborators] = useState<CampaignCollaborator[]>([])
   const [collaboratorsError, setCollaboratorsError] = useState<string | null>(null)
+  const [notice, setNotice] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -178,6 +180,7 @@ export default function CampaignDetailPage() {
               {[
                 { label: 'Category', value: campaign.category.replace(/_/g, ' ') },
                 { label: 'Currency', value: campaign.currency },
+                { label: 'Created for', value: campaign.creationMode === 'on_behalf' ? `Someone else: ${campaign.onBehalf?.beneficiaryName ?? 'see below'}` : 'Themselves' },
                 { label: 'Beneficiaries', value: campaign.beneficiaries.join(', ') || 'None listed' },
                 { label: 'Campaign URL', value: campaign.slug || 'No custom URL' },
                 { label: 'Risk tier', value: campaign.tier ?? 'Not assigned' },
@@ -228,6 +231,17 @@ export default function CampaignDetailPage() {
           <CampaignReviewPanel campaign={campaign} onChanged={() => setReviewRefresh(n => n + 1)} />
         </Box>
       </Box>
+
+      {campaign.creationMode === 'on_behalf' && (
+        <OnBehalfPanel
+          key={`on-behalf:${campaign.id}`}
+          campaign={campaign}
+          onChanged={(message) => {
+            setNotice(message)
+            setReviewRefresh(n => n + 1)
+          }}
+        />
+      )}
 
       {/* Collaborators */}
       <Box sx={{ mt: 3, p: 2.5 }}>
@@ -295,6 +309,10 @@ export default function CampaignDetailPage() {
           ))}
         </Box>
       )}
+
+      <Snackbar open={!!notice} autoHideDuration={6000} onClose={() => setNotice('')}>
+        <Alert severity="success" variant="filled" onClose={() => setNotice('')}>{notice}</Alert>
+      </Snackbar>
 
     </Box>
   )

@@ -4,6 +4,7 @@ import { lazy, Suspense } from 'react'
 import { ReviewQueueSkeleton } from './components/ReviewQueueStates'
 const BlogEditorPage = lazy(() => import('./pages/content/BlogEditorPage'))
 import PublicationReviewsPage from './pages/PublicationReviewsPage'
+import DonorThankYousPage from './pages/DonorThankYousPage'
 import SafetyReportsPage from './pages/SafetyReportsPage'
 import CampaignReportsPage from './pages/CampaignReportsPage'
 import PrivacyRequestsPage from './pages/PrivacyRequestsPage'
@@ -92,6 +93,7 @@ export const router = createBrowserRouter([
       { path: 'campaigns/:id', element: <RequirePermission resource={Resource.CAMPAIGNS}><CampaignDetailPage /></RequirePermission> },
       { path: 'publication-reviews', element: <RequirePermission resource={Resource.REPORTS}><PublicationReviewsPage /></RequirePermission> },
       { path: 'safety-reports', element: <RequirePermission resource={Resource.REPORTS}><SafetyReportsPage /></RequirePermission> },
+      { path: 'donor-thank-yous', element: <RequirePermission resource={Resource.REPORTS}><DonorThankYousPage /></RequirePermission> },
       { path: 'campaign-reports', element: <RequirePermission resource={Resource.REPORTS}><CampaignReportsPage /></RequirePermission> },
       { path: 'privacy-requests', element: <RequirePermission resource={Resource.USERS}><PrivacyRequestsPage /></RequirePermission> },
       { path: 'users', element: <RequirePermission resource={Resource.USERS}><UsersPage /></RequirePermission> },

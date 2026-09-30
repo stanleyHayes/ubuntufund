@@ -24,6 +24,7 @@ import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded'
 import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded'
 import MarkEmailUnreadRoundedIcon from '@mui/icons-material/MarkEmailUnreadRounded'
 import MarkEmailReadRoundedIcon from '@mui/icons-material/MarkEmailReadRounded'
+import ForwardToInboxRoundedIcon from '@mui/icons-material/ForwardToInboxRounded'
 import FormatQuoteRoundedIcon from '@mui/icons-material/FormatQuoteRounded'
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
 import QueryStatsRoundedIcon from '@mui/icons-material/QueryStatsRounded'
@@ -73,6 +74,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Users', path: '/users', icon: <PeopleRoundedIcon /> },
       { label: 'Publication reviews', path: '/publication-reviews', icon: <VerifiedUserRoundedIcon /> },
       { label: 'Community safety', path: '/safety-reports', icon: <VerifiedUserRoundedIcon /> },
+      { label: 'Donor thank-yous', path: '/donor-thank-yous', icon: <ForwardToInboxRoundedIcon /> },
       { label: 'Privacy requests', path: '/privacy-requests', icon: <VerifiedUserRoundedIcon /> },
       { label: 'Wallets', path: '/wallets', icon: <AccountBalanceWalletRoundedIcon /> },
       { label: 'Donations', path: '/donations', icon: <VolunteerActivismRoundedIcon /> },

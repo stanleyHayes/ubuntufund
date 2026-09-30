@@ -17,6 +17,7 @@ import { AutomaticPayoutSettings } from '@/components/AutomaticPayoutSettings'
 import { EarlyCashoutSettings } from '@/components/EarlyCashoutSettings'
 import { ReferralDiscountSettings } from '@/components/ReferralDiscountSettings'
 import { CampaignReviewSettings } from '@/components/CampaignReviewSettings'
+import { OnBehalfThankYouSettings } from '@/components/OnBehalfThankYouSettings'
 import { ActivityAlertSettings } from '@/components/ActivityAlertSettings'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import { useColorMode } from '@/context/ColorModeContext'
@@ -36,7 +37,8 @@ const sections = [
     id: 'campaigns',
     label: 'Campaigns',
     icon: <CampaignRoundedIcon />,
-    description: 'Publication review rules, fundraising tiers and staff review emails.',
+    description:
+      'Publication review rules, fundraising tiers, staff review emails, campaigns on behalf of others and donor thank-you messages.',
   },
   {
     id: 'referrals',
@@ -90,7 +92,12 @@ function SettingsContent() {
         <AutomaticPayoutSettings canEdit={canEdit} />
       </>
     ),
-    campaigns: <CampaignReviewSettings canEdit={canEdit} />,
+    campaigns: (
+      <>
+        <CampaignReviewSettings canEdit={canEdit} />
+        <OnBehalfThankYouSettings canEdit={canEdit} />
+      </>
+    ),
     referrals: <ReferralDiscountSettings canEdit={canEdit} />,
     notifications: (
       <Panel>
@@ -177,6 +184,15 @@ function SettingsContent() {
                   'campaigns.tierThreshold3',
                   'campaigns.tierThreshold4',
                   'alerts.reviewEmail',
+                  'onBehalf.publicationRequiresConsent',
+                  'onBehalf.donationsRequireConsent',
+                  'onBehalf.staffReviewRequired',
+                  'onBehalf.invitationTtlHours',
+                  'onBehalf.minManagerVerificationLevel',
+                  'thankYou.enabled',
+                  'thankYou.afterCampaignEnd',
+                  'thankYou.afterPayoutPaid',
+                  'thankYou.maxSendsPerCampaign',
                 ]
                 return {
                   title: 'Persisted platform settings',
