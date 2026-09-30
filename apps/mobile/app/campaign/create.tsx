@@ -5,8 +5,8 @@ import { CampaignCashout } from '@/components/CampaignCashout'
 import { useAuth } from '@/context/AuthContext'
 import { SignInRequired } from '@/components/SignInRequired'
 import { useEffect, useRef, useState } from 'react'
-import { View, ScrollView } from 'react-native'
-import { Text, Snackbar, Switch, ProgressBar } from 'react-native-paper'
+import { Linking, View, ScrollView } from 'react-native'
+import { Icon, Text, Snackbar, Switch, ProgressBar } from 'react-native-paper'
 import { Stack, router } from 'expo-router'
 import { CampaignCategory, CampaignPriority, ORGANIZER_AGREEMENT_NOTICE, type SubscriptionPlan } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
@@ -20,8 +20,10 @@ import { MediaUploadField } from '@/components/MediaUploadField'
 import { AiWritingAssistant } from '@/components/AiWritingAssistant'
 import { Button, PageSkeleton } from '@/components/Loading'
 import { KeyboardAvoider } from '@/components/KeyboardAvoider'
+import { webUrl } from '@/lib/fundraising'
 
-interface Options { plan: SubscriptionPlan; maxGoal: number | null; canCreate: boolean; canSplit: boolean; splitEnabled: boolean; creationBlockReason?: string }
+// canCreateOnBehalf: v1 creates campaigns on someone's behalf on the web only.
+interface Options { plan: SubscriptionPlan; maxGoal: number | null; canCreate: boolean; canSplit: boolean; splitEnabled: boolean; creationBlockReason?: string; canCreateOnBehalf?: boolean }
 interface Allocation { name: string; email: string; percent: string }
 const labels = ['Basics', 'Story and media', 'Goal and timeline', 'Review']
 export default function CreateCampaignScreen() {
@@ -83,6 +85,9 @@ function CampaignFormForViewer() {
     if (![title, description, beneficiaries, cover, amount, end].some(Boolean)) void clearCampaignDraft(user.id)
     else void saveCampaignDraft(user.id, draft)
   }, [user, draftLoaded, created, title, description, category, priority, beneficiaries, cover, amount, end])
+  async function openWebCreation() {
+    try { await Linking.openURL(webUrl('/campaigns/new')) } catch { setError('Could not open ujimora.com. Visit it in your browser instead.') }
+  }
   function discardDraft() {
     setTitle(''); setDescription(''); setBeneficiaries(''); setCover(''); setAmount(''); setEnd('')
     setCategory(CampaignCategory.COMMUNITY); setPriority(CampaignPriority.NORMAL); setStep(0); setDraftRestored(false); setHeld(false)
@@ -132,6 +137,13 @@ function CampaignFormForViewer() {
     <Stack.Screen options={{ title: 'Start a campaign' }} />
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 60 }}>
       <Text style={{ fontSize: 28, fontFamily: 'Outfit_800ExtraBold', color: p.text }}>Rally your community</Text>
+      {options?.canCreateOnBehalf && !created && <View style={{ flexDirection: 'row', gap: 10, padding: 14, borderRadius: 12, backgroundColor: `${p.primary}0F` }}>
+        <Icon source="information-outline" size={20} color={p.primary} />
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text style={{ color: p.text, lineHeight: 20 }}>To create a campaign on behalf of someone else, use ujimora.com.</Text>
+          <Button compact style={{ alignSelf: 'flex-start' }} icon="open-in-new" onPress={() => void openWebCreation()}>Open ujimora.com</Button>
+        </View>
+      </View>}
       {created ? <View style={card}><Text variant="titleLarge">Campaign created</Text><Text>Status: {created.status}</Text>{!split && <><Text>Next: set up your payout account for review.</Text><CampaignCashout campaignId={created.id} /></>}{setupErrors.map(e => <Text key={e} style={{ color: p.error }}>{e}</Text>)}{setupErrors.length > 0 && <Text>Your campaign was saved. Complete the remaining invitations or split from campaign management; do not create it again.</Text>}<Button loading={busy} disabled={busy} mode="contained" onPress={() => router.replace(`/campaign/${created.id}`)}>View campaign</Button></View> : loadError ? <View><Text>{loadError}</Text><Button onPress={() => setRetry(n => n + 1)}>Retry</Button></View> : !options?.canCreate ? <View style={card}><Text>{options?.creationBlockReason?.startsWith('verification') ? 'Complete verification before creating another campaign.' : 'Your plan’s active campaign allowance is full.'}</Text><Button onPress={() => router.push(options?.creationBlockReason?.startsWith('verification') ? '/kyc' : '/(tabs)/subscription')}>Review eligibility</Button></View> : <>
         {draftRestored && <View style={card}><Text>We restored your unsent draft from this device. If it is waiting for safety review, submit this same version again once it is approved.</Text><Button onPress={discardDraft}>Start over</Button></View>}
         <Text style={{ color: p.textSecondary }}>Step {step + 1} of 4 · {labels[step]}</Text><ProgressBar progress={(step + 1) / 4} color={p.primary} />

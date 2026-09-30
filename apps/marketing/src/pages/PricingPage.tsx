@@ -63,6 +63,7 @@ const FEATURE_SECTIONS: { title: string; rows: FeatureRow[] }[] = [
     rows: [
       { label: 'Split proceeds', key: 'escrowSupport', format: 'boolean' },
       { label: 'Live streaming', key: 'liveStreaming', format: 'boolean' },
+      { label: 'Campaigns on behalf of others', key: 'onBehalfCampaigns', format: 'boolean' },
       { label: 'Creator profile donations (active paid plans)', key: 'creatorDonations', format: 'boolean' },
     ],
   },
@@ -122,6 +123,10 @@ const faqs = [
   {
     question: 'What happens if I stop paying?',
     answer: 'A website plan simply ends on its end date and your account moves to Community features; there is nothing to cancel. App Store and Google Play subscriptions are cancelled in that store and stay active until the end of the paid period. Account deletion is a separate action.',
+  },
+  {
+    question: 'Can I raise funds for someone else?',
+    answer: 'Plans marked "Campaigns on behalf of others" let you run a campaign for a named person or group, such as a patient, a student or a community project. We invite them by email to confirm it. Payouts go to them, unless they agree that the funds may be paid to you.',
   },
   {
     question: 'Are there any hidden fees?',
@@ -282,6 +287,7 @@ function PricingPage() {
                       plan.maxCampaignGoal === -1 ? 'No goal limit' : `Up to GH₵ ${plan.maxCampaignGoal.toLocaleString()} goal`,
                       plan.escrowSupport && 'Split proceeds',
                       plan.liveStreaming && 'Live streaming',
+                      plan.onBehalfCampaigns && 'Campaigns on behalf of others',
                       plan.tier !== 'free' && (plan.priceMonthly > 0 || plan.priceYearly > 0) && 'Creator donations on your profile',
                       plan.campaignCollaboration && 'Campaign collaboration',
                     ]

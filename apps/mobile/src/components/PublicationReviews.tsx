@@ -5,7 +5,7 @@ import { Button, Text } from 'react-native-paper'
 import { api } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 function displayText(action: string, text: string): string {
-  if (action === 'comment.create' || action === 'campaign.create' || action === 'creator.profile' || action === 'organization.profile' || action === 'account.profile') {
+  if (action === 'comment.create' || action === 'campaign.create' || action === 'creator.profile' || action === 'organization.profile' || action === 'account.profile' || action === 'thank_you.send') {
     try { const fields: unknown = JSON.parse(text); if (fields && typeof fields === 'object' && !Array.isArray(fields)) return Object.entries(fields).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : String(value)}`).join('\n\n') } catch { /* Show original evidence. */ }
   }
   if (!action.startsWith('update.')) return text
@@ -29,11 +29,11 @@ function ViewerReviews() {
   useFocusEffect(useCallback(() => { void load() }, [load]))
   return <View style={{ gap: 12, paddingVertical: 16 }}>
     <Text variant="titleMedium">Publication reviews</Text>
-    <Text>Held live-session titles, campaigns, account identity, creator-page and organization identity changes, URL changes, comments and updates stay private. After approval, submit the same version from its original form within seven days. Changed content needs a new check. For an appeal, contact support@ujimora.com with the reference below.</Text>
+    <Text>Held live-session titles, campaigns, account identity, creator-page and organization identity changes, URL changes, comments, updates and thank-you messages to donors stay private. After approval, submit the same version from its original form within seven days. Changed content needs a new check. For an appeal, contact support@ujimora.com with the reference below.</Text>
     <Button disabled={loading} onPress={() => void load()}>Refresh publication reviews</Button>
     {!!error && <Text accessibilityRole="alert">{error}</Text>}
     {loading ? <Text>Loading reviews…</Text> : items.map(item => <View key={item.id} style={{ gap: 6, paddingVertical: 12 }}>
-      <Text variant="titleSmall">{item.action.replace('.', ' ')} · {item.status}</Text><Text>Reference {item.id}</Text>
+      <Text variant="titleSmall">{item.action.replace('.', ' ').replace(/_/g, ' ')} · {item.status}</Text><Text>Reference {item.id}</Text>
       <Text selectable>{displayText(item.action, item.text)}</Text>
       {!!item.reviewNotes && <Text>Review response: {item.reviewNotes}</Text>}
       {!!item.approvalExpiresAt && <Text>Approval expires {new Date(item.approvalExpiresAt).toLocaleString()}</Text>}

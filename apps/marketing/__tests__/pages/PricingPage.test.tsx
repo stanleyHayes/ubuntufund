@@ -39,4 +39,19 @@ describe('PricingPage plan cards', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Yearly' }))
     expect(within(card(SUBSCRIPTION_PLANS[SubscriptionTier.PRO].name)).getByRole('link', { name: `Choose ${SUBSCRIPTION_PLANS[SubscriptionTier.PRO].name}` })).toBeInTheDocument()
   })
+
+  it('lists campaigns on behalf of others only for plans that include them', async () => {
+    const plans = Object.values(SUBSCRIPTION_PLANS)
+    renderWith(plans)
+    const organization = SUBSCRIPTION_PLANS[SubscriptionTier.ORGANIZATION]
+    await screen.findAllByText(organization.name)
+    expect(within(card(organization.name)).getByText('Campaigns on behalf of others')).toBeInTheDocument()
+    expect(within(card(SUBSCRIPTION_PLANS[SubscriptionTier.PRO].name)).queryByText('Campaigns on behalf of others')).not.toBeInTheDocument()
+    // The comparison row follows each plan's flag, so admins can change it without a deploy.
+    const label = within(screen.getByRole('region', { name: 'Plan comparison' })).getByText('Campaigns on behalf of others')
+    const row = label.parentElement!.parentElement!
+    const included = plans.filter((plan) => plan.onBehalfCampaigns).length
+    expect(within(row).getAllByTestId('CheckRoundedIcon')).toHaveLength(included)
+    expect(within(row).getAllByTestId('CloseRoundedIcon')).toHaveLength(plans.length - included)
+  })
 })

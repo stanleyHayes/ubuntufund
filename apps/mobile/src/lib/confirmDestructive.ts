@@ -19,12 +19,7 @@ const defaultDeps = (): ConfirmDeps => ({
   webConfirm: (message) => (typeof globalThis.confirm === 'function' ? globalThis.confirm(message) : false),
 })
 
-/**
- * Ask before a destructive action. Resolves true only on an explicit confirm.
- * react-native-web's Alert.alert does nothing, so Expo web uses the browser's
- * confirm dialog instead of silently skipping (or silently proceeding).
- */
-export function confirmDestructive(prompt: DestructivePrompt, deps: ConfirmDeps = defaultDeps()): Promise<boolean> {
+function ask(prompt: DestructivePrompt, style: 'destructive' | 'default', deps: ConfirmDeps): Promise<boolean> {
   if (deps.platform === 'web') return Promise.resolve(deps.webConfirm(`${prompt.title}\n\n${prompt.message}`))
   return new Promise((resolve) => {
     deps.alert(
@@ -32,11 +27,25 @@ export function confirmDestructive(prompt: DestructivePrompt, deps: ConfirmDeps 
       prompt.message,
       [
         { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-        { text: prompt.confirmLabel, style: 'destructive', onPress: () => resolve(true) },
+        { text: prompt.confirmLabel, style, onPress: () => resolve(true) },
       ],
       { cancelable: true, onDismiss: () => resolve(false) },
     )
   })
+}
+
+/**
+ * Ask before a destructive action. Resolves true only on an explicit confirm.
+ * react-native-web's Alert.alert does nothing, so Expo web uses the browser's
+ * confirm dialog instead of silently skipping (or silently proceeding).
+ */
+export function confirmDestructive(prompt: DestructivePrompt, deps: ConfirmDeps = defaultDeps()): Promise<boolean> {
+  return ask(prompt, 'destructive', deps)
+}
+
+/** The same explicit confirm for actions that cannot be undone but destroy nothing, such as sending or paying out. */
+export function confirmAction(prompt: DestructivePrompt, deps: ConfirmDeps = defaultDeps()): Promise<boolean> {
+  return ask(prompt, 'default', deps)
 }
 
 export function removePayoutAccountPrompt(account: { accountName: string; last4: string }): DestructivePrompt {

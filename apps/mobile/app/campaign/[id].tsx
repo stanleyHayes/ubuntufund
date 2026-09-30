@@ -22,6 +22,7 @@ import { CampaignUpdatesList } from '@/components/CampaignUpdatesList'
 import { CampaignComments } from '@/components/CampaignComments'
 import { SplitDisclosure } from '@/components/SplitDisclosure'
 import { formatMoney } from '@/lib/money'
+import { canOpenManagement } from '@/lib/onBehalf'
 
 const ROLE_LABELS: Record<CollaboratorRole, string> = {
   [CollaboratorRole.CO_OWNER]: 'Co-Owner',
@@ -58,6 +59,11 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
     chip: { minHeight: 32, borderRadius: 10, justifyContent: 'center', backgroundColor: 'rgba(168,181,160,0.28)' },
     chipText: { fontSize: 12, lineHeight: 18, marginVertical: 6, fontFamily: 'Outfit_600SemiBold', color: p.text },
     title: { fontFamily: 'Outfit_700Bold', marginBottom: 16 },
+    onBehalfRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: -8, marginBottom: 16 },
+    onBehalfText: { flexShrink: 1, color: p.text },
+    onBehalfName: { fontFamily: 'Outfit_700Bold', color: p.text },
+    confirmPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+    confirmText: { fontSize: 12, fontFamily: 'Outfit_700Bold' },
     progressCard: {
       ...neu.raised,
       padding: 16,
@@ -263,7 +269,7 @@ export default function CampaignDetailScreen() {
     <>
       <Stack.Screen options={{ title: campaign.title }} />
       {activeLive && <Button mode="contained" icon="video" onPress={() => router.push(`/live/${activeLive.id}`)}>Watch live broadcast</Button>}
-      {signedInUser?.id === campaign.creatorId && <Button icon="cog" onPress={() => router.push({ pathname: '/campaign/manage', params: { id } })}>Manage campaign</Button>}
+      {canOpenManagement(campaign, signedInUser?.id) && <Button icon="cog" onPress={() => router.push({ pathname: '/campaign/manage', params: { id } })}>Manage campaign</Button>}
       {signedInUser?.id === campaign.creatorId && <Button icon="video-plus" onPress={() => router.push({ pathname: '/campaign/live', params: { id } })}>Go live</Button>}
       <ScrollView style={styles.container}>
         <RemoteImage uri={campaign.imageUrls[0]} style={styles.heroImage} />
@@ -293,6 +299,25 @@ export default function CampaignDetailScreen() {
           <Text variant="headlineSmall" style={styles.title}>
             {campaign.title}
           </Text>
+
+          {campaign.onBehalf && (
+            <View style={styles.onBehalfRow}>
+              <Icon source="hand-heart-outline" size={18} color={p.primary} />
+              <Text variant="bodyMedium" style={styles.onBehalfText}>
+                Organized on behalf of <Text style={styles.onBehalfName}>{campaign.onBehalf.beneficiaryName}</Text>
+              </Text>
+              <View
+                accessible
+                accessibilityLabel={campaign.onBehalf.beneficiaryConfirmed ? 'The beneficiary has confirmed this campaign' : 'Awaiting confirmation from the beneficiary'}
+                style={[styles.confirmPill, { backgroundColor: campaign.onBehalf.beneficiaryConfirmed ? `${p.success}1F` : `${p.warning}29` }]}
+              >
+                <Icon source={campaign.onBehalf.beneficiaryConfirmed ? 'check-circle' : 'clock-outline'} size={14} color={campaign.onBehalf.beneficiaryConfirmed ? p.success : p.warningText} />
+                <Text style={[styles.confirmText, { color: campaign.onBehalf.beneficiaryConfirmed ? p.success : p.warningText }]}>
+                  {campaign.onBehalf.beneficiaryConfirmed ? 'Beneficiary confirmed' : 'Awaiting confirmation'}
+                </Text>
+              </View>
+            </View>
+          )}
 
           <Surface style={styles.progressCard} elevation={0}>
             <ProgressBar progress={progress} />
@@ -398,7 +423,7 @@ export default function CampaignDetailScreen() {
 
           {/* Creator Info */}
           <Text variant="titleMedium" style={styles.sectionTitle}>
-            Campaign Creator
+            {campaign.onBehalf ? 'Organizer' : 'Campaign Creator'}
           </Text>
           <Surface style={styles.creatorCard} elevation={0}>
             <View style={styles.creatorRow}>
