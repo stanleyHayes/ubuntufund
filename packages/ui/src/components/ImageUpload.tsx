@@ -1,5 +1,5 @@
 import Skeleton from '@mui/material/Skeleton'
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState, useCallback, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
@@ -24,6 +24,7 @@ import { SHAPE } from '../theme'
 const FOREST = 'var(--text-primary)'
 const SAGE = 'var(--text-brand)'
 const GOLD = 'var(--text-warning)'
+const LABEL_SX = { fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: GOLD } as const
 const CLAY = 'var(--text-error)'
 const DIVIDER = 'var(--border-subtle)'
 const INK_SECONDARY = 'var(--text-secondary)'
@@ -92,6 +93,8 @@ export interface ImageUploadProps {
   onChange: (url: string) => void
   /** Field label (eyebrow-style). */
   label?: string
+  /** Shown on the label's line, right after it, e.g. a help button. */
+  labelAdornment?: ReactNode
   /** Helper text under the control. */
   helperText?: string
   /** Accepted file types. Default 'image/*'. Pass e.g. 'image/*,application/pdf' for documents. */
@@ -120,6 +123,7 @@ export function ImageUpload({
   value,
   onChange,
   label,
+  labelAdornment,
   helperText,
   accept = 'image/*',
   aspectRatio = 16 / 9,
@@ -163,15 +167,13 @@ export function ImageUpload({
 
   return (
     <Box>
-      {label && (
-        <Typography
-          sx={{
-            fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.08em',
-            textTransform: 'uppercase', color: GOLD, mb: 1,
-          }}
-        >
-          {label}
-        </Typography>
+      {labelAdornment ? (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+          {label && <Typography sx={{ ...LABEL_SX, minWidth: 0, overflowWrap: 'anywhere' }}>{label}</Typography>}
+          {labelAdornment}
+        </Box>
+      ) : label && (
+        <Typography sx={{ ...LABEL_SX, mb: 1 }}>{label}</Typography>
       )}
 
       {/* Uploaded → preview + actions */}

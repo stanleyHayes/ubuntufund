@@ -1,13 +1,14 @@
 import { useState, type FormEvent } from 'react'
 import { useSeo } from '@/lib/seo'
-import { Alert, Box, Button, Checkbox, Container, FormControlLabel, MenuItem, Paper, Typography } from '@mui/material'
+import { Alert, Box, Button, Checkbox, Container, FormControlLabel, InputAdornment, MenuItem, Paper, Typography } from '@mui/material'
 import { BrandedDatePicker, BrandedTextField as TextField } from '@ubuntu-fund/ui'
-import { adultBirthDateError, latestAdultBirthDate, KYC_IDENTITY_DOCUMENT_OPTIONS, type KYCIdentityDocumentType } from '@ubuntu-fund/types'
+import { adultBirthDateError, latestAdultBirthDate, KYC_IDENTITY_DOCUMENT_OPTIONS, ORGANIZATION_KYC_FIELD_HELP, ORGANIZATION_KYC_UPLOADS, type KYCIdentityDocumentType } from '@ubuntu-fund/types'
 import { COUNTRY_OPTIONS } from '@/data/countries'
 import { api } from '@/lib/api'
 import { uploadImageViaApi } from '@/lib/uploadImage'
 import { PrivateDocumentUpload } from '@/components/auth/PrivateDocumentUpload'
 import KYCInformationRequests from '@/components/KYCInformationRequests'
+import { FieldHelp } from '@/components/FieldHelp'
 
 type Controller = { fullName: string; role: string; country: string; ownershipPercent: string }
 const emptyController = (): Controller => ({ fullName: '', role: 'director', country: 'Ghana', ownershipPercent: '' })
@@ -26,7 +27,12 @@ export default function OrganizationKYCForm() {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
   const busy = saving || uploads > 0
-  const field = (key: keyof typeof initial, label: string, optional = false) => <TextField fullWidth required={!optional} label={label} value={fields[key]} onChange={e => setFields(old => ({ ...old, [key]: e.target.value }))} inputProps={{ maxLength: key === 'ownershipExplanation' ? 2000 : ['registrationNumber', 'taxId', 'businessType', 'idNumber'].includes(key) ? 100 : 200 }} multiline={key === 'ownershipExplanation'} minRows={key === 'ownershipExplanation' ? 3 : undefined} />
+  const field = (key: keyof typeof initial, label: string, optional = false) => {
+    // The end adornment leaves BrandedTextField's start icon in place.
+    const help = key === 'idNumber' || key === 'representativeCapacity' ? ORGANIZATION_KYC_FIELD_HELP[key] : undefined
+    return <TextField fullWidth required={!optional} label={label} value={fields[key]} onChange={e => setFields(old => ({ ...old, [key]: e.target.value }))} inputProps={{ maxLength: key === 'ownershipExplanation' ? 2000 : ['registrationNumber', 'taxId', 'businessType', 'idNumber'].includes(key) ? 100 : 200 }} multiline={key === 'ownershipExplanation'} minRows={key === 'ownershipExplanation' ? 3 : undefined}
+      slotProps={help ? { input: { endAdornment: <InputAdornment position="end"><FieldHelp help={help} edge="end" /></InputAdornment> } } : undefined} />
+  }
   const country = (key: 'country' | 'nationality', label: string) => <TextField select fullWidth required label={label} value={fields[key]} onChange={e => setFields(old => ({ ...old, [key]: e.target.value }))}>{COUNTRY_OPTIONS.map(item => <MenuItem key={item.code} value={item.label}>{item.label}</MenuItem>)}</TextField>
   async function upload(file: File, progress: (percent: number) => void) {
     setUploads(n => n + 1)
@@ -84,7 +90,7 @@ export default function OrganizationKYCForm() {
         {field('ownershipExplanation', 'Explain ownership and control')}
         <Typography variant="h6">Private supporting documents</Typography>
         <TextField select label="Representative identity document type" value={idType} disabled={busy} onChange={e => { setIdType(e.target.value as KYCIdentityDocumentType); setDocuments(old => ({ ...old, identity: '' })) }}>{KYC_IDENTITY_DOCUMENT_OPTIONS.map(item => <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>)}</TextField>
-        {([['registration', 'Organization registration document'], ['authorization', 'Representative authorization document'], ['identity', 'Representative identity document'], ['control', 'Ownership or control register (optional)']] as const).map(([key, label]) => <PrivateDocumentUpload disabled={busy} key={`${key}:${key === 'identity' ? idType : key}`} label={label} value={documents[key]} onChange={url => setDocuments(old => ({ ...old, [key]: url }))} uploadFn={upload} accept="image/*,application/pdf" />)}
+        {ORGANIZATION_KYC_UPLOADS.map(([key, label]) => <PrivateDocumentUpload disabled={busy} key={`${key}:${key === 'identity' ? idType : key}`} label={label} help={<FieldHelp help={ORGANIZATION_KYC_FIELD_HELP[key]} />} value={documents[key]} onChange={url => setDocuments(old => ({ ...old, [key]: url }))} uploadFn={upload} accept="image/*,application/pdf" />)}
         <FormControlLabel control={<Checkbox checked={authorized} onChange={e => setAuthorized(e.target.checked)} />} label="I am authorized to submit this application and act for the organization." />
         <FormControlLabel control={<Checkbox checked={accurate} onChange={e => setAccurate(e.target.checked)} />} label="The organization, representative and control details are accurate and complete to the best of my knowledge." />
         {error && <Alert severity="error">{error}</Alert>}
