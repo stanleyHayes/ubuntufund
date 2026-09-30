@@ -1,5 +1,8 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { spawnSync } from 'node:child_process'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { dirname, join, resolve } from 'node:path'
+import ts from 'typescript'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import middleware, { config } from '../middleware'
 import { campaignKeyFromPath, campaignShareMeta, escapeHtml, injectShareMeta, isLinkPreviewBot } from '@/lib/shareMeta'
@@ -109,5 +112,53 @@ describe('link-preview middleware', () => {
   it('falls through on a malformed API payload', async () => {
     stubFetch(async () => new Response('<html>gateway error</html>', { status: 200 }))
     expect(await call('/c/kofi-surgery', WHATSAPP)).toBeUndefined()
+  })
+})
+
+describe('link-preview middleware on Vercel', () => {
+  // Vercel runs middleware.ts as a Node.js ES module, transpiled file by file
+  // (apps/web is "type": "module"). Vitest's resolver is more forgiving than
+  // Node's: an extensionless relative import passes here but crashed every
+  // campaign page in production with ERR_MODULE_NOT_FOUND. So transpile the
+  // middleware and its helpers the same way and load them in a real Node process.
+  function runInNode(script: string) {
+    const dir = mkdtempSync(join(tmpdir(), 'ujimora-middleware-'))
+    try {
+      for (const file of ['middleware.ts', 'src/lib/shareMeta.ts']) {
+        const out = join(dir, file.replace(/\.ts$/, '.js'))
+        mkdirSync(dirname(out), { recursive: true })
+        const source = readFileSync(resolve(process.cwd(), file), 'utf8')
+        writeFileSync(out, ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText)
+      }
+      writeFileSync(join(dir, 'package.json'), '{"type":"module"}')
+      writeFileSync(join(dir, 'index.html'), INDEX_HTML)
+      return spawnSync(process.execPath, ['--input-type=module', '-e', script], { cwd: dir, encoding: 'utf8', timeout: 30_000 })
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  }
+
+  it('loads and lets browsers through under Node.js ESM', () => {
+    const result = runInNode(`
+      const { default: middleware } = await import('./middleware.js')
+      const response = await middleware(new Request('https://app.ujimora.com/campaigns/new', { headers: { 'user-agent': ${JSON.stringify(CHROME)} } }))
+      console.log(JSON.stringify({ passedThrough: response === undefined }))
+    `)
+    expect(result.stderr).toBe('')
+    expect(JSON.parse(result.stdout)).toEqual({ passedThrough: true })
+  })
+
+  it('serves scrapers the campaign card under Node.js ESM', () => {
+    const result = runInNode(`
+      import { readFileSync } from 'node:fs'
+      const html = readFileSync('./index.html', 'utf8')
+      globalThis.fetch = async (input) => String(input).endsWith('/index.html') ? new Response(html) : Response.json({ data: ${JSON.stringify(campaign)} })
+      const { default: middleware } = await import('./middleware.js')
+      const response = await middleware(new Request('https://app.ujimora.com/c/kofi-surgery', { headers: { 'user-agent': ${JSON.stringify(WHATSAPP)} } }))
+      const body = await response.text()
+      console.log(JSON.stringify({ status: response.status, card: body.includes('<meta property="og:url" content="https://app.ujimora.com/c/kofi-surgery" />') }))
+    `)
+    expect(result.stderr).toBe('')
+    expect(JSON.parse(result.stdout)).toEqual({ status: 200, card: true })
   })
 })
