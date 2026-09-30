@@ -33,7 +33,7 @@ export function PayoutAccounts() {
       ) : (
         <Button href="/campaigns/new">Create a campaign to set up payouts</Button>
       )}
-      {id && <CampaignCashout key={id} campaignId={id} initiallyExpanded />}
+      {id && <CampaignCashout key={id} campaignId={id} initiallyExpanded beneficiaryName={campaigns.find((c) => c.id === id)?.onBehalf?.beneficiaryName} />}
     </Box>
   )
 }

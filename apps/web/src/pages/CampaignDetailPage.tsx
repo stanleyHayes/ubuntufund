@@ -30,14 +30,19 @@ import { CurrencyDisplay, PaymentMethods, ErrorState, ItemNotFound, SHAPE, type 
 import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined'
+import VolunteerActivismRoundedIcon from '@mui/icons-material/VolunteerActivismRounded'
 import { useAuth } from '@/context/AuthContext'
 import { useUser } from '@/hooks/useUser'
 import {
   CampaignStatus,
   LEGAL_ACCEPTANCE_VERSION,
+  type CampaignBeneficiaryDetails,
   type CampaignCollaborator,
+  type CampaignOnBehalfSummary,
 } from '@ubuntu-fund/types'
 import { useCampaign } from '@/hooks/useCampaigns'
+import { useCampaignBeneficiary } from '@/hooks/useCampaignBeneficiary'
+import { CampaignBeneficiaryPanel } from '@/components/campaigns/CampaignBeneficiaryPanel'
 import { ReportCampaignDialog } from '@/components/campaigns/ReportCampaignDialog'
 import { CollaboratorSection } from '@/components/campaigns/CollaboratorSection'
 import { CampaignSplitSetup } from '@/components/campaigns/CampaignSplitSetup'
@@ -80,6 +85,16 @@ function campaignDescription(story: string): string {
   const blurb = clip(story || '', 155)
   if (blurb.length >= 100) return blurb
   return `${blurb ? `${blurb} ` : ''}Donate by mobile money or card on Ujimora.`
+}
+
+/** Where the money goes, for a manager who cannot request payouts on a campaign run for someone else. */
+function managerPayoutNote(onBehalf: CampaignOnBehalfSummary, details: CampaignBeneficiaryDetails | null): string {
+  const name = onBehalf.beneficiaryName
+  if (details?.payoutAuthority === 'beneficiary') return `Payouts go to ${name}. Only they can request them.`
+  if (details?.payoutAuthority === 'organization') return 'Payouts go to the organization account that runs this campaign.'
+  if (details?.consentStatus === 'declined' || details?.consentStatus === 'revoked') return `Payouts are paused because ${name} has not agreed to this campaign.`
+  if (onBehalf.beneficiaryConfirmed) return `Payouts go to ${name}.`
+  return details?.payoutArrangement === 'organization' ? `Payouts open after ${name} accepts.` : `Payouts go to ${name} after they accept.`
 }
 
 export function CampaignDetailPage() {
@@ -139,6 +154,11 @@ function CampaignDetailContent() {
   const donateAnonymity = donateAnonymityChoice ?? anonymousDefault
   const donateAnonymous = donateAnonymity === true
   const { user: creator, isLoading: creatorLoading } = useUser(campaign?.creatorId ?? '')
+  // What the signed-in viewer may do, as the server sees it (absent when signed out).
+  const access = campaign?.viewerAccess
+  const showBeneficiaryPanel = !!campaign?.onBehalf && !!(access?.manage || access?.beneficiary)
+  const beneficiary = useCampaignBeneficiary(campaign?.id ?? '', showBeneficiaryPanel)
+  const [beneficiaryNotice, setBeneficiaryNotice] = useState('')
   const [activeTab, setActiveTab] = useState(0)
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false)
   const { create: createUpdate, isLoading: creatingUpdate } = useCreateCampaignUpdate()
@@ -343,6 +363,18 @@ function CampaignDetailContent() {
             </Button>
           </>
         )}
+        {access?.thankDonors && (
+          <Button
+            component={RouterLink}
+            to={`/campaigns/${campaign.id}/thank-you`}
+            variant="outlined"
+            size="small"
+            startIcon={<VolunteerActivismRoundedIcon />}
+            sx={{ fontWeight: 700 }}
+          >
+            Thank your donors
+          </Button>
+        )}
       </Box>
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mt: 3, pt: 2.5, borderTop: '1px solid', borderColor: 'divider' }}>
             <Box><PeopleOutlineRoundedIcon sx={{ color: 'primary.main', fontSize: 20 }} /><Typography sx={{ fontWeight: 700, mt: 0.5 }}>{campaign.donorCount ?? 0} {(campaign.donorCount ?? 0) === 1 ? 'donor' : 'donors'}</Typography><Typography variant="caption" color="text.secondary">Distinct supporters</Typography></Box>
@@ -410,6 +442,9 @@ function CampaignDetailContent() {
               fullWidth
             />
           </Box>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: -1.5 }}>
+            The organizer may send you one thank-you through Ujimora. You can unsubscribe from it.
+          </Typography>
           <MessageAgreement donation checked={donateMessageAccepted} onChange={setDonateMessageAccepted} />
           {donateError && <Alert severity="error">{donateError}</Alert>}
         </DialogContent>
@@ -471,6 +506,11 @@ function CampaignDetailContent() {
         onClose={() => setSnackOpen(false)}
         message="Your wallet donation was completed."
       />
+      <Snackbar open={!!beneficiaryNotice} autoHideDuration={6000} onClose={() => setBeneficiaryNotice('')}>
+        <Alert onClose={() => setBeneficiaryNotice('')} severity="success" variant="filled">
+          {beneficiaryNotice}
+        </Alert>
+      </Snackbar>
 
       {/* Tabs */}
       <Box sx={{ borderRadius: SHAPE.sm, boxShadow: 'var(--neu-inset)', p: 0.75, mb: 4, mt: 5 }}>
@@ -509,7 +549,7 @@ function CampaignDetailContent() {
           />
 
           <Box id="campaign-details" sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }, gap: 3, mt: 3, scrollMarginTop: 100 }}>
-            <CampaignOrganizer creator={creator} loading={creatorLoading} startDate={campaign.startDate} endDate={campaign.endDate} />
+            <CampaignOrganizer creator={creator} loading={creatorLoading} startDate={campaign.startDate} endDate={campaign.endDate} onBehalf={campaign.onBehalf} />
 
             <Box component="section" aria-labelledby="payment-heading" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: SHAPE.card, bgcolor: 'background.paper', boxShadow: 'var(--neu-inset)', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
               <Typography variant="overline" color="text.secondary">Your contribution</Typography>
@@ -532,7 +572,28 @@ function CampaignDetailContent() {
             </Box>
           </Box>
 
-          {currentUser?.id === campaign.creatorId && <><CampaignCashout campaignId={campaign.id} /><CampaignSplitSetup campaignId={campaign.id} /></>}
+          {showBeneficiaryPanel && (
+            <CampaignBeneficiaryPanel
+              campaignId={campaign.id}
+              details={beneficiary.details}
+              loading={beneficiary.loading}
+              error={beneficiary.error}
+              onRetry={beneficiary.refresh}
+              onChanged={(confirmation) => { setBeneficiaryNotice(confirmation); beneficiary.refresh(); refresh() }}
+              ownEmail={currentUser?.email}
+              ownAccountLabel={currentUser?.role === 'organization' ? 'My organization' : 'Me'}
+            />
+          )}
+          {/* Payout controls follow the server's payout authority: on a campaign run for someone
+              else that is the beneficiary (or the organizer only if they agreed), never just the creator. */}
+          {(access ? access.payoutAuthority : currentUser?.id === campaign.creatorId) ? (
+            <>
+              <CampaignCashout campaignId={campaign.id} beneficiaryName={campaign.onBehalf?.beneficiaryName} />
+              {!campaign.onBehalf && <CampaignSplitSetup campaignId={campaign.id} />}
+            </>
+          ) : access?.manage && campaign.onBehalf ? (
+            <Alert severity="info" sx={{ my: 3 }}>{managerPayoutNote(campaign.onBehalf, beneficiary.details)}</Alert>
+          ) : null}
           {/* Share & Embed */}
           <Box component="details" sx={{ mt: 4, p: 3, borderRadius: SHAPE.card, boxShadow: 'var(--neu-inset)', '& > summary': { cursor: 'pointer', fontWeight: 700 }, '& > div': { mt: 2 } }}><Box component="summary">Share this campaign · QR code</Box>
             <Box sx={{ flex: 1, p: 3, bgcolor: 'action.hover', borderRadius: SHAPE.card }}>

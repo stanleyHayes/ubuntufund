@@ -32,6 +32,8 @@ import {
 } from '@/lib/fundraising'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 import { SplitDisclosure } from '@/components/campaigns/SplitDisclosure'
+import { OnBehalfLine } from '@/components/campaigns/OnBehalfLine'
+import { useUser } from '@/hooks/useUser'
 
 // ---------------------------------------------------------------------------
 // Animations
@@ -79,6 +81,8 @@ export function CampaignPublicPage() {
   const navigate = useNavigate()
 
   const { campaign, isLoading, error, notFound } = usePublicCampaign(slug)
+  // Only a campaign run on someone's behalf names its organizer on this page.
+  const { user: organizer } = useUser(campaign?.onBehalf ? campaign.creatorId : '')
   const { search, pathname } = useLocation()
   const { user } = useAuth()
   const [reportOpen, setReportOpen] = useState(false)
@@ -232,6 +236,14 @@ export function CampaignPublicPage() {
       >
         {campaign.title}
       </Typography>
+
+      {campaign.onBehalf && (
+        <OnBehalfLine
+          onBehalf={campaign.onBehalf}
+          organizerName={organizer?.name}
+          sx={{ mb: 2, animation: `${fadeInUp} 0.45s 0.1s ease both` }}
+        />
+      )}
 
       {/* Summary */}
       <Typography

@@ -20,6 +20,10 @@ import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import InputAdornment from '@mui/material/InputAdornment'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
+import Radio from '@mui/material/Radio'
+import RadioGroup from '@mui/material/RadioGroup'
+import Link from '@mui/material/Link'
+import AlertTitle from '@mui/material/AlertTitle'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
@@ -28,20 +32,24 @@ import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded'
 import { Link as RouterLink } from 'react-router-dom'
 import {
+  BENEFICIARY_RELATIONSHIPS,
   CampaignCategory,
   CampaignPriority,
   CampaignStatus,
   CollaboratorRole,
   ORGANIZER_AGREEMENT_NOTICE,
+  type BeneficiaryRelationship,
 } from '@ubuntu-fund/types'
 import { formatCurrency, ImageUpload, SHAPE, LoadingDots } from '@ubuntu-fund/ui'
 import { useCreateCampaign } from '@/hooks/useCampaigns'
 import Alert from '@mui/material/Alert'
-import { api } from '@/lib/api'
+import { api, type AuthUser } from '@/lib/api'
 import { uploadImageViaApi } from '@/lib/uploadImage'
 import { clearDraftSubmission, clearPublicationDraft, draftSubmission, publicationDraftKey, readPublicationDraft, writePublicationDraft, type DraftSubmission } from '@/lib/publicationDrafts'
-import { useCampaignCreationOptions } from '@/hooks/useCampaignCreationOptions'
+import { useCampaignCreationOptions, type CampaignCreationOptions } from '@/hooks/useCampaignCreationOptions'
+import { EMPTY_BENEFICIARY, RELATIONSHIP_LABELS, beneficiaryInput, creationGateText, partyLabel, payoutArrangementText, validateBeneficiary, type BeneficiaryDraft, type BeneficiaryField } from '@/lib/onBehalf'
 import { CampaignCreationExtras, type SplitRow } from './CampaignCreationExtras'
+import { BeneficiaryFields } from './BeneficiaryFields'
 import { ShareCampaignButton } from './ShareCampaignButton'
 import { CampaignSplitSetup } from './CampaignSplitSetup'
 
@@ -141,7 +149,7 @@ const STEPS = [
 const STEP_FIELDS: Record<number, (keyof FormErrors)[]> = {
   // No separate summary: the API has no field for it, so it was silently
   // dropped. Share cards derive their summary from the story.
-  0: ['title', 'category'],
+  0: ['title', 'category', 'onBehalf', 'beneficiaryName', 'beneficiaryEmail', 'relationship', 'reason'],
   1: ['description', 'beneficiaries', 'coverImageUrl'],
   2: ['goalAmount', 'endDate'],
   3: [],
@@ -167,7 +175,15 @@ interface FormErrors {
   coverImageUrl?: string
   goalAmount?: string
   endDate?: string
+  // Only when the campaign is run on someone else's behalf.
+  onBehalf?: string
+  beneficiaryName?: string
+  beneficiaryEmail?: string
+  relationship?: string
+  reason?: string
 }
+
+const BENEFICIARY_FIELDS: BeneficiaryField[] = ['beneficiaryName', 'beneficiaryEmail', 'relationship', 'reason']
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -231,6 +247,43 @@ function parseFormDraft(value: unknown): FormData | null {
     currency: 'GHS', endDate: text('endDate'), priority,
   }
   return JSON.stringify(form) === JSON.stringify(EMPTY_FORM) ? null : form
+}
+
+/**
+ * The saved "on someone's behalf" block. The beneficiary's email address is
+ * never stored in the browser, so it is entered again after a reload.
+ */
+function parseOnBehalfDraft(value: unknown): BeneficiaryDraft | null {
+  const block = value && typeof value === 'object' ? (value as { onBehalf?: unknown }).onBehalf : null
+  if (!block || typeof block !== 'object') return null
+  const draft = block as Record<string, unknown>
+  const text = (key: string) => (typeof draft[key] === 'string' ? (draft[key] as string) : '')
+  return {
+    beneficiaryType: draft.beneficiaryType === 'organization' ? 'organization' : 'individual',
+    beneficiaryName: text('beneficiaryName'),
+    beneficiaryEmail: '',
+    relationship: (BENEFICIARY_RELATIONSHIPS as readonly string[]).includes(text('relationship')) ? (text('relationship') as BeneficiaryRelationship) : '',
+    reason: text('reason'),
+    payoutArrangement: draft.payoutArrangement === 'organization' ? 'organization' : 'beneficiary',
+  }
+}
+
+/** Why "someone else" cannot be chosen, and where to fix it. */
+function onBehalfBlockedReason(options: CampaignCreationOptions): { text: string; link?: { to: string; label: string } } {
+  const limit = options.onBehalf?.limit ?? 0
+  switch (options.onBehalfBlockReason) {
+    case 'plan_required':
+      return { text: 'Available on plans that include campaigns for others.', link: { to: '/subscription', label: 'See plans' } }
+    case 'plan_limit':
+      return {
+        text: `Available on plans that include campaigns for others. Yours allows ${limit} active ${limit === 1 ? 'campaign' : 'campaigns'} for others, and you have reached it.`,
+        link: { to: '/subscription', label: 'See plans' },
+      }
+    case 'verification_required':
+      return { text: 'Verify your account to run campaigns for others.', link: { to: '/kyc', label: 'Review verification' } }
+    default:
+      return { text: 'Campaigns for others are temporarily unavailable. Please try again later.' }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -446,9 +499,9 @@ function ReviewItem({ label, children }: { label: string; children: ReactNode })
 // ---------------------------------------------------------------------------
 export function CampaignForm() {
   const { user } = useAuth()
-  return <CampaignFormForViewer key={user?.id ?? 'guest'} userId={user?.id ?? null} />
+  return <CampaignFormForViewer key={user?.id ?? 'guest'} userId={user?.id ?? null} viewer={user ?? null} />
 }
-function CampaignFormForViewer({ userId }: { userId: string | null }) {
+function CampaignFormForViewer({ userId, viewer }: { userId: string | null; viewer: AuthUser | null }) {
   const live = useRef(true)
   useEffect(() => { live.current = true; return () => { live.current = false } }, [])
   const { options, error: optionsError, retry } = useCampaignCreationOptions()
@@ -500,13 +553,22 @@ function CampaignFormForViewer({ userId }: { userId: string | null }) {
   // approved: any change, even a re-uploaded cover, needs a new review.
   const draftKey = userId ? publicationDraftKey('campaign', userId) : null
   const [restoredDraft] = useState(() => (draftKey ? readPublicationDraft(draftKey, parseFormDraft) : null))
-  const [draftNotice, setDraftNotice] = useState(restoredDraft !== null)
+  const [restoredOnBehalf] = useState(() => (draftKey ? readPublicationDraft(draftKey, parseOnBehalfDraft) : null))
+  const [draftNotice, setDraftNotice] = useState(restoredDraft !== null || restoredOnBehalf !== null)
   const [formData, setFormData] = useState<FormData>(() => restoredDraft ?? EMPTY_FORM)
+  // "Someone else": the campaign is run on the beneficiary's behalf.
+  const [forOthers, setForOthers] = useState(restoredOnBehalf !== null)
+  const [beneficiary, setBeneficiary] = useState<BeneficiaryDraft>(() => restoredOnBehalf ?? EMPTY_BENEFICIARY)
+  // A submit the API refused for an on-behalf reason, with the action that fixes it.
+  const [onBehalfIssue, setOnBehalfIssue] = useState<'plan' | 'verification' | 'details' | null>(null)
+  const [emailRejected, setEmailRejected] = useState<{ email: string; message: string } | null>(null)
   useEffect(() => {
     if (!draftKey) return
-    if (JSON.stringify(formData) === JSON.stringify(EMPTY_FORM)) clearPublicationDraft(draftKey)
-    else writePublicationDraft(draftKey, formData)
-  }, [draftKey, formData])
+    const { beneficiaryEmail: _email, ...kept } = beneficiary
+    const onBehalfDraft = forOthers && (kept.beneficiaryName.trim() || kept.reason.trim() || kept.relationship || JSON.stringify(formData) !== JSON.stringify(EMPTY_FORM)) ? kept : null
+    if (JSON.stringify(formData) === JSON.stringify(EMPTY_FORM) && !onBehalfDraft) clearPublicationDraft(draftKey)
+    else writePublicationDraft(draftKey, onBehalfDraft ? { ...formData, onBehalf: onBehalfDraft } : formData)
+  }, [draftKey, formData, forOthers, beneficiary])
   // One Idempotency-Key per submitted version: a resubmit after a lost
   // response returns the campaign already created instead of a duplicate.
   // It is stored with the draft, because the restored draft invites a
@@ -516,11 +578,16 @@ function CampaignFormForViewer({ userId }: { userId: string | null }) {
     if (draftKey) clearDraftSubmission(draftKey)
     creationKey.current = null
     setFormData(EMPTY_FORM)
+    setForOthers(false)
+    setBeneficiary(EMPTY_BENEFICIARY)
+    setOnBehalfIssue(null)
+    setEmailRejected(null)
     setTouched({})
     setStep(0)
     setDraftNotice(false)
   }
-  const [touched, setTouched] = useState<Partial<Record<keyof FormErrors, boolean>>>({})
+  // A restored beneficiary block needs its email again: show why Continue waits.
+  const [touched, setTouched] = useState<Partial<Record<keyof FormErrors, boolean>>>(() => (restoredOnBehalf ? { beneficiaryEmail: true } : {}))
   const [step, setStep] = useState(0)
   const [submitted, setSubmitted] = useState(false)
   const [createdId, setCreatedId] = useState<string | null>(null)
@@ -528,14 +595,21 @@ function CampaignFormForViewer({ userId }: { userId: string | null }) {
   // Capture "now" once at mount — keeps the render body pure (react-hooks/purity).
   const [nowMs] = useState(() => Date.now())
 
+  const ownEmail = viewer?.email
   const errors = useMemo(() => {
-    const result = validate(formData)
+    const result: FormErrors = validate(formData)
     if (options?.maxGoal != null && Number(formData.goalAmount) > options.maxGoal)
       result.goalAmount = `Your current limit is ${formatCurrency(options.maxGoal)}. Reduce the goal. A higher plan does not override an account-specific compliance cap.`
     if (formData.coverImageUrl && options?.plan.maxMediaPerCampaign === 0)
       result.coverImageUrl = 'Your plan does not include campaign images.'
+    if (forOthers) {
+      Object.assign(result, validateBeneficiary(beneficiary, ownEmail))
+      if (!result.beneficiaryEmail && emailRejected && beneficiary.beneficiaryEmail.trim() === emailRejected.email)
+        result.beneficiaryEmail = emailRejected.message
+      if (options && !options.canCreateOnBehalf) result.onBehalf = 'Campaigns for others are not available to this account right now.'
+    }
     return result
-  }, [formData, options])
+  }, [formData, options, forOthers, beneficiary, ownEmail, emailRejected])
   const isStepValid = STEP_FIELDS[step].every((f) => !errors[f])
 
   const errFor = (f: keyof FormErrors) => Boolean(touched[f] && errors[f])
@@ -552,6 +626,13 @@ function CampaignFormForViewer({ userId }: { userId: string | null }) {
   function selectCategory(value: CampaignCategory) {
     setFormData((prev) => ({ ...prev, category: value }))
     setTouched((t) => ({ ...t, category: true }))
+  }
+
+  function chooseForOthers(next: boolean) {
+    setForOthers(next)
+    setOnBehalfIssue(null)
+    // Split proceeds cannot be used on a campaign run for someone else.
+    if (next) setSplit(false)
   }
 
   function handleNext(event: React.MouseEvent<HTMLButtonElement>) {
@@ -598,6 +679,7 @@ function CampaignFormForViewer({ userId }: { userId: string | null }) {
         coverImageUrl: true,
         goalAmount: true,
         endDate: true,
+        ...(forOthers ? Object.fromEntries(BENEFICIARY_FIELDS.map((field) => [field, true])) : {}),
       })
       // Jump back to the first step that still has an error.
       const firstBad = Object.keys(STEP_FIELDS).find((k) =>
@@ -620,9 +702,11 @@ function CampaignFormForViewer({ userId }: { userId: string | null }) {
       // a full ISO datetime (z.string().datetime()), so widen it before sending.
       endDate: new Date(`${formData.endDate}T00:00:00.000Z`).toISOString(),
       priority: formData.priority,
+      ...(forOthers ? { onBehalf: beneficiaryInput(beneficiary) } : {}),
     }
     const submission = await draftSubmission(draftKey, payload, creationKey.current)
     creationKey.current = submission
+    setOnBehalfIssue(null)
     try {
       const created = await createCampaign({ automatedReviewConsent, ...payload }, submission.key)
       if (!live.current) return
@@ -686,13 +770,29 @@ function CampaignFormForViewer({ userId }: { userId: string | null }) {
       setSetupErrors(failures)
       setSetupBusy(false)
       setSubmitted(true)
-    } catch {
+    } catch (err) {
       // Surfaced via `submitError` (or `submitHeld` for a safety-review hold); stay on the review step so the user
       // can retry without losing anything they entered.
+      if (!forOthers || !live.current) return
+      const status = (err as { status?: unknown } | null)?.status
+      const message = err instanceof Error ? err.message : ''
+      if (status === 403) {
+        setOnBehalfIssue(/verif/i.test(message) ? 'verification' : 'plan')
+        // The plan or its limit changed: show the choice as it now stands.
+        retry()
+      } else if (status === 422 && /email/i.test(message)) {
+        setOnBehalfIssue('details')
+        setEmailRejected({ email: beneficiary.beneficiaryEmail.trim(), message })
+        setTouched((t) => ({ ...t, beneficiaryEmail: true }))
+      }
     }
   }
 
   const beneficiaryList = parseBeneficiaries(formData.beneficiaries)
+  const onBehalfFee = options?.onBehalf?.feePercent ?? 0
+  const managerName = viewer?.organizationName?.trim() || viewer?.name?.trim() || ''
+  const ownAccountLabel = viewer?.role === 'organization' ? 'My organization' : 'Me'
+  const beneficiaryName = beneficiary.beneficiaryName.trim()
   const goalNumber = Number(formData.goalAmount)
   const durationDays = formData.endDate
     ? Math.max(0, Math.ceil((new Date(formData.endDate).getTime() - nowMs) / 86_400_000))
@@ -753,7 +853,17 @@ function CampaignFormForViewer({ userId }: { userId: string | null }) {
             Split saved as a draft. Beneficiary consent and activation are still required.
           </Alert>
         )}
-        {createdId && !split && (
+        {createdId && forOthers && (
+          <Alert severity="info" sx={{ mt: 3, textAlign: 'left' }}>
+            <AlertTitle>Waiting for {beneficiaryName}</AlertTitle>
+            We emailed {beneficiaryName} an invitation. Nothing can be paid out until they accept
+            {createdStatus === CampaignStatus.PENDING_REVIEW ? ', and the campaign goes live only after it passes review' : ''}. Payouts go to{' '}
+            {payoutArrangementText(beneficiary.payoutArrangement, beneficiaryName, managerName || undefined)}
+            {beneficiary.payoutArrangement === 'organization' ? ', if they agree' : ''}. The campaign page shows what
+            else waits for their answer, and lets you send the invitation again.
+          </Alert>
+        )}
+        {createdId && !split && !forOthers && (
           <Box sx={{ textAlign: 'left', mt: 3 }}>
             <Typography variant="h6">Next: set up your payout account</Typography>
             <Typography>
@@ -813,6 +923,7 @@ function CampaignFormForViewer({ userId }: { userId: string | null }) {
           action={<Button color="inherit" size="small" onClick={discardDraft}>Start over</Button>}
         >
           We restored your unsent draft from this browser. If it is waiting for safety review, submit this same version again once it is approved.
+          {restoredOnBehalf && ' Enter the beneficiary’s email address again: it is not kept in this browser.'}
         </Alert>
       )}
       {!options && !optionsError && (
@@ -895,6 +1006,94 @@ function CampaignFormForViewer({ userId }: { userId: string | null }) {
         {/* ----------------------------- STEP 1: BASICS ----------------------------- */}
         {step === 0 && (
           <>
+            <Box>
+              <Eyebrow>Who is this campaign for?</Eyebrow>
+              <RadioGroup
+                aria-label="Who is this campaign for?"
+                value={forOthers ? 'on_behalf' : 'self'}
+                onChange={(_, value) => chooseForOthers(value === 'on_behalf')}
+                sx={{ display: 'grid', gap: 1.25, mt: 1 }}
+              >
+                {([
+                  { value: 'self', label: 'Me or my organization', blurb: 'You raise the money and request the payouts.' },
+                  { value: 'on_behalf', label: 'Someone else (on their behalf)', blurb: 'You run it for a person or organization. They accept it and receive the money.' },
+                ] as const).map((mode) => {
+                  const selected = (mode.value === 'on_behalf') === forOthers
+                  const unavailable = mode.value === 'on_behalf' && !options?.canCreateOnBehalf
+                  const blocked = mode.value === 'on_behalf' && options && !options.canCreateOnBehalf ? onBehalfBlockedReason(options) : null
+                  return (
+                    <Box
+                      key={mode.value}
+                      sx={{
+                        px: 1.75,
+                        py: 1.4,
+                        borderRadius: SHAPE.card,
+                        border: '1.5px solid',
+                        borderColor: DIVIDER,
+                        bgcolor: 'background.paper',
+                        // Like the category chips: pressed in when chosen, raised otherwise.
+                        boxShadow: selected ? 'var(--neu-inset)' : 'var(--neu-subtle)',
+                        backdropFilter: 'var(--neu-backdrop)',
+                        transition: 'box-shadow 160ms ease',
+                        '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
+                      }}
+                    >
+                      <Box
+                        component="label"
+                        sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, cursor: unavailable ? 'not-allowed' : 'pointer' }}
+                      >
+                        <Radio
+                          value={mode.value}
+                          disabled={unavailable && !selected}
+                          slotProps={{ input: { 'aria-labelledby': `campaign-for-${mode.value}-label`, 'aria-describedby': `campaign-for-${mode.value}-hint` } }}
+                          sx={{ p: 0.25, mt: 0.1 }}
+                        />
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography id={`campaign-for-${mode.value}-label`} sx={{ fontWeight: 700, fontSize: '0.95rem', color: unavailable ? INK_SECONDARY : INK }}>
+                            {mode.label}
+                          </Typography>
+                          <Typography id={`campaign-for-${mode.value}-hint`} sx={{ fontSize: '0.8rem', color: INK_SECONDARY, mt: 0.1 }}>
+                            {mode.blurb}
+                            {blocked && ` ${blocked.text}`}
+                            {mode.value === 'on_behalf' && !blocked && onBehalfFee > 0 && ` An extra ${onBehalfFee}% platform fee applies to campaigns for others.`}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      {blocked?.link && (
+                        <Link component={RouterLink} to={blocked.link.to} sx={{ display: 'inline-block', mt: 0.75, ml: 4.25, fontSize: '0.82rem', fontWeight: 700 }}>
+                          {blocked.link.label}
+                        </Link>
+                      )}
+                    </Box>
+                  )
+                })}
+              </RadioGroup>
+            </Box>
+
+            {forOthers && (
+              <Box
+                component="section"
+                aria-labelledby="beneficiary-details-heading"
+                sx={{ p: { xs: 2, sm: 2.5 }, borderRadius: SHAPE.card, border: `1px solid ${DIVIDER}`, bgcolor: 'action.hover' }}
+              >
+                <Typography id="beneficiary-details-heading" sx={{ fontWeight: 800, color: INK, mb: 0.5 }}>
+                  About the beneficiary
+                </Typography>
+                <Typography sx={{ fontSize: '0.82rem', color: INK_SECONDARY, mb: 2.5, lineHeight: 1.55 }}>
+                  {creationGateText(options?.onBehalf)}
+                </Typography>
+                <BeneficiaryFields
+                  value={beneficiary}
+                  onChange={setBeneficiary}
+                  errors={errors}
+                  touched={touched}
+                  onBlur={(field) => setTouched((t) => ({ ...t, [field]: true }))}
+                  organizationLabel={ownAccountLabel}
+                  fieldSx={fieldSx}
+                />
+              </Box>
+            )}
+
             <TextField
               label="Campaign title"
               placeholder="e.g. Rebuild Auntie Ama's roadside kitchen"
@@ -1190,6 +1389,29 @@ function CampaignFormForViewer({ userId }: { userId: string | null }) {
               py: { xs: 2, sm: 2.5 },
             }}
           >
+            {forOthers && (
+              <ReviewSection title="On someone’s behalf" onEdit={() => setStep(0)}>
+                <ReviewItem label="Managed by">{managerName ? `${managerName} (you)` : 'You'}</ReviewItem>
+                <ReviewItem label="For">
+                  {beneficiaryName || '—'}
+                  {beneficiaryName && ` · ${partyLabel(beneficiary.beneficiaryType)}`}
+                  {beneficiary.relationship && ` · ${RELATIONSHIP_LABELS[beneficiary.relationship]}`}
+                </ReviewItem>
+                <ReviewItem label="Invitation email">{beneficiary.beneficiaryEmail.trim() || '—'}</ReviewItem>
+                <ReviewItem label="Why">
+                  <Box sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{beneficiary.reason.trim() || '—'}</Box>
+                </ReviewItem>
+                <ReviewItem label="Money goes to">
+                  {payoutArrangementText(beneficiary.payoutArrangement, beneficiaryName || 'the beneficiary', managerName || undefined)}
+                  {beneficiary.payoutArrangement === 'organization' && ', only if they agree'}
+                </ReviewItem>
+                <Alert severity="info" icon={false} sx={{ mt: 0.5 }}>
+                  {creationGateText(options?.onBehalf)} We email them an invitation when you publish.
+                  {onBehalfFee > 0 && ` An extra ${onBehalfFee}% platform fee applies to this campaign.`}
+                </Alert>
+              </ReviewSection>
+            )}
+
             <ReviewSection title="Basics" onEdit={() => setStep(0)}>
               <ReviewItem label="Title">{formData.title || '—'}</ReviewItem>
               <ReviewItem label="Category">
@@ -1310,6 +1532,7 @@ function CampaignFormForViewer({ userId }: { userId: string | null }) {
           setSplit={setSplit}
           rows={rows}
           setRows={setRows}
+          splitUnavailable={forOthers ? 'Split proceeds are not available on a campaign run on someone else’s behalf.' : undefined}
         />
       )}
       {step === 3 && extrasError && (
@@ -1340,6 +1563,22 @@ function CampaignFormForViewer({ userId }: { userId: string | null }) {
             <Typography sx={{ fontSize: '0.82rem', color: INK_SECONDARY, mt: 0.25 }}>
               {submitError} Your details are safe — please try again.
             </Typography>
+            {forOthers && onBehalfIssue && (
+              onBehalfIssue === 'details' ? (
+                <Button size="small" onClick={() => setStep(0)} sx={{ mt: 0.75, px: 0 }}>
+                  Edit the beneficiary’s details
+                </Button>
+              ) : (
+                <Button
+                  size="small"
+                  component={RouterLink}
+                  to={onBehalfIssue === 'verification' ? '/kyc' : '/subscription'}
+                  sx={{ mt: 0.75, px: 0 }}
+                >
+                  {onBehalfIssue === 'verification' ? 'Review verification' : 'See plans'}
+                </Button>
+              )
+            )}
           </Box>
         </Box>
       )}

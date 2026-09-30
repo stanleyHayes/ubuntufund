@@ -86,6 +86,23 @@ interface FeatureRow {
   label: string
   key: keyof SubscriptionPlan
   format?: 'boolean' | 'number' | 'fee' | 'goal' | 'unlimited'
+  /** For a row that reads more than one plan field. */
+  cell?: (plan: SubscriptionPlan) => React.ReactNode
+}
+
+/** The limit and any extra fee that come with running campaigns for others. */
+function onBehalfTerms(plan: SubscriptionPlan): { limit: string; fee: string } {
+  const limit = plan.maxOnBehalfCampaigns
+  const fee = plan.onBehalfFeePercent ?? 0
+  return {
+    limit: typeof limit === 'number' && limit >= 0 ? `Up to ${limit} active` : '',
+    fee: fee > 0 ? `+${fee}% platform fee` : '',
+  }
+}
+
+function onBehalfFeature(plan: SubscriptionPlan): string {
+  const { limit, fee } = onBehalfTerms(plan)
+  return ['Campaigns on behalf of others', limit.toLowerCase(), fee].filter(Boolean).join(' · ')
 }
 
 // Only benefits the platform actually delivers are listed. Featured listing,
@@ -111,6 +128,7 @@ const FEATURE_SECTIONS: { title: string; rows: FeatureRow[] }[] = [
     rows: [
       { label: 'Split proceeds', key: 'escrowSupport', format: 'boolean' },
       { label: 'Live streaming', key: 'liveStreaming', format: 'boolean' },
+      { label: 'Campaigns on behalf of others', key: 'onBehalfCampaigns', format: 'boolean', cell: onBehalfCell },
     ],
   },
   {
@@ -139,6 +157,19 @@ function formatCellValue(value: unknown, format?: string): React.ReactNode {
     return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>{value}</Typography>
   }
   return String(value)
+}
+
+function onBehalfCell(plan: SubscriptionPlan): React.ReactNode {
+  if (!plan.onBehalfCampaigns) return formatCellValue(false, 'boolean')
+  const { limit, fee } = onBehalfTerms(plan)
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25, textAlign: 'center' }}>
+      {formatCellValue(true, 'boolean')}
+      {[limit, fee].filter(Boolean).map((note) => (
+        <Typography key={note} sx={{ fontSize: '0.72rem', color: 'text.secondary', lineHeight: 1.3 }}>{note}</Typography>
+      ))}
+    </Box>
+  )
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -495,6 +526,7 @@ export function SubscriptionPage() {
               currentPlan.liveStreaming && 'Live Streaming',
               currentSub.status === 'active' && new Date(currentSub.currentPeriodEnd).getTime() > Date.now() && currentPlan.tier !== 'free' && (currentPlan.priceMonthly > 0 || currentPlan.priceYearly > 0) && 'Creator profile donations',
               currentPlan.campaignCollaboration && 'Collaboration',
+              currentPlan.onBehalfCampaigns && 'Campaigns for others',
             ]
               .filter(Boolean)
               .map((feat) => (
@@ -665,6 +697,7 @@ export function SubscriptionPage() {
                     plan.liveStreaming && 'Live streaming',
                       plan.tier !== 'free' && (plan.priceMonthly > 0 || plan.priceYearly > 0) && 'Creator donations on your profile',
                     plan.campaignCollaboration && 'Campaign collaboration',
+                    plan.onBehalfCampaigns && onBehalfFeature(plan),
                   ]
                     .filter(Boolean)
                     .map((feat) => (
@@ -870,7 +903,7 @@ export function SubscriptionPage() {
                           ...(isCurrent && { bgcolor: `${tc.bg}` }),
                         }}
                       >
-                        {formatCellValue(plan[row.key], row.format)}
+                        {row.cell ? row.cell(plan) : formatCellValue(plan[row.key], row.format)}
                       </Box>
                     )
                   })}

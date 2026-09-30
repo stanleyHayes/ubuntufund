@@ -21,6 +21,7 @@ import {
   Link,
 } from '@mui/material'
 import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded'
+import VolunteerActivismRounded from '@mui/icons-material/VolunteerActivismRounded'
 import type { Payout, PayoutType } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
 
@@ -44,9 +45,12 @@ const round = (n: number) => Math.round(n * 100) / 100
 export function CampaignCashout({
   campaignId,
   initiallyExpanded = false,
+  beneficiaryName,
 }: {
   campaignId: string
   initiallyExpanded?: boolean
+  /** Set on a campaign run on someone's behalf, so every payout names who the money is for. */
+  beneficiaryName?: string
 }) {
   const [destination, setDestination] = useState('paystack')
   const requestKey = useRef({ details: '', key: '' })
@@ -377,6 +381,25 @@ export function CampaignCashout({
               <MenuItem value="paystack">Bank or mobile money</MenuItem>
               <MenuItem value="ujimora_wallet">Ujimora Wallet</MenuItem>
             </TextField>
+            {beneficiaryName && (
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  mb: 2,
+                  p: 1.5,
+                  borderRadius: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                }}
+              >
+                <VolunteerActivismRounded sx={{ fontSize: 20, color: 'primary.main' }} aria-hidden />
+                <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
+                  Funds raised for <strong>{beneficiaryName}</strong>
+                </Typography>
+              </Box>
+            )}
             {destination === 'ujimora_wallet' ? (
               <Alert severity="info">
                 The net amount will be credited to your Ujimora GHS wallet after admin approval. The
@@ -551,6 +574,31 @@ export function CampaignCashout({
               <Box
                 sx={{ my: 2, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}
               >
+                {beneficiaryName && (
+                  <Box sx={{ pb: 1, mb: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+                    {[
+                      ['Funds raised for', beneficiaryName],
+                      [
+                        'Paid to',
+                        destination === 'ujimora_wallet'
+                          ? 'Your Ujimora Wallet'
+                          : options.recipient
+                            ? `${options.recipient.accountName} · ending ${options.recipient.last4}`
+                            : 'No payout account yet',
+                      ],
+                    ].map(([label, detail]) => (
+                      <Box
+                        key={label}
+                        sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, py: 0.5 }}
+                      >
+                        <Typography>{label}</Typography>
+                        <Typography fontWeight={700} sx={{ overflowWrap: 'anywhere', textAlign: 'right' }}>
+                          {detail}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
                 {[
                   ['Amount requested', value],
                   ['Additional cashout service fee', -fee],

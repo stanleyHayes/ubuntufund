@@ -1,6 +1,6 @@
 import { useAuth } from '@/context/AuthContext'
 import { useState, useEffect, useCallback } from 'react'
-import type { Campaign, CampaignCategory, CampaignPriority, CampaignStatus } from '@ubuntu-fund/types'
+import type { Campaign, CampaignCategory, CampaignPriority, CampaignStatus, OnBehalfCampaignInput } from '@ubuntu-fund/types'
 import { api, ApiError } from '@/lib/api'
 import { isPublicationHeld } from '@/lib/publicationDrafts'
 
@@ -127,6 +127,8 @@ interface CreateCampaignPayload {
   currency: string
   endDate: string
   priority: CampaignPriority
+  /** Present only when the campaign is run on someone else's behalf. */
+  onBehalf?: OnBehalfCampaignInput
 }
 
 interface UseCreateCampaignResult {

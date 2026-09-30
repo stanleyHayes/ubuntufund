@@ -7,6 +7,7 @@ import { DataRightsRequests } from '@/components/account/DataRightsRequests'
 import { DeleteAccountDialog } from '@/components/account/DeleteAccountDialog'
 import { ActivityAlertSettings } from '@/components/account/ActivityAlertSettings'
 import { NewsletterSettings } from '@/components/account/NewsletterSettings'
+import { DonorMessageSettings } from '@/components/account/DonorMessageSettings'
 import { BlockedUsers } from '@/components/safety/BlockedUsers'
 import { useSeo } from '@/lib/seo'
 import Skeleton from '@mui/material/Skeleton'
@@ -374,6 +375,7 @@ function SettingsForViewer() {
               description="Choose how you hear from us and the campaigns you support."
             >
               <ActivityAlertSettings />
+              <DonorMessageSettings />
               <NewsletterSettings />
               <Typography variant="body2" color="text.secondary">SMS, browser push and campaign announcement delivery are not available yet. Choose inbox alerts or emails above for supported activity updates.</Typography>
             </SettingsSection>
