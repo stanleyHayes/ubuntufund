@@ -201,7 +201,10 @@ function CampaignRow({
             display: 'flex',
             alignItems: 'center',
             gap: 0.5,
-            bgcolor: 'rgba(242,239,234,0.92)',
+            // The page ground is opaque in every skin and follows light/dark,
+            // so the mode-aware text tokens stay readable over any cover image.
+            bgcolor: 'background.default',
+            border: 'var(--neu-border)',
             color: statusCfg.color,
             borderRadius: SHAPE.sm,
             px: 1,
