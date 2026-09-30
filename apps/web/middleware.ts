@@ -53,7 +53,9 @@ export default async function middleware(request: Request): Promise<Response | u
   } catch (error) {
     // A slow API just means the plain card. Anything else, such as a helper
     // module that failed to load, belongs in the function logs.
-    if (!(error instanceof Error && error.name === 'TimeoutError')) console.error('Link-preview middleware fell back to the plain card:', error)
+    const timedOut = (error as { name?: unknown } | null)?.name === 'TimeoutError'
+    // eslint-disable-next-line no-console -- Vercel's function logs are the middleware's only log sink.
+    if (!timedOut) console.error('Link-preview middleware fell back to the plain card:', error)
     return undefined
   }
 }

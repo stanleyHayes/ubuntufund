@@ -71,7 +71,7 @@ describe('share meta helpers', () => {
 })
 
 describe('link-preview middleware', () => {
-  afterEach(() => { vi.unstubAllGlobals() })
+  afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
   const call = (path: string, ua: string) => middleware(new Request(`https://app.ujimora.com${path}`, { headers: { 'user-agent': ua } }))
   function stubFetch(api: () => Promise<Response>) {
