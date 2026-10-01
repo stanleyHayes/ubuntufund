@@ -38,6 +38,7 @@ import { api } from '@/lib/api'
 import { ApiError } from '@/lib/apiError'
 import { useAuth } from '@/context/AuthContext'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
+import { ARRANGEMENT_LABELS, RELATIONSHIP_LABELS, TYPE_LABELS } from '@/lib/onBehalfLabels'
 import { insetSurface, raisedSurface } from '@/lib/surfaces'
 
 /** `GET /admin/campaigns/:id/beneficiary/events`, oldest first. It never holds addresses. */
@@ -88,20 +89,6 @@ const INVITATION_LABELS: Record<BeneficiaryInvitationStatus, string> = {
   expired: 'Expired',
   revoked: 'Revoked',
   superseded: 'Replaced by a newer invitation',
-}
-const RELATIONSHIP_LABELS: Record<BeneficiaryRelationship, string> = {
-  family: 'Family member',
-  community_member: 'Community member',
-  patient: 'Patient',
-  student: 'Student',
-  client: 'Client',
-  partner_organization: 'Partner organization',
-  other: 'Other',
-}
-const TYPE_LABELS: Record<BeneficiaryPartyType, string> = { individual: 'Person', organization: 'Organization' }
-const ARRANGEMENT_LABELS: Record<OnBehalfPayoutArrangement, string> = {
-  beneficiary: 'Paid to the beneficiary',
-  organization: 'Paid to the organizer',
 }
 const AUTHORITY_LABELS: Record<PayoutAuthority, string> = {
   beneficiary: 'The beneficiary',
