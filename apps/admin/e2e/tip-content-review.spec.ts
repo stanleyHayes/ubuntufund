@@ -22,7 +22,7 @@ test(`reviews changed ${queue} content after a conflict at phone width`, async (
     else if (path.endsWith(`/${queue}`)) data = { items: approved ? [] : [{ id: 'tip', version, actorId: 'Guest', action: queue === 'tip-content-reviews' ? 'tip.public_content' : 'donation.public_content', text: JSON.stringify({ ...(queue === 'tip-content-reviews' ? { supporterName: 'Guest supporter' } : { donorName: 'Guest donor' }), message: version.startsWith('a') ? 'Original message' : 'Changed message for review' }), mediaUrls: [], status: 'pending', reason: 'staff_requested' }], total: approved ? 0 : 1 }
     else if (path.endsWith('/tip/review') && route.request().method() === 'PUT') {
       submissions.push(route.request().postDataJSON())
-      if (submissions.length === 1) { version = 'b'.repeat(64); return route.fulfill({ status: 409, json: { message: 'The content changed. Refresh before reviewing.' } }) }
+      if (submissions.length === 1) { version = 'b'.repeat(64); return route.fulfill({ status: 409, json: { message: 'The content changed. Refresh before reviewing.', errors: { review: ['changed'] } } }) }
       approved = true; data = { reviewed: true }
     }
     return route.fulfill({ json: { data } })
@@ -33,11 +33,18 @@ test(`reviews changed ${queue} content after a conflict at phone width`, async (
   await page.getByLabel('Review notes (at least 20 characters)').fill('Reviewed the exact supporter name and message.')
   await approve.click()
   await expect(page.getByText('The content changed. Refresh before reviewing.', { exact: true })).toBeVisible()
+  await expect(page.getByText('Content changed', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Refresh publication reviews' }).click()
   await expect(page.getByText(/Changed message for review/)).toBeVisible()
+  // Notes belong to the version they were written about: the changed message needs fresh notes before any decision.
+  await expect(page.getByLabel('Review notes (at least 20 characters)')).toHaveValue('')
+  await expect(approve).toBeDisabled()
+  await expect(page.getByText(/changed after you wrote notes on it, so those notes were not carried over/)).toBeVisible()
+  await page.getByLabel('Review notes (at least 20 characters)').fill('Reviewed the changed supporter name and message.')
   await approve.click()
   await expect(page.getByText('No submissions in this queue.')).toBeVisible()
   expect(submissions.map(input => input.version)).toEqual(['a'.repeat(64), 'b'.repeat(64)])
+  expect(submissions.map(input => input.notes)).toEqual(['Reviewed the exact supporter name and message.', 'Reviewed the changed supporter name and message.'])
   await page.screenshot({ path: `/tmp/ujimora-${queue}-phone.png`, animations: 'disabled' })
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
   expect(errors).toEqual([])
