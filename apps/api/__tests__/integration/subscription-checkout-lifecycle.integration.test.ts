@@ -116,6 +116,23 @@ describe('subscription checkout lifecycle', () => {
     expect(await SubscriptionCheckoutModel.countDocuments({ userId })).toBe(1);
   });
 
+  it('does not resume a payment page opened before the price changed', async () => {
+    const prices: Record<string, Partial<SubscriptionPlan>> = { pro: { priceMonthly: 29.99 } };
+    const s = build(prices); const userId = randomUUID();
+    const first = await buy(s, userId);
+    // An admin reprices Pro while the member's first payment page is still open.
+    prices.pro = { priceMonthly: 149 };
+    await expect(buy(s, userId)).rejects.toMatchObject({ statusCode: 409,
+      errors: { checkoutId: [first.checkout.id], code: ['checkout_in_progress'] } });
+    expect(s.gateway.initializeCharge).toHaveBeenCalledTimes(1);
+    // Cancelling it opens a checkout at the price the plans page now shows.
+    expect((await s.status.abandon(first.checkout.id, userId)).status).toBe('expired');
+    const second = await buy(s, userId);
+    expect(second.resumed).toBeUndefined();
+    expect(second.preview.baseAmount).toBe(149);
+    expect(s.gateway.initializeCharge).toHaveBeenCalledTimes(2);
+  });
+
   it('refuses a different purchase while the first could still be paid, until the member cancels it', async () => {
     const s = build(); const userId = randomUUID();
     const first = await buy(s, userId);

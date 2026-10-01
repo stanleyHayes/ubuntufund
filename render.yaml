@@ -112,7 +112,7 @@ services:
         value: info
       # Preview/estimate fees only — the real Paystack fee comes from the webhook.
       - key: PLATFORM_FEE_PERCENT
-        value: "0" # platform fee is plan-driven (Community 3.5% … Org 2.0%); this is a fallback
+        value: "0" # platform fee is plan-driven (Free 5% … Enterprise 1%); this is a fallback
       - key: PAYSTACK_FEE_PERCENT
         value: "0"
       - key: PAYSTACK_FLAT_FEE

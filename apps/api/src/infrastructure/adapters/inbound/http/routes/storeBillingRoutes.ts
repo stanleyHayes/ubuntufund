@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import type { PlanService } from '../../../../../application/services/PlanService.js';
+import { isSelfServePlan, type PlanService } from '../../../../../application/services/PlanService.js';
 import type { StoreBillingRuntime } from '../../../../config/storeBilling.js';
 import { MongoBillingOwnership } from '../../../outbound/persistence/MongoBillingOwnership.js';
 import { MongoSubscriptionRepository } from '../../../outbound/persistence/MongoSubscriptionRepository.js';
@@ -28,9 +28,11 @@ export function createStoreBillingRoutes(runtime: StoreBillingRuntime | null, pl
       // reported, so the app offers store plans again after a lapsed web plan.
       const provider = await ownership.activeProvider(req.userId!);
       const products = [];
+      // Only plans web checkout would also sell: never Enterprise (sales-led)
+      // or an inactive or hidden plan, whatever the product catalog maps.
       for (const product of runtime?.products.filter((p) => p.store === store) ?? []) {
         const plan = await plans.getPlan(product.tier, true);
-        if (plan.tier === product.tier && plan.active && plan.isPublic) products.push({ ...product, plan });
+        if (plan.tier === product.tier && isSelfServePlan(plan)) products.push({ ...product, plan });
       }
       res.json({ data: { available: products.length > 0, provider, products } });
     } catch (error) { next(error); }
@@ -41,7 +43,7 @@ export function createStoreBillingRoutes(runtime: StoreBillingRuntime | null, pl
       const product = runtime.products.find((p) => p.store === req.body.store && p.productId === req.body.productId && p.basePlanId === req.body.basePlanId);
       if (!product) throw new AppError('This store product is not available.', 422);
       const plan = await plans.getPlan(product.tier, true);
-      if (plan.tier !== product.tier || !plan.active || !plan.isPublic) throw new AppError('This plan is not available for purchase.', 422);
+      if (plan.tier !== product.tier || !isSelfServePlan(plan)) throw new AppError('This plan is not available for purchase.', 422);
       await ownership.claimProvider(req.userId!, product.store);
       const account = await ownership.account(req.userId!);
       res.json({ data: { accountToken: account.accountToken } });

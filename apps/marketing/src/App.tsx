@@ -44,7 +44,7 @@ const BANNER_CONFIG: Record<string, { title: string; subtitle?: string; descript
   '/pricing': {
     icon: <DiamondIcon />,
     title: 'Simple Pricing',
-    subtitle: 'No hidden fees. No platform charges for personal campaigns.',
+    subtitle: 'Start free. Every plan lists its platform fee up front.',
     description: 'We believe transparent giving starts with transparent pricing.',
     accentWord: 'Simple',
   },

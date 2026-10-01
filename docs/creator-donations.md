@@ -12,15 +12,15 @@ Owners manage `/creator`; their public donation page is `/creators/:handle`. The
 
 The live admin-managed plan `platformFeePercent` determines the fee, not an environment variable or a separate creator rate. Eligibility requires an active catalog plan with a non-Free tier and a nonzero monthly or annual price, plus an active, unexpired subscription. Trials do not qualify.
 
-| Plan | Default creator withdrawal fee | New creator donations |
+| Plan | Creator withdrawal fee (live price book, 2026-09-30) | New creator donations |
 |---|---:|---|
-| Community (Free) | 3.5% on existing balances only | No |
-| Plus (starter) | 3% | Yes |
-| Pro | 2.5% | Yes |
+| Free | 5% on existing balances only | No |
+| Starter | 3.5% | Yes |
+| Pro | 2% | Yes |
 | Organization | 2% | Yes |
-| Enterprise | 1.25% | Yes |
+| Enterprise | 1% | Yes |
 
-These are seed defaults, not guaranteed production prices. Admin-managed values override them. For example, a GHS 100 Plus withdrawal reserves GHS 100, records a GHS 3 fee and transfers GHS 97. Fees round to two decimal places. No additional campaign priority/early payout fee is applied to this creator withdrawal flow.
+These match the seed defaults and production on 2026-09-30. Admin-managed values in Admin → Plans always win. For example, a GHS 100 Starter withdrawal reserves GHS 100, records a GHS 3.50 fee and transfers GHS 96.50. Fees round to two decimal places. No additional campaign priority/early payout fee is applied to this creator withdrawal flow.
 
 ## API and settlement
 

@@ -3,7 +3,7 @@ import ExportMenu from '@/components/ExportMenu'
 import { exportTable, dateCell } from '@/lib/exports/report'
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Alert, Skeleton, Box, Typography, MenuItem, InputAdornment, Button } from '@mui/material'
+import { Alert, Skeleton, Box, Typography, MenuItem, InputAdornment, Button, ListItemText } from '@mui/material'
 import { raisedSurface, insetSurface, progressTrack } from '@/lib/surfaces'
 import SearchIcon from '@mui/icons-material/Search'
 import { EmptyState } from '@ubuntu-fund/ui'
@@ -16,6 +16,7 @@ import {
 import type { Subscription } from '@ubuntu-fund/types'
 import { useAdminPlans } from '@/hooks/useApiData'
 import { buildPlanMap, knownTiers, planName, summarize, type PlanMap } from '@/lib/subscriptionMetrics'
+import { formatPesewas } from '@/lib/money'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
 import PageHeader from '@/components/PageHeader'
@@ -75,10 +76,32 @@ function SkeletonRow() {
   )
 }
 
+// Tier cards (and their skeleton, which keeps the same structure).
+const tierCardSx = {
+  ...insetSurface,
+  border: 'var(--neu-border)',
+  backdropFilter: 'var(--neu-backdrop)',
+  WebkitBackdropFilter: 'var(--neu-backdrop)',
+  p: 2, flex: 1, minWidth: 140,
+}
+
+function TierCardSkeleton() {
+  return (
+    <Box sx={tierCardSx}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, mb: 0.5 }}>
+        <Skeleton width={80} />
+        <Skeleton width={90} />
+      </Box>
+      <Skeleton variant="rounded" height={10} />
+      <Skeleton width={70} sx={{ mt: 0.3 }} />
+    </Box>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // SubscriptionRow
 // ---------------------------------------------------------------------------
-function SubscriptionRow({ sub, plans, now }: { sub: AdminSubscription; plans: PlanMap; now: Date }) {
+function SubscriptionRow({ sub, plans, plansLoading, now }: { sub: AdminSubscription; plans: PlanMap; plansLoading: boolean; now: Date }) {
   const navigate = useNavigate()
   const tierColor = tierColors[sub.tier] ?? '#78909C'
   const statusColor = statusColors[sub.status]
@@ -118,7 +141,7 @@ function SubscriptionRow({ sub, plans, now }: { sub: AdminSubscription; plans: P
         }}>
           <Box sx={{ width: 6, height: 6, bgcolor: tierColor, flexShrink: 0 }} />
           <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: tierColor, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            {planName(sub.tier, plans)}
+            {plansLoading ? <Skeleton width={56} /> : planName(sub.tier, plans)}
           </Typography>
         </Box>
       </Box>
@@ -196,14 +219,18 @@ export default function SubscriptionsPage() {
     return () => { cancelled = true }
   }, [])
 
-  const { data: livePlans } = useAdminPlans()
+  // Prices and names come from the live plans only: while they load the page
+  // shows skeletons, and if they fail it says so rather than guessing.
+  const { data: livePlans, isLoading: plansLoading, error: plansError, retry: retryPlans } = useAdminPlans()
   const plans = useMemo(() => buildPlanMap(livePlans), [livePlans])
   // One clock per page load, so every figure and row agrees on "now".
   const [now] = useState(() => new Date())
   const summary = useMemo(() => summarize(subscriptions, plans, now), [subscriptions, plans, now])
   const tierOptions = useMemo(() => knownTiers(plans, subscriptions), [plans, subscriptions])
   const revenueByTier = summary.byTier.map(row => ({ ...row, color: tierColors[row.tier] ?? plans[row.tier]?.accentColor ?? '#78909C' }))
-  const totalRevForBar = Math.max(1, revenueByTier.reduce((sum, row) => sum + row.revenue, 0))
+  const totalRevForBar = Math.max(1, summary.estimatedMrrPesewas)
+  /** Revenue figure for the header and cards: unavailable (not zero) when plan prices failed to load. */
+  const revenue = (pesewas: number, suffix = '') => (plansError ? '—' : `${formatPesewas(pesewas)}${suffix}`)
 
   const filtered = subscriptions.filter(s => {
     if (tierFilter !== 'all' && s.tier !== tierFilter) return false
@@ -231,7 +258,7 @@ export default function SubscriptionsPage() {
         icon={<WorkspacePremiumRoundedIcon />}
         stats={[
           { label: 'Total Subscribers', value: loading ? <Skeleton width={60} /> : summary.total },
-          { label: 'Estimated MRR (list price)', value: loading ? <Skeleton width={90} /> : `GH₵ ${summary.estimatedMrr.toFixed(0)}` },
+          { label: 'Estimated MRR (list price)', value: loading || plansLoading ? <Skeleton width={90} /> : revenue(summary.estimatedMrrPesewas) },
           { label: 'Free or lapsed', value: loading ? <Skeleton width={60} /> : summary.free },
           { label: 'Paying now', value: loading ? <Skeleton width={60} /> : summary.paid },
         ]}
@@ -245,23 +272,29 @@ export default function SubscriptionsPage() {
         {' '}Change or cancel a subscription through its billing provider; this console has no subscription controls.
       </Alert>
 
+      {plansError && (
+        <Alert severity="error" sx={{ mb: 3 }} action={<Button color="inherit" size="small" onClick={retryPlans}>Retry</Button>}>
+          Plan prices could not be loaded, so estimated revenue is unavailable and tiers show their ids. {plansError}
+        </Alert>
+      )}
+
       {/* Revenue breakdown by tier */}
       <Box sx={{ ...raisedSurface, mb: 3, px: 3, py: 2 }}>
         <Typography sx={{ fontSize: '0.68rem', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.1em', mb: 1.5 }}>
           Estimated monthly revenue by tier (list price)
         </Typography>
         <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-          {revenueByTier.map((r) => (
-            <Box key={r.tier} sx={{ ...insetSurface, p: 2, flex: 1, minWidth: 140, }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+          {plansLoading ? Array.from({ length: 4 }).map((_, i) => <TierCardSkeleton key={i} />) : revenueByTier.map((r) => (
+            <Box key={r.tier} sx={tierCardSx}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, mb: 0.5 }}>
                 <Typography sx={{ fontSize: '0.75rem', color: r.color, fontWeight: 700 }}>{r.name}</Typography>
-                <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontFamily: '"Outfit", monospace' }}>
-                  {loading ? <Skeleton width={90} /> : `GH₵ ${r.revenue.toFixed(0)}/mo`}
+                <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontFamily: '"Outfit", monospace', whiteSpace: 'nowrap' }}>
+                  {loading ? <Skeleton width={90} /> : revenue(r.revenuePesewas, '/mo')}
                 </Typography>
               </Box>
               <Box sx={{ ...progressTrack }}>
                 <Box sx={{
-                  width: `${(r.revenue / totalRevForBar) * 100}%`,
+                  width: `${(r.revenuePesewas / totalRevForBar) * 100}%`,
                   height: '100%', bgcolor: r.color, transformOrigin: 'left',
                 }} />
               </Box>
@@ -297,10 +330,11 @@ export default function SubscriptionsPage() {
           <TextField optionContext="subscription"
             select size="small" variant="outlined" label="Tier"
             value={tierFilter} onChange={e => setTierFilter(e.target.value)} fullWidth
+            disabled={plansLoading}
           >
             <MenuItem value="all">All Tiers</MenuItem>
             {tierOptions.map(t => (
-              <MenuItem key={t} value={t}>{planName(t, plans)}</MenuItem>
+              <MenuItem key={t} value={t}><ListItemText primary={planName(t, plans)} secondary={`Members on the ${planName(t, plans)} plan.`} /></MenuItem>
             ))}
           </TextField>
         </Box>
@@ -342,7 +376,7 @@ export default function SubscriptionsPage() {
         {loading
           ? Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)
           : pagination.page.map((sub) => (
-              <SubscriptionRow key={sub.id} sub={sub} plans={plans} now={now} />
+              <SubscriptionRow key={sub.id} sub={sub} plans={plans} plansLoading={plansLoading} now={now} />
             ))
         }
       </Box>

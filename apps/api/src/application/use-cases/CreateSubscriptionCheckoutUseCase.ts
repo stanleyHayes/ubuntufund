@@ -16,7 +16,7 @@ import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound
 import type { UserRepositoryPort } from '../../domain/ports/outbound/UserRepositoryPort.js';
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
 import type { CouponService } from '../services/CouponService.js';
-import type { PlanService } from '../services/PlanService.js';
+import { isSelfServePlan, type PlanService } from '../services/PlanService.js';
 import type { SettleSubscriptionUseCase } from './SettleSubscriptionUseCase.js';
 import { roundToCurrency } from '../../domain/value-objects/Money.js';
 import type {
@@ -98,9 +98,10 @@ export class CreateSubscriptionCheckoutUseCase {
       );
     }
 
-    // Price from the DB-backed plan (admin-editable), with the code defaults as
-    // the safe fallback baked into PlanService.
-    const plan = await this.planService.getPlan(tier);
+    // Price from the DB-backed plan (admin-editable). Strict: when the plan
+    // cannot be read the checkout fails, instead of charging the code default
+    // price, which is not the price the admin set.
+    const plan = await this.planService.getPlan(tier, true);
     // Tier ids are free-form (admins can add tiers), so validate the requested
     // tier resolves to a REAL, active plan — getPlan falls back to the free plan
     // for an unknown tier, so a mismatch means the tier does not exist. This stops
@@ -109,8 +110,9 @@ export class CreateSubscriptionCheckoutUseCase {
       throw new AppError('That subscription plan is not available', 400);
     }
     // Enterprise and internal (non-public) plans are negotiated, never bought
-    // self-serve at the list price. Mirrors the store rail's isPublic check.
-    if (plan.isPublic === false || tier === SubscriptionTier.ENTERPRISE) {
+    // self-serve at the list price. The coupon preview and the store rail
+    // apply the same rule.
+    if (!isSelfServePlan(plan)) {
       throw new AppError('This plan is arranged through our sales team. Contact sales@ujimora.com.', 403);
     }
     const baseAmount = roundToCurrency(
@@ -132,7 +134,7 @@ export class CreateSubscriptionCheckoutUseCase {
     }
 
     // ── Never open a second charge over an unresolved or active purchase ──
-    const resumable = await this.resolveOpenCheckouts(userId, input);
+    const resumable = await this.resolveOpenCheckouts(userId, input, baseAmount);
     await this.assertCanBuyOverCurrentPlan(userId, tier, plan.name, input.replaceCurrentPlan === true);
     if (resumable) {
       // The member backed out of this exact purchase and asked again: send them
@@ -365,12 +367,15 @@ export class CreateSubscriptionCheckoutUseCase {
    * purchase refused; an abandoned older one is expired, freeing its coupon
    * seat. One that could still be paid — opened within the last hour, or still
    * processing — is returned for resuming when it is this same purchase (plan,
-   * cycle and code) with a payment page to go back to; any other open one
-   * refuses the new purchase, naming the checkout so the member can cancel it.
+   * cycle, code and list price) with a payment page to go back to; any other
+   * open one refuses the new purchase, naming the checkout so the member can
+   * cancel it. A page opened before an admin changed the price is not the same
+   * purchase: it would charge a price the plans page no longer shows.
    */
   private async resolveOpenCheckouts(
     userId: string,
-    input: CreateSubscriptionCheckoutInput
+    input: CreateSubscriptionCheckoutInput,
+    baseAmount: number
   ): Promise<SubscriptionCheckout | null> {
     const open = await this.subscriptionCheckoutRepo.findPendingByUser(userId, 5);
     if (!open.length) return null;
@@ -401,7 +406,7 @@ export class CreateSubscriptionCheckoutUseCase {
       if (outcome !== 'pending') continue;
       const samePurchase = !resumable && !!checkout.authorizationUrl &&
         checkout.tier === input.tier && checkout.billingCycle === input.billingCycle &&
-        sameCode(checkout.couponCode, input.couponCode);
+        sameCode(checkout.couponCode, input.couponCode) && checkout.baseAmount === baseAmount;
       if (samePurchase) {
         resumable = checkout;
         continue;

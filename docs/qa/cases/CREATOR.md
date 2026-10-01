@@ -8,7 +8,7 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 
 *Surfaces:* api, web  ·  *Type:* security/permission
 
-**Before:** free1 signed in, no subscription (Community/Free).
+**Before:** free1 signed in, no subscription (Free).
 
 **Steps:**
 
@@ -17,7 +17,7 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 3. With free1's bearer token, POST /api/v1/creators/profile {"handle":"free-one","displayName":"Free One"}.
 4. GET /api/v1/creators/me.
 
-**Expect:** Info alert 'Creator donations require an active paid plan...' with a 'View plans' button to /subscription. Handle, Display name, Tagline, About you and 'Accept tips' are disabled, and 'Create my page' is disabled. The API returns 403 'Creator donations require an active paid subscription. Upgrade your plan to enable your creator page.' /creators/me returns profile null and policy {eligible:false, planName:'Community'/Free, feePercent 3.5 or the live value}. No creator_profiles or creator_balances row is created.
+**Expect:** Info alert 'Creator donations require an active paid plan...' with a 'View plans' button to /subscription. Handle, Display name, Tagline, About you and 'Accept tips' are disabled, and 'Create my page' is disabled. The API returns 403 'Creator donations require an active paid subscription. Upgrade your plan to enable your creator page.' /creators/me returns profile null and policy {eligible:false, planName:'Free', feePercent 5 or the live value}. No creator_profiles or creator_balances row is created.
 
 **Needs:** None
 
@@ -27,7 +27,7 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 
 *Surfaces:* api, web  ·  *Type:* compliance
 
-**Before:** creatorA on an active Plus plan with current legal acceptance. Handle 'ama-sings' unused.
+**Before:** creatorA on an active Starter plan with current legal acceptance. Handle 'ama-sings' unused.
 
 **Steps:**
 
@@ -99,7 +99,7 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 3. creatorA opens /creator.
 4. creatorA opens Withdraw and checks the fee preview.
 
-**Expect:** The page renders and the form shows 'This creator isn’t accepting tips right now.' The API returns 403 'Creator donations require an active paid subscription...'. The dashboard shows the 'Upgrade to receive new tips. You can still withdraw your existing balance.' alert with fields disabled. Withdraw is enabled and previews the Free plan fee (for example 3.5%: GH₵3.50 fee, GH₵96.50 net).
+**Expect:** The page renders and the form shows 'This creator isn’t accepting tips right now.' The API returns 403 'Creator donations require an active paid subscription...'. The dashboard shows the 'Upgrade to receive new tips. You can still withdraw your existing balance.' alert with fields disabled. Withdraw is enabled and previews the Free plan fee (for example 5%: GH₵5.00 fee, GH₵95.00 net).
 
 **Needs:** None
 
@@ -265,7 +265,7 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 
 *Surfaces:* api, web  ·  *Type:* compliance
 
-**Before:** creatorA on Plus (3%) with a verified email, current identity KYC and a name_matched saved account. Paystack test transfer balance funded.
+**Before:** creatorA on Starter (3.5%) with a verified email, current identity KYC and a name_matched saved account. Paystack test transfer balance funded.
 
 **Steps:**
 
@@ -273,7 +273,7 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 2. Compare the Paystack transaction fee and settled amount with the creator credit.
 3. Withdraw GH₵100 and check the Paystack transfer amount, the transfer fee and the completion alert.
 
-**Expect:** The creator is credited 100.00 with platformFees 0 at receipt. Paystack settles about 98.05; the platform absorbs the fee. The withdrawal records fee 3.00 and transfers 97.00, and the platform also pays the Paystack transfer fee, which Ujimora does not record. The 'Your withdrawal is completed' alert says 'GHS 97.00 was sent after GHS 3.00 in fees.' Finance confirms the net margin and that the legal/pricing copy ('The same platform fee is not also deducted when a new tip is received') matches. Known open issue I048: the policy on Paystack processing fees for tips (and donor fee disclosure) is still an open product decision.
+**Expect:** The creator is credited 100.00 with platformFees 0 at receipt. Paystack settles about 98.05; the platform absorbs the fee. The withdrawal records fee 3.50 and transfers 96.50, and the platform also pays the Paystack transfer fee, which Ujimora does not record. The 'Your withdrawal is completed' alert says 'GHS 96.50 was sent after GHS 3.50 in fees.' Finance confirms the net margin and that the legal/pricing copy ('The same platform fee is not also deducted when a new tip is received') matches. Known open issue I048: the policy on Paystack processing fees for tips (and donor fee disclosure) is still an open product decision.
 
 **Needs:** Paystack test keys
 
@@ -341,7 +341,7 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 
 *Surfaces:* api, email, web  ·  *Type:* functional
 
-**Before:** creatorA on Plus (3%) with available GH₵100.00, a verified email and current identity KYC (approved and unexpired, verificationLevel ≥ 2). A name_matched saved account at /payout-accounts. Paystack test Transfers enabled, with a test transfer balance of at least GH₵97.
+**Before:** creatorA on Starter (3.5%) with available GH₵100.00, a verified email and current identity KYC (approved and unexpired, verificationLevel ≥ 2). A name_matched saved account at /payout-accounts. Paystack test Transfers enabled, with a test transfer balance of at least GH₵96.50.
 
 **Steps:**
 
@@ -351,7 +351,7 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 4. Click 'Withdraw'.
 5. Wait for transfer.success and reload /creator. Check the notifications and email.
 
-**Expect:** The alert reads 'Plus transfer fee: 3%. Fee: GH₵3.00 · You receive: GH₵97.00. The full requested amount is deducted from your creator balance.' Snackbar 'Withdrawal started'. The payout is PROCESSING with reference cpay-<id>-xxxxxxxx; the saved recipient code is already on the row before the transfer is sent. It then becomes PAID. The Paystack transfer is GHS 97.00 to the saved recipient code. Balances: availableBalance -100, paidOutBalance +97, payoutFees +3. History row: 'Fee GH₵3 · Net transfer GH₵97' with a PAID chip. Alerts: 'Your withdrawal is processing', then 'Your withdrawal is completed' with 'The GHS 100.00 request is completed. GHS 97.00 was sent after GHS 3.00 in fees. Open your payout history for fees, net amount and the latest status.' (in-app, and email if enabled).
+**Expect:** The alert reads 'Starter transfer fee: 3.5%. Fee: GH₵3.50 · You receive: GH₵96.50. The full requested amount is deducted from your creator balance.' Snackbar 'Withdrawal started'. The payout is PROCESSING with reference cpay-<id>-xxxxxxxx; the saved recipient code is already on the row before the transfer is sent. It then becomes PAID. The Paystack transfer is GHS 96.50 to the saved recipient code. Balances: availableBalance -100, paidOutBalance +96.50, payoutFees +3.50. History row: 'Fee GH₵3.50 · Net transfer GH₵96.50' with a PAID chip. Alerts: 'Your withdrawal is processing', then 'Your withdrawal is completed' with 'The GHS 100.00 request is completed. GHS 96.50 was sent after GHS 3.50 in fees. Open your payout history for fees, net amount and the latest status.' (in-app, and email if enabled).
 
 **Needs:** Paystack test keys (Transfers), Resend
 
@@ -361,17 +361,17 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 
 *Surfaces:* api, web  ·  *Type:* negative/edge
 
-**Before:** Plans with 2.5% and 3.5% fees. Enough balance. Current identity KYC and a name_matched saved account. Paystack test balance funded.
+**Before:** Plans with 3.5% and 2% fees. Enough balance. Current identity KYC and a name_matched saved account. Paystack test balance funded.
 
 **Steps:**
 
-1. Withdraw 33.33 at 2.5%.
-2. Withdraw 5.00 at 2.5%.
+1. Withdraw 33.33 at 3.5%.
+2. Withdraw 5.00 at 3.5%.
 3. Withdraw 4.99 in the web dialog, and 0.05 and 0.29 via the API.
 4. Choose 'Ujimora Wallet' and withdraw 4.00.
 5. API: amount 10.999.
 
-**Expect:** 33.33 at 2.5%: fee 0.83, net 32.50, and the UI preview equals the API response. 5.00 at 2.5%: fee 0.13, net 4.87. Step 3: 422 'The minimum withdrawal is GHS 5.' with nothing reserved; the web dialog lets you type the amount and shows the API error. Step 4: the same 422, because the minimum also applies to wallet transfers. 10.999 returns 400 'Enter a withdrawal amount.' A fee-charging plan can no longer round its fee to 0.00. The guard messages ('This amount is too small to withdraw with your plan’s fee. Enter a larger amount.' and 'The withdrawal amount must exceed the fee.') cannot be reached at GHS 5 or more with the seeded plan fees. The owner should confirm the GHS 5 minimum.
+**Expect:** 33.33 at 3.5%: fee 1.17 (1.16655 rounds half-up), net 32.16, and the UI preview equals the API response. 5.00 at 3.5%: fee 0.18 (0.175 rounds half-up), net 4.82. Step 3: 422 'The minimum withdrawal is GHS 5.' with nothing reserved; the web dialog lets you type the amount and shows the API error. Step 4: the same 422, because the minimum also applies to wallet transfers. 10.999 returns 400 'Enter a withdrawal amount.' A fee-charging plan can no longer round its fee to 0.00. The guard messages ('This amount is too small to withdraw with your plan’s fee. Enter a larger amount.' and 'The withdrawal amount must exceed the fee.') cannot be reached at GHS 5 or more with the seeded plan fees. The owner should confirm the GHS 5 minimum.
 
 **Needs:** Paystack test keys
 
@@ -385,8 +385,8 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 
 **Steps:**
 
-1. Open the Withdraw dialog (preview 3%).
-2. In the admin, change the Plus platformFeePercent from 3 to 4.
+1. Open the Withdraw dialog (preview 3.5%).
+2. In the admin, change the Starter platformFeePercent from 3.5 to 4.
 3. Click 'Withdraw'.
 4. API: POST /creators/withdraw without expectedFeePercent.
 5. Reload /creator and withdraw again.
@@ -496,7 +496,7 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 
 *Surfaces:* api, web  ·  *Type:* functional
 
-**Before:** creatorA on Plus (3%) with available GH₵50.
+**Before:** creatorA on Starter (3.5%) with available GH₵50.
 
 **Steps:**
 
@@ -505,7 +505,7 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 3. Open /wallet.
 4. Withdraw 60 to the wallet.
 
-**Expect:** Snackbar 'Funds added to your Ujimora Wallet'. The payout is PAID with provider ujimora_wallet, fee 1.50, net 48.50. The wallet GHS balance rises by 48.50 with a ledger entry. Creator available -50. The replay does not double-credit. The over-balance attempt returns 422 'Insufficient available creator balance'.
+**Expect:** Snackbar 'Funds added to your Ujimora Wallet'. The payout is PAID with provider ujimora_wallet, fee 1.75, net 48.25. The wallet GHS balance rises by 48.25 with a ledger entry. Creator available -50. The replay does not double-credit. The over-balance attempt returns 422 'Insufficient available creator balance'.
 
 **Needs:** None
 
@@ -713,11 +713,11 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 
 **Steps:**
 
-1. refereeB goes to /subscription and buys Plus monthly with a Paystack test card, with no coupon.
+1. refereeB goes to /subscription and buys Starter monthly with a Paystack test card, with no coupon.
 2. The sub- charge.success webhook settles.
 3. affiliateA opens /affiliate and checks the commissions ledger and stats.
 
-**Expect:** The referral becomes 'Converted'. There is one commission with status 'Held', amount = 10% of the charged price rounded to 2dp (for example 49.00 gives 4.90), baseAmount = 49.00 and maturesAt = now + 14 days. Balances: pendingBalance +4.90, totalEarned +4.90, Available unchanged. The UI says 'Commission becomes available after its hold window.'
+**Expect:** The referral becomes 'Converted'. There is one commission with status 'Held', amount = 10% of the charged price rounded to 2dp (for example 9.99 gives 1.00, from 0.999), baseAmount = 9.99 and maturesAt = now + 14 days. Balances: pendingBalance +1.00, totalEarned +1.00, Available unchanged. The UI says 'Commission becomes available after its hold window.'
 
 **Needs:** Paystack test keys
 
@@ -754,7 +754,7 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 3. Negatives: affiliateA uses their own code; refereeB (already converted) uses it; a user referred by affiliate X enters affiliateA's code; a suspended affiliate's code.
 4. The admin sets the discount to 0 and refereeC-2 retries.
 
-**Expect:** The preview is valid with discount 4.90 and final 44.10 on a 49.00 plan, and Paystack charges exactly 44.10. The referral is attached to affiliateA. The commission is computed on the undiscounted 49.00, giving 4.90. Every negative gets no discount (unknown code, full price), and X keeps the attribution. At 0% the code behaves as unknown.
+**Expect:** The preview is valid with discount 1.00 and final 8.99 on a 9.99 plan, and Paystack charges exactly 8.99. The referral is attached to affiliateA. The commission is computed on the undiscounted 9.99, giving 1.00. Every negative gets no discount (unknown code, full price), and X keeps the attribution. At 0% the code behaves as unknown.
 
 **Needs:** Paystack test keys
 
@@ -944,17 +944,17 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 
 *Surfaces:* admin, api, web  ·  *Type:* recovery/idempotency
 
-**Before:** affiliateA with two available commissions (e.g. 4.90 and 9.80) and a destination set. affiliateB and affiliateC in the same state. adminB. Paystack test transfers, with the ability to trigger or replay transfer.failed and transfer.reversed.
+**Before:** affiliateA with two available commissions (e.g. 3.00 and 9.90) and a destination set. affiliateB and affiliateC in the same state. adminB. Paystack test transfers, with the ability to trigger or replay transfer.failed and transfer.reversed.
 
 **Steps:**
 
-1. affiliateA requests a payout (full 14.70) and checks the Commissions list.
+1. affiliateA requests a payout (full 12.90) and checks the Commissions list.
 2. adminB approves; transfer.success arrives. affiliateA reloads /affiliate.
 3. Replay transfer.success.
 4. affiliateB: request, approve, then deliver transfer.failed. Reload.
 5. affiliateC: request, approve, transfer.success, then transfer.reversed. Reload.
 
-**Expect:** Step 1: the payout is PENDING, Available is 0, and the two commissions are linked to the payout and still show 'Available'. Step 2: both commissions show 'Paid out' and the Paid Out stat rises by 14.70. Step 3 changes nothing. Step 4: the payout is FAILED, 14.70 returns to Available once, the commissions show 'Available' and can be requested again. Step 5: the payout is REVERSED, the funds return to Available once, and the commissions go from 'Paid out' back to 'Available'. The admin affiliate detail matches.
+**Expect:** Step 1: the payout is PENDING, Available is 0, and the two commissions are linked to the payout and still show 'Available'. Step 2: both commissions show 'Paid out' and the Paid Out stat rises by 12.90. Step 3 changes nothing. Step 4: the payout is FAILED, 12.90 returns to Available once, the commissions show 'Available' and can be requested again. Step 5: the payout is REVERSED, the funds return to Available once, and the commissions go from 'Paid out' back to 'Available'. The admin affiliate detail matches.
 
 **Needs:** Paystack test keys (Transfers)
 
@@ -1126,7 +1126,7 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 
 *Surfaces:* android, ios  ·  *Type:* cross-platform
 
-**Before:** TestFlight / Play internal builds. iosCreator subscribed to Plus through the App Store sandbox, androidCreator through a Play test purchase, and a separate free user.
+**Before:** TestFlight / Play internal builds. iosCreator subscribed to Starter through the App Store sandbox, androidCreator through a Play test purchase, and a separate free user.
 
 **Steps:**
 
@@ -1866,18 +1866,18 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 
 *Surfaces:* api, marketing, web  ·  *Type:* functional
 
-**Before:** orgPlus on Plus (1 seat). orgPro on Pro (3 seats) with no members. An org whose paid plan can be expired on staging. Invitee accounts A, B, C and D.
+**Before:** orgStarter on Starter (1 seat). orgPro on Pro (3 seats) with no members. An org whose paid plan can be expired on staging. Invitee accounts A, B, C and D.
 
 **Steps:**
 
-1. orgPlus owner invites A.
+1. orgStarter owner invites A.
 2. orgPro owner invites A (viewer) and B (editor), then C.
 3. orgPro owner re-sends the invitation to A.
 4. Set B's invitation expiresAt to the past, then invite C again.
 5. Expire orgPro's plan and invite D. Check that existing members still have access.
 6. Read the plan comparison on /subscription and ujimora.com/pricing.
 
-**Expect:** Step 1: 403 'Your Plus plan includes 1 team seat, including the owner. Upgrade the organization's plan or remove a member before inviting someone new.' Step 2: A and B succeed, and C gets 403 'Your Pro plan includes 3 team seats, including the owner. Upgrade the organization's plan or remove a member before inviting someone new.' Step 3 succeeds, because re-sending to the same address needs no new seat. Step 4: the expired invitation frees its seat and C is invited. Step 5: the lapsed plan falls back to Community, so D gets 403 'Your Community plan includes 1 team seat...'; existing active members are not removed. Step 6: the limit is labelled 'Organization team seats (incl. owner)' (Organization plan 10, Enterprise unlimited).
+**Expect:** Step 1: 403 'Your Starter plan includes 1 team seat, including the owner. Upgrade the organization's plan or remove a member before inviting someone new.' Step 2: A and B succeed, and C gets 403 'Your Pro plan includes 3 team seats, including the owner. Upgrade the organization's plan or remove a member before inviting someone new.' Step 3 succeeds, because re-sending to the same address needs no new seat. Step 4: the expired invitation frees its seat and C is invited. Step 5: the lapsed plan falls back to Free, so D gets 403 'Your Free plan includes 1 team seat...'; existing active members are not removed. Step 6: the limit is labelled 'Organization team seats (incl. owner)' (Organization plan 10, Enterprise unlimited).
 
 **Needs:** None
 
@@ -1926,7 +1926,7 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 
 *Surfaces:* api, web  ·  *Type:* functional
 
-**Before:** creatorA on Plus bought on the web (Paystack sub- reference) for the current period, page live with tips on, balance GH₵50, current identity KYC and a name_matched account. A second creator for the partial-refund check. Paystack test dashboard.
+**Before:** creatorA on Starter bought on the web (Paystack sub- reference) for the current period, page live with tips on, balance GH₵50, current identity KYC and a name_matched account. A second creator for the partial-refund check. Paystack test dashboard.
 
 **Steps:**
 
@@ -1936,7 +1936,7 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 4. Replay the refund webhook.
 5. Partially refund the second creator's subscription charge.
 
-**Expect:** Step 1: the plan time paid by that charge is removed, so the subscription ends now and creatorA is no longer creator-eligible. Step 2: the page shows 'This creator isn’t accepting tips right now.' and the API returns 403 'Creator donations require an active paid subscription...'. Step 3: the dashboard shows 'Upgrade to receive new tips. You can still withdraw your existing balance.' and the withdrawal is allowed at the Community fee (3.5%). Step 4 is a no-op. Step 5: a partial refund keeps access (it is logged; pro-rata is an owner decision). App Store and Google Play plans are not affected by Paystack refunds.
+**Expect:** Step 1: the plan time paid by that charge is removed, so the subscription ends now and creatorA is no longer creator-eligible. Step 2: the page shows 'This creator isn’t accepting tips right now.' and the API returns 403 'Creator donations require an active paid subscription...'. Step 3: the dashboard shows 'Upgrade to receive new tips. You can still withdraw your existing balance.' and the withdrawal is allowed at the Free fee (5%). Step 4 is a no-op. Step 5: a partial refund keeps access (it is logged; pro-rata is an owner decision). App Store and Google Play plans are not affected by Paystack refunds.
 
 **Needs:** Paystack test keys
 
@@ -2080,7 +2080,7 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 
 *Surfaces:* admin, api, web  ·  *Type:* functional
 
-**Before:** affiliateA active. Referee R referred by affiliateA (pending). Admin coupon C20 (20% off) with commission base LIST_PRICE. AFFILIATE_COMMISSION_PERCENT=10. Plus monthly 49.00. Paystack test keys.
+**Before:** affiliateA active. Referee R referred by affiliateA (pending). Admin coupon C20 (20% off) with commission base LIST_PRICE. AFFILIATE_COMMISSION_PERCENT=10. Starter monthly 9.99. Paystack test keys.
 
 **Steps:**
 
@@ -2090,7 +2090,7 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 4. R completes the payment.
 5. affiliateA opens /affiliate, Commissions.
 
-**Expect:** Step 3: the API returns 409 'This coupon has been used — deactivate it instead.' The admin dialog 'Delete or deactivate C20?' offers Deactivate and disables Delete once the coupon has been redeemed. Steps 4 and 5: the commission is 10% of the list price, 4.90, using the basis stored on the checkout, not 3.92 on the discounted price, despite the later coupon edit. Limits and redemption history are preserved.
+**Expect:** Step 3: the API returns 409 'This coupon has been used — deactivate it instead.' The admin dialog 'Delete or deactivate C20?' offers Deactivate and disables Delete once the coupon has been redeemed. Steps 4 and 5: the commission is 10% of the list price, 1.00, using the basis stored on the checkout, not 0.80 on the discounted price, despite the later coupon edit. Limits and redemption history are preserved.
 
 **Needs:** Paystack test keys
 

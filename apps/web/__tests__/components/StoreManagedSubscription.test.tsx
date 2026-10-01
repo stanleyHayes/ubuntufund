@@ -10,7 +10,7 @@ vi.mock('@/hooks/useSubscription', () => ({
     status: SubscriptionStatus.ACTIVE, billingCycle: BillingCycle.MONTHLY, cancelAtPeriodEnd: false,
     currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 86_400_000),
   } }),
-  usePlanMap: () => SUBSCRIPTION_PLANS,
+  usePlanMap: () => ({ plans: SUBSCRIPTION_PLANS, loaded: true, error: false, retry: vi.fn() }),
 }))
 vi.mock('@/hooks/useCouponPreview', () => ({ useCouponPreview: () => ({ preview: null, loading: false, error: null, run: preview, clear }) }))
 vi.mock('@/lib/subscriptions', () => ({ readSubscriptionHandoff: () => null, createSubscriptionCheckout: checkout,

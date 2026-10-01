@@ -1,12 +1,12 @@
 import {
   CouponDiscountType,
-  SubscriptionTier,
   BillingCycle,
   CouponSurface,
   CouponCommissionBase,
-  SUBSCRIPTION_PLANS,
   type CreateCouponInput,
 } from '@ubuntu-fund/types'
+import type { PlanMap } from '@/lib/subscriptionMetrics'
+import { comparePlans, isFreePlan } from '@/lib/plans'
 export const SURFACE_LABEL: Record<CouponSurface, string> = {
   [CouponSurface.SUBSCRIPTION]: 'Subscriptions',
   [CouponSurface.DONATION]: 'Donations',
@@ -19,12 +19,34 @@ export const SURFACE_HINT: Record<CouponSurface, string> = {
   [CouponSurface.DONATION]: 'Platform fee waived — the campaign receives more',
   [CouponSurface.PAYOUT_FEE]: 'Lower fee on a withdrawal',
 }
-// Coupons discount paid checkouts, so FREE is never a valid applicability.
-export const PAID_TIERS = Object.values(SubscriptionTier).filter((t) => t !== SubscriptionTier.FREE)
+/** The live plans the coupon screens name and offer tiers from (useAdminPlans). */
+export interface CouponPlans {
+  byTier: PlanMap
+  isLoading: boolean
+  error: string | null
+  retry: () => void
+}
 
-/** Display name for a tier id (falls back to the id for admin-added tiers). */
-export const planLabel = (t: string): string =>
-  (SUBSCRIPTION_PLANS as Record<string, { name: string }>)[t]?.name ?? t
+/** Live display name for a tier id (falls back to the id while plans are unavailable). */
+export const planLabel = (t: string, plans: PlanMap): string => plans[t]?.name ?? t
+
+/**
+ * Tiers a coupon can name: live plans that are not retired (inactive) and have
+ * a price (coupons discount paid checkouts, so a free plan never qualifies) in
+ * plan order, plus any tier the saved coupon already names, so it can be kept
+ * or removed.
+ */
+export function couponTierOptions(plans: PlanMap, savedTiers: string[] = []): string[] {
+  const offered = Object.values(plans)
+    .filter((plan) => plan.active !== false && !isFreePlan(plan))
+    .sort(comparePlans)
+    .map((plan) => plan.tier)
+  return [...offered, ...savedTiers.filter((tier) => !offered.includes(tier))]
+}
+
+/** Whether the coupon discounts subscription checkouts, the only place its tiers apply (no surfaces = subscriptions only, as the API reads it). */
+export const appliesToSubscriptions = (form: Pick<CouponForm, 'appliesToSurfaces'>): boolean =>
+  form.appliesToSurfaces.length === 0 || form.appliesToSurfaces.includes(CouponSurface.SUBSCRIPTION)
 
 export interface CouponForm {
   code: string
@@ -81,7 +103,25 @@ export const parseEmails = (raw: string): string[] => [
   ),
 ]
 
-export function validateCouponStep(form: CouponForm, step: number): string | null {
+/**
+ * No tier can be chosen while the live plans are loading or failed, and an
+ * empty choice makes a subscription coupon apply to every paid plan, so the
+ * tier step cannot be left until they load.
+ */
+function tierChoiceError(form: CouponForm, plans?: Pick<CouponPlans, 'isLoading' | 'error'>): string | null {
+  if (!plans || !appliesToSubscriptions(form)) return null
+  if (plans.isLoading) return 'Plans are still loading. Choose which plans this coupon applies to once they appear.'
+  if (plans.error) return 'Choose which plans this coupon applies to before continuing: retry loading the plans below.'
+  return null
+}
+
+/** Why a step cannot be left, or null. Step 1 also needs the live plans' state (see tierChoiceError). */
+export function validateCouponStep(
+  form: CouponForm,
+  step: number,
+  plans?: Pick<CouponPlans, 'isLoading' | 'error'>,
+): string | null {
+  if (step === 1) return tierChoiceError(form, plans)
   if (step === 0) {
     if (!form.code.trim() || form.code.trim().length > 50)
       return 'Enter a coupon code between 1 and 50 characters.'

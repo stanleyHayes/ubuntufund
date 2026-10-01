@@ -16,6 +16,7 @@ import { RefundModel } from '../../src/infrastructure/database/models/RefundMode
 import { WalletTransactionModel } from '../../src/infrastructure/database/models/WalletTransactionModel.js';
 import { TipModel } from '../../src/infrastructure/database/models/TipModel.js';
 import { SubscriptionModel } from '../../src/infrastructure/database/models/SubscriptionModel.js';
+import { SubscriptionPlanModel } from '../../src/infrastructure/database/models/SubscriptionPlanModel.js';
 import { MongoActivityAlerts } from '../../src/infrastructure/adapters/outbound/persistence/MongoActivityAlerts.js';
 import { MongoUnitOfWork } from '../../src/infrastructure/adapters/outbound/persistence/MongoUnitOfWork.js';
 
@@ -60,6 +61,19 @@ it('routes refund, wallet, creator support and subscription changes to their opt
   expect(notices.find(item => item.type === 'subscriptions')?.path).toBe('/subscription');
   expect(notices.filter(item => item.type === 'refunds').map(item => item.title)).toEqual(expect.arrayContaining(['Your refund is pending', 'Your refund is completed']));
   expect(sender.send).not.toHaveBeenCalled();
+});
+
+it('names the plan in subscription alerts as members see it, or by its id when it has no plan row', async () => {
+  const named = await actor(), unnamed = await actor();
+  await choose(named, 'subscriptions', 'inApp'); await choose(unnamed, 'subscriptions', 'inApp');
+  const tier = `alerts-${randomUUID().slice(0, 8)}`;
+  await SubscriptionPlanModel.collection.insertOne({ tier, name: 'Parish Plus' });
+  const period = { status: 'active', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 86400000) };
+  await SubscriptionModel.updateOne({ userId: named.id }, { $set: { tier, ...period } }, { upsert: true });
+  await SubscriptionModel.updateOne({ userId: unnamed.id }, { $set: { tier: 'retired-tier', ...period } }, { upsert: true });
+  await alerts.capturePending(); await alerts.deliverPending();
+  expect((await NotificationModel.findOne({ userId: named.id, type: 'subscriptions' }))?.body).toMatch(/^Your Parish Plus subscription is active\./);
+  expect((await NotificationModel.findOne({ userId: unnamed.id, type: 'subscriptions' }))?.body).toMatch(/^Your retired-tier subscription is active\./);
 });
 
 it('starts every channel off, requires authentication, and requires a verified email to opt in', async () => {

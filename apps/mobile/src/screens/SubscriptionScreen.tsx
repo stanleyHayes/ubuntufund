@@ -13,7 +13,7 @@ import {
   SubscriptionStatus,
   SubscriptionCheckoutStatus,
   BillingCycle,
-  SUBSCRIPTION_PLANS,
+  yearlyPricePerMonth,
   type SubscriptionPlan,
   type CouponPreview,
 } from '@ubuntu-fund/types'
@@ -28,6 +28,7 @@ import {
   isPaymentsNotConfigured,
 } from '@/lib/subscriptions'
 import { previewCoupon } from '@/lib/coupons'
+import { formatPlanPrice } from '@/lib/money'
 import { isCurrentPlanTier, isPaidPlanInForce, planCardPrice } from '@/lib/subscriptionStatus'
 import { useAuth } from '@/context/AuthContext'
 import { SignInRequired } from '@/components/SignInRequired'
@@ -38,13 +39,9 @@ const ENTERPRISE_CONTACT = 'mailto:sales@ujimora.com?subject=Enterprise%20plan%2
 const POLL_INTERVAL_MS = 2000
 const MAX_POLL_ATTEMPTS = 15 // ~30s
 
-function formatGhs(n: number): string {
-  return `GH₵ ${n.toFixed(2)}`
-}
-
-/** Order plans cheapest → richest by the admin-set sortOrder. */
+/** Order plans cheapest → richest by the admin-set sortOrder; ties by price, then tier id. */
 function bySortOrder(a: SubscriptionPlan, b: SubscriptionPlan): number {
-  return a.sortOrder - b.sortOrder || a.priceMonthly - b.priceMonthly
+  return a.sortOrder - b.sortOrder || a.priceMonthly - b.priceMonthly || a.tier.localeCompare(b.tier)
 }
 
 interface SubscriptionData {
@@ -102,6 +99,7 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
 
     // Section title
     sectionTitle: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: p.text, marginBottom: 12 },
+    plansErrorText: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: p.textSecondary, textAlign: 'center', marginBottom: 16 },
 
     // Plans row
     plansScroll: { flexGrow: 0 },
@@ -321,17 +319,19 @@ function CheckoutSheet({
 
   const plan = plans[tier]
   if (!plan) return null
-  const baseAmount = billingCycle === BillingCycle.YEARLY ? plan.priceYearly : plan.priceMonthly
+  const listPrice = billingCycle === BillingCycle.YEARLY ? plan.priceYearly : plan.priceMonthly
   const validCoupon = preview?.valid ? preview : null
+  // A coupon quote carries the server's price, which is what checkout charges.
+  const baseAmount = validCoupon ? validCoupon.baseAmount : listPrice
   const finalAmount = validCoupon ? validCoupon.finalAmount : baseAmount
   const discount = validCoupon ? validCoupon.discountAmount : 0
-  const offered = baseAmount > 0
+  const offered = listPrice > 0
   // Buying a different plan while one is running replaces it immediately, with
   // no credit for unused time; the member confirms that by paying from here.
   const switching = isPaidPlanInForce(current) && current.tier !== tier
   // Buying the plan you have while it runs adds the time to its end.
   const renewing = isPaidPlanInForce(current) && current.tier === tier
-  const payLabel = !offered ? 'Not offered' : finalAmount === 0 ? 'Activate plan' : switching ? `Replace plan and pay ${formatGhs(finalAmount)}` : `Pay ${formatGhs(finalAmount)}`
+  const payLabel = !offered ? 'Not offered' : finalAmount === 0 ? 'Activate plan' : switching ? `Replace plan and pay ${formatPlanPrice(finalAmount)}` : `Pay ${formatPlanPrice(finalAmount)}`
 
   const handleCheckout = async () => {
     setSubmitting(true)
@@ -445,9 +445,14 @@ function CheckoutSheet({
                       {cycle === BillingCycle.YEARLY ? 'Yearly' : 'Monthly'}
                     </Text>
                     <Text style={[styles.cycleHint, active && styles.cycleHintActive]}>
-                      {formatGhs(amount)}
+                      {formatPlanPrice(amount)}
                       {cycle === BillingCycle.YEARLY ? ' / 1 year' : ' / 30 days'}
                     </Text>
+                    {cycle === BillingCycle.YEARLY && amount > 0 ? (
+                      <Text style={[styles.cycleHint, active && styles.cycleHintActive]}>
+                        ≈ {formatPlanPrice(yearlyPricePerMonth(amount))} / mo
+                      </Text>
+                    ) : null}
                   </View>
                 </TouchableRipple>
               )
@@ -491,20 +496,20 @@ function CheckoutSheet({
           <View style={styles.priceSummary}>
             <View style={styles.priceLine}>
               <Text style={styles.priceLabel}>Plan</Text>
-              <Text style={discount > 0 ? styles.priceBase : styles.priceValue}>{formatGhs(baseAmount)}</Text>
+              <Text style={discount > 0 ? styles.priceBase : styles.priceValue}>{formatPlanPrice(baseAmount)}</Text>
             </View>
             {discount > 0 ? (
               <>
                 <View style={styles.priceLine}>
                   <Text style={styles.priceLabel}>Discount</Text>
-                  <Text style={[styles.priceValue, { color: p.success }]}>-{formatGhs(discount)}</Text>
+                  <Text style={[styles.priceValue, { color: p.success }]}>-{formatPlanPrice(discount)}</Text>
                 </View>
-                <Text style={styles.savingLine}>Coupon applied — you save {formatGhs(discount)}</Text>
+                <Text style={styles.savingLine}>Coupon applied — you save {formatPlanPrice(discount)}</Text>
               </>
             ) : null}
             <View style={styles.priceLine}>
               <Text style={styles.priceLabel}>Total</Text>
-              <Text style={styles.priceFinal}>{formatGhs(finalAmount)}</Text>
+              <Text style={styles.priceFinal}>{formatPlanPrice(finalAmount)}</Text>
             </View>
           </View>
 
@@ -554,9 +559,11 @@ export default function SubscriptionScreen() {
   const storeManagementUrl = currentSub.billingProvider === 'apple' ? 'https://apps.apple.com/account/subscriptions' : 'https://play.google.com/store/account/subscriptions?package=com.ujimora.app'
   const [isLoading, setIsLoading] = useState(true)
   const [checkoutTier, setCheckoutTier] = useState<string | null>(null)
-  // DB-backed plans (seeded from SUBSCRIPTION_PLANS, overlaid from GET /plans) so
-  // admin-added tiers appear here too.
-  const [plans, setPlans] = useState<Record<string, SubscriptionPlan>>(SUBSCRIPTION_PLANS)
+  // Live plans from GET /plans (so admin-added tiers appear too). No seeded
+  // defaults: the screen waits for them and offers a retry if they fail.
+  const [plans, setPlans] = useState<Record<string, SubscriptionPlan>>({})
+  const [plansLoaded, setPlansLoaded] = useState(false)
+  const [plansError, setPlansError] = useState(false)
 
   const fetchSubscription = useCallback(async () => {
     try {
@@ -570,40 +577,37 @@ export default function SubscriptionScreen() {
     }
   }, [])
 
-  // Refetch whenever the tab regains focus, so a subscription that settled via
-  // the Paystack webhook (after our ~30s poll window) is reflected without an
-  // app relaunch. Runs on first focus too, replacing the old mount effect.
-  useFocusEffect(
-    useCallback(() => {
-      if (user) fetchSubscription()
-    }, [user, fetchSubscription]),
-  )
-
-  // Overlay the live, admin-managed plans over the seeded defaults.
-  useEffect(() => {
-    let cancelled = false
-    api
-      .get<SubscriptionPlan[]>('/plans')
-      .then((data) => {
-        if (cancelled || !Array.isArray(data)) return
-        setPlans((current) => {
-          const next = { ...current }
-          for (const pl of data) if (pl && pl.tier) next[pl.tier] = pl
-          return next
-        })
-      })
-      .catch(() => {
-        // Keep the seeded defaults on failure.
-      })
-    return () => {
-      cancelled = true
+  // GET /plans needs a session, so it runs once the member is signed in. A
+  // failed refresh keeps plans already loaded; only a first failure shows.
+  const fetchPlans = useCallback(async () => {
+    try {
+      const data = await api.get<SubscriptionPlan[]>('/plans')
+      if (!Array.isArray(data) || !data.length) throw new Error('Plans unavailable')
+      setPlans(Object.fromEntries(data.filter((pl) => pl?.tier).map((pl) => [pl.tier, pl])))
+      setPlansLoaded(true)
+      setPlansError(false)
+    } catch {
+      setPlansError(true)
     }
   }, [])
+
+  // Refetch whenever the tab regains focus, so a subscription that settled via
+  // the Paystack webhook (after our ~30s poll window) or a plan an admin just
+  // edited is reflected without an app relaunch. Runs on first focus too.
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        fetchSubscription()
+        fetchPlans()
+      }
+    }, [user, fetchSubscription, fetchPlans]),
+  )
 
   const orderedPlans = Object.values(plans)
     .filter((pl) => pl.active !== false && pl.isPublic !== false)
     .sort(bySortOrder)
-  const currentPlan = plans[currentSub.tier] ?? SUBSCRIPTION_PLANS[SubscriptionTier.FREE]
+  // A tier missing from the live plans reads as Free instead of breaking the screen.
+  const currentPlan = plans[currentSub.tier] ?? plans[SubscriptionTier.FREE]
   // Web plans never renew on their own: once the period ends the member is
   // back on Free and may buy any plan again, including the one that lapsed.
   const paidInForce = isPaidPlanInForce(currentSub)
@@ -618,7 +622,19 @@ export default function SubscriptionScreen() {
     )
   }
 
-  if (isLoading) {
+  // No seeded prices stand in for live ones, so without plans nothing can be bought.
+  if ((plansError && !plansLoaded) || (plansLoaded && !currentPlan)) {
+    return (
+      <View style={[styles.container, styles.centered, styles.content]}>
+        <Text style={styles.plansErrorText}>Current plans and prices could not be loaded, so checkout is unavailable.</Text>
+        <Button mode="outlined" textColor={p.primary} onPress={() => { setPlansError(false); fetchPlans() }}>
+          Retry
+        </Button>
+      </View>
+    )
+  }
+
+  if (isLoading || !plansLoaded) {
     return (
       <View style={[styles.container, styles.centered]}>
         <SkeletonLoader size="large" color={p.primary} />
@@ -691,7 +707,7 @@ export default function SubscriptionScreen() {
                 <Text style={styles.planPrice}>Contact Us</Text>
               ) : price ? (
                 <View style={styles.priceRow}>
-                  <Text style={styles.planPrice}>GH₵ {price.amount}</Text>
+                  <Text style={styles.planPrice}>{formatPlanPrice(price.amount)}</Text>
                   <Text style={styles.priceUnit}>{price.per === 'month' ? '/mo' : ` / ${price.per}`}</Text>
                 </View>
               ) : (

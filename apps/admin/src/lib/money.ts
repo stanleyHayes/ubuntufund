@@ -35,3 +35,27 @@ export function roundMoney(amount: number, currency = 'GHS'): number {
 export function fromMinorUnits(minor: number, currency = 'GHS'): number {
   return roundMoney(minor / 10 ** minorUnitExponent(currency), currency)
 }
+
+/** A GHS amount in whole pesewas, rounded as checkout charges it (apps/api Money.ts toMinorUnits). */
+export function toPesewas(amount: number): number {
+  return Math.round(amount * 100)
+}
+
+/** A yearly GHS price per month, in whole pesewas. */
+export function yearlyPerMonthPesewas(priceYearly: number): number {
+  return Math.round(toPesewas(priceYearly) / 12)
+}
+
+/**
+ * A plan price in the admin's 'GH₵ 1,500' style: en-GH grouping, no decimals
+ * for a whole amount and exactly two otherwise ('GH₵ 9.99', 'GH₵ 9,999.90').
+ */
+export function formatPlanPrice(amount: number): string {
+  const decimals = Number.isInteger(amount) ? 0 : 2
+  return `GH₵ ${amount.toLocaleString('en-GH', { minimumFractionDigits: decimals, maximumFractionDigits: 2 })}`
+}
+
+/** Whole pesewas as cedis with exactly two decimals ('GH₵ 372.48'), for figures summed in pesewas. */
+export function formatPesewas(pesewas: number): string {
+  return `GH₵ ${(pesewas / 100).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}

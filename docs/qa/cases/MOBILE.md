@@ -375,7 +375,7 @@ The demo account is not staff and never hits an MFA or biometric gate.
 
 *Surfaces:* admin, android, api, ios  ·  *Type:* functional
 
-**Before:** Sandbox tester (Apple) / license tester (Google) signed in on device; Ujimora account on Community plan whose campaign limit is full; API with Apple/Google IAP credentials and webhooks configured.
+**Before:** Sandbox tester (Apple) / license tester (Google) signed in on device; Ujimora account on the Free plan whose campaign limit is full; API with Apple/Google IAP credentials and webhooks configured.
 
 **Steps:**
 

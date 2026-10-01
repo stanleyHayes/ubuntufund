@@ -3,12 +3,14 @@ import {
   CouponSurface,
   type CouponPreview,
   type CouponValidationInput,
+  type SubscriptionPlan,
 } from '@ubuntu-fund/types';
 import type { CouponService } from '../services/CouponService.js';
-import type { PlanService } from '../services/PlanService.js';
+import { isSelfServePlan, type PlanService } from '../services/PlanService.js';
 import { roundToCurrency } from '../../domain/value-objects/Money.js';
 import type { AffiliateCodePricing } from '../services/AffiliateCodePricing.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import { logger } from '../../infrastructure/logging/logger.js';
 
 /** The platform's only settlement currency, and the one plan prices are in. */
 const CURRENCY = 'GHS';
@@ -17,8 +19,9 @@ const CURRENCY = 'GHS';
  * Quote a coupon against a paid-plan checkout without charging anything: resolve
  * the plan's list price for the chosen tier + billing cycle, then defer to
  * {@link CouponService.validateAndPrice}. This is a *soft* endpoint — every
- * rejection (an invalid, expired, exhausted, or inapplicable coupon) is caught
- * and mapped onto `{ valid: false, reason }`, so it never throws.
+ * rejection (an invalid, expired, exhausted, or inapplicable coupon, or a plan
+ * or billing cycle checkout would not sell) is caught and mapped onto
+ * `{ valid: false, reason }`, so it never throws.
  */
 export class PreviewCouponUseCase {
   constructor(
@@ -91,13 +94,29 @@ export class PreviewCouponUseCase {
       if (!input.tier) {
         return this.invalid(code, 0, 'A plan is required to check this coupon');
       }
-      // Base price from the DB-backed plan so the preview matches what checkout
-      // will charge (PlanService falls back to the code defaults).
-      const plan = await this.planService.getPlan(input.tier);
+      // Base price from the DB-backed plan, read strictly as checkout reads it:
+      // a failed read must not quote the code defaults as the price.
+      let plan: SubscriptionPlan;
+      try {
+        plan = await this.planService.getPlan(input.tier, true);
+      } catch (error) {
+        logger.error({ err: error, tier: input.tier }, 'coupon preview could not read the plan');
+        return this.invalid(code, 0, 'Plan prices are unavailable right now');
+      }
+      // getPlan answers an unknown tier with the Free plan. Quote only a plan
+      // checkout would sell, by the same rule checkout applies.
+      if (plan.tier !== input.tier || !isSelfServePlan(plan)) {
+        return this.invalid(code, 0, 'That subscription plan is not available');
+      }
       baseAmount = roundToCurrency(
         input.billingCycle === BillingCycle.YEARLY ? plan.priceYearly : plan.priceMonthly,
         CURRENCY
       );
+      // A zero price means that cycle is not offered, and checkout refuses it.
+      // Without this the preview quoted it as a valid purchase costing 0.
+      if (!(baseAmount > 0)) {
+        return this.invalid(code, 0, 'That billing cycle is not available for this plan');
+      }
     }
 
     try {

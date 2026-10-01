@@ -4,7 +4,7 @@ import { Text } from 'react-native-paper'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { deepLinkToSubscriptions, ErrorCode, fetchProducts, finishTransaction, getAvailablePurchases, restorePurchases,
   useIAP, type ProductSubscription, type Purchase } from 'expo-iap'
-import { BillingCycle, SubscriptionTier, type Subscription } from '@ubuntu-fund/types'
+import { BillingCycle, SubscriptionTier, type Subscription, type SubscriptionPlan } from '@ubuntu-fund/types'
 import { useAuth } from '@/context/AuthContext'
 import { usePalette } from '@/context/ColorModeContext'
 import { Button, PageSkeleton } from '@/components/Loading'
@@ -33,6 +33,7 @@ function StorePlans({ userId }: { userId: string }) {
   const router = useRouter()
   const [catalog, setCatalog] = useState<StoreCatalog | null>(null)
   const [subscription, setSubscription] = useState<Subscription | null>(null)
+  const [freePlanName, setFreePlanName] = useState<string | undefined>()
   const [products, setProducts] = useState<ProductSubscription[]>([])
   const [cycle, setCycle] = useState(BillingCycle.MONTHLY)
   const [busy, setBusy] = useState(false)
@@ -44,10 +45,16 @@ function StorePlans({ userId }: { userId: string }) {
   useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
   const current = useCallback(() => mounted.current && sessionSnapshot()?.user.id === userId, [userId])
   const load = useCallback(async () => {
-    const [nextCatalog, nextSubscription] = await Promise.all([
+    const [nextCatalog, nextSubscription, plans] = await Promise.all([
       api.get<StoreCatalog>(`/store-billing/catalog/${store}`), api.get<Subscription>('/subscriptions/mine'),
+      // Only names the free plan, so a failure here must not block the store.
+      api.get<SubscriptionPlan[]>('/plans/public').catch(() => null),
     ])
-    if (current()) { setCatalog(nextCatalog); setSubscription(nextSubscription); setLoading(false) }
+    if (current()) {
+      setCatalog(nextCatalog); setSubscription(nextSubscription); setLoading(false)
+      const free = Array.isArray(plans) ? plans.find((plan) => plan?.tier === SubscriptionTier.FREE) : undefined
+      if (free?.name) setFreePlanName(free.name)
+    }
   }, [current])
   const processPurchase = useCallback((purchase: Purchase): Promise<boolean> => {
     const key = `${purchase.store}:${purchase.id}`
@@ -164,7 +171,7 @@ function StorePlans({ userId }: { userId: string }) {
     catch { setError(`Could not open ${storeName} subscription settings. Open subscriptions directly in your store account.`) }
   }
   const paid = subscription && subscription.tier !== SubscriptionTier.FREE && subscription.status === 'active' && new Date(subscription.currentPeriodEnd) > new Date()
-  const currentPlanName = catalog?.products.find((entry) => entry.tier === subscription?.tier)?.plan.name ?? (paid ? 'Paid plan' : 'Community')
+  const currentPlanName = catalog?.products.find((entry) => entry.tier === subscription?.tier)?.plan.name ?? (paid ? 'Paid plan' : freePlanName ?? 'Free')
   const foreignProvider = !!catalog?.provider && catalog.provider !== store
   if (loading) return <PageSkeleton />
   return <ScrollView style={{ flex: 1, backgroundColor: p.background }} contentContainerStyle={{ padding: 20, paddingBottom: 40, gap: 16 }}>

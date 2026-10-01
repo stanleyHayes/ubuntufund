@@ -33,6 +33,7 @@ import {
   SubscriptionStatus,
   SubscriptionCheckoutStatus,
   BillingCycle,
+  yearlyPricePerMonth,
   type SubscriptionPlan,
 } from '@ubuntu-fund/types'
 import { useMySubscription, usePlanMap } from '@/hooks/useSubscription'
@@ -79,7 +80,7 @@ function colorsOf(plan: SubscriptionPlan): { accent: string; bg: string; banner:
 }
 
 function bySortOrder(a: SubscriptionPlan, b: SubscriptionPlan): number {
-  return a.sortOrder - b.sortOrder || a.priceMonthly - b.priceMonthly
+  return a.sortOrder - b.sortOrder || a.priceMonthly - b.priceMonthly || a.tier.localeCompare(b.tier)
 }
 
 interface FeatureRow {
@@ -136,7 +137,7 @@ const FEATURE_SECTIONS: { title: string; rows: FeatureRow[] }[] = [
     rows: [
       { label: 'Organization team seats (incl. owner)', key: 'maxTeamMembers', format: 'unlimited' },
       { label: 'Campaign collaboration', key: 'campaignCollaboration', format: 'boolean' },
-      { label: 'Collaborators per campaign', key: 'maxCollaboratorsPerCampaign', format: 'unlimited' },
+      { label: 'Collaborators per campaign', key: 'maxCollaboratorsPerCampaign', format: 'unlimited', cell: collaboratorsCell },
     ],
   },
 ]
@@ -149,14 +150,21 @@ function formatCellValue(value: unknown, format?: string): React.ReactNode {
       <CloseRoundedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
     )
   }
-  if (typeof value === 'number') {
+  if (typeof value === 'number' && Number.isFinite(value)) {
     if (value === -1) return <Typography sx={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-brand)' }}>Unlimited</Typography>
     if (value === 0 && format === 'unlimited') return <CloseRoundedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
     if (format === 'fee') return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>{value}%</Typography>
     if (format === 'goal') return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>GH₵ {value.toLocaleString()}</Typography>
     return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>{value}</Typography>
   }
-  return String(value)
+  // A limit the plan does not state (older plan rows lack some fields).
+  return <Typography component="span" role="img" aria-label="Not specified" sx={{ fontSize: '0.82rem', fontWeight: 600, color: 'text.secondary' }}>—</Typography>
+}
+
+/** A collaborator cap means nothing on a plan without campaign collaboration. */
+function collaboratorsCell(plan: SubscriptionPlan): React.ReactNode {
+  if (!plan.campaignCollaboration) return formatCellValue(false, 'boolean')
+  return formatCellValue(plan.maxCollaboratorsPerCampaign, 'unlimited')
 }
 
 function onBehalfCell(plan: SubscriptionPlan): React.ReactNode {
@@ -209,8 +217,8 @@ export function SubscriptionPage() {
     !!subscription && isPaidPlanInForce(subscription)
   const storeName = subscription?.billingProvider === 'apple' ? 'App Store' : 'Google Play'
   const storeManagementUrl = subscription?.billingProvider === 'apple' ? 'https://apps.apple.com/account/subscriptions' : 'https://play.google.com/store/account/subscriptions?package=com.ujimora.app'
-  // DB-backed plans (seeded from SUBSCRIPTION_PLANS so nothing flashes empty).
-  const plans = usePlanMap()
+  // Live plans only: the page waits for them, and offers a retry if they fail.
+  const { plans, loaded: plansLoaded, error: plansError, retry: retryPlans } = usePlanMap()
   // Public, active plans in admin-set order — data-driven so admin-added tiers show.
   const orderedPlans = Object.values(plans)
     .filter((p) => p.active !== false && p.isPublic !== false)
@@ -349,7 +357,30 @@ export function SubscriptionPage() {
     }
   }
 
-  if (isLoading || !subscription) {
+  // Neither depends on the plans, so both also show when the plans fail to load.
+  const statusAlerts = (
+    <>
+      {storeManaged && <Alert severity="info" sx={{ mb: 3 }} action={<Button href={storeManagementUrl} target="_blank" rel="noopener noreferrer">Manage subscription</Button>}>Your subscription is billed through {storeName}. Change plans or cancel there to avoid a second subscription.</Alert>}
+      {lastCheckout && lastCheckoutPending && <Alert severity="info" sx={{ mb: 3 }} action={<Button href={`/subscription/callback?checkout=${encodeURIComponent(lastCheckout.checkoutId)}`}>Check payment</Button>}>Returning from payment? Check your latest checkout before starting another payment.</Alert>}
+    </>
+  )
+
+  // No seeded prices stand in for live ones, so without plans nothing can be bought.
+  if (plansError || (plansLoaded && subscription && !(plans[subscription.tier] ?? plans[SubscriptionTier.FREE]))) {
+    return (
+      <Container maxWidth="lg" sx={{ py: 6 }}>
+        {statusAlerts}
+        <Typography variant="h4" sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, mb: 3 }}>
+          Subscription
+        </Typography>
+        <Alert severity="error" action={<Button color="inherit" onClick={retryPlans}>Retry</Button>}>
+          Current plans and prices could not be loaded, so checkout is unavailable. Please try again.
+        </Alert>
+      </Container>
+    )
+  }
+
+  if (isLoading || !subscription || !plansLoaded) {
     return (
       <Container maxWidth="lg" sx={{ py: 6 }}>
         <Box aria-busy="true" aria-label="Loading subscription" sx={{ '& .MuiSkeleton-root': { '@media (prefers-reduced-motion: reduce)': { animation: 'none' } } }}>
@@ -366,10 +397,9 @@ export function SubscriptionPage() {
   }
 
   const currentSub = subscription
-  const currentPlan = plans[currentSub.tier]
-  const colors = currentPlan
-    ? colorsOf(currentPlan)
-    : { accent: '#78909C', bg: 'rgba(120,144,156,0.06)', banner: '#78909C' }
+  // A tier missing from the live plans reads as Free instead of breaking the page.
+  const currentPlan = plans[currentSub.tier] ?? plans[SubscriptionTier.FREE]
+  const colors = colorsOf(currentPlan)
   const daysLeft = Math.max(0, Math.ceil((new Date(currentSub.currentPeriodEnd).getTime() - Date.now()) / 86_400_000))
   // Web plans never renew on their own, so a paid row can outlive its period.
   // Once the period ends the member is back on Free and may buy any plan again,
@@ -380,8 +410,7 @@ export function SubscriptionPage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 6 }}>
-      {storeManaged && <Alert severity="info" sx={{ mb: 3 }} action={<Button href={storeManagementUrl} target="_blank" rel="noopener noreferrer">Manage subscription</Button>}>Your subscription is billed through {storeName}. Change plans or cancel there to avoid a second subscription.</Alert>}
-      {lastCheckout && lastCheckoutPending && <Alert severity="info" sx={{ mb: 3 }} action={<Button href={`/subscription/callback?checkout=${encodeURIComponent(lastCheckout.checkoutId)}`}>Check payment</Button>}>Returning from payment? Check your latest checkout before starting another payment.</Alert>}
+      {statusAlerts}
       {/* Page header */}
       <Typography
         variant="h4"
@@ -455,7 +484,7 @@ export function SubscriptionPage() {
         <CardContent sx={{ p: { xs: 3, md: 4 } }}>
           {lapsed && (
             <Alert severity="warning" sx={{ mb: 3, borderRadius: SHAPE.sm }}>
-              Your {currentPlan.name} plan ended on {new Date(currentSub.currentPeriodEnd).toLocaleDateString()}. Community features apply until you buy a plan again.
+              Your {currentPlan.name} plan ended on {new Date(currentSub.currentPeriodEnd).toLocaleDateString()}. {plans[SubscriptionTier.FREE]?.name ?? 'Free'} features apply until you buy a plan again.
             </Alert>
           )}
           <Box
@@ -618,7 +647,8 @@ export function SubscriptionPage() {
         {group.plans.map((plan) => {
           const tier = plan.tier
           const isCurrent = isCurrentTier(tier)
-          const isPro = tier === SubscriptionTier.PRO || plan.popular === true
+          // The admin's Popular switch alone picks the recommended plan, as on marketing and mobile.
+          const isPro = plan.popular === true
           const fitLabel = isPro ? 'Recommended for growth' : tier === SubscriptionTier.ORGANIZATION ? 'Best fit for organizations' : tier === SubscriptionTier.ENTERPRISE ? 'For complex needs' : tier === SubscriptionTier.FREE ? 'Start here' : tier === SubscriptionTier.STARTER ? 'For a growing cause' : 'More ways to fundraise'
           const tc = colorsOf(plan)
           const price = billingToggle === 'yearly' ? plan.priceYearly : plan.priceMonthly
@@ -674,7 +704,7 @@ export function SubscriptionPage() {
                   ) : (
                     <Box sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 0.5 }}>
                       <Typography sx={{ fontWeight: 900, fontSize: '2rem', whiteSpace: 'nowrap', fontFamily: '"Outfit", sans-serif', lineHeight: 1.2 }}>
-                        {formatCurrency(billingToggle === 'yearly' ? price / 12 : price, 'GHS')}
+                        {formatCurrency(billingToggle === 'yearly' ? yearlyPricePerMonth(price) : price, 'GHS')}
                       </Typography>
                       <Typography sx={{ color: 'text.secondary', fontSize: '0.78rem' }}>
                         {billingToggle === 'yearly' || tier === SubscriptionTier.FREE ? '/mo' : '/ 30 days'}
@@ -683,7 +713,7 @@ export function SubscriptionPage() {
                   )}
                   {tier !== SubscriptionTier.FREE && tier !== SubscriptionTier.ENTERPRISE && (
                     <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', mt: 0.25 }}>
-                      {billingToggle === 'yearly' ? <>GH₵ {price} for 1 year &middot; </> : null}One-time payment &middot; does not auto-renew
+                      {billingToggle === 'yearly' ? <>{formatCurrency(price, 'GHS')} for 1 year &middot; </> : null}One-time payment &middot; does not auto-renew
                     </Typography>
                   )}
                 </Box>
@@ -794,11 +824,21 @@ export function SubscriptionPage() {
           Feature Comparison
         </Typography>
 
+        {/* Each row is its own grid, so narrow screens scroll the table sideways
+            (as on the marketing pricing page) rather than clip or misalign its columns. */}
         <Box
+          role="region"
+          aria-label="Plan comparison"
+          tabIndex={0}
           sx={{
             borderRadius: SHAPE.card,
+            bgcolor: 'background.paper',
             boxShadow: 'var(--neu-raised)',
-            overflow: 'hidden',
+            border: 'var(--neu-border)',
+            backdropFilter: 'var(--neu-backdrop)',
+            WebkitBackdropFilter: 'var(--neu-backdrop)',
+            overflowX: 'auto',
+            '& > div': { minWidth: 800 },
           }}
         >
           {/* Header row */}
@@ -975,8 +1015,9 @@ export function SubscriptionPage() {
         {selectedTier && (() => {
           const plan = plans[selectedTier]
           if (!plan) return <DialogContent><Alert severity="info">This plan is unavailable. Close this window to choose another plan.</Alert><Button onClick={closeCheckout}>Choose another plan</Button></DialogContent>
-          const basePrice = billingToggle === 'yearly' ? plan.priceYearly : plan.priceMonthly
           const validCoupon = preview && preview.valid ? preview : null
+          // A coupon quote carries the server's price, which is what checkout charges.
+          const basePrice = validCoupon ? validCoupon.baseAmount : cyclePrice(plan)
           const currency = validCoupon?.currency ?? 'GHS'
           const finalAmount = validCoupon ? validCoupon.finalAmount : basePrice
           const mode = checkoutModeFor(selectedTier)

@@ -106,8 +106,8 @@ async function createActiveCampaign(
 /**
  * Settle a `donationAmount` donation on a campaign via the authoritative
  * charge.success webhook (no processor fee, no tip), leaving beneficiary-net in
- * `pendingBalance`. The creator is on the Free plan (3.5% platform fee), so the
- * net cleared is `donationAmount * 0.965`.
+ * `pendingBalance`. The creator is on the Free plan (5% platform fee), so the
+ * net cleared is `donationAmount * 0.95`.
  */
 async function fundCampaign(
   app: Express,
@@ -496,7 +496,7 @@ describe('Payouts Integration', () => {
     const campaignId = await createActiveCampaign(app, token, userId);
     const admin = await createAdmin(app, uniqueEmail('admin'));
 
-    await fundCampaign(app, campaignId, 1000); // pending net 965 (Free 3.5%)
+    await fundCampaign(app, campaignId, 1000); // pending net 950 (Free 5%)
     await endCampaign(campaignId);
     await addRecipient(app, campaignId, token);
 
@@ -504,7 +504,7 @@ describe('Payouts Integration', () => {
     const reqRes = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/payouts`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ amount: 965 });
+      .send({ amount: 950 });
     expect(reqRes.status).toBe(201);
     expect(reqRes.body.data.status).toBe('PENDING');
     const payoutId = reqRes.body.data.id as string;
@@ -512,7 +512,7 @@ describe('Payouts Integration', () => {
     // Requesting clears pending → available (no reservation yet).
     let balance = await CampaignBalanceModel.findOne({ campaignId });
     expect(balance?.pendingBalance).toBe(0);
-    expect(balance?.availableBalance).toBe(965);
+    expect(balance?.availableBalance).toBe(950);
 
     // Admin approves → transfer initiated, funds reserved out of available.
     const approveRes = await request(app)
@@ -560,7 +560,7 @@ describe('Payouts Integration', () => {
     const reqRes = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/payouts`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ amount: 965 });
+      .send({ amount: 950 });
     const payoutId = reqRes.body.data.id as string;
     const approveRes = await request(app)
       .post(`/api/v1/payouts/${payoutId}/approve`)
@@ -576,7 +576,7 @@ describe('Payouts Integration', () => {
     expect(payout?.status).toBe('PAID');
 
     let balance = await CampaignBalanceModel.findOne({ campaignId });
-    expect(balance?.paidOutBalance).toBe(965);
+    expect(balance?.paidOutBalance).toBe(950);
     expect(balance?.availableBalance).toBe(0);
     expect(balance?.pendingBalance).toBe(0);
 
@@ -587,14 +587,14 @@ describe('Payouts Integration', () => {
       direction: 'credit',
     });
     expect(payoutCredits).toHaveLength(1);
-    expect(payoutCredits[0]!.amount).toBe(965);
+    expect(payoutCredits[0]!.amount).toBe(950);
     const beneficiaryDebits = await JournalLineModel.find({
       accountKind: 'beneficiary',
       accountOwnerId: campaignId,
       direction: 'debit',
     });
     expect(beneficiaryDebits).toHaveLength(1);
-    expect(beneficiaryDebits[0]!.amount).toBe(965);
+    expect(beneficiaryDebits[0]!.amount).toBe(950);
 
     // Duplicate webhook is a no-op: still PAID, balances + ledger unchanged.
     const dup = await sendTransferWebhook(app, 'transfer.success', reference);
@@ -602,7 +602,7 @@ describe('Payouts Integration', () => {
     payout = await PayoutModel.findById(payoutId);
     expect(payout?.status).toBe('PAID');
     balance = await CampaignBalanceModel.findOne({ campaignId });
-    expect(balance?.paidOutBalance).toBe(965);
+    expect(balance?.paidOutBalance).toBe(950);
     const payoutCreditsAfter = await JournalLineModel.find({
       accountKind: 'payout',
       accountOwnerId: campaignId,
@@ -616,18 +616,18 @@ describe('Payouts Integration', () => {
     const campaignId = await createActiveCampaign(app, token, userId);
     const admin = await createAdmin(app, uniqueEmail('admin'));
 
-    await fundCampaign(app, campaignId, 1000); // net 965 available (Free 3.5%)
+    await fundCampaign(app, campaignId, 1000); // net 950 available (Free 5%)
     await endCampaign(campaignId);
     await addRecipient(app, campaignId, token);
     const reqRes = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/payouts`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ amount: 965, type: 'priority' });
+      .send({ amount: 950, type: 'priority' });
     expect(reqRes.status).toBe(201);
-    // Priority fee = max(0.5% of 965 = 4.83, min 10) = 10; net = 955.
+    // Priority fee = max(0.5% of 950 = 4.75, min 10) = 10; net = 940.
     expect(reqRes.body.data.type).toBe('priority');
     expect(reqRes.body.data.fee).toBe(10);
-    expect(reqRes.body.data.netAmount).toBe(955);
+    expect(reqRes.body.data.netAmount).toBe(940);
 
     const payoutId = reqRes.body.data.id as string;
     const approveRes = await request(app)
@@ -637,9 +637,9 @@ describe('Payouts Integration', () => {
     const reference = approveRes.body.data.providerRef as string;
     await sendTransferWebhook(app, 'transfer.success', reference);
 
-    // Gross 965 left available; 955 disbursed (paidOut) + 10 retained (payoutFees).
+    // Gross 950 left available; 940 disbursed (paidOut) + 10 retained (payoutFees).
     const balance = await CampaignBalanceModel.findOne({ campaignId });
-    expect(balance?.paidOutBalance).toBe(955);
+    expect(balance?.paidOutBalance).toBe(940);
     expect(balance?.payoutFees).toBe(10);
     expect(balance?.availableBalance).toBe(0);
   });
@@ -648,9 +648,9 @@ describe('Payouts Integration', () => {
     const { userId, token } = await registerUser(app, uniqueEmail('early'));
     const campaignId = await createActiveCampaign(app, token, userId);
 
-    await fundCampaign(app, campaignId, 1000); // eligible 965
+    await fundCampaign(app, campaignId, 1000); // eligible 950
     await addRecipient(app, campaignId, token);
-    // 80% of 965 = 772; an early request for 900 exceeds the ceiling.
+    // 80% of 950 = 760; an early request for 900 exceeds the ceiling.
     const res = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/payouts`)
       .set('Authorization', `Bearer ${token}`)
@@ -670,7 +670,7 @@ describe('Payouts Integration', () => {
     const reqRes = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/payouts`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ amount: 965 });
+      .send({ amount: 950 });
     const payoutId = reqRes.body.data.id as string;
     const approveRes = await request(app)
       .post(`/api/v1/payouts/${payoutId}/approve`)
@@ -689,7 +689,7 @@ describe('Payouts Integration', () => {
     expect(payout?.status).toBe('FAILED');
 
     balance = await CampaignBalanceModel.findOne({ campaignId });
-    expect(balance?.availableBalance).toBe(965); // returned
+    expect(balance?.availableBalance).toBe(950); // returned
     expect(balance?.paidOutBalance).toBe(0);
 
     // No payout journal entry was posted (nothing left the platform).
@@ -711,7 +711,7 @@ describe('Payouts Integration', () => {
     const reqRes = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/payouts`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ amount: 965 });
+      .send({ amount: 950 });
     const payoutId = reqRes.body.data.id as string;
     const approveRes = await request(app)
       .post(`/api/v1/payouts/${payoutId}/approve`)
@@ -728,7 +728,7 @@ describe('Payouts Integration', () => {
 
     const balance = await CampaignBalanceModel.findOne({ campaignId });
     expect(balance?.paidOutBalance).toBe(0);
-    expect(balance?.availableBalance).toBe(965);
+    expect(balance?.availableBalance).toBe(950);
 
     // One disbursement + one reversing entry: net payout credits === debits.
     const payoutLines = await JournalLineModel.find({
@@ -741,8 +741,8 @@ describe('Payouts Integration', () => {
     const debits = payoutLines
       .filter((l) => l.direction === 'debit')
       .reduce((s, l) => s + l.amount, 0);
-    expect(credits).toBe(965);
-    expect(debits).toBe(965);
+    expect(credits).toBe(950);
+    expect(debits).toBe(950);
   });
 
   // Maker-checker + batching (spec §16, §17). These share one owner and two
@@ -792,8 +792,8 @@ describe('Payouts Integration', () => {
     }
 
     it('requires two distinct admins to approve a high-value payout (maker-checker)', async () => {
-      const campaignId = await fundedCampaignWithRecipient(50000); // net 48250
-      const reqRes = await requestPayout(campaignId, 48250); // ≥ 40k, ≤ 50k ceiling
+      const campaignId = await fundedCampaignWithRecipient(50000); // net 47500
+      const reqRes = await requestPayout(campaignId, 47500); // ≥ 40k, ≤ 50k ceiling
       expect(reqRes.status).toBe(201);
       const payoutId = reqRes.body.data.id as string;
 
@@ -803,7 +803,7 @@ describe('Payouts Integration', () => {
       expect(first.body.data.status).toBe('PENDING');
       expect(first.body.data.firstApprovedBy).toBe(admin1.userId);
       let balance = await CampaignBalanceModel.findOne({ campaignId });
-      expect(balance?.availableBalance).toBe(48250); // not reserved yet
+      expect(balance?.availableBalance).toBe(47500); // not reserved yet
 
       // The same admin cannot be both maker and checker.
       const sameAdmin = await approve(payoutId, admin1.token);
@@ -819,8 +819,8 @@ describe('Payouts Integration', () => {
     });
 
     it('splits a payout above the ceiling into legs and settles PAID when all succeed', async () => {
-      const campaignId = await fundedCampaignWithRecipient(120000); // net 115800
-      const reqRes = await requestPayout(campaignId, 115800);
+      const campaignId = await fundedCampaignWithRecipient(120000); // net 114000
+      const reqRes = await requestPayout(campaignId, 114000);
       expect(reqRes.status).toBe(201);
       const payoutId = reqRes.body.data.id as string;
 
@@ -833,7 +833,7 @@ describe('Payouts Integration', () => {
 
       const payout = await PayoutModel.findById(payoutId);
       const legs = payout!.legs!;
-      expect(legs.map((l) => l.amount)).toEqual([50000, 50000, 15800]);
+      expect(legs.map((l) => l.amount)).toEqual([50000, 50000, 14000]);
 
       // Each leg's transfer.success settles that leg; the last drives PAID.
       for (const leg of legs) {
@@ -844,7 +844,7 @@ describe('Payouts Integration', () => {
       expect(settled?.status).toBe('PAID');
 
       const balance = await CampaignBalanceModel.findOne({ campaignId });
-      expect(balance?.paidOutBalance).toBe(115800);
+      expect(balance?.paidOutBalance).toBe(114000);
       expect(balance?.availableBalance).toBe(0);
       expect(balance?.payoutFees).toBe(0);
 
@@ -855,12 +855,12 @@ describe('Payouts Integration', () => {
         direction: 'credit',
       });
       expect(payoutCredits).toHaveLength(3);
-      expect(payoutCredits.reduce((s, l) => s + l.amount, 0)).toBe(115800);
+      expect(payoutCredits.reduce((s, l) => s + l.amount, 0)).toBe(114000);
     });
 
     it('flags a batched payout NEEDS_REVIEW when a leg fails after others sent', async () => {
       const campaignId = await fundedCampaignWithRecipient(120000);
-      const reqRes = await requestPayout(campaignId, 115800);
+      const reqRes = await requestPayout(campaignId, 114000);
       const payoutId = reqRes.body.data.id as string;
 
       await approve(payoutId, admin1.token).expect(200);
@@ -879,7 +879,7 @@ describe('Payouts Integration', () => {
 
       const balance = await CampaignBalanceModel.findOne({ campaignId });
       expect(balance?.paidOutBalance).toBe(100000); // legs 0 + 1 disbursed
-      expect(balance?.availableBalance).toBe(15800); // leg 2 returned
+      expect(balance?.availableBalance).toBe(14000); // leg 2 returned
     });
   });
 
@@ -887,7 +887,7 @@ describe('Payouts Integration', () => {
     const { userId, token } = await registerUser(app, uniqueEmail('over'));
     const campaignId = await createActiveCampaign(app, token, userId);
 
-    await fundCampaign(app, campaignId, 1000); // eligible net 965
+    await fundCampaign(app, campaignId, 1000); // eligible net 950
     await endCampaign(campaignId);
     await addRecipient(app, campaignId, token);
 
@@ -971,7 +971,7 @@ describe('Payouts Integration', () => {
       expect(res.status).toBe(409);
       expect(await PayoutModel.countDocuments({ campaignId })).toBe(0);
       const balance = await CampaignBalanceModel.findOne({ campaignId });
-      expect(balance?.pendingBalance).toBe(965);
+      expect(balance?.pendingBalance).toBe(950);
       expect(balance?.availableBalance).toBe(0);
     },
   );
@@ -1013,7 +1013,7 @@ describe('Payouts Integration', () => {
     async function pendingRequest(amount = 500) {
       const owner = await registerUser(app, uniqueEmail('close'));
       const campaignId = await createActiveCampaign(app, owner.token, owner.userId);
-      await fundCampaign(app, campaignId, 1000); // pending 965
+      await fundCampaign(app, campaignId, 1000); // pending 950
       await endCampaign(campaignId);
       await addRecipient(app, campaignId, owner.token);
       const res = await request(app)
@@ -1028,7 +1028,7 @@ describe('Payouts Integration', () => {
       const { campaignId, payoutId } = await pendingRequest();
       const admin = await createAdmin(app, uniqueEmail('admin'));
       let balance = await CampaignBalanceModel.findOne({ campaignId });
-      expect([balance?.pendingBalance, balance?.availableBalance]).toEqual([465, 500]);
+      expect([balance?.pendingBalance, balance?.availableBalance]).toEqual([450, 500]);
       const reason = 'Destination evidence did not match the campaign owner.';
 
       const rejected = await request(app)
@@ -1039,7 +1039,7 @@ describe('Payouts Integration', () => {
       expect(rejected.body.data.status).toBe('FAILED');
       expect(rejected.body.data.closure).toMatchObject({ kind: 'rejected', reason, closedBy: admin.userId });
       balance = await CampaignBalanceModel.findOne({ campaignId });
-      expect([balance?.pendingBalance, balance?.availableBalance]).toEqual([965, 0]);
+      expect([balance?.pendingBalance, balance?.availableBalance]).toEqual([950, 0]);
       const stored = await PayoutModel.findById(payoutId);
       // Nothing was reserved, so there is no settlement for the repair sweep to apply.
       expect(stored?.settlementApplied).toBe(true);
@@ -1053,7 +1053,7 @@ describe('Payouts Integration', () => {
         .send({ reviewNote: 'Verified owner identity, destination ownership and receiving capacity for this payout.' })
         .expect(409);
       balance = await CampaignBalanceModel.findOne({ campaignId });
-      expect([balance?.pendingBalance, balance?.availableBalance]).toEqual([965, 0]);
+      expect([balance?.pendingBalance, balance?.availableBalance]).toEqual([950, 0]);
       expect(await AuditLogModel.countDocuments({ action: 'payout.rejected', resource: payoutId })).toBe(1);
     });
 
@@ -1066,7 +1066,7 @@ describe('Payouts Integration', () => {
       ));
       expect(results.map((r) => r.status).sort()).toEqual([200, 409, 409]);
       const balance = await CampaignBalanceModel.findOne({ campaignId });
-      expect([balance?.pendingBalance, balance?.availableBalance]).toEqual([965, 0]);
+      expect([balance?.pendingBalance, balance?.availableBalance]).toEqual([950, 0]);
     });
 
     it('requires an admin and a 20-character reason to reject', async () => {
@@ -1078,16 +1078,16 @@ describe('Payouts Integration', () => {
     });
 
     it('returns what a request made before clearedAmount was recorded cleared, leaving other requests covered', async () => {
-      const { campaignId, payoutId } = await pendingRequest(300); // pending 665, available 300
+      const { campaignId, payoutId } = await pendingRequest(300); // pending 650, available 300
       const legacy = await PayoutModel.findById(payoutId).orFail();
       const other = await PayoutModel.create({ campaignId, recipientId: legacy.recipientId, amount: 200, type: 'standard', fee: 0, netAmount: 200, currency: 'GHS', status: 'PENDING', provider: 'paystack', requestedBy: legacy.requestedBy, clearedAmount: 200 });
-      await CampaignBalanceModel.updateOne({ campaignId }, { $inc: { pendingBalance: -200, availableBalance: 200 } }); // pending 465, available 500
+      await CampaignBalanceModel.updateOne({ campaignId }, { $inc: { pendingBalance: -200, availableBalance: 200 } }); // pending 450, available 500
       await PayoutModel.updateOne({ _id: payoutId }, { $unset: { clearedAmount: 1 } });
       const admin = await createAdmin(app, uniqueEmail('admin'));
       await request(app).post(`/api/v1/payouts/${payoutId}/reject`).set('Authorization', `Bearer ${admin.token}`).send({ reason: 'Legacy request superseded by a newer one.' }).expect(200);
       const balance = await CampaignBalanceModel.findOne({ campaignId });
       // The legacy request's 300 returns; the other request's 200 stays available for it.
-      expect([balance?.pendingBalance, balance?.availableBalance]).toEqual([765, 200]);
+      expect([balance?.pendingBalance, balance?.availableBalance]).toEqual([750, 200]);
       expect((await PayoutModel.findById(other.id))?.status).toBe('PENDING');
     });
 
@@ -1138,10 +1138,10 @@ describe('Payouts Integration', () => {
         .expect(200);
       expect(cancelled.body.data.closure).toMatchObject({ kind: 'cancelled', closedBy: owner.userId });
       const balance = await CampaignBalanceModel.findOne({ campaignId });
-      expect([balance?.pendingBalance, balance?.availableBalance]).toEqual([965, 0]);
+      expect([balance?.pendingBalance, balance?.availableBalance]).toEqual([950, 0]);
       expect((await PayoutModel.findById(other.payoutId))?.status).toBe('PENDING');
       // The owner can request again with the returned funds.
-      await request(app).post(`/api/v1/campaigns/${campaignId}/payouts`).set('Authorization', `Bearer ${owner.token}`).send({ amount: 965 }).expect(201);
+      await request(app).post(`/api/v1/campaigns/${campaignId}/payouts`).set('Authorization', `Bearer ${owner.token}`).send({ amount: 950 }).expect(201);
     });
   });
 
@@ -1149,7 +1149,7 @@ describe('Payouts Integration', () => {
     const { userId, token } = await registerUser(app, uniqueEmail('double'));
     const campaignId = await createActiveCampaign(app, token, userId);
     const admin = await createAdmin(app, uniqueEmail('admin'));
-    await fundCampaign(app, campaignId, 1000); // eligible 965
+    await fundCampaign(app, campaignId, 1000); // eligible 950
     await endCampaign(campaignId);
     await addRecipient(app, campaignId, token);
     const ask = (amount: number) =>
@@ -1157,11 +1157,11 @@ describe('Payouts Integration', () => {
 
     const first = await ask(600).expect(201);
     const options = await request(app).get(`/api/v1/campaigns/${campaignId}/payout-options`).set('Authorization', `Bearer ${token}`).expect(200);
-    expect(options.body.data.eligible).toBe(365);
+    expect(options.body.data.eligible).toBe(350);
     expect(options.body.data.pendingRequests).toBe(600);
     const tooMuch = await ask(400).expect(422);
     expect(tooMuch.body.message).toMatch(/already in pending requests/);
-    const second = await ask(365).expect(201);
+    const second = await ask(350).expect(201);
     expect(await PayoutModel.countDocuments({ campaignId })).toBe(2);
 
     const note = { reviewNote: 'Verified owner identity, destination ownership and receiving capacity for this payout.' };

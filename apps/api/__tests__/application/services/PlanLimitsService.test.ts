@@ -76,7 +76,7 @@ describe('PlanLimitsService', () => {
     it('defaults to the Free plan when the user has no subscription', async () => {
       const plan = await service.resolvePlan('user-1')
       expect(plan.tier).toBe(SubscriptionTier.FREE)
-      expect(plan.platformFeePercent).toBe(3.5)
+      expect(plan.platformFeePercent).toBe(5)
     })
 
     it('maps an active subscription to its tier plan', async () => {
@@ -85,7 +85,7 @@ describe('PlanLimitsService', () => {
       )
       const plan = await service.resolvePlan('user-1')
       expect(plan.tier).toBe(SubscriptionTier.PRO)
-      expect(plan.platformFeePercent).toBe(2.5)
+      expect(plan.platformFeePercent).toBe(2)
     })
 
     it('falls back to Free when the subscription is not active', async () => {
@@ -98,15 +98,15 @@ describe('PlanLimitsService', () => {
   })
 
   describe('platformFeePercent', () => {
-    it('returns the plan rate for the user (Free 3.5%)', async () => {
-      await expect(service.platformFeePercent('user-1')).resolves.toBe(3.5)
+    it('returns the plan rate for the user (Free 5%)', async () => {
+      await expect(service.platformFeePercent('user-1')).resolves.toBe(5)
     })
 
-    it('returns the Enterprise rate (1.25%) for an enterprise subscriber', async () => {
+    it('returns the Enterprise rate (1%) for an enterprise subscriber', async () => {
       vi.mocked(subscriptionRepo.findByUserId).mockResolvedValue(
         makeSubscription(SubscriptionTier.ENTERPRISE)
       )
-      await expect(service.platformFeePercent('user-1')).resolves.toBe(1.25)
+      await expect(service.platformFeePercent('user-1')).resolves.toBe(1)
     })
   })
 
@@ -122,14 +122,14 @@ describe('PlanLimitsService', () => {
       )
       await expect(
         service.platformFeePercentForCampaign('camp-1')
-      ).resolves.toBe(3.0)
+      ).resolves.toBe(3.5)
     })
 
     it('falls back to the Free rate for a missing campaign', async () => {
       vi.mocked(campaignRepo.findById).mockResolvedValue(null)
       await expect(
         service.platformFeePercentForCampaign('missing')
-      ).resolves.toBe(3.5)
+      ).resolves.toBe(5)
     })
   })
 
@@ -265,8 +265,8 @@ describe('PlanLimitsService', () => {
         creatorId: 'user-1',
         lockedPlatformFeePercent: undefined,
       })
-      // Free plan's live platform fee (v6 = 3.5%).
-      await expect(service.platformFeePercentForCampaign('c-1')).resolves.toBe(3.5)
+      // Free plan's live platform fee (5%).
+      await expect(service.platformFeePercentForCampaign('c-1')).resolves.toBe(5)
     })
   })
 
@@ -285,9 +285,9 @@ describe('PlanLimitsService', () => {
 
     it('gives an App Store sandbox plan its features but not the lower fee or creator donations', async () => {
       subscriptionRepo.findByUserId = vi.fn().mockResolvedValue(paid({ billingEnvironment: 'sandbox', billingProvider: 'apple' }))
-      // Free plan's rate (3.5%), not Pro's, even though the plan is active.
-      await expect(service.platformFeePercent('user-1')).resolves.toBe(3.5)
-      await expect(service.creatorPolicy('user-1')).resolves.toMatchObject({ eligible: false, feePercent: 3.5 })
+      // Free plan's rate (5%), not Pro's, even though the plan is active.
+      await expect(service.platformFeePercent('user-1')).resolves.toBe(5)
+      await expect(service.creatorPolicy('user-1')).resolves.toMatchObject({ eligible: false, feePercent: 5 })
       await expect(service.assertCreatorDonations('user-1')).rejects.toMatchObject({ statusCode: 403 })
       // Reviewers can still exercise the plan's features.
       expect((await service.resolvePlan('user-1')).tier).toBe(SubscriptionTier.PRO)
@@ -296,8 +296,8 @@ describe('PlanLimitsService', () => {
 
     it('keeps the paid rate and creator donations for a production store plan', async () => {
       subscriptionRepo.findByUserId = vi.fn().mockResolvedValue(paid({ billingEnvironment: 'production', billingProvider: 'apple' }))
-      await expect(service.platformFeePercent('user-1')).resolves.toBe(2.5)
-      await expect(service.creatorPolicy('user-1')).resolves.toMatchObject({ eligible: true, feePercent: 2.5 })
+      await expect(service.platformFeePercent('user-1')).resolves.toBe(2)
+      await expect(service.creatorPolicy('user-1')).resolves.toMatchObject({ eligible: true, feePercent: 2 })
     })
   })
 })

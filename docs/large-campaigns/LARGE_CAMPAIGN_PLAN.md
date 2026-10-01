@@ -35,7 +35,10 @@ system rather than by rewriting it.
 The subscription/commercial layer is now the **v6 model**, and — per the product
 owner's direction — plans are **fully admin-managed**, not hard-coded:
 
-- **v6 plan set** seeded: Community / Plus / Pro / Organization / Enterprise in
+- **v6 plan set** seeded (superseded 2026-09-30 by D1: the seeds now match the
+  live price book, Free / Starter / Pro / Organization / Enterprise at 0 / 9.99 /
+  29.99 / 399 / sales-only, fees 5 / 3.5 / 2 / 2 / 1%). Original v6 values:
+  Community / Plus / Pro / Organization / Enterprise in
   **GHS** (0 / 49 / 149 / 399 / 1,500+), fees 3.5 / 3.0 / 2.5 / 2.0 / 1.25%, goal
   caps 10k / 50k / 250k / 1M / unlimited, active-campaign counts 1 / 3 / 10 / 25 /
   unlimited. The existing tier enum values are unchanged (`free`→Community,
@@ -377,10 +380,12 @@ external-gated ones (payout limits, custody structure).
 These are business/compliance calls the plan doc leaves to Ujimora; the build
 should not silently pick them:
 
-- **D1 — v6 pricing is the launch tariff?** Confirm the exact GHS prices, fee %s,
-  goal caps and active-campaign counts per tier before the migration.
-- **D2 — Grandfathering.** Existing `STARTER/PRO/ENTERPRISE` subscribers → which
-  new tier, and do they keep old pricing until renewal?
+- **D1 — v6 pricing is the launch tariff?** DECIDED 2026-09-30: no. The owner
+  kept the live price book: Free 0 at 5%, Starter GHS 9.99/99 at 3.5%, Pro GHS
+  29.99/299 at 2%, Organization GHS 399/3,990 at 2%, Enterprise sales-only at 1%.
+  The seed defaults now match it; the v6 table in §1 is historical.
+- **D2 — Grandfathering.** Moot after D1: prices did not change. (Web plans are
+  one-time purchases; each checkout stores the amount paid.)
 - **D3 — Default funding model** (keep-what-you-raise vs all-or-nothing) and
   whether all-or-nothing is offered at launch.
 - **D4 — Reserve % and early-withdrawal ceiling** (defaults 20% / 80%).

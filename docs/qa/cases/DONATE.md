@@ -8,7 +8,7 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 *Surfaces:* api, web  ·  *Type:* functional
 
-**Before:** Staging with Paystack TEST keys; Paystack test webhook URL = <staging-api>/api/v1/webhooks/paystack; ACTIVE GHS campaign owned by a Community-plan organizer; tester logged out in a fresh browser profile.
+**Before:** Staging with Paystack TEST keys; Paystack test webhook URL = <staging-api>/api/v1/webhooks/paystack; ACTIVE GHS campaign owned by a Free-plan organizer; tester logged out in a fresh browser profile.
 
 **Steps:**
 
@@ -19,7 +19,7 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 5. Wait on /donate/callback without refreshing.
 6. Reload /c/<slug> and the campaign donations tab; as admin call GET /api/v1/admin/payments?campaignId=<id>.
 
-**Expect:** Redirect goes to Paystack (never shows success before payment). Callback moves from 'Confirming your payment…' to 'Thank you for showing up.' and 'Your GH₵50.00 donation is confirmed' within ~30s. Campaign raised total increases by exactly 50.00. The new donation shows as anonymous (no name was given). Admin payments row: status SUCCEEDED, provider paystack, amount 50, tip 0, providerRef uf-<intentId>-<8hex>, platformFeeMinor 175 (3.5%), providerFeeMinor = Paystack 'fees', netCampaignAmountMinor = 5000 - 175 - providerFeeMinor.
+**Expect:** Redirect goes to Paystack (never shows success before payment). Callback moves from 'Confirming your payment…' to 'Thank you for showing up.' and 'Your GH₵50.00 donation is confirmed' within ~30s. Campaign raised total increases by exactly 50.00. The new donation shows as anonymous (no name was given). Admin payments row: status SUCCEEDED, provider paystack, amount 50, tip 0, providerRef uf-<intentId>-<8hex>, platformFeeMinor 250 (5%), providerFeeMinor = Paystack 'fees', netCampaignAmountMinor = 5000 - 250 - providerFeeMinor.
 
 **Needs:** Paystack test keys + webhook delivery
 
@@ -67,7 +67,7 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 *Surfaces:* admin, api, web  ·  *Type:* functional
 
-**Before:** Community-plan campaign (3.5%); Paystack test keys; admin token; donor signed in with the 'Donations you make' in-app alert enabled (optional).
+**Before:** Free-plan campaign (5%); Paystack test keys; admin token; donor signed in with the 'Donations you make' in-app alert enabled (optional).
 
 **Steps:**
 
@@ -77,7 +77,7 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 4. GET /api/v1/admin/payments?providerRef=<ref> and GET /api/v1/admin/payments/<intentId>.
 5. Compare the campaign raised total before and after. If alerts are on, read the donor notification.
 
-**Expect:** Paystack charges exactly 105.00 GHS (10500 pesewas). The callback shows 'Your GH₵100.00 donation is confirmed' and '… And thank you for the extra GH₵5.00 tip to support Ujimora.' Campaign raised goes up by 100.00, not 105. Admin view: amount 100, tip 5, platformFeeMinor 350, providerFeeMinor = the Paystack fee on the full 105, and netCampaignAmountMinor = 10000 - 350 - providerFeeMinor. The opted-in donor alert adds 'Total charged: GHS 105.00, including a GHS 5.00 optional platform tip.' Known open issue I048: the Paystack fee on the tip portion is still charged to the campaign, and the donor sees no fee breakdown. The policy and disclosure decision is pending, so record the observed providerFeeMinor.
+**Expect:** Paystack charges exactly 105.00 GHS (10500 pesewas). The callback shows 'Your GH₵100.00 donation is confirmed' and '… And thank you for the extra GH₵5.00 tip to support Ujimora.' Campaign raised goes up by 100.00, not 105. Admin view: amount 100, tip 5, platformFeeMinor 500, providerFeeMinor = the Paystack fee on the full 105, and netCampaignAmountMinor = 10000 - 500 - providerFeeMinor. The opted-in donor alert adds 'Total charged: GHS 105.00, including a GHS 5.00 optional platform tip.' Known open issue I048: the Paystack fee on the tip portion is still charged to the campaign, and the donor sees no fee breakdown. The policy and disclosure decision is pending, so record the observed providerFeeMinor.
 
 **Needs:** Paystack test keys
 
@@ -87,7 +87,7 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 *Surfaces:* admin, api, web  ·  *Type:* functional
 
-**Before:** Five campaigns whose organizers are on Community (3.5%), Plus (3.0%), Pro (2.5%), Organization (2.0%), Enterprise (1.25%); one older campaign created while its organizer was on Community who has since upgraded to Pro.
+**Before:** Five campaigns whose organizers are on Free (5%), Starter (3.5%), Pro (2%), Organization (2%), Enterprise (1%); one older campaign created while its organizer was on Free who has since upgraded to Pro.
 
 **Steps:**
 
@@ -95,7 +95,7 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 2. For each, read platformFeeMinor from GET /api/v1/admin/payments?campaignId=<id>.
 3. Donate GH₵100 to the older (locked-rate) campaign.
 
-**Expect:** platformFeeMinor = 350 / 300 / 250 / 200 / 125 respectively. The older campaign keeps its locked 3.5% (350) despite the organizer's upgrade. In every case netCampaignAmountMinor + platformFeeMinor + providerFeeMinor = 10000 exactly.
+**Expect:** platformFeeMinor = 500 / 350 / 200 / 200 / 100 respectively. The older campaign keeps its locked 5% (500) despite the organizer's upgrade. In every case netCampaignAmountMinor + platformFeeMinor + providerFeeMinor = 10000 exactly.
 
 **Needs:** Paystack test keys; plan subscriptions set up (store sandbox or admin)
 
@@ -105,17 +105,17 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 *Surfaces:* android, api, web  ·  *Type:* functional
 
-**Before:** Community-plan campaign; Paystack test keys; Android build.
+**Before:** Free-plan campaign; Paystack test keys; Android build.
 
 **Steps:**
 
-1. Web: donate 33.33 (3.5% fee = 1.16655).
+1. Web: donate 33.33 (5% fee = 1.6665).
 2. Web: type 1.005, then 10.125, in Amount and read the helper text and button. Then type 10.13 and pay.
 3. Android: enter 10.125 in Amount, then 10,13 (decimal comma).
 4. API: POST /api/v1/donation-intents with amount 10.125, and with amount 10.25 and tip 0.1.
 5. For each settled donation, read the admin payments minor-unit fields and the campaign raised change.
 
-**Expect:** 33.33: platformFeeMinor 117, and net + platform + provider = 3333 exactly. Web 1.005 and 10.125: helper 'Enter an amount greater than zero, with at most 2 decimal places', and the button is disabled ('Continue to payment'), so the label and the charge can never disagree. 10.13: the button reads 'Donate GH₵10.13', Paystack charges 1013 pesewas and raised goes up by 10.13. Android: 10.125 keeps Donate disabled; '10,13' is accepted as 10.13 ('Donate 10.13 GHS'). API: 10.125 returns 400 'Validation failed'; 10.25 with tip 0.1 returns 201. Campaign raised never holds a 3-decimal value.
+**Expect:** 33.33: platformFeeMinor 167, and net + platform + provider = 3333 exactly. Web 1.005 and 10.125: helper 'Enter an amount greater than zero, with at most 2 decimal places', and the button is disabled ('Continue to payment'), so the label and the charge can never disagree. 10.13: the button reads 'Donate GH₵10.13', Paystack charges 1013 pesewas and raised goes up by 10.13. Android: 10.125 keeps Donate disabled; '10,13' is accepted as 10.13 ('Donate 10.13 GHS'). API: 10.125 returns 400 'Validation failed'; 10.25 with tip 0.1 returns 201. Campaign raised never holds a 3-decimal value.
 
 **Needs:** Paystack test keys
 
@@ -420,7 +420,7 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 *Surfaces:* admin, api, web  ·  *Type:* functional
 
-**Before:** Donor A signed in with GHS wallet balance >= 100 (top up via /wallet); 'Ujimora Wallet' provider enabled in admin; Community-plan campaign.
+**Before:** Donor A signed in with GHS wallet balance >= 100 (top up via /wallet); 'Ujimora Wallet' provider enabled in admin; Free-plan campaign.
 
 **Steps:**
 
@@ -428,7 +428,7 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 2. Enter 50, select the Ujimora Wallet method, keep name, tick 'I am at least 18 and agree to the Terms of Use for this donation.', press 'Confirm Donation'.
 3. Check snackbar, /wallet balance and transactions, campaign raised, admin payments.
 
-**Expect:** Snackbar 'Your wallet donation was completed.' Wallet debited exactly 50.00 with a 'donation' transaction (reference donation-intent:<id>). Campaign raised +50.00. Admin view: provider wallet, providerFeeMinor 0, platformFeeMinor 175, netCampaignAmountMinor 4825. Donation appears in My donations with method Wallet.
+**Expect:** Snackbar 'Your wallet donation was completed.' Wallet debited exactly 50.00 with a 'donation' transaction (reference donation-intent:<id>). Campaign raised +50.00. Admin view: provider wallet, providerFeeMinor 0, platformFeeMinor 250, netCampaignAmountMinor 4750. Donation appears in My donations with method Wallet.
 
 **Needs:** Wallet top-up via Paystack test keys (setup)
 
@@ -528,7 +528,7 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 *Surfaces:* admin, api, web  ·  *Type:* functional
 
-**Before:** Admin created a DONATION-surface coupon (e.g. 50% off, GHS, per-user limit 1) in admin Coupons; Community-plan campaign; Donor A signed in.
+**Before:** Admin created a DONATION-surface coupon (e.g. 50% off, GHS, per-user limit 1) in admin Coupons; Free-plan campaign; Donor A signed in.
 
 **Steps:**
 
@@ -536,7 +536,7 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 2. Read the helper text, then donate by test card.
 3. Inspect admin payments and the coupon's redemption count in admin Coupons.
 
-**Expect:** Helper: 'Applied — GH₵3.50 more reaches this campaign.' Donor is charged exactly GH₵200.00. platformFeeMinor 350 (instead of 700); net = 20000 - 350 - providerFee. Redemption counted once and marked consumed after settlement (not at intent creation).
+**Expect:** Helper: 'Applied — GH₵5 more reaches this campaign.' Donor is charged exactly GH₵200.00. platformFeeMinor 500 (instead of 1000); net = 20000 - 500 - providerFee. Redemption counted once and marked consumed after settlement (not at intent creation).
 
 **Needs:** Paystack test keys
 
@@ -1426,7 +1426,7 @@ Guest and signed-in Paystack donations, iOS website handoff, wallet donations, t
 
 *Surfaces:* android, api, web  ·  *Type:* negative/edge
 
-**Before:** ACTIVE Community-plan campaign; Android build with a comma-decimal keypad locale; Paystack test keys; donor with a wallet balance.
+**Before:** ACTIVE Free-plan campaign; Android build with a comma-decimal keypad locale; Paystack test keys; donor with a wallet balance.
 
 **Steps:**
 

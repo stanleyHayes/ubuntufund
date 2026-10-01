@@ -12,13 +12,14 @@ import Accordion from '@mui/material/Accordion'
 import AccordionSummary from '@mui/material/AccordionSummary'
 import AccordionDetails from '@mui/material/AccordionDetails'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import { SHAPE, breadcrumbList } from '@ubuntu-fund/ui'
+import { SHAPE, breadcrumbList, formatCurrency } from '@ubuntu-fund/ui'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import { InternalPageHero } from '../components/InternalPageHero'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import {
   SubscriptionTier,
+  yearlyPricePerMonth,
   type SubscriptionPlan,
 } from '@ubuntu-fund/types'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
@@ -32,12 +33,24 @@ function accentOf() {
 const WEB_APP_URL = import.meta.env.VITE_WEB_APP_URL || 'https://app.ujimora.com'
 const WEB_APP_REGISTER = `${WEB_APP_URL}/register`
 
+/** The web plans page opens checkout for this plan and billing cycle. */
+function checkoutHref(tier: string, yearly: boolean): string {
+  return `${WEB_APP_URL}/subscription?tier=${encodeURIComponent(tier)}&billingCycle=${yearly ? 'yearly' : 'monthly'}`
+}
+
+/** Admin-set order; ties fall back to price, then tier id, never to API order. */
+function bySortOrder(a: SubscriptionPlan, b: SubscriptionPlan): number {
+  return a.sortOrder - b.sortOrder || a.priceMonthly - b.priceMonthly || a.tier.localeCompare(b.tier)
+}
+
 // ─── Comparison table data ───────────────────────────────────────────────────
 
 interface FeatureRow {
   label: string
   key: keyof SubscriptionPlan | 'creatorDonations'
   format?: 'boolean' | 'fee' | 'goal' | 'unlimited'
+  /** For a row that reads more than one plan field. */
+  cell?: (plan: SubscriptionPlan) => React.ReactNode
 }
 
 // Only benefits the platform actually delivers are listed. Featured listing,
@@ -72,7 +85,7 @@ const FEATURE_SECTIONS: { title: string; rows: FeatureRow[] }[] = [
     rows: [
       { label: 'Organization team seats (incl. owner)', key: 'maxTeamMembers', format: 'unlimited' },
       { label: 'Campaign collaboration', key: 'campaignCollaboration', format: 'boolean' },
-      { label: 'Collaborators per campaign', key: 'maxCollaboratorsPerCampaign', format: 'unlimited' },
+      { label: 'Collaborators per campaign', key: 'maxCollaboratorsPerCampaign', format: 'unlimited', cell: collaboratorsCell },
     ],
   },
 ]
@@ -85,17 +98,25 @@ function formatCellValue(value: unknown, format?: string): React.ReactNode {
       <CloseRoundedIcon sx={{ fontSize: 18, color: 'text.disabled' }} />
     )
   }
-  if (typeof value === 'number') {
+  if (typeof value === 'number' && Number.isFinite(value)) {
     if (value === -1) return <Typography sx={{ fontSize: '0.82rem', fontWeight: 700, color: 'primary.main' }}>Unlimited</Typography>
     if (value === 0 && format === 'unlimited') return <CloseRoundedIcon sx={{ fontSize: 18, color: 'text.disabled' }} />
     if (format === 'fee') return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>{value}%</Typography>
     if (format === 'goal') return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>GH₵ {value.toLocaleString()}</Typography>
     return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>{value}</Typography>
   }
-  return String(value)
+  // A limit the plan does not state (older plan rows lack some fields).
+  return <Typography component="span" role="img" aria-label="Not specified" sx={{ fontSize: '0.82rem', fontWeight: 600, color: 'text.secondary' }}>—</Typography>
 }
 
-const faqs = [
+/** A collaborator cap means nothing on a plan without campaign collaboration. */
+function collaboratorsCell(plan: SubscriptionPlan): React.ReactNode {
+  if (!plan.campaignCollaboration) return formatCellValue(false, 'boolean')
+  return formatCellValue(plan.maxCollaboratorsPerCampaign, 'unlimited')
+}
+
+/** Names the free plan as the live plans do, so the answers match the cards. */
+const faqsFor = (freePlanName: string) => [
   {
     question: 'When are platform fees charged?',
     answer: 'Platform fees vary by plan. Review the applicable contribution and payout fees before confirming a transaction.',
@@ -110,7 +131,7 @@ const faqs = [
   },
   {
     question: 'Is there a free trial?',
-    answer: 'You can start with the Community plan without a paid subscription. Check the current checkout for any trial or promotional offers.',
+    answer: `You can start with the ${freePlanName} plan without a paid subscription. Check the current checkout for any trial or promotional offers.`,
   },
   {
     question: 'Do plans renew automatically?',
@@ -122,7 +143,7 @@ const faqs = [
   },
   {
     question: 'What happens if I stop paying?',
-    answer: 'A website plan simply ends on its end date and your account moves to Community features; there is nothing to cancel. App Store and Google Play subscriptions are cancelled in that store and stay active until the end of the paid period. Account deletion is a separate action.',
+    answer: `A website plan simply ends on its end date and your account moves to ${freePlanName} features; there is nothing to cancel. App Store and Google Play subscriptions are cancelled in that store and stay active until the end of the paid period. Account deletion is a separate action.`,
   },
   {
     question: 'Can I raise funds for someone else?',
@@ -157,7 +178,10 @@ function PricingPage() {
   if (!plans) return <Container maxWidth="lg" sx={{ py: 8 }}>
     <Typography variant="h3" sx={{ mb: 3 }}>Plans and pricing</Typography>
     {error ? <Alert severity="error" action={<Button onClick={() => { setError(false); setRetry(value => value + 1) }}>Retry</Button>}>Current pricing could not be loaded. Please try again.</Alert> : <Box aria-busy="true" aria-label="Loading current pricing" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 3 }}>{[0, 1, 2].map(i => <Skeleton key={i} variant="rounded" height={400} />)}</Box>}</Container>
-  const PLANS = plans
+  const PLANS = [...plans].sort(bySortOrder)
+  // The copy names the free plan as its card does.
+  const freePlanName = PLANS.find(plan => plan.tier === SubscriptionTier.FREE)?.name ?? 'Free'
+  const faqs = faqsFor(freePlanName)
 
   return (
     <Box sx={{ flex: 1, pb: 10 }}>
@@ -178,7 +202,7 @@ function PricingPage() {
             Simple, Transparent Pricing
           </Typography>
           <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400, maxWidth: 600, mx: 'auto', mb: 4 }}>
-            Choose the campaign capacity and support you need. Review your billing total before confirming checkout. Account-specific compliance limits may reduce your maximum campaign goal. Creator donations require an active paid subscription; creator withdrawals deduct your current plan’s platform-fee percentage. Free does not include creator donations.
+            Choose the campaign capacity and support you need. Review your billing total before confirming checkout. Account-specific compliance limits may reduce your maximum campaign goal. Creator donations require an active paid subscription; creator withdrawals deduct your current plan’s platform-fee percentage. {freePlanName} does not include creator donations.
           </Typography>
 
           {/* Monthly/Yearly toggle */}
@@ -264,14 +288,14 @@ function PricingPage() {
                     ) : (
                       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
                         <Typography sx={{ fontWeight: 900, fontSize: { xs: '1.85rem', md: '2.2rem' }, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
-                          GH₵ {new Intl.NumberFormat('en-GH', { maximumFractionDigits: 2 }).format(yearly ? price / 12 : price)}
+                          {formatCurrency(yearly ? yearlyPricePerMonth(price) : price)}
                         </Typography>
                         <Typography sx={{ color: 'text.secondary', fontSize: '0.82rem' }}>{yearly || isFree ? '/mo' : '/ 30 days'}</Typography>
                       </Box>
                     )}
                     {!isEnterprise && price > 0 && (
                       <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', mt: 0.25 }}>
-                        {yearly ? <>GH₵ {price} for 1 year &middot; </> : null}One-time payment on the website &middot; does not auto-renew
+                        {yearly ? <>{formatCurrency(price)} for 1 year &middot; </> : null}One-time payment on the website &middot; does not auto-renew
                       </Typography>
                     )}
                   </Box>
@@ -305,7 +329,7 @@ function PricingPage() {
                     fullWidth
                     size="large"
                     disabled={notOffered}
-                    href={notOffered ? undefined : isEnterprise ? '/contact' : isFree ? WEB_APP_REGISTER : `${WEB_APP_URL}/subscription`}
+                    href={notOffered ? undefined : isEnterprise ? '/contact' : isFree ? WEB_APP_REGISTER : checkoutHref(tier, yearly)}
                     sx={{
                       borderRadius: SHAPE.sm,
                       fontWeight: 700,
@@ -431,7 +455,7 @@ function PricingPage() {
                             ...(isPro && { bgcolor: tc.bg }),
                           }}
                         >
-                          {formatCellValue(row.key === 'creatorDonations' ? plan.tier !== 'free' && (plan.priceMonthly > 0 || plan.priceYearly > 0) : plan[row.key], row.format)}
+                          {row.cell ? row.cell(plan) : formatCellValue(row.key === 'creatorDonations' ? plan.tier !== 'free' && (plan.priceMonthly > 0 || plan.priceYearly > 0) : plan[row.key], row.format)}
                         </Box>
                       )
                     })}

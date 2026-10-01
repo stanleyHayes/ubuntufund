@@ -105,7 +105,7 @@ export class HandleCryptoWebhookUseCase {
     // A missing campaign keeps its previous meaning on purpose. This rail passed
     // `undefined` when the campaign could not be found, which FeePolicy reads as
     // its configured default of 0%; routing that case through the shared
-    // resolver would have started charging the FREE-plan 3.5% on orphaned
+    // resolver would have started charging the Free plan's fee on orphaned
     // deposits — a silent fee change on money already in flight.
     const campaign = await this.campaignRepo.findById(intent.campaignId);
     const platformFeePercent = campaign

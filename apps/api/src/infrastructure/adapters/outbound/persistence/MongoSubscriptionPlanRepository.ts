@@ -11,6 +11,10 @@ import {
   SubscriptionPlanModel,
   type SubscriptionPlanDocument,
 } from '../../../database/models/SubscriptionPlanModel.js';
+import { logger } from '../../../logging/logger.js';
+
+/** What a price-book drift report compares: the commercial headline of a plan. */
+const DRIFT_FIELDS = ['name', 'priceMonthly', 'priceYearly', 'platformFeePercent', 'sortOrder'] as const;
 
 /** Maps a persisted document onto the plain {@link SubscriptionPlan} shape. */
 function toDomain(doc: SubscriptionPlanDocument): SubscriptionPlan {
@@ -33,7 +37,13 @@ function toDomain(doc: SubscriptionPlanDocument): SubscriptionPlan {
     maxTeamMembers: doc.maxTeamMembers,
     campaignCollaboration: doc.campaignCollaboration,
     maxPayoutAccounts: doc.maxPayoutAccounts ?? SUBSCRIPTION_PLANS[doc.tier as SubscriptionTier]?.maxPayoutAccounts ?? 1,
-    maxCollaboratorsPerCampaign: doc.maxCollaboratorsPerCampaign,
+    // Rows written before the collaborator cap existed (the launch rows) have
+    // none, and enforcement reads a missing cap as no cap at all. They take
+    // their tier's built-in cap instead; Enterprise's -1 keeps it unlimited.
+    maxCollaboratorsPerCampaign:
+      doc.maxCollaboratorsPerCampaign ??
+      SUBSCRIPTION_PLANS[doc.tier as SubscriptionTier]?.maxCollaboratorsPerCampaign ??
+      0,
     // A paid capability that decides who can collect money for someone else
     // is never inherited from seed data: rows written before it existed read
     // as "not included" until an admin turns it on (an audited plan update).
@@ -101,17 +111,44 @@ export class MongoSubscriptionPlanRepository
   /**
    * Seed a row for each tier ONLY when it is absent. `$setOnInsert` guarantees an
    * existing row (including admin edits) is never touched, and the per-tier
-   * filter makes the operation idempotent across restarts.
+   * filter makes the operation idempotent across restarts. Timestamps are set
+   * here, on insert only: Mongoose's own added `$set.updatedAt`, so every boot
+   * re-stamped every row and `updatedAt` stopped saying when a plan was edited.
+   *
+   * Then reports, never overwrites, stored built-in plans that differ from the
+   * code price book: a repricing in code does not reach existing rows.
    */
   async seedDefaults(): Promise<void> {
+    const now = new Date();
     await Promise.all(
       Object.values(SubscriptionTier).map((tier) =>
         SubscriptionPlanModel.updateOne(
           { tier },
-          { $setOnInsert: SUBSCRIPTION_PLANS[tier] },
-          { upsert: true }
+          { $setOnInsert: { ...SUBSCRIPTION_PLANS[tier], createdAt: now, updatedAt: now } },
+          { upsert: true, timestamps: false }
         )
       )
     );
+    await this.reportDriftFromDefaults();
+  }
+
+  /**
+   * One warning per built-in tier whose stored name, prices, fee or order
+   * differ from SUBSCRIPTION_PLANS. Best effort: seeding already succeeded.
+   */
+  private async reportDriftFromDefaults(): Promise<void> {
+    try {
+      const docs = await SubscriptionPlanModel.find({ tier: { $in: Object.values(SubscriptionTier) } });
+      for (const doc of docs) {
+        const seed = SUBSCRIPTION_PLANS[doc.tier as SubscriptionTier];
+        const differences = DRIFT_FIELDS.filter((field) => doc[field] !== seed[field])
+          .map((field) => ({ field, stored: doc[field], code: seed[field] }));
+        if (differences.length === 0) continue;
+        const summary = differences.map((d) => `${d.field} ${d.stored} (code ${d.code})`).join(', ');
+        logger.warn({ tier: doc.tier, differences }, `Plan "${doc.tier}" differs from the code price book: ${summary}`);
+      }
+    } catch (error) {
+      logger.warn({ err: error }, 'could not compare stored plans with the code price book');
+    }
   }
 }

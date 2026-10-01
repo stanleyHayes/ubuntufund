@@ -830,7 +830,7 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 **Steps:**
 
-1. Read the info alert on /plans. Edit Pro: monthly price 79 → 89 (read the field helper), platform fee 5 → 4.5, maxCampaignGoal -1 (unlimited). Try fee 101 and accent colour 'blue'.
+1. Read the info alert on /plans. Edit Pro: monthly price 29.99 → 89 (read the field helper), platform fee 2 → 4.5, maxCampaignGoal -1 (unlimited). Try fee 101 and accent colour 'blue'.
 2. Save and check ujimora.com/pricing (/plans/public) and the web upgrade page. Complete a web Paystack checkout.
 3. Open the iOS and Android subscription screens.
 4. In Edit for Starter, turn off Public (read the note), save, and check marketing and web. Open web /subscription?tier=starter and POST a Starter checkout via the API. Then do the same with Active off.

@@ -48,3 +48,15 @@ it('round-trips a real XLSX with typed amounts, dates, safe strings and all 1,20
   expect(sheet.getCell('D2').value).toEqual(date)
   expect(workbook.getWorksheet('Export details')!.getCell('B4').value).toBe('Currency: GHS')
 })
+it('shows whole XLSX numbers without a trailing point and others with at least two decimals', async () => {
+  vi.stubGlobal('Blob', NodeBlob)
+  const plans = [{ tier: 'starter', monthly: 9.99, yearly: 99 }, { tier: 'enterprise', monthly: 999.99, yearly: 9999.9 }]
+  const blob = await xlsxBlob({ title: 'Plans', tables: [exportTable('Plans', plans, { Tier: r => r.tier, Monthly: r => r.monthly, Yearly: r => r.yearly })] })
+  const workbook = new Workbook()
+  await workbook.xlsx.load(await blob.arrayBuffer())
+  const sheet = workbook.getWorksheet('Plans')!
+  expect(sheet.getCell('C2').numFmt).toBe('#,##0')
+  expect(sheet.getCell('B2').numFmt).toBe('#,##0.00##########')
+  expect(sheet.getCell('C3').numFmt).toBe('#,##0.00##########')
+  expect(sheet.getCell('C3').value).toBe(9999.9)
+})

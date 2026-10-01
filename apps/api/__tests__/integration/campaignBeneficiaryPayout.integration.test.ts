@@ -249,7 +249,7 @@ describe('Beneficiary payout Integration (flag on, spec §17)', () => {
       .send({})
       .expect(200);
 
-    // Fund → Ama accrues 585, Kofi 390.
+    // Fund → Ama accrues 588, Kofi 392 (net 980 after Pro's 2%).
     await fundCampaign(app, campaignId, 1000);
 
     // Owner registers Ama's payout recipient; admin verifies KYC.
@@ -268,7 +268,7 @@ describe('Beneficiary payout Integration (flag on, spec §17)', () => {
     const reqRes = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/split/beneficiaries/${ama.beneficiaryId}/payouts`)
       .set('Authorization', `Bearer ${owner.token}`)
-      .send({ amount: 585 });
+      .send({ amount: 588 });
     expect(reqRes.status).toBe(201);
     expect(reqRes.body.data.status).toBe('PENDING');
     const payoutId = reqRes.body.data.id as string;
@@ -349,14 +349,14 @@ describe('Beneficiary payout Integration (flag on, spec §17)', () => {
       .get(`/api/v1/campaigns/${campaignId}/split/beneficiaries/${ama.beneficiaryId}/statement`)
       .set('Authorization', `Bearer ${owner.token}`)
       .expect(200);
-    expect(statement.body.data.balance.paidOutBalance).toBe(585);
+    expect(statement.body.data.balance.paidOutBalance).toBe(588);
     expect(statement.body.data.balance.pendingBalance).toBe(0);
     expect(statement.body.data.balance.availableBalance).toBe(0);
 
-    // Campaign aggregate mirrored: 585 paid out, Kofi's 390 still pending.
+    // Campaign aggregate mirrored: 588 paid out, Kofi's 392 still pending.
     const campaignBalance = await CampaignBalanceModel.findOne({ campaignId });
-    expect(campaignBalance?.paidOutBalance).toBe(585);
-    expect(campaignBalance?.pendingBalance).toBe(390);
+    expect(campaignBalance?.paidOutBalance).toBe(588);
+    expect(campaignBalance?.pendingBalance).toBe(392);
     expect(campaignBalance?.availableBalance).toBe(0);
   });
 
@@ -391,7 +391,7 @@ describe('Beneficiary payout Integration (flag on, spec §17)', () => {
     const reqRes = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/split/beneficiaries/${ama.beneficiaryId}/payouts`)
       .set('Authorization', `Bearer ${owner.token}`)
-      .send({ amount: 585 })
+      .send({ amount: 588 })
       .expect(201);
 
     // Admin operability: the pending payout appears in the global list + queue.
@@ -454,7 +454,7 @@ describe('Beneficiary payout Integration (flag on, spec §17)', () => {
     expect(res.status).toBe(409);
     expect(res.body.message).toMatch(/per-beneficiary/i);
   });
-  /** A funded 60/40 split campaign: Ama accrues 585 and Kofi 390 of a GHS 1000 donation. */
+  /** A funded 60/40 split campaign: Ama accrues 588 and Kofi 392 of a GHS 1000 donation (Pro 2%). */
   async function fundedSplit() {
     const owner = await registerUser(app, uniqueEmail('bp-split-own'));
     const admin = await createAdmin(app, uniqueEmail('bp-split-admin'));
@@ -483,7 +483,7 @@ describe('Beneficiary payout Integration (flag on, spec §17)', () => {
       .post(`${base}/recipient`).set('Authorization', `Bearer ${token}`)
       .send({ type: 'mobile_money', accountNumber, bankCode: 'MTN', accountName: 'Ama' });
     const verifyKyc = () => request(app).post(`${base}/verify-kyc`).set('Authorization', `Bearer ${admin.token}`).send({});
-    const requestPayout = (token: string, amount = 585) => request(app)
+    const requestPayout = (token: string, amount = 588) => request(app)
       .post(`${base}/payouts`).set('Authorization', `Bearer ${token}`).send({ amount });
     const approve = (payoutId: string) => request(app)
       .post(`/api/v1/beneficiary-payouts/${payoutId}/approve`).set('Authorization', `Bearer ${admin.token}`)
@@ -545,7 +545,7 @@ describe('Beneficiary payout Integration (flag on, spec §17)', () => {
     // The owner cancels; what the request cleared goes back to pending on both mirrors.
     const cancelled = await f.cancel(payoutId, f.owner.token).expect(200);
     expect(cancelled.body.data).toMatchObject({ status: 'FAILED', closure: { kind: 'cancelled', closedBy: f.owner.userId } });
-    expect(await f.balances()).toEqual({ share: [0, 585], aggregate: [0, 975] });
+    expect(await f.balances()).toEqual({ share: [0, 588], aggregate: [0, 980] });
 
     // A new request binds the new destination and pays it.
     const again = await f.requestPayout(f.owner.token).expect(201);

@@ -14,6 +14,7 @@ import { TipModel } from '../../../database/models/TipModel.js';
 import { RefundModel } from '../../../database/models/RefundModel.js';
 import { WalletTransactionModel } from '../../../database/models/WalletTransactionModel.js';
 import { SubscriptionModel } from '../../../database/models/SubscriptionModel.js';
+import { SubscriptionPlanModel } from '../../../database/models/SubscriptionPlanModel.js';
 import { logger } from '../../../logging/logger.js';
 import { renderEmail } from '../emailTemplate.js';
 
@@ -125,7 +126,10 @@ export class MongoActivityAlerts {
       const end = row.currentPeriodEnd instanceof Date ? row.currentPeriodEnd : null;
       const expired = end && end <= new Date();
       const label = expired ? 'expired' : row.cancelAtPeriodEnd ? 'scheduled to end' : state;
-      return [event(text(row.userId), 'subscriptions', `Subscription ${label}`, `Your ${row.tier} subscription is ${label}.${end ? ` The current access period ends ${end.toISOString().slice(0, 10)}.` : ''} Manage billing with the provider shown in your subscription settings.`, '/subscription', `${base}:${row.tier}:${end?.toISOString()}:${label}`, expired ? end : date)];
+      // Members know a plan by its name ("Starter"), not its id ("starter").
+      const plan = await SubscriptionPlanModel.findOne({ tier: text(row.tier) }).select('name').lean();
+      const planName = plan?.name || text(row.tier);
+      return [event(text(row.userId), 'subscriptions', `Subscription ${label}`, `Your ${planName} subscription is ${label}.${end ? ` The current access period ends ${end.toISOString().slice(0, 10)}.` : ''} Manage billing with the provider shown in your subscription settings.`, '/subscription', `${base}:${row.tier}:${end?.toISOString()}:${label}`, expired ? end : date)];
     }
     return [];
   }

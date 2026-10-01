@@ -1,19 +1,22 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { BillingCycle, SUBSCRIPTION_PLANS, SubscriptionStatus, SubscriptionTier, type Subscription } from '@ubuntu-fund/types'
+import { BillingCycle, SUBSCRIPTION_PLANS, SubscriptionStatus, SubscriptionTier, type Subscription, type SubscriptionPlan } from '@ubuntu-fund/types'
 
 const DAY = 86_400_000
-const state = vi.hoisted(() => ({ subscription: null as unknown, plans: null as unknown, handoff: null as unknown }))
-const { checkout, preview, clear, readCheckout, clearHandoff, abandon } = vi.hoisted(() => ({
-  checkout: vi.fn(), preview: vi.fn(), clear: vi.fn(), readCheckout: vi.fn(), clearHandoff: vi.fn(), abandon: vi.fn(),
+const state = vi.hoisted(() => ({
+  subscription: null as unknown, plans: null as unknown, handoff: null as unknown,
+  plansLoaded: true, plansError: false, preview: null as unknown,
+}))
+const { checkout, preview, clear, readCheckout, clearHandoff, abandon, retryPlans } = vi.hoisted(() => ({
+  checkout: vi.fn(), preview: vi.fn(), clear: vi.fn(), readCheckout: vi.fn(), clearHandoff: vi.fn(), abandon: vi.fn(), retryPlans: vi.fn(),
 }))
 vi.mock('@/lib/seo', () => ({ useSeo: () => {} }))
 vi.mock('@/hooks/useSubscription', () => ({
   useMySubscription: () => ({ isLoading: false, refetch: vi.fn(), subscription: state.subscription }),
-  usePlanMap: () => state.plans,
+  usePlanMap: () => ({ plans: state.plans, loaded: state.plansLoaded, error: state.plansError, retry: retryPlans }),
 }))
-vi.mock('@/hooks/useCouponPreview', () => ({ useCouponPreview: () => ({ preview: null, loading: false, error: null, run: preview, clear }) }))
+vi.mock('@/hooks/useCouponPreview', () => ({ useCouponPreview: () => ({ preview: state.preview, loading: false, error: null, run: preview, clear }) }))
 vi.mock('@/lib/subscriptions', () => ({ readSubscriptionHandoff: () => state.handoff, createSubscriptionCheckout: checkout,
   saveSubscriptionCheckoutHandoff: vi.fn(), isPaymentsNotConfigured: () => false,
   readSubscriptionCheckout: readCheckout, clearSubscriptionHandoff: clearHandoff, abandonSubscriptionCheckout: abandon,
@@ -31,10 +34,30 @@ function subscription(over: Partial<Subscription> = {}): Subscription {
 const mount = (path = '/subscription') => render(<MemoryRouter initialEntries={[path]}><SubscriptionPage /></MemoryRouter>)
 const planCard = (name: string) => screen.getAllByText(name, { selector: 'p' })
   .map((node) => node.closest('.MuiCard-root') as HTMLElement).find(Boolean)!
+/** The plan cells of a comparison-table row, in column order. */
+const rowCells = (label: string) => Array.from(screen.getByText(label, { selector: 'p' }).parentElement!.parentElement!.children).slice(1) as HTMLElement[]
+
+// Production rows written before a field existed simply lack it (today:
+// maxCollaboratorsPerCampaign on Free, Starter, Pro and Enterprise).
+function legacyRow(plan: SubscriptionPlan, over: Partial<SubscriptionPlan>): SubscriptionPlan {
+  const { maxCollaboratorsPerCampaign: _missing, ...row } = { ...plan, ...over }
+  return row as SubscriptionPlan
+}
+/** The live GET /plans rows as of 2026-09-30 (legacy and v6 prices mixed). */
+const LIVE_PLANS: Record<string, SubscriptionPlan> = {
+  free: legacyRow(SUBSCRIPTION_PLANS.free, { name: 'Free', platformFeePercent: 5, maxCampaignGoal: 5000, popular: false }),
+  starter: legacyRow(SUBSCRIPTION_PLANS.starter, { name: 'Starter', priceMonthly: 9.99, priceYearly: 99, platformFeePercent: 3.5, popular: false }),
+  pro: legacyRow(SUBSCRIPTION_PLANS.pro, { priceMonthly: 29.99, priceYearly: 299, platformFeePercent: 2, campaignCollaboration: false, popular: false }),
+  organization: { ...SUBSCRIPTION_PLANS.organization, onBehalfCampaigns: false, popular: false },
+  enterprise: legacyRow(SUBSCRIPTION_PLANS.enterprise, { priceMonthly: 999.99, priceYearly: 9999.9, platformFeePercent: 1, sortOrder: 3, maxOnBehalfCampaigns: 0, popular: false }),
+}
 
 beforeEach(() => {
-  checkout.mockReset(); readCheckout.mockReset(); clearHandoff.mockReset(); abandon.mockReset()
+  checkout.mockReset(); readCheckout.mockReset(); clearHandoff.mockReset(); abandon.mockReset(); retryPlans.mockReset()
   state.plans = SUBSCRIPTION_PLANS
+  state.plansLoaded = true
+  state.plansError = false
+  state.preview = null
   state.handoff = null
 })
 
@@ -74,7 +97,7 @@ describe('non-renewing web plan copy', () => {
     expect(screen.queryByText('Renews in')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /cancel subscription/i })).not.toBeInTheDocument()
     expect(screen.getByText(/does not renew automatically/)).toBeInTheDocument()
-    fireEvent.click(within(planCard('Plus')).getByRole('button', { name: 'Choose Plus' }))
+    fireEvent.click(within(planCard('Starter')).getByRole('button', { name: 'Choose Starter' }))
     const dialog = screen.getByRole('dialog')
     expect(within(dialog).getByText(/One-time payment for 30 days\. Your plan does not renew automatically\./)).toBeInTheDocument()
     expect(within(dialog).queryByText(/cancel anytime/i)).not.toBeInTheDocument()
@@ -130,7 +153,7 @@ describe('buying over a running plan', () => {
     fireEvent.click(within(planCard('Pro')).getByRole('button', { name: 'Choose Pro' }))
     const dialog = screen.getByRole('dialog')
     expect(within(dialog).getByRole('heading', { name: 'Switch to Pro' })).toBeInTheDocument()
-    expect(within(dialog).getByText(/unused time on Plus is not refunded or credited/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/unused time on Starter is not refunded or credited/)).toBeInTheDocument()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Replace plan and pay' }))
     await waitFor(() => expect(checkout).toHaveBeenCalledWith(expect.objectContaining({ tier: 'pro', replaceCurrentPlan: true })))
   })
@@ -210,5 +233,127 @@ describe('an earlier unpaid checkout blocking a new purchase', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Continue to payment' }))
     expect(await within(dialog).findByText('That subscription plan is not available')).toBeInTheDocument()
     expect(within(dialog).queryByRole('button', { name: 'Cancel it and continue' })).not.toBeInTheDocument()
+  })
+})
+
+describe('live plans only', () => {
+  it('keeps the skeleton and opens no checkout until the plans have loaded', () => {
+    state.plans = {}
+    state.plansLoaded = false
+    state.subscription = subscription({ tier: SubscriptionTier.FREE })
+    mount('/subscription?tier=pro')
+    expect(screen.getByLabelText('Loading subscription')).toBeInTheDocument()
+    expect(screen.queryByText(/GH₵/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('shows an error with Retry instead of stale prices, and blocks checkout', () => {
+    state.plans = {}
+    state.plansLoaded = false
+    state.plansError = true
+    state.subscription = subscription({ tier: SubscriptionTier.FREE })
+    mount('/subscription?tier=pro')
+    expect(screen.getByRole('alert')).toHaveTextContent('Current plans and prices could not be loaded, so checkout is unavailable.')
+    expect(screen.queryByText(/GH₵/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Choose / })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(retryPlans).toHaveBeenCalledTimes(1)
+  })
+
+  it('still points a member back to a pending payment when the plans fail', async () => {
+    state.plans = {}
+    state.plansLoaded = false
+    state.plansError = true
+    state.subscription = subscription({ tier: SubscriptionTier.FREE })
+    state.handoff = { checkoutId: 'checkout-1', tier: 'pro', billingCycle: BillingCycle.MONTHLY, finalAmount: 29.99, currency: 'GHS' }
+    readCheckout.mockResolvedValue({ id: 'checkout-1', status: 'pending' })
+    mount()
+    expect(await screen.findByText(/Returning from payment\?/)).toBeInTheDocument()
+    expect(screen.getByText(/could not be loaded, so checkout is unavailable/)).toBeInTheDocument()
+  })
+
+  it('shows the Free plan for a tier the plans no longer list instead of crashing', () => {
+    state.subscription = subscription({ tier: 'retired-tier', currentPeriodEnd: new Date(Date.now() + 10 * DAY) })
+    mount()
+    expect(screen.getByText(`${SUBSCRIPTION_PLANS.free.name} Plan`)).toBeInTheDocument()
+  })
+
+  it('names the live free plan when a paid plan has ended', () => {
+    state.plans = LIVE_PLANS
+    state.subscription = subscription({ status: SubscriptionStatus.EXPIRED })
+    mount()
+    expect(screen.getByText(/Your Pro plan ended on .+\. Free features apply until you buy a plan again\./)).toBeInTheDocument()
+    expect(screen.queryByText(/Community features/)).not.toBeInTheDocument()
+  })
+
+  it('prices the dialog from the coupon quote, which is what checkout charges', () => {
+    state.subscription = subscription({ tier: SubscriptionTier.FREE })
+    // The plan map says 29.99; the server quotes a different live price.
+    state.preview = { valid: true, code: 'SAVE10', baseAmount: 35, discountAmount: 3.5, finalAmount: 31.5, currency: 'GHS' }
+    mount('/subscription?tier=pro')
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText('GH₵35')).toBeInTheDocument()
+    expect(within(dialog).getByText('GH₵31.50')).toBeInTheDocument()
+    expect(within(dialog).queryByText('GH₵29.99')).not.toBeInTheDocument()
+  })
+})
+
+describe('plan comparison with the live plan rows', () => {
+  it('never renders undefined, null or NaN, on either billing cycle', () => {
+    state.plans = LIVE_PLANS
+    state.subscription = subscription({ tier: SubscriptionTier.FREE })
+    mount()
+    expect(document.body.textContent).not.toMatch(/undefined|null|NaN/)
+    fireEvent.click(screen.getByRole('button', { name: 'Yearly' }))
+    expect(document.body.textContent).not.toMatch(/undefined|null|NaN/)
+  })
+
+  it('shows ✗ for collaborators without collaboration, the cap when set, and — when unstated', () => {
+    state.plans = LIVE_PLANS
+    state.subscription = subscription({ tier: SubscriptionTier.FREE })
+    mount()
+    const [free, starter, pro, organization, enterprise] = rowCells('Collaborators per campaign')
+    for (const cell of [free, starter, pro]) expect(within(cell).getByTestId('CloseRoundedIcon')).toBeInTheDocument()
+    expect(organization).toHaveTextContent(/^10$/)
+    expect(within(enterprise).getByRole('img', { name: 'Not specified' })).toHaveTextContent('—')
+  })
+
+  it('shows Unlimited for a -1 collaborator cap', () => {
+    state.subscription = subscription({ tier: SubscriptionTier.FREE })
+    mount()
+    const cells = rowCells('Collaborators per campaign')
+    expect(cells.map((cell) => cell.textContent)).toEqual(['', '', '3', '10', 'Unlimited'])
+    expect(within(cells[0]).getByTestId('CloseRoundedIcon')).toBeInTheDocument()
+  })
+
+  it('shows yearly prices per month with two decimals and the grouped yearly total', () => {
+    state.plans = LIVE_PLANS
+    state.subscription = subscription({ tier: SubscriptionTier.FREE })
+    mount()
+    expect(within(planCard('Starter')).getByText('GH₵9.99')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Yearly' }))
+    expect(within(planCard('Organization')).getByText('GH₵332.50')).toBeInTheDocument()
+    expect(within(planCard('Organization')).getByText(/^GH₵3,990 for 1 year/)).toBeInTheDocument()
+    expect(within(planCard('Starter')).getByText('GH₵8.25')).toBeInTheDocument()
+    expect(within(planCard('Pro')).getByText('GH₵24.92')).toBeInTheDocument()
+  })
+})
+
+describe('recommended plan', () => {
+  it('follows the admin Popular switch, not the Pro tier', () => {
+    state.plans = { ...LIVE_PLANS, starter: { ...LIVE_PLANS.starter, popular: true } }
+    state.subscription = subscription({ tier: SubscriptionTier.FREE })
+    mount()
+    expect(screen.getAllByText('Recommended for growth')).toHaveLength(1)
+    expect(within(planCard('Starter')).getByText('Recommended for growth')).toBeInTheDocument()
+    expect(within(planCard('Pro')).queryByText('Recommended for growth')).not.toBeInTheDocument()
+  })
+
+  it('recommends nothing when no plan is marked Popular', () => {
+    state.plans = LIVE_PLANS
+    state.subscription = subscription({ tier: SubscriptionTier.FREE })
+    mount()
+    expect(screen.queryByText('Recommended for growth')).not.toBeInTheDocument()
   })
 })

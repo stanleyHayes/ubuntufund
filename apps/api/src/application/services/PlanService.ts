@@ -10,9 +10,23 @@ import { logger } from '../../infrastructure/logging/logger.js';
 /** Seed plans keyed by their (string) tier id, for fallback lookups. */
 const SEEDS = SUBSCRIPTION_PLANS as Record<string, SubscriptionPlan>;
 
-/** Order a plan list cheapest → richest by admin-set sortOrder, then price. */
+/**
+ * Order a plan list cheapest → richest by admin-set sortOrder, then price, then
+ * tier id, so plans that tie on both still come out in the same order.
+ */
 function bySortOrder(a: SubscriptionPlan, b: SubscriptionPlan): number {
-  return a.sortOrder - b.sortOrder || a.priceMonthly - b.priceMonthly;
+  return a.sortOrder - b.sortOrder || a.priceMonthly - b.priceMonthly || a.tier.localeCompare(b.tier);
+}
+
+/**
+ * Whether a member can buy the plan themselves at its list price: an active,
+ * public plan other than Free (nothing to buy) and Enterprise (negotiated with
+ * sales). Web checkout, the coupon preview and the app-store routes all apply
+ * this one rule, so no surface quotes a plan another one refuses to sell.
+ */
+export function isSelfServePlan(plan: SubscriptionPlan): boolean {
+  return plan.active && plan.isPublic &&
+    plan.tier !== SubscriptionTier.FREE && plan.tier !== SubscriptionTier.ENTERPRISE;
 }
 
 /**
