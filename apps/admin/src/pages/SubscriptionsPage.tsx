@@ -9,13 +9,11 @@ import SearchIcon from '@mui/icons-material/Search'
 import { EmptyState } from '@ubuntu-fund/ui'
 import WorkspacePremiumRoundedIcon from '@mui/icons-material/WorkspacePremiumRounded'
 import VisibilityIcon from '@mui/icons-material/Visibility'
-import {
-  SubscriptionTier,
-  SubscriptionStatus,
-} from '@ubuntu-fund/types'
+import { SubscriptionStatus } from '@ubuntu-fund/types'
 import type { Subscription } from '@ubuntu-fund/types'
 import { useAdminPlans } from '@/hooks/useApiData'
 import { buildPlanMap, knownTiers, planName, summarize, type PlanMap } from '@/lib/subscriptionMetrics'
+import { STATUS_TEXT_COLOR, tierHue } from '@/lib/subscriptionTones'
 import { formatPesewas } from '@/lib/money'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
@@ -23,27 +21,6 @@ import PageHeader from '@/components/PageHeader'
 import { loadAll } from '@/lib/exports/loadAll'
 import { TONES } from '@/lib/tones'
 
-
-// ---------------------------------------------------------------------------
-// Tier colors
-// ---------------------------------------------------------------------------
-// Curated colours for built-in tiers; any other (admin-added) tier falls back
-// to a neutral. String-keyed so a custom tier id never breaks the lookup.
-const tierColors: Record<string, string> = {
-  [SubscriptionTier.FREE]: '#78909C',
-  [SubscriptionTier.STARTER]: '#74909A',
-  [SubscriptionTier.PRO]: TONES.maroon.text,
-  [SubscriptionTier.ORGANIZATION]: '#8B6F4E',
-  [SubscriptionTier.ENTERPRISE]: '#C7A24A',
-}
-
-const statusColors: Record<SubscriptionStatus, string> = {
-  [SubscriptionStatus.ACTIVE]: '#5E8F72',
-  [SubscriptionStatus.EXPIRED]: '#78909C',
-  [SubscriptionStatus.CANCELLED]: '#C06B58',
-  [SubscriptionStatus.PAST_DUE]: '#D3A95C',
-  [SubscriptionStatus.TRIALING]: '#74909A',
-}
 
 // ---------------------------------------------------------------------------
 // Subscription read model
@@ -103,8 +80,9 @@ function TierCardSkeleton() {
 // ---------------------------------------------------------------------------
 function SubscriptionRow({ sub, plans, plansLoading, now }: { sub: AdminSubscription; plans: PlanMap; plansLoading: boolean; now: Date }) {
   const navigate = useNavigate()
-  const tierColor = tierColors[sub.tier] ?? '#78909C'
-  const statusColor = statusColors[sub.status]
+  // The tier's hue marks the dot only; its name is in the AA text colour.
+  const tierColor = tierHue(sub.tier, plans)
+  const statusColor = STATUS_TEXT_COLOR[sub.status] ?? 'text.secondary'
 
   return (
     <Box sx={{
@@ -139,8 +117,8 @@ function SubscriptionRow({ sub, plans, plansLoading, now }: { sub: AdminSubscrip
           px: 1.2, py: 0.3,
           ...insetSurface,
         }}>
-          <Box sx={{ width: 6, height: 6, bgcolor: tierColor, flexShrink: 0 }} />
-          <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: tierColor, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          <Box aria-hidden sx={{ width: 6, height: 6, bgcolor: tierColor, flexShrink: 0 }} />
+          <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'text.primary', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             {plansLoading ? <Skeleton width={56} /> : planName(sub.tier, plans)}
           </Typography>
         </Box>
@@ -182,7 +160,7 @@ function SubscriptionRow({ sub, plans, plansLoading, now }: { sub: AdminSubscrip
             onClick={() => navigate(`/users/${sub.userId}`)}
             sx={{
               minWidth: 0, px: 1, py: 0.3, fontSize: '0.65rem', fontWeight: 700,
-              color: '#74909A', borderColor: 'rgba(116,144,154,0.3)', textTransform: 'none',
+              color: 'var(--text-info)', borderColor: 'rgba(116,144,154,0.3)', textTransform: 'none',
               border: 0, boxShadow: 'var(--neu-subtle)', '&:hover': { bgcolor: 'rgba(116,144,154,0.08)' },
             }}
           >
@@ -231,8 +209,9 @@ export default function SubscriptionsPage() {
   const revenue = (pesewas: number, suffix = '') => (plansError ? '—' : `${formatPesewas(pesewas)}${suffix}`)
   const revenueByTier = summary.byTier.map(row => ({
     ...row,
-    color: tierColors[row.tier] ?? plans[row.tier]?.accentColor ?? '#78909C',
-    // A sales-only plan's price is only a reference, so its card states no amount.
+    // The same hue as the tier's row dot; it marks the bar, never the name.
+    color: tierHue(row.tier, plans),
+    // Enterprise's price is only a reference, so its card states no amount.
     amount: row.negotiated ? 'Negotiated' : revenue(row.revenuePesewas, '/mo'),
   }))
   const totalRevForBar = Math.max(1, summary.estimatedMrrPesewas)
@@ -274,7 +253,7 @@ export default function SubscriptionsPage() {
       <Alert severity="info" sx={{ mb: 3 }}>
         Estimates use current plan list prices for web-billed subscriptions that are active and inside their paid period. Discounts are not reflected, and this is not money collected.
         {summary.storeBilledPaid > 0 && ` ${summary.storeBilledPaid} paying subscriber${summary.storeBilledPaid === 1 ? ' is' : 's are'} billed by the App Store or Google Play and not priced here.`}
-        {summary.negotiatedPaid > 0 && ` ${summary.negotiatedPaid} paying subscriber${summary.negotiatedPaid === 1 ? ' is on a sales-only plan at a negotiated price' : 's are on sales-only plans at negotiated prices'} and not priced here.`}
+        {summary.negotiatedPaid > 0 && ` ${summary.negotiatedPaid} paying subscriber${summary.negotiatedPaid === 1 ? ' is on a plan' : 's are on plans'} not sold at web checkout and not priced here.`}
         {' '}Change or cancel a subscription through its billing provider; this console has no subscription controls.
       </Alert>
 
@@ -293,7 +272,7 @@ export default function SubscriptionsPage() {
           {plansLoading ? Array.from({ length: 4 }).map((_, i) => <TierCardSkeleton key={i} />) : revenueByTier.map((r) => (
             <Box key={r.tier} sx={tierCardSx}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, mb: 0.5 }}>
-                <Typography sx={{ fontSize: '0.75rem', color: r.color, fontWeight: 700 }}>{r.name}</Typography>
+                <Typography sx={{ fontSize: '0.75rem', color: 'text.primary', fontWeight: 700 }}>{r.name}</Typography>
                 <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontFamily: '"Outfit", monospace', whiteSpace: 'nowrap' }}>
                   {loading ? <Skeleton width={90} /> : r.amount}
                 </Typography>
@@ -307,6 +286,10 @@ export default function SubscriptionsPage() {
               <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', mt: 0.3 }}>
                 {loading ? <Skeleton width={70} /> : `${r.count} subscriber${r.count !== 1 ? 's' : ''}`}
               </Typography>
+              {/* Hidden from sale, but its members bought it at checkout at list price. */}
+              {r.notOnPublicSale && (
+                <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>Not on public sale · priced at list</Typography>
+              )}
             </Box>
           ))}
         </Box>

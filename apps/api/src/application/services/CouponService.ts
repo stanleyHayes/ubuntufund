@@ -26,11 +26,16 @@ export interface ValidateAndPriceInput {
    */
   surface?: CouponSurface;
   /**
-   * Re-quoting an open checkout's own code: the seat that checkout already
-   * holds does not count against the per-user limit, or a once-per-member
-   * coupon would be refused for the very purchase that holds it.
+   * The member's own unpaid subscription checkouts whose coupon seats do not
+   * count against the per-user limit. Checkout passes the open checkout whose
+   * code it re-quotes, or a once-per-member coupon would be refused for the
+   * very purchase that holds it. The preview passes every checkout the member
+   * has open: no new charge opens while one is, so its seat is either this
+   * purchase's own (resumed) or freed when the member cancels it. Only a
+   * PENDING slot of this coupon and member is set aside, so a consumed use (a
+   * settled payment) and anyone else's always count.
    */
-  exceptCheckoutId?: string;
+  exceptCheckoutIds?: readonly string[];
 }
 
 export interface CouponPricing {
@@ -133,7 +138,7 @@ export class CouponService {
     }
 
     if (coupon.perUserLimit) {
-      const used = await this.seatsHeld(coupon.id, userId, input.exceptCheckoutId);
+      const used = await this.seatsHeld(coupon.id, userId, input.exceptCheckoutIds);
       if (used >= coupon.perUserLimit) {
         throw new AppError(
           'You have already used this coupon the maximum number of times',
@@ -161,15 +166,19 @@ export class CouponService {
   }
 
   /**
-   * The member's seats on the coupon (PENDING or CONSUMED slots), less the one
-   * `exceptCheckoutId` holds when that checkout's slot still holds a seat.
+   * The member's seats on the coupon (PENDING or CONSUMED slots), less the
+   * slots `exceptCheckoutIds` hold. A slot is set aside only while it is a
+   * PENDING slot of this coupon and this member, at most once: a paid use, a
+   * freed slot and anyone else's are never set aside.
    */
-  private async seatsHeld(couponId: string, userId: string, exceptCheckoutId?: string): Promise<number> {
+  private async seatsHeld(couponId: string, userId: string, exceptCheckoutIds: readonly string[] = []): Promise<number> {
     const used = await this.redemptionRepo.countByCouponAndUser(couponId, userId);
-    if (!exceptCheckoutId || used === 0) return used;
-    const own = await this.redemptionRepo.findByCheckoutId(exceptCheckoutId);
-    const holdsSeat = !!own && own.couponId === couponId && own.userId === userId &&
-      own.status !== CouponRedemptionStatus.RELEASED;
-    return holdsSeat ? used - 1 : used;
+    if (used === 0 || exceptCheckoutIds.length === 0) return used;
+    const slots = await Promise.all(
+      [...new Set(exceptCheckoutIds)].map((checkoutId) => this.redemptionRepo.findByCheckoutId(checkoutId))
+    );
+    const setAside = slots.filter((slot) => !!slot && slot.couponId === couponId && slot.userId === userId &&
+      slot.status === CouponRedemptionStatus.PENDING).length;
+    return Math.max(0, used - setAside);
   }
 }

@@ -14,6 +14,7 @@ import { api, ApiError } from '@/lib/api'
 import { sessionSnapshot } from '@/lib/session'
 import { purchaseBinding, storePrice, storePurchaseRequest, verifyAndFinishStorePurchase,
   type StoreCatalog, type StoreCatalogProduct, type BillingStore } from '@/lib/storeBilling'
+import { EXISTING_CAMPAIGN_FEE_NOTE, storePlanSummary } from '@/lib/subscriptionStatus'
 
 const store: BillingStore = Platform.OS === 'ios' ? 'apple' : 'google'
 const storeName = store === 'apple' ? 'App Store' : 'Google Play'
@@ -194,6 +195,7 @@ function StorePlans({ userId }: { userId: string }) {
       <View style={{ flexDirection: 'row', gap: 8 }}>
         {[BillingCycle.MONTHLY, BillingCycle.YEARLY].map((option) => <Button key={option} mode={cycle === option ? 'contained' : 'outlined'} accessibilityState={{ selected: cycle === option }} onPress={() => setCycle(option)}>{option === BillingCycle.MONTHLY ? 'Monthly' : 'Yearly'}</Button>)}
       </View>
+      <Text style={{ color: p.textSecondary }}>{EXISTING_CAMPAIGN_FEE_NOTE}</Text>
       {catalog.products.filter((entry) => entry.billingCycle === cycle).map((entry) => {
         const price = storePrice(entry, products.find((item) => item.id === entry.productId))
         const selected = paid && subscription.tier === entry.tier && subscription.billingCycle === entry.billingCycle
@@ -201,7 +203,7 @@ function StorePlans({ userId }: { userId: string }) {
           <Text variant="titleLarge" style={{ color: p.text }}>{entry.plan.name}</Text>
           <Text style={{ color: p.textSecondary }}>{entry.plan.description}</Text>
           <Text variant="headlineSmall" style={{ color: p.text }}>{price ? `${price.displayPrice} / ${cycle === BillingCycle.MONTHLY ? 'month' : 'year'}` : 'Store price unavailable'}</Text>
-          <Text style={{ color: p.textSecondary }}>{entry.plan.maxActiveCampaigns < 0 ? 'Unlimited active campaigns' : `${entry.plan.maxActiveCampaigns} active campaigns`}{entry.plan.liveStreaming ? ' · Live streaming' : ''}{entry.plan.campaignCollaboration ? ' · Campaign collaboration' : ''}{entry.plan.onBehalfCampaigns ? ' · Campaigns on behalf of others' : ''}</Text>
+          <Text style={{ color: p.textSecondary }}>{storePlanSummary(entry.plan)}</Text>
           <Text style={{ color: p.textSecondary }}>Renews automatically at the store price unless cancelled. Any eligible introductory offer, price change or plan-change adjustment is shown by {storeName} before confirmation.</Text>
           <Button mode="contained" loading={busy} disabled={busy || !price || !iap.connected || !!selected} onPress={() => void buy(entry)}>{selected ? 'Current plan' : paid ? 'Change plan' : 'Subscribe'}</Button>
         </GlassSurface>

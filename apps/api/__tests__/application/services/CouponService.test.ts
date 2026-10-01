@@ -134,26 +134,49 @@ describe('pricing through the service', () => {
     await expect(price()).rejects.toThrow(/maximum number of times/i);
   });
 
-  it('does not count the seat held by the checkout being re-quoted', async () => {
+  describe('seats held by the member\'s own open checkouts', () => {
     const slots: Record<string, unknown> = {
       'open-checkout': { couponId: 'coupon-1', userId: 'user-1', status: 'pending' },
+      'second-open-checkout': { couponId: 'coupon-1', userId: 'user-1', status: 'pending' },
+      'paid-checkout': { couponId: 'coupon-1', userId: 'user-1', status: 'consumed' },
       'released-checkout': { couponId: 'coupon-1', userId: 'user-1', status: 'released' },
       'other-coupon': { couponId: 'coupon-2', userId: 'user-1', status: 'pending' },
+      'other-member': { couponId: 'coupon-1', userId: 'user-2', status: 'pending' },
     };
-    const redemptionRepo = {
-      countByCouponAndUser: vi.fn(async () => 1),
-      findByCheckoutId: vi.fn(async (checkoutId: string) => slots[checkoutId] ?? null),
-    } as unknown as CouponRedemptionRepositoryPort;
-    const service = new CouponService({ findByCode: vi.fn(async () => coupon({ perUserLimit: 1 })) } as unknown as CouponRepositoryPort,
-      redemptionRepo, { emailFor: vi.fn(), hasPaidBefore: vi.fn(async () => false) });
-    const quote = (exceptCheckoutId?: string) => service.validateAndPrice({
-      code: 'launch50', tier: 'pro', billingCycle: BillingCycle.MONTHLY, userId: 'user-1', baseAmount: 200, exceptCheckoutId,
-    });
-    await expect(quote('open-checkout')).resolves.toMatchObject({ finalAmount: 100 });
-    // Only a slot of this coupon that still holds a seat is the member's own.
-    for (const other of [undefined, 'released-checkout', 'other-coupon', 'no-such-checkout']) {
-      await expect(quote(other)).rejects.toThrow(/maximum number of times/i);
+    /** A member holding `used` seats on a coupon they may use `perUserLimit` times. */
+    function quoteFor(used: number, perUserLimit: number) {
+      const redemptionRepo = {
+        countByCouponAndUser: vi.fn(async () => used),
+        findByCheckoutId: vi.fn(async (checkoutId: string) => slots[checkoutId] ?? null),
+      } as unknown as CouponRedemptionRepositoryPort;
+      const service = new CouponService({ findByCode: vi.fn(async () => coupon({ perUserLimit })) } as unknown as CouponRepositoryPort,
+        redemptionRepo, { emailFor: vi.fn(), hasPaidBefore: vi.fn(async () => false) });
+      return (exceptCheckoutIds?: string[]) => service.validateAndPrice({
+        code: 'launch50', tier: 'pro', billingCycle: BillingCycle.MONTHLY, userId: 'user-1', baseAmount: 200, exceptCheckoutIds,
+      });
     }
+
+    it('does not count the seat held by the checkout being re-quoted', async () => {
+      const quote = quoteFor(1, 1);
+      await expect(quote(['open-checkout'])).resolves.toMatchObject({ finalAmount: 100 });
+      // Only a PENDING slot of this coupon and this member is the member's own
+      // open hold: a paid use, a freed slot, another coupon's or another
+      // member's never makes room.
+      for (const other of [undefined, [], ['paid-checkout'], ['released-checkout'], ['other-coupon'], ['other-member'], ['no-such-checkout']]) {
+        await expect(quote(other)).rejects.toThrow(/maximum number of times/i);
+      }
+    });
+
+    it('sets aside every open checkout passed, each at most once, and nothing else', async () => {
+      // Two open holds, then an admin lowered the limit to one: both are the member's own.
+      const twoOpen = quoteFor(2, 1);
+      await expect(twoOpen(['open-checkout', 'second-open-checkout'])).resolves.toMatchObject({ finalAmount: 100 });
+      // Naming one of them, or the same one twice, frees only that one seat.
+      await expect(twoOpen(['open-checkout'])).rejects.toThrow(/maximum number of times/i);
+      await expect(twoOpen(['open-checkout', 'open-checkout'])).rejects.toThrow(/maximum number of times/i);
+      // One open hold and one paid use of a once-per-member coupon: the paid use still counts.
+      await expect(quoteFor(2, 1)(['open-checkout', 'paid-checkout'])).rejects.toThrow(/maximum number of times/i);
+    });
   });
 
   it('rejects an expired coupon', async () => {

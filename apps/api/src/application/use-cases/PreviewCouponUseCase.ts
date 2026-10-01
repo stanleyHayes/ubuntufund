@@ -9,6 +9,8 @@ import type { CouponService } from '../services/CouponService.js';
 import { isSelfServePlan, type PlanService } from '../services/PlanService.js';
 import { roundToCurrency } from '../../domain/value-objects/Money.js';
 import type { AffiliateCodePricing } from '../services/AffiliateCodePricing.js';
+import { OPEN_CHECKOUTS_PER_PURCHASE } from '../services/SubscriptionCheckoutResolver.js';
+import type { SubscriptionCheckoutRepositoryPort } from '../../domain/ports/outbound/SubscriptionCheckoutRepositoryPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 
@@ -35,7 +37,14 @@ export class PreviewCouponUseCase {
      */
     private readonly affiliateCodePricing?: AffiliateCodePricing,
     /** Resolves a campaign's platform fee, for quoting a donation waiver. */
-    private readonly planLimits?: { platformFeePercentForCampaign(id: string): Promise<number> }
+    private readonly planLimits?: { platformFeePercentForCampaign(id: string): Promise<number> },
+    /**
+     * The member's unpaid subscription checkouts, read as checkout reads them.
+     * Without it a once-per-member coupon held by the member's own open
+     * checkout previews as "already used" at the full price, while Continue
+     * resumes that checkout's cheaper payment page.
+     */
+    private readonly openCheckouts?: Pick<SubscriptionCheckoutRepositoryPort, 'findPendingByUser'>
   ) {}
 
   /** A soft rejection, in the shape this endpoint always answers with. */
@@ -127,6 +136,7 @@ export class PreviewCouponUseCase {
         userId,
         baseAmount,
         surface,
+        exceptCheckoutIds: await this.ownOpenCheckoutIds(userId, surface),
       });
       return {
         valid: true,
@@ -186,5 +196,20 @@ export class PreviewCouponUseCase {
         reason,
       };
     }
+  }
+
+  /**
+   * The member's own open subscription checkouts that may hold a coupon seat.
+   * Checkout never opens a new charge while one of these is open: the same
+   * purchase resumes it, re-quoted without its own seat, and any other purchase
+   * waits until the member cancels it, which frees the seat. So a seat held
+   * here never stands between the member and the coupon when they pay, and
+   * quoting the coupon as "already used" would show more than they are charged.
+   * A paid use is no longer held by an open checkout, so it still counts.
+   */
+  private async ownOpenCheckoutIds(userId: string, surface: CouponSurface): Promise<string[]> {
+    if (!this.openCheckouts || surface !== CouponSurface.SUBSCRIPTION) return [];
+    const open = await this.openCheckouts.findPendingByUser(userId, OPEN_CHECKOUTS_PER_PURCHASE);
+    return open.filter((checkout) => checkout.couponId).map((checkout) => checkout.id);
   }
 }

@@ -1,7 +1,7 @@
 import { BillingCycle, SubscriptionTier, type Subscription, type SubscriptionPlan } from '@ubuntu-fund/types'
 import { isPaidInForce } from './subscriptionRevenue'
 import { toPesewas, yearlyPerMonthPesewas } from './money'
-import { comparePlans, isSalesOnly } from './plans'
+import { comparePlans } from './plans'
 
 export type PlanMap = Record<string, SubscriptionPlan>
 
@@ -48,17 +48,25 @@ export function monthlyListPesewas(subscription: Pick<Subscription, 'tier' | 'bi
   return subscription.billingCycle === BillingCycle.MONTHLY ? toPesewas(plan.priceMonthly) : yearlyPerMonthPesewas(plan.priceYearly)
 }
 
+/**
+ * Sold only by the sales team at a negotiated price, never at web checkout:
+ * Enterprise. Its list price is only a reference, so its subscribers are
+ * counted but never priced. A plan an admin took off public sale is different:
+ * members bought it at checkout at its list price before it was hidden.
+ */
+function isNegotiatedTier(tier: string): boolean {
+  return tier === SubscriptionTier.ENTERPRISE
+}
+
 export interface TierRevenue {
   tier: string
   name: string
   count: number
   revenuePesewas: number
-  /**
-   * A sales-only plan (Enterprise, or not public): its price is only a
-   * reference and subscribers pay what was negotiated, so it is counted but
-   * never priced (revenuePesewas 0).
-   */
+  /** Enterprise ({@link isNegotiatedTier}): counted but never priced (revenuePesewas 0). */
   negotiated: boolean
+  /** Hidden from public sale. Its members bought it at checkout, so it is still priced at list. */
+  notOnPublicSale: boolean
 }
 export interface SubscriptionSummary {
   total: number
@@ -68,7 +76,7 @@ export interface SubscriptionSummary {
   estimatedMrrPesewas: number
   /** Paying through the App Store or Google Play: counted, never priced here. */
   storeBilledPaid: number
-  /** Paying on the web on a sales-only plan at a negotiated price: counted, never priced here. */
+  /** Paying on the web on a plan not sold at web checkout (Enterprise): counted, never priced here. */
   negotiatedPaid: number
   byTier: TierRevenue[]
 }
@@ -76,13 +84,14 @@ export interface SubscriptionSummary {
 export function summarize(subscriptions: Subscription[], plans: PlanMap, now = new Date()): SubscriptionSummary {
   const paying = subscriptions.filter(subscription => isCurrentlyPaid(subscription, now))
   const webPaying = paying.filter(subscription => !isStoreBilled(subscription))
-  const negotiated = (tier: string) => !!plans[tier] && isSalesOnly(plans[tier])
+  const negotiated = (tier: string) => !!plans[tier] && isNegotiatedTier(tier)
   const tiers = knownTiers(plans, subscriptions).filter(tier => tier !== SubscriptionTier.FREE)
   const byTier = tiers.map(tier => {
     const rows = paying.filter(subscription => subscription.tier === tier)
     const salesOnly = negotiated(tier)
     return {
       tier, name: planName(tier, plans), count: rows.length, negotiated: salesOnly,
+      notOnPublicSale: !salesOnly && plans[tier]?.isPublic === false,
       revenuePesewas: salesOnly ? 0 : rows.filter(subscription => !isStoreBilled(subscription)).reduce((sum, subscription) => sum + monthlyListPesewas(subscription, plans), 0),
     }
   }).filter(row => row.count > 0 || plans[row.tier]?.active !== false)

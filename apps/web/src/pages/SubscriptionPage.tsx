@@ -46,9 +46,19 @@ import {
   isPaymentsNotConfigured,
   abandonSubscriptionCheckout,
   checkoutInProgressId,
+  checkoutPriceChanged,
 } from '@/lib/subscriptions'
 import { useCouponPreview } from '@/hooks/useCouponPreview'
-import { isCurrentPlanTier, isPaidPlanInForce } from '@/lib/subscriptionStatus'
+import {
+  effectivePlan as planInEffect,
+  endedOn,
+  feePlan,
+  includesCreatorDonations,
+  isCurrentPlanTier,
+  isPaidPlanInForce,
+  isSandboxPlan,
+  isStoreManaged,
+} from '@/lib/subscriptionStatus'
 
 // ─── Animations ─────────────────────────────────────────────────────────────
 
@@ -210,11 +220,11 @@ export function SubscriptionPage() {
     return () => { active = false }
   }, [lastCheckout])
   const { subscription, isLoading, refetch } = useMySubscription()
-  // A running App Store / Google Play plan is managed there. Once it has lapsed
-  // the web can sell a plan again; the API still refuses while the store could
-  // renew or charge it.
-  const storeManaged = (subscription?.billingProvider === 'apple' || subscription?.billingProvider === 'google') &&
-    !!subscription && isPaidPlanInForce(subscription)
+  // A running App Store / Google Play plan is managed there, and so is a lapsed
+  // one the store may still renew (the API refuses web checkout for both). Once
+  // the store can no longer charge, the web can sell a plan again.
+  const storeManaged = !!subscription && isStoreManaged(subscription)
+  const storeRetrying = storeManaged && !!subscription && !isPaidPlanInForce(subscription)
   const storeName = subscription?.billingProvider === 'apple' ? 'App Store' : 'Google Play'
   const storeManagementUrl = subscription?.billingProvider === 'apple' ? 'https://apps.apple.com/account/subscriptions' : 'https://play.google.com/store/account/subscriptions?package=com.ujimora.app'
   // Live plans only: the page waits for them, and offers a retry if they fail.
@@ -249,6 +259,8 @@ export function SubscriptionPage() {
   const [paymentsUnavailable, setPaymentsUnavailable] = useState(false)
   /** An earlier unpaid checkout the API says blocks this purchase; the member may cancel it. */
   const [blockingCheckoutId, setBlockingCheckoutId] = useState<string | null>(null)
+  /** That checkout is this purchase at an old price: it may only be cancelled, never finished. */
+  const [blockingPriceChanged, setBlockingPriceChanged] = useState(false)
   const { preview, loading: couponLoading, error: couponError, run: runCoupon, clear: clearCoupon } = useCouponPreview()
 
   const billingCycle: BillingCycle = billingToggle === 'yearly' ? BillingCycle.YEARLY : BillingCycle.MONTHLY
@@ -268,6 +280,7 @@ export function SubscriptionPage() {
     setCouponCode('')
     setCheckoutError(null)
     setBlockingCheckoutId(null)
+    setBlockingPriceChanged(false)
     setPaymentsUnavailable(false)
     clearCoupon()
   }
@@ -278,6 +291,7 @@ export function SubscriptionPage() {
     setCouponCode('')
     setCheckoutError(null)
     setBlockingCheckoutId(null)
+    setBlockingPriceChanged(false)
     setPaymentsUnavailable(false)
     clearCoupon()
   }
@@ -296,6 +310,7 @@ export function SubscriptionPage() {
       const closed = await abandonSubscriptionCheckout(earlier)
       clearSubscriptionHandoff(earlier)
       setBlockingCheckoutId(null)
+      setBlockingPriceChanged(false)
       if (closed.status === SubscriptionCheckoutStatus.SUCCEEDED) {
         refetch()
         setCheckoutError('Your earlier plan payment went through, so that plan is now active. Review your subscription before buying again.')
@@ -316,6 +331,7 @@ export function SubscriptionPage() {
     setCheckoutLoading(true)
     setCheckoutError(null)
     setBlockingCheckoutId(null)
+    setBlockingPriceChanged(false)
     setPaymentsUnavailable(false)
     try {
       const result = await createSubscriptionCheckout({
@@ -350,6 +366,7 @@ export function SubscriptionPage() {
         setPaymentsUnavailable(true)
       } else {
         setBlockingCheckoutId(checkoutInProgressId(err))
+        setBlockingPriceChanged(checkoutPriceChanged(err))
         setCheckoutError(err instanceof Error ? err.message : 'We could not start checkout. Please try again.')
       }
     } finally {
@@ -360,7 +377,9 @@ export function SubscriptionPage() {
   // Neither depends on the plans, so both also show when the plans fail to load.
   const statusAlerts = (
     <>
-      {storeManaged && <Alert severity="info" sx={{ mb: 3 }} action={<Button href={storeManagementUrl} target="_blank" rel="noopener noreferrer">Manage subscription</Button>}>Your subscription is billed through {storeName}. Change plans or cancel there to avoid a second subscription.</Alert>}
+      {storeManaged && <Alert severity="info" sx={{ mb: 3 }} action={<Button href={storeManagementUrl} target="_blank" rel="noopener noreferrer">Manage subscription</Button>}>{storeRetrying
+        ? `Your ${storeName} subscription has lapsed, but ${storeName} may still renew it. Update your payment details or cancel it there before buying a plan here, to avoid a second subscription.`
+        : `Your subscription is billed through ${storeName}. Change plans or cancel there to avoid a second subscription.`}</Alert>}
       {lastCheckout && lastCheckoutPending && <Alert severity="info" sx={{ mb: 3 }} action={<Button href={`/subscription/callback?checkout=${encodeURIComponent(lastCheckout.checkoutId)}`}>Check payment</Button>}>Returning from payment? Check your latest checkout before starting another payment.</Alert>}
     </>
   )
@@ -406,9 +425,16 @@ export function SubscriptionPage() {
   // including the one that just lapsed.
   const paidInForce = isPaidPlanInForce(currentSub)
   const lapsed = currentSub.tier !== SubscriptionTier.FREE && !paidInForce
-  // The plan whose fee and limits apply now: once a paid plan has ended the API
-  // applies the Free plan's, so the stats show those, not the plan that ended.
-  const effectivePlan = lapsed ? (plans[SubscriptionTier.FREE] ?? currentPlan) : currentPlan
+  // The plan whose limits apply now: once a paid plan has ended the API applies
+  // the Free plan's, so the stats show those, not the plan that ended.
+  const effectivePlan = planInEffect(plans, currentSub) ?? currentPlan
+  // The fee new campaigns are created with: Free's for a lapsed plan, and for an
+  // App Store sandbox (App Review / TestFlight) plan, whose features apply but
+  // never its lower fee.
+  const feeTerms = feePlan(plans, currentSub) ?? effectivePlan
+  const sandbox = isSandboxPlan(currentSub)
+  // A store refund ends a plan before its period does; then the end date is unknown.
+  const endDate = lapsed ? endedOn(currentSub) : null
   const isCurrentTier = (tier: string) => isCurrentPlanTier(tier, currentSub)
   // The upgrade call to action offers the plan the admin marks Popular, else the
   // cheapest plan that can be bought on the selected cycle; with none, it is hidden.
@@ -491,7 +517,7 @@ export function SubscriptionPage() {
         <CardContent sx={{ p: { xs: 3, md: 4 } }}>
           {lapsed && (
             <Alert severity="warning" sx={{ mb: 3, borderRadius: SHAPE.sm }}>
-              Your {currentPlan.name} plan ended on {new Date(currentSub.currentPeriodEnd).toLocaleDateString()}. {plans[SubscriptionTier.FREE]?.name ?? 'Free'} features apply until you buy a plan again.
+              Your {currentPlan.name} plan {endDate ? `ended on ${endDate.toLocaleDateString()}` : 'has ended'}. {plans[SubscriptionTier.FREE]?.name ?? 'Free'} features apply until {storeRetrying ? `${storeName} renews it` : 'you buy a plan again'}.
             </Alert>
           )}
           <Box
@@ -499,7 +525,7 @@ export function SubscriptionPage() {
               display: 'grid',
               gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
               gap: 2.5,
-              mb: 3,
+              mb: 1.5,
             }}
           >
             {[
@@ -516,17 +542,18 @@ export function SubscriptionPage() {
               },
               {
                 icon: <CalendarTodayRoundedIcon sx={{ fontSize: 20, color: colors.accent }} />,
-                label: currentSub.tier === SubscriptionTier.FREE ? 'Ends' : lapsed ? 'Ended' : storeManaged && !currentSub.cancelAtPeriodEnd ? 'Renews in' : 'Ends in',
+                label: currentSub.tier === SubscriptionTier.FREE ? 'Ends' : lapsed ? (endDate ? 'Ended' : 'Plan status') : storeManaged && !currentSub.cancelAtPeriodEnd ? 'Renews in' : 'Ends in',
                 value: currentSub.tier === SubscriptionTier.FREE
                   ? 'No end date'
                   : lapsed
-                    ? new Date(currentSub.currentPeriodEnd).toLocaleDateString()
+                    ? (endDate ? endDate.toLocaleDateString() : 'Ended')
                     : `${daysLeft} day${daysLeft !== 1 ? 's' : ''}`,
               },
               {
                 icon: <TrendingUpRoundedIcon sx={{ fontSize: 20, color: colors.accent }} />,
-                label: 'Platform fee',
-                value: `${effectivePlan.platformFeePercent}%`,
+                // A campaign keeps the fee it was created with, so this is the fee for new ones.
+                label: 'Platform fee on new campaigns',
+                value: `${feeTerms.platformFeePercent}%`,
               },
               {
                 icon: <CampaignRoundedIcon sx={{ fontSize: 20, color: colors.accent }} />,
@@ -555,13 +582,17 @@ export function SubscriptionPage() {
               </Box>
             ))}
           </Box>
+          <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', mb: 3 }}>
+            {sandbox ? `This plan is a store test purchase, so new campaigns get the ${plans[SubscriptionTier.FREE]?.name ?? 'Free'} plan’s fee. ` : ''}
+            Campaigns you already run keep the fee they were created with; creator withdrawals use your current plan’s fee.
+          </Typography>
 
           {/* Quick features — only while the plan still grants them */}
           {!lapsed && <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
             {[
               currentPlan.escrowSupport && 'Split proceeds',
               currentPlan.liveStreaming && 'Live Streaming',
-              currentSub.status === 'active' && new Date(currentSub.currentPeriodEnd).getTime() > Date.now() && currentPlan.tier !== 'free' && (currentPlan.priceMonthly > 0 || currentPlan.priceYearly > 0) && 'Creator profile donations',
+              includesCreatorDonations(currentSub, currentPlan) && 'Creator profile donations',
               currentPlan.campaignCollaboration && 'Collaboration',
               currentPlan.onBehalfCampaigns && 'Campaigns for others',
             ]
@@ -587,7 +618,7 @@ export function SubscriptionPage() {
           {currentSub.tier !== SubscriptionTier.FREE && (
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, pt: 2, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
               <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary' }}>
-                Period: {new Date(currentSub.currentPeriodStart).toLocaleDateString()} &mdash; {new Date(currentSub.currentPeriodEnd).toLocaleDateString()}
+                Period: {new Date(currentSub.currentPeriodStart).toLocaleDateString()} &mdash; {lapsed && !endDate ? 'ended early' : new Date(currentSub.currentPeriodEnd).toLocaleDateString()}
               </Typography>
               {paidInForce && !storeManaged && (
                 <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary' }}>
@@ -976,7 +1007,7 @@ export function SubscriptionPage() {
       )}
 
       {/* ═══════════ UPGRADE CTA ═══════════ */}
-      {(currentSub.tier === SubscriptionTier.FREE || lapsed) && upgradePlan && (
+      {(currentSub.tier === SubscriptionTier.FREE || lapsed) && !storeManaged && upgradePlan && (
         <Card
           elevation={0}
           sx={{
@@ -992,7 +1023,8 @@ export function SubscriptionPage() {
             Ready to grow your impact?
           </Typography>
           <Typography sx={{ color: 'text.secondary', mb: 3, maxWidth: 500, mx: 'auto' }}>
-            Upgrade to a paid plan for lower platform fees, more campaigns, and premium features.
+            Upgrade to a paid plan for lower platform fees on new campaigns, more campaigns, and premium features.
+            Campaigns you already run keep the fee they were created with.
             Have a coupon? Apply it at checkout.
           </Typography>
           <Button
@@ -1026,7 +1058,13 @@ export function SubscriptionPage() {
         {selectedTier && (() => {
           const plan = plans[selectedTier]
           if (!plan) return <DialogContent><Alert severity="info">This plan is unavailable. Close this window to choose another plan.</Alert><Button onClick={closeCheckout}>Choose another plan</Button></DialogContent>
-          const validCoupon = preview && preview.valid ? preview : null
+          // The hook only returns a quote for the code, plan and cycle on screen.
+          // Until that quote is in, the total is not known: checkout would charge
+          // the typed code's price, whatever an earlier quote said.
+          const typedCode = couponCode.trim()
+          const checkingCoupon = !!typedCode && couponLoading
+          const couponUnchecked = !!typedCode && !couponLoading && !preview
+          const validCoupon = !checkingCoupon && preview && preview.valid ? preview : null
           // A coupon quote carries the server's price, which is what checkout charges.
           const basePrice = validCoupon ? validCoupon.baseAmount : cyclePrice(plan)
           const currency = validCoupon?.currency ?? 'GHS'
@@ -1075,9 +1113,9 @@ export function SubscriptionPage() {
 
                 {/* Coupon feedback */}
                 {couponError && (
-                  <Typography sx={{ fontSize: '0.78rem', color: 'error.main', mb: 1 }}>{couponError}</Typography>
+                  <Typography sx={{ fontSize: '0.78rem', color: 'error.main', mb: 1 }}>{/[.!?]$/.test(couponError) ? couponError : `${couponError}.`} Edit the code to try again, or remove it.</Typography>
                 )}
-                {preview && !preview.valid && preview.reason && (
+                {!checkingCoupon && preview && !preview.valid && preview.reason && (
                   <Typography sx={{ fontSize: '0.78rem', color: 'error.main', mb: 1 }}>{preview.reason}</Typography>
                 )}
                 {validCoupon && validCoupon.discountAmount > 0 && (
@@ -1104,7 +1142,7 @@ export function SubscriptionPage() {
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                     <Typography sx={{ fontWeight: 800, fontFamily: '"Outfit", sans-serif' }}>Total due today</Typography>
                     <Typography sx={{ fontWeight: 900, fontSize: '1.2rem', fontFamily: '"Outfit", sans-serif', color: 'primary.dark' }}>
-                      {formatCurrency(finalAmount, currency)}
+                      {checkingCoupon ? 'Checking…' : couponUnchecked ? '—' : formatCurrency(finalAmount, currency)}
                     </Typography>
                   </Box>
                 </Box>
@@ -1124,20 +1162,24 @@ export function SubscriptionPage() {
                           variant="outlined"
                           color="inherit"
                           onClick={cancelEarlierAndContinue}
-                          disabled={checkoutLoading}
+                          // Continuing charges the code on screen, so it waits for that code's total too.
+                          disabled={checkoutLoading || checkingCoupon || couponUnchecked}
                           sx={{ fontWeight: 700, textTransform: 'none' }}
                         >
                           Cancel it and continue
                         </Button>
-                        <Button
-                          size="small"
-                          color="inherit"
-                          href={`/subscription/callback?checkout=${encodeURIComponent(blockingCheckoutId)}`}
-                          disabled={checkoutLoading}
-                          sx={{ fontWeight: 600, textTransform: 'none' }}
-                        >
-                          Check that payment
-                        </Button>
+                        {/* A page charging an old price is never to be finished. */}
+                        {!blockingPriceChanged && (
+                          <Button
+                            size="small"
+                            color="inherit"
+                            href={`/subscription/callback?checkout=${encodeURIComponent(blockingCheckoutId)}`}
+                            disabled={checkoutLoading}
+                            sx={{ fontWeight: 600, textTransform: 'none' }}
+                          >
+                            Check that payment
+                          </Button>
+                        )}
                       </Box>
                     )}
                   </Alert>
@@ -1150,11 +1192,11 @@ export function SubscriptionPage() {
                 <Button
                   variant="contained"
                   onClick={handleCheckout}
-                  disabled={checkoutLoading}
+                  disabled={checkoutLoading || checkingCoupon || couponUnchecked}
                   startIcon={checkoutLoading ? <LoadingDots size={6} /> : undefined}
                   sx={{ bgcolor: '#2E3D2F', fontWeight: 700, textTransform: 'none', '&:hover': { bgcolor: '#1C261D' } }}
                 >
-                  {checkoutLoading ? 'Starting…' : finalAmount === 0 ? 'Activate plan' : mode === 'switch' ? 'Replace plan and pay' : 'Continue to payment'}
+                  {checkoutLoading ? 'Starting…' : checkingCoupon ? 'Checking coupon…' : finalAmount === 0 ? 'Activate plan' : mode === 'switch' ? 'Replace plan and pay' : 'Continue to payment'}
                 </Button>
               </DialogActions>
             </>

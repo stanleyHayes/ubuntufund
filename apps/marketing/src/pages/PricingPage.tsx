@@ -119,7 +119,7 @@ function collaboratorsCell(plan: SubscriptionPlan): React.ReactNode {
 const faqsFor = (freePlanName: string) => [
   {
     question: 'When are platform fees charged?',
-    answer: 'Platform fees vary by plan. Review the applicable contribution and payout fees before confirming a transaction.',
+    answer: 'Platform fees vary by plan and are taken from each donation a campaign receives. A campaign keeps the platform fee of the plan you were on when you created it: campaigns you already run keep the fee they were created with, even after you change plans or a plan ends, and campaigns you create later get your plan’s fee at that time. Creator withdrawals use your current plan’s fee. Review the applicable contribution and payout fees before confirming a transaction.',
   },
   {
     question: 'What payment methods are supported?',

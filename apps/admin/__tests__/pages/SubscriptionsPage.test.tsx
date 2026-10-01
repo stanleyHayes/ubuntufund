@@ -13,6 +13,7 @@ vi.mock('@/hooks/useApiData', () => ({ useAdminPlans: () => state.plans }))
 vi.mock('@/context/AdminPermissionContext', () => ({ useAdminPermissions: () => ({ can: () => true }) }))
 import SubscriptionsPage from '@/pages/SubscriptionsPage'
 import { buildPlanMap, knownTiers, summarize } from '@/lib/subscriptionMetrics'
+import { STATUS_TEXT_COLOR, tierHue } from '@/lib/subscriptionTones'
 
 // Relative to the real clock: the page decides "lapsed" against the current time.
 const NOW = new Date()
@@ -79,9 +80,38 @@ it('counts sales-only Enterprise subscribers without pricing them at the referen
   expect(summary.byTier.find(row => row.tier === 'enterprise')).toMatchObject({ count: 1, negotiated: true, revenuePesewas: 0 })
   expect(summary.byTier.find(row => row.tier === 'organization')).toMatchObject({ count: 1, negotiated: false, revenuePesewas: 39900 })
   expect(summary).toMatchObject({ paid: 2, negotiatedPaid: 1, estimatedMrrPesewas: 39900 })
-  // A plan taken off public sale is sales-only too.
-  const hidden = summarize([sub('a', 'starter')], buildPlanMap(LIVE_PLANS.map(plan => (plan.tier === 'starter' ? { ...plan, isPublic: false } : plan))), NOW)
-  expect(hidden).toMatchObject({ negotiatedPaid: 1, estimatedMrrPesewas: 0 })
+})
+
+it('still prices a plan taken off public sale at list, since its members bought it at checkout', () => {
+  // Starter sold at GH₵9.99 through Paystack; an admin then switched its Public off.
+  const plans = buildPlanMap(LIVE_PLANS.map(plan => (plan.tier === 'starter' ? { ...plan, isPublic: false } : plan)))
+  const hidden = summarize([sub('a', 'starter'), sub('b', 'starter')], plans, NOW)
+  expect(hidden).toMatchObject({ negotiatedPaid: 0, estimatedMrrPesewas: 1998 })
+  expect(hidden.byTier.find(row => row.tier === 'starter')).toMatchObject({ count: 2, negotiated: false, notOnPublicSale: true, revenuePesewas: 1998 })
+  expect(hidden.byTier.find(row => row.tier === 'pro')).toMatchObject({ notOnPublicSale: false })
+})
+
+it('shows a hidden plan priced at list with a note, and no negotiated-price claim', async () => {
+  state.plans = plansState({ data: LIVE_PLANS.map(plan => (plan.tier === 'starter' ? { ...plan, isPublic: false } : plan)) })
+  state.rows = [sub('a', 'starter')]
+  render(<MemoryRouter><SubscriptionsPage /></MemoryRouter>)
+  expect(await screen.findByText('GH₵ 9.99/mo')).toBeVisible()
+  expect(screen.getByText('Not on public sale · priced at list')).toBeVisible()
+  expect(stat('Estimated MRR (list price)')).toHaveTextContent('GH₵ 9.99')
+  // Only Enterprise's card reads Negotiated.
+  expect(screen.getAllByText('Negotiated')).toHaveLength(1)
+  expect(screen.getByText('Not on public sale · priced at list').parentElement).toHaveTextContent(/^StarterGH₵ 9\.99\/mo1 subscriberNot on public sale · priced at list$/)
+  expect(screen.queryByText(/not sold at web checkout and not priced here/)).toBeNull()
+  expect(screen.queryByText(/negotiated price/)).toBeNull()
+})
+
+it('writes tier names and status words in AA text colours, with one hue per tier for its dot and bar', () => {
+  // Status words use the theme tokens that clear 4.5:1 in every skin and mode.
+  for (const color of Object.values(STATUS_TEXT_COLOR)) expect(color).toMatch(/^(var\(--text-(success|info|warning|error)\)|text\.secondary)$/)
+  // A custom tier's hue is its own accent colour, on the row and on its card alike.
+  const plans = buildPlanMap([custom] as SubscriptionPlan[])
+  expect(tierHue('harvest', plans)).toBe('#123456')
+  expect(tierHue('unknown', plans)).toBe('#78909C')
 })
 
 it('shows a sales-only tier as negotiated and leaves it out of the estimate', async () => {
@@ -91,7 +121,7 @@ it('shows a sales-only tier as negotiated and leaves it out of the estimate', as
   expect(await screen.findByText('Negotiated')).toBeVisible()
   expect(screen.getByText('GH₵ 399.00/mo')).toBeVisible()
   expect(stat('Estimated MRR (list price)')).toHaveTextContent('GH₵ 399.00')
-  expect(screen.getByText(/1 paying subscriber is on a sales-only plan at a negotiated price and not priced here\./)).toBeVisible()
+  expect(screen.getByText(/1 paying subscriber is on a plan not sold at web checkout and not priced here\./)).toBeVisible()
   expect(screen.queryByText(/833/)).toBeNull()
 })
 

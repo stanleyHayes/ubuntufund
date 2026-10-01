@@ -94,12 +94,23 @@ export function abandonSubscriptionCheckout(id: string): Promise<SubscriptionChe
 
 /**
  * The open checkout blocking a new purchase, when the API refused one because
- * an earlier plan payment is still payable (409 `checkout_in_progress`).
+ * an earlier plan payment is still payable (409 `checkout_in_progress`, or
+ * `checkout_price_changed` for the same purchase at an old price).
  */
 export function checkoutInProgressId(err: unknown): string | null {
   if (!(err instanceof ApiError) || err.status !== 409) return null
-  if (!err.errors?.code?.includes('checkout_in_progress')) return null
-  return err.errors.checkoutId?.[0] ?? null
+  const codes = err.errors?.code ?? []
+  if (!codes.includes('checkout_in_progress') && !codes.includes('checkout_price_changed')) return null
+  return err.errors?.checkoutId?.[0] ?? null
+}
+
+/**
+ * The blocking checkout is this same purchase, but its payment page charges an
+ * amount the dialog no longer shows (409 `checkout_price_changed`): the member
+ * may only cancel it, never finish it.
+ */
+export function checkoutPriceChanged(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 409 && !!err.errors?.code?.includes('checkout_price_changed')
 }
 
 /**

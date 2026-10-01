@@ -2,11 +2,12 @@ import { randomUUID } from 'node:crypto';
 import { beforeAll, afterAll, afterEach, it, expect, vi } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
-import { BillingCycle, LEGAL_ACCEPTANCE_VERSION, SubscriptionTier } from '@ubuntu-fund/types';
+import { BillingCycle, CouponDiscountType, LEGAL_ACCEPTANCE_VERSION, SubscriptionTier } from '@ubuntu-fund/types';
 import { createTestApp } from '../helpers/testApp.js';
 import { connectTestDatabase, disconnectTestDatabase, dropTestDatabase } from '../helpers/testDatabase.js';
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
 import { SubscriptionPlanModel } from '../../src/infrastructure/database/models/SubscriptionPlanModel.js';
+import { CouponModel } from '../../src/infrastructure/database/models/CouponModel.js';
 import { MongoSubscriptionPlanRepository } from '../../src/infrastructure/adapters/outbound/persistence/MongoSubscriptionPlanRepository.js';
 import { PaystackGateway } from '../../src/infrastructure/adapters/outbound/payments/PaystackGateway.js';
 
@@ -86,4 +87,31 @@ it('checks out a tier an admin created, and leaves which plans are sold to the p
   const created = await checkout('parish-plus').expect(201);
   expect(created.body.data.checkout).toMatchObject({ tier: 'parish-plus', baseAmount: 20, finalAmount: 20 });
   expect(charge).toHaveBeenCalledTimes(1);
+});
+
+it('quotes a once-per-member coupon held by the member\'s own open checkout at the price Continue resumes', async () => {
+  vi.spyOn(PaystackGateway.prototype, 'isConfigured').mockReturnValue(true);
+  const charged = new Map<string, number>();
+  vi.spyOn(PaystackGateway.prototype, 'initializeCharge').mockImplementation(async ({ amount }) => {
+    const reference = `sub-${randomUUID()}`;
+    charged.set(reference, amount);
+    return { reference, authorizationUrl: `https://checkout.paystack.com/${reference}`, accessCode: 'fixture' };
+  });
+  // The member backed out of the payment page: Paystack has it as abandoned, still payable.
+  vi.spyOn(PaystackGateway.prototype, 'verifyTransaction').mockImplementation(async (reference) => ({
+    status: 'abandoned', reference, amount: charged.get(reference) ?? 0, fees: 0, currency: 'GHS', raw: {},
+  }));
+  const code = `ONCE${randomUUID().slice(0, 6)}`.toUpperCase();
+  await CouponModel.create({ code, discountType: CouponDiscountType.PERCENT, amount: 10, currency: 'GHS', maxRedemptions: 10, perUserLimit: 1 });
+  const member = await account();
+  const plan = { tier: SubscriptionTier.PRO, billingCycle: BillingCycle.MONTHLY };
+  const checkout = () => request(app).post('/api/v1/subscriptions/checkout').set('Authorization', member).send({ ...plan, couponCode: code });
+  const first = await checkout().expect(201);
+  expect(first.body.data.preview).toMatchObject({ baseAmount: 29.99, discountAmount: 3, finalAmount: 26.99 });
+  const shown = await request(app).post('/api/v1/coupons/preview').set('Authorization', member).send({ ...plan, code }).expect(200);
+  expect(shown.body.data).toMatchObject({ valid: true, baseAmount: 29.99, discountAmount: 3, finalAmount: 26.99 });
+  const resumed = await checkout().expect(201);
+  expect(resumed.body.data).toMatchObject({ resumed: true, checkout: { id: first.body.data.checkout.id },
+    preview: { finalAmount: shown.body.data.finalAmount } });
+  expect(charged.size).toBe(1);
 });

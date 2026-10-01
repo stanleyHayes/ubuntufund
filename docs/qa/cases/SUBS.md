@@ -254,13 +254,13 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 **Steps:**
 
-1. Tab 1: 'Choose Pro', then 'Continue to payment'. Keep the Paystack page open without paying.
-2. Tab 2: 'Choose Pro', then 'Continue to payment'.
+1. Tab 1: 'Choose Pro' (Monthly), then 'Continue to payment'. Keep the Paystack page open without paying.
+2. Tab 2: 'Choose Pro' (Monthly), then 'Continue to payment'. Note the Paystack reference, then go back to /subscription. Switch to Yearly, 'Choose Pro', then 'Continue to payment'.
 3. Pay in Tab 1 with the test card. With the webhook briefly blocked, retry 'Continue to payment' in Tab 2 before the callback confirms.
 4. Check Paystack transactions, checkout rows and the subscription period.
 5. In one tab, double-click 'Continue to payment' on a fresh dialog.
 
-**Expect:** Tab 2 gets 409 in the dialog: 'You already have a plan payment in progress. Finish it in the payment window, or check its status on your subscription page, before starting another.' No second Paystack page opens. The Tab 2 retry after Tab 1 paid gets 409 'Your earlier plan payment went through and that plan is now active. Review your subscription before buying again.', and that request activates Pro itself. There is exactly one GH₵29.99 charge and Pro runs for 30 days. If a member knowingly pays for the same plan again once it is active, the new period is added to the end of the current one (SUBS-N001), so no paid time is lost. A double-click creates one checkout, because the button is disabled while starting.
+**Expect:** Step 2: the same purchase (Pro monthly, no code) does not open a second charge. Tab 2 goes to the Paystack page Tab 1 has open, for the same GH₵29.99 and reference (the API answers resumed: true), and there is still one checkout row. Pro yearly is a different purchase: the dialog shows 409 'You already have a plan payment in progress. Finish it in the payment window, or cancel it before starting another.' with 'Cancel it and continue' and 'Check that payment', and no second Paystack page opens. The Tab 2 retry after Tab 1 paid gets 409 'Your earlier plan payment went through and that plan is now active. Review your subscription before buying again.', and that request activates Pro itself. There is exactly one GH₵29.99 charge and Pro runs for 30 days. If a member knowingly pays for the same plan again once it is active, the new period is added to the end of the current one (SUBS-N001), so no paid time is lost. A double-click creates one checkout, because the button is disabled while starting.
 
 **Needs:** Paystack test keys
 
@@ -301,7 +301,7 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 5. Open Admin > Subscriptions and read U2's status and the KPIs.
 6. From the UI click 'Choose Pro' and pay. Read the new period.
 
-**Expect:** The API returns status 'expired', derived at read time; the DB row is not rewritten. The page shows the chip 'Expired' and the alert 'Your Pro plan ended on <date>. Free features apply until you buy a plan again.' The stats show 'Ended' <date>, and 'Platform fee' 5% and 'Active campaigns' 1: the Free plan's, which apply now, not Pro's 2% and 10. The Free card shows 'Current Plan', the Pro card offers an enabled 'Choose Pro', and the upgrade call-to-action offers the plan marked Popular in Admin > Plans, or the cheapest plan on sale (Starter) when none is. LIVE returns 403 'Your Free plan does not include LIVE streaming. Upgrade to unlock it.', and the campaign cap is 1. The admin row shows 'expired', and U2 counts under 'Free or lapsed', not 'Paying now' or 'Estimated MRR (list price)'. The dialog is titled 'Upgrade to Pro' and needs no replace confirmation. After payment Pro is active with a fresh period of now + 30 days.
+**Expect:** The API returns status 'expired', derived at read time; the DB row is not rewritten. The page shows the chip 'Expired' and the alert 'Your Pro plan ended on <date>. Free features apply until you buy a plan again.' The stats show 'Ended' <date>, and 'Platform fee on new campaigns' 5% and 'Active campaigns' 1: the Free plan's, which apply now, not Pro's 2% and 10. Under the stats: 'Campaigns you already run keep the fee they were created with; creator withdrawals use your current plan’s fee.' The Free card shows 'Current Plan', the Pro card offers an enabled 'Choose Pro', and the upgrade call-to-action offers the plan marked Popular in Admin > Plans, or the cheapest plan on sale (Starter) when none is. LIVE returns 403 'Your Free plan does not include LIVE streaming. Upgrade to unlock it.', and the campaign cap is 1. The admin row shows 'expired', and U2 counts under 'Free or lapsed', not 'Paying now' or 'Estimated MRR (list price)'. The dialog is titled 'Upgrade to Pro' and needs no replace confirmation. After payment Pro is active with a fresh period of now + 30 days.
 
 **Needs:** Staging DB, Paystack test keys
 
@@ -413,7 +413,7 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 2. Complete payment in the winning tab.
 3. Read both checkout rows and the coupon redemption rows.
 
-**Expect:** One checkout gets a seat and a Paystack URL. The other is refused in one of two ways. If the first checkout was already recorded, it gets 409 'You already have a plan payment in progress. Finish it in the payment window, or check its status on your subscription page, before starting another.' with no row. If both passed that check together, it gets 422 'You have already used this coupon the maximum number of times' and its checkout row is FAILED. No second Paystack page is opened. The discount is applied exactly once and there is one charge.
+**Expect:** One checkout gets a seat and a Paystack URL. The other request opens no second charge, in one of three ways. If the first checkout already has its Paystack page, it is the same purchase (Starter, the same cycle, ONE), so the second request is sent to that page: the API answers resumed: true with the first reference, and no row is added. If the first checkout is recorded but its Paystack page is still being opened, it gets 409 'You already have a plan payment in progress. Finish it in the payment window, or cancel it before starting another.' with no row. If both passed that check together, it gets 422 'You have already used this coupon the maximum number of times' and its checkout row is FAILED. The discount is applied exactly once and there is one charge.
 
 **Needs:** Paystack test keys
 
@@ -1161,7 +1161,7 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 6. Set the second checkout's createdAt and storebillingaccounts.providerClaimedAt to 25 hours ago. Wait for the next 5-minute reconciliation tick, or click 'Check payment'.
 7. Reload /subscription. On iOS reopen Subscription and tap Subscribe.
 
-**Expect:** Step 2: the banner 'Returning from payment? Check your latest checkout before starting another payment.' is shown while the checkout is pending. The callback ends at 'Still confirming your subscription', because an unpaid ('abandoned') Paystack checkout is kept for 24 hours. Step 3: the dialog shows 409 'You already have a plan payment in progress. Finish it in the payment window, or check its status on your subscription page, before starting another.' and no second Paystack page opens. Step 4: native shows 'This account manages its subscription through another billing service. Continue using that service to avoid a second subscription.' and prepare returns 409 'This account manages subscriptions through web billing. Use that billing service to avoid a second subscription.' Step 5: the 2-hour-old checkout becomes EXPIRED, its ONCE redemption is RELEASED, and the new checkout opens with ONCE applied. Steps 6-7: the second checkout becomes EXPIRED with its seat RELEASED, and the callback shows 'This checkout expired'. The banner is gone because the browser handoff is cleared. The native catalog no longer reports a provider, so plans are offered, prepare succeeds, and storebillingaccounts.provider becomes 'apple'. Nothing is charged at any point.
+**Expect:** Step 2: the banner 'Returning from payment? Check your latest checkout before starting another payment.' is shown while the checkout is pending. The callback ends at 'Still confirming your subscription', because an unpaid ('abandoned') Paystack checkout is kept for 24 hours. Step 3: the dialog says 'Coupon applied — you save …' with the ONCE total, not 'already used': the seat is held by the member's own open checkout. 'Continue to payment' sends the member back to the same Paystack page for that amount (the API answers resumed: true with the first reference). No second checkout row or Paystack page is opened. Step 4: native shows 'This account manages its subscription through another billing service. Continue using that service to avoid a second subscription.' and prepare returns 409 'This account manages subscriptions through web billing. Use that billing service to avoid a second subscription.' Step 5: the 2-hour-old checkout becomes EXPIRED, its ONCE redemption is RELEASED, and the new checkout opens with ONCE applied. Steps 6-7: the second checkout becomes EXPIRED with its seat RELEASED, and the callback shows 'This checkout expired'. The banner is gone because the browser handoff is cleared. The native catalog no longer reports a provider, so plans are offered, prepare succeeds, and storebillingaccounts.provider becomes 'apple'. Nothing is charged at any point.
 
 **Needs:** Paystack test keys, store sandbox, staging DB
 
@@ -1689,7 +1689,7 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 *Surfaces:* admin, api  ·  *Type:* functional
 
-**Before:** A mix of subscriptions: free; web monthly and yearly (active); Apple and Google (active); one Apple TestFlight/sandbox purchase; one web Pro whose period has ended (stored status still active); one on a custom tier; one active Enterprise subscription (sales-led, set up in the staging DB). The admin has edited the Pro monthly price to 155.
+**Before:** A mix of subscriptions: free; web monthly and yearly (active); Apple and Google (active); one Apple TestFlight/sandbox purchase; one web Pro whose period has ended (stored status still active); one on a custom tier; one active Enterprise subscription (sales-led, set up in the staging DB); one web Starter bought at checkout, after which an admin switched Starter's Public off. The admin has edited the Pro monthly price to 155.
 
 **Steps:**
 
@@ -1698,11 +1698,11 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 3. Look at the row actions for an active row.
 4. Compare GET /api/v1/subscriptions for the lapsed web Pro row with its DB status.
 
-**Expect:** KPIs read 'Total Subscribers', 'Estimated MRR (list price)', 'Free or lapsed' and 'Paying now'. 'Paying now' counts only paid tiers that are active and inside their period, excluding sandbox store rows. The lapsed web Pro shows status 'expired' (derived by the API; the DB still says active) and counts under 'Free or lapsed'. MRR prices web-billed rows at live DB prices (Pro 155), and the alert notes 'N paying subscriber(s) … billed by the App Store or Google Play and not priced here.' Sales-only plans (Enterprise, or a plan with Public off) are counted but not priced: their tier card reads 'Negotiated', they add nothing to 'Estimated MRR (list price)', and the alert says '1 paying subscriber is on a sales-only plan at a negotiated price and not priced here.' The alert also says estimates use list prices, ignore discounts, are not money collected, and 'Change or cancel a subscription through its billing provider; this console has no subscription controls.' The strip header is 'Estimated monthly revenue by tier (list price)' and names the custom tier. The tier filter and row chips use live plan names. Rows offer only 'View' (opens /users/<id>), with no Tier or Cancel buttons. Filters, search, pagination and export work, and the export has a Provider column. Record: the export has no environment column, so sandbox rows look like paid Apple rows in the file.
+**Expect:** KPIs read 'Total Subscribers', 'Estimated MRR (list price)', 'Free or lapsed' and 'Paying now'. 'Paying now' counts only paid tiers that are active and inside their period, excluding sandbox store rows. The lapsed web Pro shows status 'expired' (derived by the API; the DB still says active) and counts under 'Free or lapsed'. MRR prices web-billed rows at live DB prices (Pro 155), and the alert notes 'N paying subscriber(s) … billed by the App Store or Google Play and not priced here.' Enterprise, which is never sold at web checkout, is counted but not priced: its tier card reads 'Negotiated', it adds nothing to 'Estimated MRR (list price)', and the alert says '1 paying subscriber is on a plan not sold at web checkout and not priced here.' The hidden Starter is still priced at its list price (its member paid that at checkout): its card shows 'GH₵ 9.99/mo' with 'Not on public sale · priced at list', and it is included in 'Estimated MRR (list price)'. Tier names and status words are in the theme's text colours and stay readable (AA) in every skin, light and dark; the tier's colour marks only its dot and revenue bar, and a custom tier uses its plan accent colour for both. The alert also says estimates use list prices, ignore discounts, are not money collected, and 'Change or cancel a subscription through its billing provider; this console has no subscription controls.' The strip header is 'Estimated monthly revenue by tier (list price)' and names the custom tier. The tier filter and row chips use live plan names. Rows offer only 'View' (opens /users/<id>), with no Tier or Cancel buttons. Filters, search, pagination and export work, and the export has a Provider column. Record: the export has no environment column, so sandbox rows look like paid Apple rows in the file.
 
 **Needs:** Store sandbox for the store rows, staging DB for the Enterprise row
 
-**Source:** `apps/admin/src/pages/SubscriptionsPage.tsx`, `apps/admin/src/lib/subscriptionMetrics.ts`, `apps/admin/src/lib/subscriptionRevenue.ts`, `apps/api/src/application/use-cases/ListSubscriptionsUseCase.ts`, `apps/api/src/domain/services/subscriptionStatus.ts`
+**Source:** `apps/admin/src/pages/SubscriptionsPage.tsx`, `apps/admin/src/lib/subscriptionMetrics.ts`, `apps/admin/src/lib/subscriptionTones.ts`, `apps/admin/src/lib/subscriptionRevenue.ts`, `apps/api/src/application/use-cases/ListSubscriptionsUseCase.ts`, `apps/api/src/domain/services/subscriptionStatus.ts`
 
 ## SUBS-091 · P1 · First subscription read creates Free without overwriting a paid plan
 
@@ -1810,14 +1810,14 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 1. UW on iOS: open Subscription, tap Subscribe on Starter and complete the sandbox purchase.
 2. UA on web: open /subscription, read the chip and banner, then 'Choose Pro' and pay.
-3. UA2 on web: 'Choose Starter' > 'Continue to payment'.
+3. UA2 on web: open /subscription and read the banner, then try 'Choose Starter'. Then POST /api/v1/subscriptions/checkout {tier:'starter', billingCycle:'monthly'} directly.
 4. After each step, read storebillingaccounts.provider and the subscription row (billingProvider, storePurchaseKey, billingEnvironment).
 
-**Expect:** UW: the catalog reports no provider, plans are offered, prepare succeeds, the claim moves to 'apple', and Starter is active with billingProvider apple. UA: the page shows 'Expired' with no store banner and the Choose buttons enabled. The checkout opens and the claim moves to 'web'. The lapsed store row becomes a web row (billingProvider web, storePurchaseKey and billingEnvironment removed), and settlement activates Pro for 30 days. UA2: 409 'This account manages subscriptions through the App Store. Use that billing service to avoid a second subscription.', because the store may still renew within its 60-day retry window. There is no admin release action.
+**Expect:** UW: the catalog reports no provider, plans are offered, prepare succeeds, the claim moves to 'apple', and Starter is active with billingProvider apple. UA: the page shows 'Expired' with no store banner and the Choose buttons enabled. The checkout opens and the claim moves to 'web'. The lapsed store row becomes a web row (billingProvider web, storePurchaseKey and billingEnvironment removed), and settlement activates Pro for 30 days. UA2: the page shows 'Expired' with the banner 'Your App Store subscription has lapsed, but App Store may still renew it. Update your payment details or cancel it there before buying a plan here, to avoid a second subscription.' and 'Manage subscription'. The alert ends 'Free features apply until App Store renews it.' The upgrade call to action is hidden and every 'Choose' button is disabled, because the store may still renew within its 60-day retry window. The direct POST returns 409 'This account manages subscriptions through the App Store. Use that billing service to avoid a second subscription.' There is no admin release action.
 
 **Needs:** Store sandbox, Paystack test keys, staging DB
 
-**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoBillingOwnership.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/storeBillingRoutes.ts`, `apps/web/src/pages/SubscriptionPage.tsx`, `apps/mobile/src/screens/SubscriptionScreen.native.tsx`, `docs/compliance/STORE_BILLING.md`
+**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoBillingOwnership.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/storeBillingRoutes.ts`, `apps/web/src/pages/SubscriptionPage.tsx`, `apps/web/src/lib/subscriptionStatus.ts`, `apps/mobile/src/screens/SubscriptionScreen.native.tsx`, `docs/compliance/STORE_BILLING.md`
 
 ## SUBS-N009 · P1 · Organization team seats follow the organization's plan (owner included)
 
@@ -2169,16 +2169,18 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 *Surfaces:* web  ·  *Type:* functional
 
-**Before:** Users: Free; web Starter monthly; web Pro yearly; Apple-billed Pro with auto-renew on.
+**Before:** Users: Free; web Starter monthly; web Pro yearly; Apple-billed Pro with auto-renew on; Pro bought with an App Store sandbox (TestFlight) receipt; Apple-billed Pro with auto-renew off, refunded through Apple before its period ended.
 
 **Steps:**
 
 1. Free user: open /subscription and read the current plan card.
 2. Web Starter monthly and web Pro yearly: read the card stats, period row and chips.
 3. Apple-billed Pro on web: read the banner and stats. Turn off auto-renew in iOS Settings, wait for the notification or re-check, and reload.
+4. Sandbox Pro: read the fee stat, the note under the stats and the chips. Create a campaign and read its locked platform fee (admin campaign detail).
+5. Refunded Apple Pro: read the alert, the stats and the period row.
 
-**Expect:** Free: 'Plan length' 'Free', 'Ends' 'No end date', and no period row. Web plans: 'Plan length' '30 days' or '1 year', 'Ends in N days', and a period row with 'Your plan does not renew automatically. Buy again before it ends to keep your benefits.' Store plan: the banner 'Your subscription is billed through App Store. Change plans or cancel there to avoid a second subscription.' with 'Manage subscription', 'Billing' 'Monthly' or 'Yearly', and 'Renews in N days'. After auto-renew is off, the label becomes 'Ends in N days'. Plan chips never mention Featured Listing, Priority Support, Analytics, Custom Branding or Escrow; 'Split proceeds' is used instead.
+**Expect:** Free: 'Plan length' 'Free', 'Ends' 'No end date', and no period row. Web plans: 'Plan length' '30 days' or '1 year', 'Ends in N days', and a period row with 'Your plan does not renew automatically. Buy again before it ends to keep your benefits.' Store plan: the banner 'Your subscription is billed through App Store. Change plans or cancel there to avoid a second subscription.' with 'Manage subscription', 'Billing' 'Monthly' or 'Yearly', and 'Renews in N days'. After auto-renew is off, the label becomes 'Ends in N days'. Plan chips never mention Featured Listing, Priority Support, Analytics, Custom Branding or Escrow; 'Split proceeds' is used instead. Every card shows 'Platform fee on new campaigns' and, under the stats, 'Campaigns you already run keep the fee they were created with; creator withdrawals use your current plan’s fee.' Sandbox Pro: 'Platform fee on new campaigns' 5% (the Free plan's) with 'Active campaigns' 10 (Pro's), the note 'This plan is a store test purchase, so new campaigns get the Free plan’s fee.', and no 'Creator profile donations' chip; the new campaign is locked at 5%. Refunded Apple Pro: 'Your Pro plan has ended. Free features apply until you buy a plan again.', 'Plan status' 'Ended' and 'Period: <start> — ended early'. No future end date is shown anywhere.
 
-**Needs:** Store sandbox for the store row
+**Needs:** Store sandbox for the store rows
 
 **Source:** `apps/web/src/pages/SubscriptionPage.tsx`, `apps/web/src/lib/subscriptionStatus.ts`

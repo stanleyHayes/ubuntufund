@@ -1358,7 +1358,11 @@ export function createApp(options: {
   const listCouponsUseCase = new ListCouponsUseCase(couponRepo)
   const getCouponUseCase = new GetCouponUseCase(couponRepo)
   const deleteCouponUseCase = new DeleteCouponUseCase(couponRepo, couponRedemptionRepo)
-  const previewCouponUseCase = new PreviewCouponUseCase(couponService, planService, affiliateCodePricing, planLimitsService)
+  // Reads the member's open checkouts as checkout does, so a coupon seat their
+  // own unpaid checkout holds is quoted at the price Continue charges.
+  const previewCouponUseCase = new PreviewCouponUseCase(
+    couponService, planService, affiliateCodePricing, planLimitsService, subscriptionCheckoutRepo,
+  )
 
   // Affiliate/referral program: owner surface + admin console + payout rail.
   const enrollAffiliateUseCase = new EnrollAffiliateUseCase(affiliateRepo, affiliateBalanceRepo)

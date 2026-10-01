@@ -26,7 +26,9 @@ import type {
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import type { BillingOwnershipPort } from '../../domain/ports/outbound/BillingOwnershipPort.js';
 import type { SubscriptionRepositoryPort } from '../../domain/ports/outbound/SubscriptionRepositoryPort.js';
-import { SubscriptionCheckoutResolver, type CheckoutResolution } from '../services/SubscriptionCheckoutResolver.js';
+import {
+  OPEN_CHECKOUTS_PER_PURCHASE, SubscriptionCheckoutResolver, type CheckoutResolution,
+} from '../services/SubscriptionCheckoutResolver.js';
 import { isPaidPlanInForce } from '../../domain/services/subscriptionStatus.js';
 
 /** Platform billing currency; subscription plan prices are quoted in GHS. */
@@ -44,6 +46,20 @@ const OPEN_CHECKOUT_HOLD_MS = 60 * 60 * 1000;
 /** Coupon and affiliate codes are matched case-insensitively. */
 const sameCode = (a?: string, b?: string) =>
   (a?.trim().toUpperCase() || undefined) === (b?.trim().toUpperCase() || undefined);
+
+/**
+ * An amount as the checkout dialog shows it: whole cedis without decimals
+ * (GH₵299), anything else with two (GH₵26.99).
+ */
+function formatAmount(amount: number, currency: string): string {
+  const minimumFractionDigits = Number.isInteger(Math.round(amount * 100) / 100) ? 0 : 2;
+  try {
+    return new Intl.NumberFormat('en-GH', { style: 'currency', currency, minimumFractionDigits, maximumFractionDigits: 2 })
+      .format(amount);
+  } catch {
+    return `${currency} ${amount.toFixed(minimumFractionDigits)}`;
+  }
+}
 
 /** What a purchase costs once its code (if any) is applied. */
 interface CodePricing {
@@ -347,7 +363,7 @@ export class CreateSubscriptionCheckoutUseCase {
         billingCycle: input.billingCycle,
         userId,
         baseAmount,
-        exceptCheckoutId,
+        exceptCheckoutIds: exceptCheckoutId ? [exceptCheckoutId] : undefined,
       });
       return {
         discountAmount: pricing.discountAmount,
@@ -395,28 +411,50 @@ export class CreateSubscriptionCheckoutUseCase {
   }
 
   /**
-   * Whether an open checkout still charges what this purchase would cost now:
-   * its code re-quoted today gives the same total. An admin may have changed
-   * the coupon's or the affiliate discount, or the coupon may no longer apply,
-   * since the payment page opened.
+   * What an open checkout's purchase costs now: its code re-quoted today,
+   * without the coupon seat that checkout holds. Null when the code would be
+   * refused today (retired, expired, used up). An admin may have changed the
+   * coupon's or the affiliate discount since the payment page opened.
    */
-  private async chargesSameAsNow(
+  private async quoteNow(
     checkout: SubscriptionCheckout,
     input: CreateSubscriptionCheckoutInput,
     userId: string,
     baseAmount: number
-  ): Promise<boolean> {
-    let now: CodePricing;
+  ): Promise<CodePricing | null> {
     try {
-      now = await this.priceCode(input, userId, baseAmount, checkout.id);
+      return await this.priceCode(input, userId, baseAmount, checkout.id);
     } catch (error) {
-      // The code would be refused today, so its discount is not what this
-      // purchase costs. Anything else (a failed read) is not a price answer.
-      if (error instanceof AppError && error.statusCode < 500) return false;
+      // A refused code is a price answer: its discount no longer applies.
+      // Anything else (a failed read) is not.
+      if (error instanceof AppError && error.statusCode < 500) return null;
       throw error;
     }
-    return now.currency === checkout.currency &&
+  }
+
+  /**
+   * The refusal for an open payment page of this same purchase that no longer
+   * charges what the purchase costs now. Finishing that page would charge an
+   * amount the checkout dialog no longer shows, so the member is told both
+   * amounts and offered only to cancel it. `checkout_in_progress` stays in the
+   * codes so clients that predate `checkout_price_changed` still offer that.
+   */
+  private priceChanged(checkout: SubscriptionCheckout, now: CodePricing | null): AppError {
+    const charged = formatAmount(checkout.finalAmount, checkout.currency);
+    const sameTotal = !!now && now.currency === checkout.currency &&
       toMinorUnits(now.finalAmount, now.currency) === toMinorUnits(checkout.finalAmount, checkout.currency);
+    const message = !now
+      ? `That payment page charges ${charged} with a discount that no longer applies. Cancel it to continue.`
+      : sameTotal
+        ? 'That payment page was opened at an earlier plan price. Cancel it to pay the current price.'
+        : `That payment page charges ${charged}, but this purchase now costs ${formatAmount(now.finalAmount, now.currency)}. Cancel it to pay the current price.`;
+    return new AppError(message, 409, {
+      checkoutId: [checkout.id],
+      code: ['checkout_in_progress', 'checkout_price_changed'],
+      chargedAmount: [String(checkout.finalAmount)],
+      ...(now ? { currentAmount: [String(now.finalAmount)] } : {}),
+      currency: [checkout.currency],
+    });
   }
 
   /**
@@ -425,18 +463,20 @@ export class CreateSubscriptionCheckoutUseCase {
    * purchase refused; an abandoned older one is expired, freeing its coupon
    * seat. One that could still be paid — opened within the last hour, or still
    * processing — is returned for resuming when it is this same purchase (plan,
-   * cycle, code, list price and the total its code gives now) with a payment
-   * page to go back to; any other open one refuses the new purchase, naming the
-   * checkout so the member can cancel it. A page opened before an admin changed
-   * the price or the code's discount is not the same purchase: it would charge
-   * an amount the plans page and checkout dialog no longer show.
+   * cycle and code) with a payment page to go back to, at the list price and
+   * total its code gives now. The same purchase at another price (an admin
+   * changed the price or the code's discount, or the code no longer applies)
+   * is refused as `checkout_price_changed`: its page would charge an amount the
+   * plans page and checkout dialog no longer show. Any other open checkout
+   * refuses the new purchase as `checkout_in_progress`. Both name the checkout
+   * so the member can cancel it.
    */
   private async resolveOpenCheckouts(
     userId: string,
     input: CreateSubscriptionCheckoutInput,
     baseAmount: number
   ): Promise<SubscriptionCheckout | null> {
-    const open = await this.subscriptionCheckoutRepo.findPendingByUser(userId, 5);
+    const open = await this.subscriptionCheckoutRepo.findPendingByUser(userId, OPEN_CHECKOUTS_PER_PURCHASE);
     if (!open.length) return null;
     const resolver = new SubscriptionCheckoutResolver(
       this.subscriptionCheckoutRepo, this.paymentGateway, this.settleSubscriptionUseCase, this.couponRedemptionRepo
@@ -465,18 +505,20 @@ export class CreateSubscriptionCheckoutUseCase {
       if (outcome !== 'pending') continue;
       const samePurchase = !resumable && !!checkout.authorizationUrl &&
         checkout.tier === input.tier && checkout.billingCycle === input.billingCycle &&
-        sameCode(checkout.couponCode, input.couponCode) && checkout.baseAmount === baseAmount &&
-        (await this.chargesSameAsNow(checkout, input, userId, baseAmount));
-      if (samePurchase) {
-        resumable = checkout;
-        continue;
+        sameCode(checkout.couponCode, input.couponCode);
+      if (!samePurchase) {
+        throw new AppError(
+          'You already have a plan payment in progress. Finish it in the payment window, or cancel it before starting another.',
+          409,
+          // The code lets the client offer "cancel it and continue" (…/abandon).
+          { checkoutId: [checkout.id], code: ['checkout_in_progress'] }
+        );
       }
-      throw new AppError(
-        'You already have a plan payment in progress. Finish it in the payment window, or cancel it before starting another.',
-        409,
-        // The code lets the client offer "cancel it and continue" (…/abandon).
-        { checkoutId: [checkout.id], code: ['checkout_in_progress'] }
-      );
+      const now = await this.quoteNow(checkout, input, userId, baseAmount);
+      const chargesSameAsNow = !!now && checkout.baseAmount === baseAmount && now.currency === checkout.currency &&
+        toMinorUnits(now.finalAmount, now.currency) === toMinorUnits(checkout.finalAmount, checkout.currency);
+      if (!chargesSameAsNow) throw this.priceChanged(checkout, now);
+      resumable = checkout;
     }
     return resumable;
   }

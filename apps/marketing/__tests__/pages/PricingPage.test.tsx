@@ -145,6 +145,14 @@ describe('PricingPage with the live plan rows', () => {
     expect(screen.queryByText(/Community (plan|features)/)).not.toBeInTheDocument()
   })
 
+  it('says in the FAQ that a campaign keeps the fee it was created with', async () => {
+    renderWith(LIVE_PLANS)
+    await screen.findAllByText('Starter')
+    expect(screen.getByText('When are platform fees charged?')).toBeInTheDocument()
+    expect(screen.getByText(/campaigns you already run keep the fee they were created with, even after you change plans or a plan ends/)).toBeInTheDocument()
+    expect(screen.getByText(/Creator withdrawals use your current plan’s fee\./)).toBeInTheDocument()
+  })
+
   it('follows a renamed free plan in the copy as well as on its card', async () => {
     renderWith(LIVE_PLANS.map((plan) => plan.tier === SubscriptionTier.FREE ? { ...plan, name: 'Community' } : plan))
     await screen.findAllByText('Starter')

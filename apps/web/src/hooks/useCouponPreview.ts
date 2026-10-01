@@ -10,6 +10,11 @@ import { previewCoupon } from '@/lib/coupons'
 // useSubscription's `cancelled` flag) guards against out-of-order responses so
 // a stale request can never overwrite a newer one. `clear()` resets to a clean
 // state and invalidates any in-flight request.
+//
+// A quote belongs to the inputs it was priced for. As soon as `run()` is given
+// different inputs (another code, plan, billing cycle or amount) the previous
+// quote is dropped, so a form never shows one code's total while checkout is
+// asked to charge another's.
 // ---------------------------------------------------------------------------
 
 const DEBOUNCE_MS = 400
@@ -23,11 +28,17 @@ const DEBOUNCE_MS = 400
 type CouponPreviewArgs = CouponValidationInput
 
 interface UseCouponPreviewResult {
+  /** The quote for the inputs of the latest `run()`; null while those are being quoted. */
   preview: CouponPreview | null
   loading: boolean
   error: string | null
   run: (args: CouponPreviewArgs) => void
   clear: () => void
+}
+
+/** Codes are matched case-insensitively, so SAVE10 and save10 are one quote. */
+function quoteKey(args: CouponPreviewArgs, code: string): string {
+  return JSON.stringify({ ...args, code: code.toUpperCase() })
 }
 
 export function useCouponPreview(): UseCouponPreviewResult {
@@ -39,6 +50,8 @@ export function useCouponPreview(): UseCouponPreviewResult {
   // Bumped on every run/clear; a resolved request is applied only when its id
   // still matches — otherwise it's been superseded and is dropped.
   const reqIdRef = useRef(0)
+  // The inputs the current `preview` (or the request in flight) was priced for.
+  const keyRef = useRef<string | null>(null)
 
   const reset = useCallback(() => {
     if (timerRef.current) {
@@ -46,6 +59,7 @@ export function useCouponPreview(): UseCouponPreviewResult {
       timerRef.current = null
     }
     reqIdRef.current += 1
+    keyRef.current = null
     setPreview(null)
     setLoading(false)
     setError(null)
@@ -62,6 +76,13 @@ export function useCouponPreview(): UseCouponPreviewResult {
     if (!code) {
       reset()
       return
+    }
+
+    // New inputs: the quote on screen was priced for something else.
+    const key = quoteKey(args, code)
+    if (key !== keyRef.current) {
+      keyRef.current = key
+      setPreview(null)
     }
 
     if (timerRef.current) clearTimeout(timerRef.current)
