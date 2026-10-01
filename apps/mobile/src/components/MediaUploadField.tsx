@@ -1,6 +1,6 @@
 import { discardUploadCache } from '@/lib/uploadCache'
 import { IconButton } from '@/components/RoundedControls'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { View, Image, Linking } from 'react-native'
 import { Text } from 'react-native-paper'
 import * as ImagePicker from 'expo-image-picker'
@@ -12,8 +12,11 @@ import { api } from '@/lib/api'
 import { withExternalActivity } from '@/lib/session'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 
-export function MediaUploadField({ label, value, onChange, folder = 'kyc', document = false, crop = false, aspect = [1, 1], onBusyChange, compact = false, disabled = false }: {
-  label: string; value: string; onChange: (url: string) => void; folder?: string; document?: boolean; crop?: boolean; aspect?: [number, number]; onBusyChange?: (busy: boolean) => void; compact?: boolean; disabled?: boolean
+export function MediaUploadField({ label, labelAccessory, value, onChange, folder = 'kyc', document = false, crop = false, aspect = [1, 1], onBusyChange, compact = false, disabled = false }: {
+  label: string
+  /** Shown right after the label, such as a FieldHelp button. */
+  labelAccessory?: ReactNode
+  value: string; onChange: (url: string) => void; folder?: string; document?: boolean; crop?: boolean; aspect?: [number, number]; onBusyChange?: (busy: boolean) => void; compact?: boolean; disabled?: boolean
 }) {
   const p = usePalette()
   const neu = useNeu()
@@ -21,6 +24,14 @@ export function MediaUploadField({ label, value, onChange, folder = 'kyc', docum
   const [error, setError] = useState('')
   // Camera access was permanently declined: only the Settings app can restore it.
   const [cameraSettings, setCameraSettings] = useState(false)
+  // With an accessory, the label shrinks (and wraps) so the accessory stays beside it.
+  const heading = (grow: boolean) => {
+    const text = { color: p.text, fontFamily: 'Outfit_700Bold' }
+    const growth = grow ? { flexGrow: 1, minWidth: 88 } : null
+    return labelAccessory
+      ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1, ...growth }}><Text style={{ ...text, flexShrink: 1 }}>{label}</Text>{labelAccessory}</View>
+      : <Text style={{ ...text, ...growth }}>{label}</Text>
+  }
   async function pick(source: 'camera' | 'library' | 'document') {
     if (busy || disabled) return
     setError(''); setCameraSettings(false); setBusy(true); onBusyChange?.(true)
@@ -64,7 +75,7 @@ export function MediaUploadField({ label, value, onChange, folder = 'kyc', docum
   }
   if (compact) return <View style={{ gap: 4 }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
-      <Text style={{ color: p.text, fontFamily: 'Outfit_700Bold', flexGrow: 1, minWidth: 88 }}>{label}</Text>
+      {heading(true)}
       <Button mode="text" icon="image-edit-outline" loading={busy} disabled={busy || disabled} accessibilityLabel={`Choose ${label.toLowerCase()}`} onPress={() => void pick('library')}>{value ? 'Change' : 'Add'}</Button>
       <IconButton icon="camera-outline" size={22} style={{ margin: 0 }} accessibilityLabel={`Take ${label.toLowerCase()}`} disabled={busy || disabled} onPress={() => void pick('camera')} />
       {value ? <IconButton icon="trash-can-outline" size={20} iconColor={p.textSecondary} style={{ margin: 0 }} accessibilityLabel={`Remove ${label.toLowerCase()}`} disabled={busy || disabled} onPress={() => onChange('')} /> : null}
@@ -73,7 +84,7 @@ export function MediaUploadField({ label, value, onChange, folder = 'kyc', docum
     {cameraSettings ? <OpenSettingsButton /> : null}
   </View>
   return <View style={{ ...neu.inset, backgroundColor: p.surface, padding: 16, borderRadius: 16, gap: 10 }}>
-    <Text style={{ color: p.text, fontFamily: 'Outfit_700Bold' }}>{label}</Text>
+    {heading(false)}
     {value && !value.startsWith('kyc://') && !/\.pdf(?:\?|$)/i.test(value) ? <Image accessibilityLabel={label} source={{ uri: value }} style={{ width: '100%', height: 150, borderRadius: 12 }} resizeMode="contain" /> : null}
     {value.startsWith('kyc://') && <Button disabled={busy || disabled} onPress={() => {
       setError(''); setBusy(true)

@@ -1,6 +1,7 @@
 import { createElement, type ReactNode, type ChangeEvent } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, expect, it, vi } from 'vitest'
+import { ORGANIZATION_KYC_FIELD_HELP, ORGANIZATION_KYC_HELP_FIELDS, ORGANIZATION_KYC_UPLOADS, fieldHelpLabel, type FieldHelpContent } from '@ubuntu-fund/types'
 import { OrganizationKYCForm } from '../OrganizationKYCForm'
 import { api } from '@/lib/api'
 const mocks = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn() }))
@@ -15,10 +16,14 @@ vi.mock('react-native-paper', () => ({
 vi.mock('expo-router', () => ({ Stack: { Screen: () => null }, router: mocks }))
 vi.mock('@/context/ColorModeContext', () => ({ usePalette: () => ({}) }))
 vi.mock('../Loading', () => ({ Button: ({ children, onPress, disabled }: { children: ReactNode; onPress: () => void; disabled?: boolean }) => createElement('button', { onClick: onPress, disabled }, children) }))
-vi.mock('../BrandedTextInput', () => ({ BrandedTextInput: ({ label, value, onChangeText, disabled }: { label: string; value: string; onChangeText: (value: string) => void; disabled: boolean }) => createElement('input', { 'aria-label': label, value, disabled, onChange: (e: ChangeEvent<HTMLInputElement>) => onChangeText(e.target.value) }) }))
+vi.mock('../BrandedTextInput', () => ({ BrandedTextInput: ({ label, value, onChangeText, disabled, right }: { label: string; value: string; onChangeText: (value: string) => void; disabled: boolean; right?: ReactNode }) => createElement('div', {}, createElement('input', { 'aria-label': label, value, disabled, onChange: (e: ChangeEvent<HTMLInputElement>) => onChangeText(e.target.value) }), right) }))
+vi.mock('../FieldHelp', () => {
+  const button = ({ help, disabled }: { help: FieldHelpContent; disabled?: boolean }) => createElement('button', { 'aria-label': fieldHelpLabel(help), disabled }, '?')
+  return { FieldHelp: button, useFieldHelpIcon: (help: FieldHelpContent, disabled?: boolean) => ({ icon: button({ help, disabled }), dialog: null }) }
+})
 vi.mock('../BrandedDateField', () => ({ BrandedDateField: ({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) => createElement('input', { 'aria-label': label, value, onChange: (e: ChangeEvent<HTMLInputElement>) => onChange(e.target.value) }) }))
 vi.mock('../SelectionField', () => ({ SelectionField: ({ label, value, onChange, disabled, options }: { label: string; value: string; onChange: (value: string) => void; disabled: boolean; options: Array<{ value: string; label: string }> }) => createElement('select', { 'aria-label': label, value, disabled, onChange: (e: ChangeEvent<HTMLSelectElement>) => onChange(e.target.value) }, options.map(item => createElement('option', { key: item.value, value: item.value }, item.label))) }))
-vi.mock('../MediaUploadField', () => ({ MediaUploadField: ({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) => createElement('button', { onClick: () => onChange('kyc://aaaaaaaaaaaaaaaaaaaaaaaa') }, `${label}: ${value ? 'uploaded' : 'empty'}`) }))
+vi.mock('../MediaUploadField', () => ({ MediaUploadField: ({ label, labelAccessory, value, onChange }: { label: string; labelAccessory?: ReactNode; value: string; onChange: (value: string) => void }) => createElement('div', {}, createElement('button', { onClick: () => onChange('kyc://aaaaaaaaaaaaaaaaaaaaaaaa') }, `${label}: ${value ? 'uploaded' : 'empty'}`), labelAccessory) }))
 beforeEach(() => vi.clearAllMocks())
 function fill() {
   render(createElement(OrganizationKYCForm))
@@ -44,6 +49,7 @@ it('preserves the draft after failure and clears it only after confirmed submiss
   fireEvent.click(screen.getByText('Submit organization verification'))
   expect((screen.getByText('Submit organization verification') as HTMLButtonElement).disabled).toBe(true)
   expect((screen.getByLabelText('Legal organization name') as HTMLInputElement).disabled).toBe(true)
+  for (const field of ['idNumber', 'registration'] as const) expect((screen.getByRole('button', { name: fieldHelpLabel(ORGANIZATION_KYC_FIELD_HELP[field]) }) as HTMLButtonElement).disabled).toBe(true)
   release({ status: 'pending' })
   expect(await screen.findByText('Organization verification submitted for review.')).toBeTruthy()
   expect(screen.queryByLabelText('Legal organization name')).toBeNull()
@@ -63,4 +69,16 @@ it('clears identity evidence when changing type and requires a replacement befor
   fireEvent.click(screen.getByText('Submit organization verification'))
   await waitFor(() => expect(api.post).toHaveBeenCalledTimes(1))
   expect(vi.mocked(api.post).mock.calls[0][1]).toMatchObject({ documents: [{ type: 'business_registration' }, { type: 'authorization_letter' }, { type: 'passport' }] })
+})
+it('puts each help button beside the field it explains', () => {
+  render(createElement(OrganizationKYCForm))
+  const name = (field: keyof typeof ORGANIZATION_KYC_FIELD_HELP) => fieldHelpLabel(ORGANIZATION_KYC_FIELD_HELP[field])
+  for (const [field, label] of [['idNumber', 'Representative ID number'], ['representativeCapacity', 'Role and authority to act']] as const) {
+    expect(within(screen.getByLabelText(label).parentElement!).getByRole('button', { name: name(field) })).toBeTruthy()
+  }
+  for (const [field, label] of ORGANIZATION_KYC_UPLOADS) {
+    expect(within(screen.getByText(`${label}: empty`).parentElement!).getByRole('button', { name: name(field) })).toBeTruthy()
+  }
+  expect(screen.getAllByRole('button', { name: /^What is "/ })).toHaveLength(ORGANIZATION_KYC_HELP_FIELDS.length)
+  expect((screen.getByRole('button', { name: name('control') }) as HTMLButtonElement).disabled).toBe(false)
 })

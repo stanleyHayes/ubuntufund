@@ -53,3 +53,16 @@ it('releases the busy state and removes the local copy when an upload times out'
   expect(m.discard).toHaveBeenCalledWith('file:///cache/ImagePicker/selfie.jpg')
   expect((screen.getByText('Camera') as HTMLButtonElement).disabled).toBe(false)
 })
+
+it('draws a label accessory right after the label, in both layouts', () => {
+  for (const compact of [false, true]) {
+    render(createElement(MediaUploadField, { ...props, compact, labelAccessory: createElement('button', { type: 'button' }, 'Explain') }))
+    expect(screen.getByText('Selfie').nextElementSibling).toBe(screen.getByRole('button', { name: 'Explain' }))
+    cleanup()
+  }
+})
+
+it('adds nothing beside the label without an accessory', () => {
+  render(createElement(MediaUploadField, props))
+  expect(screen.getByText('Selfie').nextElementSibling?.textContent).toMatch(/^Choose a clear image/)
+})
