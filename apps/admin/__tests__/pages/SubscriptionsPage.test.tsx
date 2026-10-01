@@ -72,10 +72,27 @@ it('estimates MRR in pesewas, so the header equals the sum of the tier cards', a
   expect(stat('Estimated MRR (list price)')).toHaveTextContent('GH₵ 372.48')
 })
 
-it('values the production plans (Organization monthly, Enterprise yearly) at the live prices', () => {
+it('counts sales-only Enterprise subscribers without pricing them at the reference price', () => {
+  // Production on 2026-09-30: Organization monthly, and an Enterprise yearly plan that paid GH₵ 999,
+  // not the 9,999.90 reference price (GH₵ 833.33 a month) Admin → Plans shows.
   const summary = summarize([sub('a', 'organization'), sub('b', 'enterprise', yearly)], buildPlanMap(LIVE_PLANS), NOW)
-  expect(summary.byTier.find(row => row.tier === 'enterprise')?.revenuePesewas).toBe(83333)
-  expect(summary.estimatedMrrPesewas).toBe(39900 + 83333)
+  expect(summary.byTier.find(row => row.tier === 'enterprise')).toMatchObject({ count: 1, negotiated: true, revenuePesewas: 0 })
+  expect(summary.byTier.find(row => row.tier === 'organization')).toMatchObject({ count: 1, negotiated: false, revenuePesewas: 39900 })
+  expect(summary).toMatchObject({ paid: 2, negotiatedPaid: 1, estimatedMrrPesewas: 39900 })
+  // A plan taken off public sale is sales-only too.
+  const hidden = summarize([sub('a', 'starter')], buildPlanMap(LIVE_PLANS.map(plan => (plan.tier === 'starter' ? { ...plan, isPublic: false } : plan))), NOW)
+  expect(hidden).toMatchObject({ negotiatedPaid: 1, estimatedMrrPesewas: 0 })
+})
+
+it('shows a sales-only tier as negotiated and leaves it out of the estimate', async () => {
+  state.plans = plansState({ data: LIVE_PLANS })
+  state.rows = [sub('a', 'organization'), sub('b', 'enterprise', yearly)]
+  render(<MemoryRouter><SubscriptionsPage /></MemoryRouter>)
+  expect(await screen.findByText('Negotiated')).toBeVisible()
+  expect(screen.getByText('GH₵ 399.00/mo')).toBeVisible()
+  expect(stat('Estimated MRR (list price)')).toHaveTextContent('GH₵ 399.00')
+  expect(screen.getByText(/1 paying subscriber is on a sales-only plan at a negotiated price and not priced here\./)).toBeVisible()
+  expect(screen.queryByText(/833/)).toBeNull()
 })
 
 it('shows an unavailable estimate and a retry, never seed figures, when plans fail to load', async () => {

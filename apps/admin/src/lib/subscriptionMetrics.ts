@@ -1,7 +1,7 @@
 import { BillingCycle, SubscriptionTier, type Subscription, type SubscriptionPlan } from '@ubuntu-fund/types'
 import { isPaidInForce } from './subscriptionRevenue'
 import { toPesewas, yearlyPerMonthPesewas } from './money'
-import { comparePlans } from './plans'
+import { comparePlans, isSalesOnly } from './plans'
 
 export type PlanMap = Record<string, SubscriptionPlan>
 
@@ -48,27 +48,42 @@ export function monthlyListPesewas(subscription: Pick<Subscription, 'tier' | 'bi
   return subscription.billingCycle === BillingCycle.MONTHLY ? toPesewas(plan.priceMonthly) : yearlyPerMonthPesewas(plan.priceYearly)
 }
 
-export interface TierRevenue { tier: string; name: string; count: number; revenuePesewas: number }
+export interface TierRevenue {
+  tier: string
+  name: string
+  count: number
+  revenuePesewas: number
+  /**
+   * A sales-only plan (Enterprise, or not public): its price is only a
+   * reference and subscribers pay what was negotiated, so it is counted but
+   * never priced (revenuePesewas 0).
+   */
+  negotiated: boolean
+}
 export interface SubscriptionSummary {
   total: number
   paid: number
   free: number
-  /** Estimated from web-billed list prices, in whole pesewas; not money actually collected. The sum of byTier. */
+  /** Estimated from web-billed list prices of self-serve plans, in whole pesewas; not money actually collected. The sum of byTier. */
   estimatedMrrPesewas: number
   /** Paying through the App Store or Google Play: counted, never priced here. */
   storeBilledPaid: number
+  /** Paying on the web on a sales-only plan at a negotiated price: counted, never priced here. */
+  negotiatedPaid: number
   byTier: TierRevenue[]
 }
 
 export function summarize(subscriptions: Subscription[], plans: PlanMap, now = new Date()): SubscriptionSummary {
   const paying = subscriptions.filter(subscription => isCurrentlyPaid(subscription, now))
   const webPaying = paying.filter(subscription => !isStoreBilled(subscription))
+  const negotiated = (tier: string) => !!plans[tier] && isSalesOnly(plans[tier])
   const tiers = knownTiers(plans, subscriptions).filter(tier => tier !== SubscriptionTier.FREE)
   const byTier = tiers.map(tier => {
     const rows = paying.filter(subscription => subscription.tier === tier)
+    const salesOnly = negotiated(tier)
     return {
-      tier, name: planName(tier, plans), count: rows.length,
-      revenuePesewas: rows.filter(subscription => !isStoreBilled(subscription)).reduce((sum, subscription) => sum + monthlyListPesewas(subscription, plans), 0),
+      tier, name: planName(tier, plans), count: rows.length, negotiated: salesOnly,
+      revenuePesewas: salesOnly ? 0 : rows.filter(subscription => !isStoreBilled(subscription)).reduce((sum, subscription) => sum + monthlyListPesewas(subscription, plans), 0),
     }
   }).filter(row => row.count > 0 || plans[row.tier]?.active !== false)
   return {
@@ -78,6 +93,7 @@ export function summarize(subscriptions: Subscription[], plans: PlanMap, now = n
     // Summed from the cards, so the header always equals them.
     estimatedMrrPesewas: byTier.reduce((sum, row) => sum + row.revenuePesewas, 0),
     storeBilledPaid: paying.length - webPaying.length,
+    negotiatedPaid: webPaying.filter(subscription => negotiated(subscription.tier)).length,
     byTier,
   }
 }

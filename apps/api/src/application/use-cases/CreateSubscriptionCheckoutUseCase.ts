@@ -18,7 +18,7 @@ import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGate
 import type { CouponService } from '../services/CouponService.js';
 import { isSelfServePlan, type PlanService } from '../services/PlanService.js';
 import type { SettleSubscriptionUseCase } from './SettleSubscriptionUseCase.js';
-import { roundToCurrency } from '../../domain/value-objects/Money.js';
+import { roundToCurrency, toMinorUnits } from '../../domain/value-objects/Money.js';
 import type {
   AffiliateCodePricing,
   AffiliateCodeQuote,
@@ -44,6 +44,21 @@ const OPEN_CHECKOUT_HOLD_MS = 60 * 60 * 1000;
 /** Coupon and affiliate codes are matched case-insensitively. */
 const sameCode = (a?: string, b?: string) =>
   (a?.trim().toUpperCase() || undefined) === (b?.trim().toUpperCase() || undefined);
+
+/** What a purchase costs once its code (if any) is applied. */
+interface CodePricing {
+  discountAmount: number;
+  finalAmount: number;
+  currency: string;
+  couponId?: string;
+  couponCode?: string;
+  /** Carried from the priced coupon so the seat claim knows the cap. */
+  perUserLimit?: number;
+  /** Snapshot so settlement never depends on the coupon still existing. */
+  commissionBase?: CouponCommissionBase;
+  /** Set instead when the code turned out to be an affiliate's, not a coupon's. */
+  affiliateCode: AffiliateCodeQuote | null;
+}
 
 /**
  * Opens a paid-subscription checkout for the authenticated user — the
@@ -155,64 +170,9 @@ export class CreateSubscriptionCheckoutUseCase {
     }
 
     // ── Price it (with a coupon when supplied; 422 propagates on invalid) ──
-    let discountAmount = 0;
-    let finalAmount = roundToCurrency(baseAmount, DEFAULT_CURRENCY);
-    let currency = DEFAULT_CURRENCY;
-    let couponId: string | undefined;
-    let couponCode: string | undefined;
-    /** Carried from the priced coupon so the seat claim below knows the cap. */
-    let perUserLimit: number | undefined;
-    /** Snapshot so settlement never depends on the coupon still existing. */
-    let commissionBase: CouponCommissionBase | undefined;
-    /** Set instead when the code turned out to be an affiliate's, not a coupon's. */
-    let affiliateCode: AffiliateCodeQuote | null = null;
-    if (input.couponCode?.trim()) {
-      try {
-        const pricing = await this.couponService.validateAndPrice({
-          code: input.couponCode,
-          tier,
-          billingCycle,
-          userId,
-          baseAmount,
-        });
-        discountAmount = pricing.discountAmount;
-        finalAmount = pricing.finalAmount;
-        currency = pricing.currency;
-        couponId = pricing.coupon.id;
-        couponCode = pricing.coupon.code;
-        perUserLimit = pricing.coupon.perUserLimit;
-        commissionBase = pricing.coupon.commissionBase;
-      } catch (err) {
-        // Not a coupon? It may be an affiliate's referral code. One box, one
-        // code: the referee gets the discount and the referrer still earns.
-        //
-        // Only a genuinely unknown code falls through. A coupon that exists but
-        // was refused — expired, exhausted, wrong plan — must keep its own
-        // message, or a customer sees "invalid code" for a coupon that is
-        // merely out of date.
-        const unknownCode =
-          err instanceof AppError && err.message === 'Coupon not found';
-        const quote = unknownCode
-          ? await this.affiliateCodePricing?.quote(
-              input.couponCode,
-              userId,
-              baseAmount,
-              currency
-            )
-          : null;
-        if (!quote) throw err;
-
-        discountAmount = quote.discountAmount;
-        finalAmount = quote.finalAmount;
-        affiliateCode = quote;
-        // Record the code even though there is no coupon record behind it.
-        // Without it the checkout persists a non-zero discountAmount attached
-        // to nothing, and neither the admin console nor finance can say where
-        // the money went. couponId stays unset on purpose — settlement keys
-        // coupon redemption off it, and this is not a coupon.
-        couponCode = quote.code;
-      }
-    }
+    const {
+      discountAmount, finalAmount, currency, couponId, couponCode, perUserLimit, commissionBase, affiliateCode,
+    } = await this.priceCode(input, userId, baseAmount);
 
     const preview = { baseAmount, discountAmount, finalAmount, currency };
 
@@ -362,15 +322,114 @@ export class CreateSubscriptionCheckoutUseCase {
   }
 
   /**
+   * What the purchase costs with its code: a coupon, else an affiliate's
+   * referral code, else no discount. A code that does not apply throws (422).
+   * `exceptCheckoutId` re-quotes an open checkout's own code without counting
+   * the coupon seat that checkout holds.
+   */
+  private async priceCode(
+    input: CreateSubscriptionCheckoutInput,
+    userId: string,
+    baseAmount: number,
+    exceptCheckoutId?: string
+  ): Promise<CodePricing> {
+    const listPrice: CodePricing = {
+      discountAmount: 0,
+      finalAmount: roundToCurrency(baseAmount, DEFAULT_CURRENCY),
+      currency: DEFAULT_CURRENCY,
+      affiliateCode: null,
+    };
+    if (!input.couponCode?.trim()) return listPrice;
+    try {
+      const pricing = await this.couponService.validateAndPrice({
+        code: input.couponCode,
+        tier: input.tier,
+        billingCycle: input.billingCycle,
+        userId,
+        baseAmount,
+        exceptCheckoutId,
+      });
+      return {
+        discountAmount: pricing.discountAmount,
+        finalAmount: pricing.finalAmount,
+        currency: pricing.currency,
+        couponId: pricing.coupon.id,
+        couponCode: pricing.coupon.code,
+        perUserLimit: pricing.coupon.perUserLimit,
+        commissionBase: pricing.coupon.commissionBase,
+        affiliateCode: null,
+      };
+    } catch (err) {
+      // Not a coupon? It may be an affiliate's referral code. One box, one
+      // code: the referee gets the discount and the referrer still earns.
+      //
+      // Only a genuinely unknown code falls through. A coupon that exists but
+      // was refused — expired, exhausted, wrong plan — must keep its own
+      // message, or a customer sees "invalid code" for a coupon that is
+      // merely out of date.
+      const unknownCode =
+        err instanceof AppError && err.message === 'Coupon not found';
+      const quote = unknownCode
+        ? await this.affiliateCodePricing?.quote(
+            input.couponCode,
+            userId,
+            baseAmount,
+            listPrice.currency
+          )
+        : null;
+      if (!quote) throw err;
+
+      return {
+        ...listPrice,
+        discountAmount: quote.discountAmount,
+        finalAmount: quote.finalAmount,
+        affiliateCode: quote,
+        // Record the code even though there is no coupon record behind it.
+        // Without it the checkout persists a non-zero discountAmount attached
+        // to nothing, and neither the admin console nor finance can say where
+        // the money went. couponId stays unset on purpose — settlement keys
+        // coupon redemption off it, and this is not a coupon.
+        couponCode: quote.code,
+      };
+    }
+  }
+
+  /**
+   * Whether an open checkout still charges what this purchase would cost now:
+   * its code re-quoted today gives the same total. An admin may have changed
+   * the coupon's or the affiliate discount, or the coupon may no longer apply,
+   * since the payment page opened.
+   */
+  private async chargesSameAsNow(
+    checkout: SubscriptionCheckout,
+    input: CreateSubscriptionCheckoutInput,
+    userId: string,
+    baseAmount: number
+  ): Promise<boolean> {
+    let now: CodePricing;
+    try {
+      now = await this.priceCode(input, userId, baseAmount, checkout.id);
+    } catch (error) {
+      // The code would be refused today, so its discount is not what this
+      // purchase costs. Anything else (a failed read) is not a price answer.
+      if (error instanceof AppError && error.statusCode < 500) return false;
+      throw error;
+    }
+    return now.currency === checkout.currency &&
+      toMinorUnits(now.finalAmount, now.currency) === toMinorUnits(checkout.finalAmount, checkout.currency);
+  }
+
+  /**
    * Settle, fail or expire the member's earlier PENDING checkouts before a new
    * charge opens. A paid one (webhook still in flight) is activated and the new
    * purchase refused; an abandoned older one is expired, freeing its coupon
    * seat. One that could still be paid — opened within the last hour, or still
    * processing — is returned for resuming when it is this same purchase (plan,
-   * cycle, code and list price) with a payment page to go back to; any other
-   * open one refuses the new purchase, naming the checkout so the member can
-   * cancel it. A page opened before an admin changed the price is not the same
-   * purchase: it would charge a price the plans page no longer shows.
+   * cycle, code, list price and the total its code gives now) with a payment
+   * page to go back to; any other open one refuses the new purchase, naming the
+   * checkout so the member can cancel it. A page opened before an admin changed
+   * the price or the code's discount is not the same purchase: it would charge
+   * an amount the plans page and checkout dialog no longer show.
    */
   private async resolveOpenCheckouts(
     userId: string,
@@ -406,7 +465,8 @@ export class CreateSubscriptionCheckoutUseCase {
       if (outcome !== 'pending') continue;
       const samePurchase = !resumable && !!checkout.authorizationUrl &&
         checkout.tier === input.tier && checkout.billingCycle === input.billingCycle &&
-        sameCode(checkout.couponCode, input.couponCode) && checkout.baseAmount === baseAmount;
+        sameCode(checkout.couponCode, input.couponCode) && checkout.baseAmount === baseAmount &&
+        (await this.chargesSameAsNow(checkout, input, userId, baseAmount));
       if (samePurchase) {
         resumable = checkout;
         continue;

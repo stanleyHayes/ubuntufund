@@ -10,7 +10,7 @@ Owners manage `/creator`; their public donation page is `/creators/:handle`. The
 
 ## Plan fee source
 
-The live admin-managed plan `platformFeePercent` determines the fee, not an environment variable or a separate creator rate. Eligibility requires an active catalog plan with a non-Free tier and a nonzero monthly or annual price, plus an active, unexpired subscription. Trials do not qualify.
+The live admin-managed plan `platformFeePercent` determines the fee, not an environment variable or a separate creator rate. Eligibility requires a non-Free plan with a monthly or annual price above 0, plus an active, unexpired subscription. Trials do not qualify. A plan staff retire (Active off) or hide (Public off) stops new purchases only: subscriptions already in force keep creator donations until their period ends.
 
 | Plan | Creator withdrawal fee (live price book, 2026-09-30) | New creator donations |
 |---|---:|---|

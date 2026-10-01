@@ -36,6 +36,8 @@ const planCard = (name: string) => screen.getAllByText(name, { selector: 'p' })
   .map((node) => node.closest('.MuiCard-root') as HTMLElement).find(Boolean)!
 /** The plan cells of a comparison-table row, in column order. */
 const rowCells = (label: string) => Array.from(screen.getByText(label, { selector: 'p' }).parentElement!.parentElement!.children).slice(1) as HTMLElement[]
+/** A statistic on the member's own plan card (label and value), which comes before the plan cards. */
+const planStat = (label: string) => screen.getAllByText(label, { selector: 'p' })[0].parentElement!.parentElement as HTMLElement
 
 // Production rows written before a field existed simply lack it (today:
 // maxCollaboratorsPerCampaign on Free, Starter, Pro and Enterprise).
@@ -86,6 +88,22 @@ describe('lapsed web subscription', () => {
     mount()
     expect(screen.queryByText('Expired')).not.toBeInTheDocument()
     expect(within(planCard('Pro')).getByText('Current plan')).toBeInTheDocument()
+  })
+
+  it('states the Free fee and campaign limit that apply once the plan has ended, not the ended plan’s', () => {
+    state.plans = LIVE_PLANS
+    state.subscription = subscription({ status: SubscriptionStatus.EXPIRED })
+    mount()
+    expect(planStat('Platform fee')).toHaveTextContent(/^Platform fee5%$/)
+    expect(planStat('Active campaigns')).toHaveTextContent(/^Active campaigns1$/)
+  })
+
+  it('states the running plan’s own fee and campaign limit while it is in force', () => {
+    state.plans = LIVE_PLANS
+    state.subscription = subscription({ currentPeriodEnd: new Date(Date.now() + 10 * DAY) })
+    mount()
+    expect(planStat('Platform fee')).toHaveTextContent(/^Platform fee2%$/)
+    expect(planStat('Active campaigns')).toHaveTextContent(/^Active campaigns10$/)
   })
 })
 
@@ -171,7 +189,15 @@ describe('buying over a running plan', () => {
     state.subscription = subscription({ tier: SubscriptionTier.FREE })
     mount('/subscription?tier=pro&billingCycle=yearly')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(within(planCard('Pro')).getByRole('button', { name: 'Yearly not offered' })).toBeDisabled()
+    const pro = planCard('Pro')
+    expect(within(pro).getByRole('button', { name: 'Yearly not offered' })).toBeDisabled()
+    // The price says so too, as on marketing, instead of a GH₵0 one-time payment.
+    expect(within(pro).getByText('Yearly not offered', { selector: 'p' })).toBeInTheDocument()
+    expect(within(pro).queryByText('GH₵0')).not.toBeInTheDocument()
+    expect(within(pro).queryByText(/One-time payment/)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Monthly' }))
+    expect(within(planCard('Pro')).getByText('GH₵29.99')).toBeInTheDocument()
+    expect(within(planCard('Pro')).getByText(/One-time payment/)).toBeInTheDocument()
   })
 })
 
@@ -355,5 +381,42 @@ describe('recommended plan', () => {
     state.subscription = subscription({ tier: SubscriptionTier.FREE })
     mount()
     expect(screen.queryByText('Recommended for growth')).not.toBeInTheDocument()
+  })
+})
+
+describe('upgrade call to action', () => {
+  it('offers the plan marked Popular, by its name', () => {
+    state.plans = { ...LIVE_PLANS, organization: { ...LIVE_PLANS.organization, popular: true } }
+    state.subscription = subscription({ tier: SubscriptionTier.FREE })
+    mount()
+    expect(screen.queryByRole('button', { name: 'Upgrade to Pro' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Upgrade to Organization' }))
+    expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'Upgrade to Organization' })).toBeInTheDocument()
+  })
+
+  it('offers the cheapest plan on sale when none is marked Popular', () => {
+    state.plans = LIVE_PLANS
+    state.subscription = subscription({ status: SubscriptionStatus.EXPIRED })
+    mount()
+    fireEvent.click(screen.getByRole('button', { name: 'Upgrade to Starter' }))
+    expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'Upgrade to Starter' })).toBeInTheDocument()
+  })
+
+  it('passes over a Popular plan the selected cycle does not sell', () => {
+    state.plans = { ...LIVE_PLANS, pro: { ...LIVE_PLANS.pro, popular: true, priceYearly: 0 } }
+    state.subscription = subscription({ tier: SubscriptionTier.FREE })
+    mount()
+    expect(screen.getByRole('button', { name: 'Upgrade to Pro' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Yearly' }))
+    expect(screen.queryByRole('button', { name: 'Upgrade to Pro' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Upgrade to Starter' })).toBeInTheDocument()
+  })
+
+  it('is hidden when no plan can be bought here', () => {
+    state.plans = { free: LIVE_PLANS.free, enterprise: LIVE_PLANS.enterprise }
+    state.subscription = subscription({ tier: SubscriptionTier.FREE })
+    mount()
+    expect(screen.queryByText('Ready to grow your impact?')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Upgrade to / })).not.toBeInTheDocument()
   })
 })

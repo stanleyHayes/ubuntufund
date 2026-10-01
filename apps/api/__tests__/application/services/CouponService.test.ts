@@ -134,6 +134,28 @@ describe('pricing through the service', () => {
     await expect(price()).rejects.toThrow(/maximum number of times/i);
   });
 
+  it('does not count the seat held by the checkout being re-quoted', async () => {
+    const slots: Record<string, unknown> = {
+      'open-checkout': { couponId: 'coupon-1', userId: 'user-1', status: 'pending' },
+      'released-checkout': { couponId: 'coupon-1', userId: 'user-1', status: 'released' },
+      'other-coupon': { couponId: 'coupon-2', userId: 'user-1', status: 'pending' },
+    };
+    const redemptionRepo = {
+      countByCouponAndUser: vi.fn(async () => 1),
+      findByCheckoutId: vi.fn(async (checkoutId: string) => slots[checkoutId] ?? null),
+    } as unknown as CouponRedemptionRepositoryPort;
+    const service = new CouponService({ findByCode: vi.fn(async () => coupon({ perUserLimit: 1 })) } as unknown as CouponRepositoryPort,
+      redemptionRepo, { emailFor: vi.fn(), hasPaidBefore: vi.fn(async () => false) });
+    const quote = (exceptCheckoutId?: string) => service.validateAndPrice({
+      code: 'launch50', tier: 'pro', billingCycle: BillingCycle.MONTHLY, userId: 'user-1', baseAmount: 200, exceptCheckoutId,
+    });
+    await expect(quote('open-checkout')).resolves.toMatchObject({ finalAmount: 100 });
+    // Only a slot of this coupon that still holds a seat is the member's own.
+    for (const other of [undefined, 'released-checkout', 'other-coupon', 'no-such-checkout']) {
+      await expect(quote(other)).rejects.toThrow(/maximum number of times/i);
+    }
+  });
+
   it('rejects an expired coupon', async () => {
     const { price } = build(coupon({ validUntil: new Date('2020-01-01') }));
     await expect(price()).rejects.toThrow(/expired/i);

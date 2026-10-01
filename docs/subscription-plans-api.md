@@ -43,7 +43,7 @@ Because the whole saved plan is checked, a stored plan that already breaks a rul
 - `403`: Enterprise or a hidden (non-public) plan (`Contact sales@ujimora.com`).
 - `400`: Free, or a billing cycle priced 0 on the plan.
 - **Changed:** `500` when the plan cannot be read. No checkout or charge is opened. It used to charge the code default price instead (Pro 149 rather than the admin-set price).
-- **Changed:** `409` with `errors.code = ['checkout_in_progress']` (and `errors.checkoutId`) now also when the member's open checkout for the same plan, cycle and code was opened at a different list price, because an admin changed the price since. The member cancels it (`POST /subscriptions/checkout/:id/abandon`) and continues at the current price. It used to resume the old payment page at the old price.
+- **Changed:** `409` with `errors.code = ['checkout_in_progress']` (and `errors.checkoutId`) now also when the member's open checkout for the same plan, cycle and code would no longer charge what the purchase costs now: it was opened at a different list price, or its code, re-quoted today, gives a different total (an admin changed the coupon's discount or the affiliate discount) or no longer applies (the coupon was retired or expired). The re-quote does not count the coupon seat that open checkout holds. The member cancels it (`POST /subscriptions/checkout/:id/abandon`) and continues at the current price. It used to resume the old payment page at the old amount.
 
 ## Coupon preview
 

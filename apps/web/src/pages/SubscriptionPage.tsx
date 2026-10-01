@@ -406,7 +406,14 @@ export function SubscriptionPage() {
   // including the one that just lapsed.
   const paidInForce = isPaidPlanInForce(currentSub)
   const lapsed = currentSub.tier !== SubscriptionTier.FREE && !paidInForce
+  // The plan whose fee and limits apply now: once a paid plan has ended the API
+  // applies the Free plan's, so the stats show those, not the plan that ended.
+  const effectivePlan = lapsed ? (plans[SubscriptionTier.FREE] ?? currentPlan) : currentPlan
   const isCurrentTier = (tier: string) => isCurrentPlanTier(tier, currentSub)
+  // The upgrade call to action offers the plan the admin marks Popular, else the
+  // cheapest plan that can be bought on the selected cycle; with none, it is hidden.
+  const upgradePlan = orderedPlans.find((plan) => plan.popular === true && canBuyTier(plan.tier)) ??
+    orderedPlans.filter((plan) => canBuyTier(plan.tier)).sort((a, b) => cyclePrice(a) - cyclePrice(b) || bySortOrder(a, b))[0]
 
   return (
     <Container maxWidth="lg" sx={{ py: 6 }}>
@@ -519,12 +526,12 @@ export function SubscriptionPage() {
               {
                 icon: <TrendingUpRoundedIcon sx={{ fontSize: 20, color: colors.accent }} />,
                 label: 'Platform fee',
-                value: `${currentPlan.platformFeePercent}%`,
+                value: `${effectivePlan.platformFeePercent}%`,
               },
               {
                 icon: <CampaignRoundedIcon sx={{ fontSize: 20, color: colors.accent }} />,
                 label: 'Active campaigns',
-                value: currentPlan.maxActiveCampaigns === -1 ? 'Unlimited' : String(currentPlan.maxActiveCampaigns),
+                value: effectivePlan.maxActiveCampaigns === -1 ? 'Unlimited' : String(effectivePlan.maxActiveCampaigns),
               },
             ].map((stat) => (
               <Box
@@ -652,6 +659,8 @@ export function SubscriptionPage() {
           const fitLabel = isPro ? 'Recommended for growth' : tier === SubscriptionTier.ORGANIZATION ? 'Best fit for organizations' : tier === SubscriptionTier.ENTERPRISE ? 'For complex needs' : tier === SubscriptionTier.FREE ? 'Start here' : tier === SubscriptionTier.STARTER ? 'For a growing cause' : 'More ways to fundraise'
           const tc = colorsOf(plan)
           const price = billingToggle === 'yearly' ? plan.priceYearly : plan.priceMonthly
+          // Free by tier: a zero price on a paid plan means this cycle is not offered.
+          const notOffered = tier !== SubscriptionTier.FREE && tier !== SubscriptionTier.ENTERPRISE && !(price > 0)
           const canCheckout = !storeManaged && canBuyTier(tier)
           // A running web plan can be renewed early: the new period starts when
           // the current one ends, so no paid time is lost.
@@ -701,6 +710,8 @@ export function SubscriptionPage() {
                 <Box sx={{ mb: 2.5 }}>
                   {tier === SubscriptionTier.ENTERPRISE ? (
                     <Typography sx={{ fontWeight: 800, fontSize: '1.3rem', fontFamily: '"Outfit", sans-serif' }}>Custom</Typography>
+                  ) : notOffered ? (
+                    <Typography sx={{ fontWeight: 800, fontSize: '1.3rem', fontFamily: '"Outfit", sans-serif' }}>{billingToggle === 'yearly' ? 'Yearly' : 'Monthly'} not offered</Typography>
                   ) : (
                     <Box sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 0.5 }}>
                       <Typography sx={{ fontWeight: 900, fontSize: '2rem', whiteSpace: 'nowrap', fontFamily: '"Outfit", sans-serif', lineHeight: 1.2 }}>
@@ -711,7 +722,7 @@ export function SubscriptionPage() {
                       </Typography>
                     </Box>
                   )}
-                  {tier !== SubscriptionTier.FREE && tier !== SubscriptionTier.ENTERPRISE && (
+                  {tier !== SubscriptionTier.FREE && tier !== SubscriptionTier.ENTERPRISE && price > 0 && (
                     <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', mt: 0.25 }}>
                       {billingToggle === 'yearly' ? <>{formatCurrency(price, 'GHS')} for 1 year &middot; </> : null}One-time payment &middot; does not auto-renew
                     </Typography>
@@ -965,7 +976,7 @@ export function SubscriptionPage() {
       )}
 
       {/* ═══════════ UPGRADE CTA ═══════════ */}
-      {(currentSub.tier === SubscriptionTier.FREE || lapsed) && (
+      {(currentSub.tier === SubscriptionTier.FREE || lapsed) && upgradePlan && (
         <Card
           elevation={0}
           sx={{
@@ -987,7 +998,7 @@ export function SubscriptionPage() {
           <Button
             variant="contained"
             size="large"
-            onClick={() => openCheckout(SubscriptionTier.PRO)}
+            onClick={() => openCheckout(upgradePlan.tier)}
             startIcon={<RocketLaunchRoundedIcon />}
             sx={{
               bgcolor: '#2E3D2F',
@@ -999,7 +1010,7 @@ export function SubscriptionPage() {
               '&:hover': { bgcolor: '#1C261D' },
             }}
           >
-            Upgrade to Pro
+            Upgrade to {upgradePlan.name}
           </Button>
         </Card>
       )}

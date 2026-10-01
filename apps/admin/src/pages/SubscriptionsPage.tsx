@@ -227,10 +227,15 @@ export default function SubscriptionsPage() {
   const [now] = useState(() => new Date())
   const summary = useMemo(() => summarize(subscriptions, plans, now), [subscriptions, plans, now])
   const tierOptions = useMemo(() => knownTiers(plans, subscriptions), [plans, subscriptions])
-  const revenueByTier = summary.byTier.map(row => ({ ...row, color: tierColors[row.tier] ?? plans[row.tier]?.accentColor ?? '#78909C' }))
-  const totalRevForBar = Math.max(1, summary.estimatedMrrPesewas)
   /** Revenue figure for the header and cards: unavailable (not zero) when plan prices failed to load. */
   const revenue = (pesewas: number, suffix = '') => (plansError ? '—' : `${formatPesewas(pesewas)}${suffix}`)
+  const revenueByTier = summary.byTier.map(row => ({
+    ...row,
+    color: tierColors[row.tier] ?? plans[row.tier]?.accentColor ?? '#78909C',
+    // A sales-only plan's price is only a reference, so its card states no amount.
+    amount: row.negotiated ? 'Negotiated' : revenue(row.revenuePesewas, '/mo'),
+  }))
+  const totalRevForBar = Math.max(1, summary.estimatedMrrPesewas)
 
   const filtered = subscriptions.filter(s => {
     if (tierFilter !== 'all' && s.tier !== tierFilter) return false
@@ -269,6 +274,7 @@ export default function SubscriptionsPage() {
       <Alert severity="info" sx={{ mb: 3 }}>
         Estimates use current plan list prices for web-billed subscriptions that are active and inside their paid period. Discounts are not reflected, and this is not money collected.
         {summary.storeBilledPaid > 0 && ` ${summary.storeBilledPaid} paying subscriber${summary.storeBilledPaid === 1 ? ' is' : 's are'} billed by the App Store or Google Play and not priced here.`}
+        {summary.negotiatedPaid > 0 && ` ${summary.negotiatedPaid} paying subscriber${summary.negotiatedPaid === 1 ? ' is on a sales-only plan at a negotiated price' : 's are on sales-only plans at negotiated prices'} and not priced here.`}
         {' '}Change or cancel a subscription through its billing provider; this console has no subscription controls.
       </Alert>
 
@@ -289,7 +295,7 @@ export default function SubscriptionsPage() {
               <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, mb: 0.5 }}>
                 <Typography sx={{ fontSize: '0.75rem', color: r.color, fontWeight: 700 }}>{r.name}</Typography>
                 <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontFamily: '"Outfit", monospace', whiteSpace: 'nowrap' }}>
-                  {loading ? <Skeleton width={90} /> : revenue(r.revenuePesewas, '/mo')}
+                  {loading ? <Skeleton width={90} /> : r.amount}
                 </Typography>
               </Box>
               <Box sx={{ ...progressTrack }}>

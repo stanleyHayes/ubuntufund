@@ -48,10 +48,13 @@ owner's direction — plans are **fully admin-managed**, not hard-coded:
   dashboard. New plan attributes: `sortOrder`, `active`, `isPublic`, `accentColor`,
   `popular`. New `POST /plans` (create) alongside `PUT /plans/:tier`; `PlanService`
   returns all DB plans (admin-added included) ordered by `sortOrder`. The
-  `SUBSCRIPTION_PLANS` constant is now only the **seed + offline fallback**.
-- **Every surface renders plans dynamically** from the API/seed sorted by
+  `SUBSCRIPTION_PLANS` constant is now only the **seed** (and, since 2026-09-30,
+  the API's fallback only for a missing row or a failed non-checkout read).
+- **Every surface renders plans dynamically** from the API sorted by
   `sortOrder`, coloured by `accentColor` — marketing pricing, web subscription,
   admin (create dialog + editor), and mobile — with no hardcoded per-tier maps.
+  Since 2026-09-30 no client shows seed prices: each waits for the live plans
+  and offers a retry when they fail.
 - This **supersedes ADR-1's** "keep the enum as authority" stance: the enum is now
   just the seed identity; the DB is authoritative and extensible.
 

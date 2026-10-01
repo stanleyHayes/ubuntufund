@@ -29,7 +29,7 @@ import {
 } from '@/lib/subscriptions'
 import { previewCoupon } from '@/lib/coupons'
 import { formatPlanPrice } from '@/lib/money'
-import { isCurrentPlanTier, isPaidPlanInForce, planCardPrice } from '@/lib/subscriptionStatus'
+import { effectivePlan, isCurrentPlanTier, isPaidPlanInForce, planCardPrice, upgradePlan } from '@/lib/subscriptionStatus'
 import { useAuth } from '@/context/AuthContext'
 import { SignInRequired } from '@/components/SignInRequired'
 import { GlassSurface } from '@/components/GlassSurface'
@@ -613,6 +613,9 @@ export default function SubscriptionScreen() {
   const paidInForce = isPaidPlanInForce(currentSub)
   const lapsed = currentSub.tier !== SubscriptionTier.FREE && !paidInForce
   const statusOk = !lapsed && currentSub.status === SubscriptionStatus.ACTIVE
+  // The fee and limit that apply now: Free's once a paid plan has ended.
+  const planInEffect = effectivePlan(plans, currentSub) ?? currentPlan
+  const ctaPlan = upgradePlan(orderedPlans)
 
   if (!user) {
     return (
@@ -668,7 +671,8 @@ export default function SubscriptionScreen() {
           Access through: {currentSub.currentPeriodEnd ? new Date(currentSub.currentPeriodEnd).toLocaleDateString() : currentSub.renewDate}
         </Text>
         <Text style={styles.feeText}>
-          {currentPlan.platformFeePercent}% platform fee | {currentPlan.maxActiveCampaigns === -1 ? 'Unlimited' : currentPlan.maxActiveCampaigns} campaigns
+          {lapsed ? `${planInEffect.name} features apply: ` : ''}
+          {planInEffect.platformFeePercent}% platform fee | {planInEffect.maxActiveCampaigns === -1 ? 'Unlimited campaigns' : `${planInEffect.maxActiveCampaigns} campaign${planInEffect.maxActiveCampaigns === 1 ? '' : 's'}`}
         </Text>
       </GlassSurface>
 
@@ -795,13 +799,13 @@ export default function SubscriptionScreen() {
         })}
       </ScrollView>
 
-      {/* Upgrade CTA */}
-      {(currentSub.tier === SubscriptionTier.FREE || lapsed) && (
+      {/* Upgrade CTA: the plan an admin marks Popular, else the cheapest one for sale */}
+      {(currentSub.tier === SubscriptionTier.FREE || lapsed) && ctaPlan && (
         <View style={styles.upgradeCta}>
           <View style={styles.upgradeIconTile}>
             <Icon source="crown" size={22} color={p.secondaryDark} />
           </View>
-          <Text style={styles.upgradeTitle}>Unlock more with Pro</Text>
+          <Text style={styles.upgradeTitle}>Unlock more with {ctaPlan.name}</Text>
           <Text style={styles.upgradeDesc}>
             Lower platform fees, more active campaigns, and premium features. Active paid plans include creator profile donations; creator withdrawals deduct the current plan’s platform-fee percentage. Free plans and trials do not include creator donations.
           </Text>
@@ -811,10 +815,10 @@ export default function SubscriptionScreen() {
             textColor="#221B0E"
             style={styles.upgradeButton}
             contentStyle={styles.upgradeButtonContent}
-            onPress={() => setCheckoutTier(SubscriptionTier.PRO)}
+            onPress={() => setCheckoutTier(ctaPlan.tier)}
             disabled={storeManaged}
           >
-            Upgrade to Pro
+            Upgrade to {ctaPlan.name}
           </Button>
         </View>
       )}

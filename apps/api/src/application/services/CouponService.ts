@@ -1,4 +1,4 @@
-import { CouponSurface, type BillingCycle } from '@ubuntu-fund/types';
+import { CouponRedemptionStatus, CouponSurface, type BillingCycle } from '@ubuntu-fund/types';
 import type { CouponEntity } from '../../domain/entities/Coupon.js';
 import type { CouponRepositoryPort } from '../../domain/ports/outbound/CouponRepositoryPort.js';
 import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound/CouponRedemptionRepositoryPort.js';
@@ -25,6 +25,12 @@ export interface ValidateAndPriceInput {
    * what every caller meant before surfaces existed.
    */
   surface?: CouponSurface;
+  /**
+   * Re-quoting an open checkout's own code: the seat that checkout already
+   * holds does not count against the per-user limit, or a once-per-member
+   * coupon would be refused for the very purchase that holds it.
+   */
+  exceptCheckoutId?: string;
 }
 
 export interface CouponPricing {
@@ -127,10 +133,7 @@ export class CouponService {
     }
 
     if (coupon.perUserLimit) {
-      const used = await this.redemptionRepo.countByCouponAndUser(
-        coupon.id,
-        userId
-      );
+      const used = await this.seatsHeld(coupon.id, userId, input.exceptCheckoutId);
       if (used >= coupon.perUserLimit) {
         throw new AppError(
           'You have already used this coupon the maximum number of times',
@@ -155,5 +158,18 @@ export class CouponService {
       finalAmount,
       currency: coupon.currency,
     };
+  }
+
+  /**
+   * The member's seats on the coupon (PENDING or CONSUMED slots), less the one
+   * `exceptCheckoutId` holds when that checkout's slot still holds a seat.
+   */
+  private async seatsHeld(couponId: string, userId: string, exceptCheckoutId?: string): Promise<number> {
+    const used = await this.redemptionRepo.countByCouponAndUser(couponId, userId);
+    if (!exceptCheckoutId || used === 0) return used;
+    const own = await this.redemptionRepo.findByCheckoutId(exceptCheckoutId);
+    const holdsSeat = !!own && own.couponId === couponId && own.userId === userId &&
+      own.status !== CouponRedemptionStatus.RELEASED;
+    return holdsSeat ? used - 1 : used;
   }
 }

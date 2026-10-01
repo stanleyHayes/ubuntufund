@@ -1,8 +1,12 @@
 import { beforeAll, beforeEach, afterAll, describe, it, expect, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import {
-  BillingCycle, CouponDiscountType, SUBSCRIPTION_PLANS, SubscriptionCheckoutStatus, SubscriptionTier, type SubscriptionPlan,
+  AffiliateStatus, BillingCycle, CouponDiscountType, SUBSCRIPTION_PLANS, SubscriptionCheckoutStatus, SubscriptionTier,
+  type Affiliate, type AffiliateReferral, type SubscriptionPlan,
 } from '@ubuntu-fund/types';
+import { AffiliateCodePricing } from '../../src/application/services/AffiliateCodePricing.js';
+import type { AffiliateRepositoryPort } from '../../src/domain/ports/outbound/AffiliateRepositoryPort.js';
+import type { AffiliateReferralRepositoryPort } from '../../src/domain/ports/outbound/AffiliateReferralRepositoryPort.js';
 import { connectTestDatabase, dropTestDatabase, disconnectTestDatabase } from '../helpers/testDatabase.js';
 import { CreateSubscriptionCheckoutUseCase } from '../../src/application/use-cases/CreateSubscriptionCheckoutUseCase.js';
 import { SettleSubscriptionUseCase } from '../../src/application/use-cases/SettleSubscriptionUseCase.js';
@@ -48,7 +52,26 @@ function paystack() {
   };
 }
 
-function build(plans: Record<string, Partial<SubscriptionPlan>> = {}) {
+/**
+ * Affiliate referral codes as checkout prices them, with the discount rate an
+ * admin can change while a member's payment page is open.
+ */
+function affiliateCodes(code: string) {
+  const rate = { percent: 10 };
+  const referrals = new Map<string, AffiliateReferral>();
+  const affiliate = { id: 'affiliate-1', userId: 'affiliate-owner', referralCode: code, status: AffiliateStatus.ACTIVE } as Affiliate;
+  const pricing = new AffiliateCodePricing(
+    { findByReferralCode: async (referralCode: string) => (referralCode === code ? affiliate : null) } as unknown as AffiliateRepositoryPort,
+    {
+      findByRefereeId: async (refereeId: string) => referrals.get(refereeId) ?? null,
+      create: async (referral: AffiliateReferral) => { referrals.set(referral.refereeId, referral); return referral; },
+    } as unknown as AffiliateReferralRepositoryPort,
+    async () => rate.percent,
+  );
+  return { rate, pricing };
+}
+
+function build(plans: Record<string, Partial<SubscriptionPlan>> = {}, affiliatePricing?: AffiliateCodePricing) {
   const gateway = paystack();
   const checkoutRepo = new MongoSubscriptionCheckoutRepository();
   const subscriptionRepo = new MongoSubscriptionRepository();
@@ -59,7 +82,7 @@ function build(plans: Record<string, Partial<SubscriptionPlan>> = {}) {
   const users = { findById: async (id: string) => ({ id, email: { value: `${id}@example.test` } }) };
   const create = new CreateSubscriptionCheckoutUseCase(new MongoBillingOwnership(), checkoutRepo, redemptionRepo, users as never,
     new CouponService(couponRepo, redemptionRepo, new MongoCouponEligibility()), gateway as never, settle, planService as never,
-    undefined, subscriptionRepo);
+    affiliatePricing, subscriptionRepo);
   const sweep = new ReconcileSubscriptionCheckoutsUseCase(checkoutRepo, gateway as never, settle, redemptionRepo);
   const status = new GetSubscriptionCheckoutUseCase(checkoutRepo, gateway as never, settle, redemptionRepo);
   const webhook = new HandlePaystackWebhookUseCase({ ...gateway, verifyWebhookSignature: () => true } as never, {} as never, {} as never,
@@ -131,6 +154,56 @@ describe('subscription checkout lifecycle', () => {
     expect(second.resumed).toBeUndefined();
     expect(second.preview.baseAmount).toBe(149);
     expect(s.gateway.initializeCharge).toHaveBeenCalledTimes(2);
+  });
+
+  it('resumes a coupon purchase only while the coupon still gives the same total', async () => {
+    const s = build(); const userId = randomUUID();
+    const coupon = await CouponModel.create({ code: `TEN${randomUUID().slice(0, 6)}`.toUpperCase(), discountType: CouponDiscountType.PERCENT,
+      amount: 10, currency: 'GHS', maxRedemptions: 10, perUserLimit: 1 });
+    const first = await buy(s, userId, SubscriptionTier.PRO, { couponCode: coupon.code });
+    expect(first.preview).toMatchObject({ baseAmount: 29.99, finalAmount: 26.99 });
+    // Unchanged, the purchase goes back to its page: the once-per-member seat it holds is its own.
+    await expect(buy(s, userId, SubscriptionTier.PRO, { couponCode: coupon.code.toLowerCase() }))
+      .resolves.toMatchObject({ resumed: true, checkout: { id: first.checkout.id }, preview: { finalAmount: 26.99 } });
+    // An admin raises the discount while that page is open. It still charges 26.99,
+    // while the checkout dialog now quotes 23.99.
+    await CouponModel.updateOne({ _id: coupon._id }, { $set: { amount: 20 } });
+    await expect(buy(s, userId, SubscriptionTier.PRO, { couponCode: coupon.code })).rejects.toMatchObject({ statusCode: 409,
+      errors: { checkoutId: [first.checkout.id], code: ['checkout_in_progress'] } });
+    expect(s.gateway.initializeCharge).toHaveBeenCalledTimes(1);
+    // Cancelling it charges the total the dialog shows.
+    expect((await s.status.abandon(first.checkout.id, userId)).status).toBe('expired');
+    const second = await buy(s, userId, SubscriptionTier.PRO, { couponCode: coupon.code });
+    expect(second.resumed).toBeUndefined();
+    expect(second.preview).toMatchObject({ baseAmount: 29.99, discountAmount: 6, finalAmount: 23.99 });
+    expect(s.gateway.initializeCharge).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not resume a coupon purchase once the coupon no longer applies', async () => {
+    const s = build(); const userId = randomUUID();
+    const coupon = await CouponModel.create({ code: `OFF${randomUUID().slice(0, 6)}`.toUpperCase(), discountType: CouponDiscountType.PERCENT,
+      amount: 10, currency: 'GHS', maxRedemptions: 10 });
+    const first = await buy(s, userId, SubscriptionTier.PRO, { couponCode: coupon.code });
+    await CouponModel.updateOne({ _id: coupon._id }, { $set: { active: false } });
+    // Its open page still charges the discounted 26.99, which no checkout would quote now.
+    await expect(buy(s, userId, SubscriptionTier.PRO, { couponCode: coupon.code })).rejects.toMatchObject({ statusCode: 409,
+      errors: { checkoutId: [first.checkout.id], code: ['checkout_in_progress'] } });
+    expect((await s.status.abandon(first.checkout.id, userId)).status).toBe('expired');
+    await expect(buy(s, userId, SubscriptionTier.PRO, { couponCode: coupon.code }))
+      .rejects.toMatchObject({ statusCode: 422, message: 'This coupon is no longer active' });
+    expect(s.gateway.initializeCharge).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not resume an affiliate-code purchase after the affiliate discount changed', async () => {
+    const codes = affiliateCodes('ama-gh');
+    const s = build({}, codes.pricing); const userId = randomUUID();
+    const first = await buy(s, userId, SubscriptionTier.PRO, { couponCode: 'AMA-GH' });
+    expect(first.preview).toMatchObject({ discountAmount: 3, finalAmount: 26.99 });
+    await expect(buy(s, userId, SubscriptionTier.PRO, { couponCode: 'AMA-GH' })).resolves.toMatchObject({ resumed: true });
+    codes.rate.percent = 20;
+    await expect(buy(s, userId, SubscriptionTier.PRO, { couponCode: 'AMA-GH' })).rejects.toMatchObject({ statusCode: 409,
+      errors: { checkoutId: [first.checkout.id], code: ['checkout_in_progress'] } });
+    expect(s.gateway.initializeCharge).toHaveBeenCalledTimes(1);
   });
 
   it('refuses a different purchase while the first could still be paid, until the member cancels it', async () => {

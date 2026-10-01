@@ -16,7 +16,7 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 2. Anonymous: GET /api/v1/plans. Expect 401.
 3. User token: POST /api/v1/plans with a valid body; PUT /api/v1/plans/pro {priceMonthly: 1}.
 4. Organization token: repeat step 3.
-5. Admin token: repeat step 3 with a harmless change, then revert.
+5. Admin token: PUT /api/v1/plans/pro {description: 'QA audit check'}, then PUT Pro's original description back. (Not {priceMonthly: 1}: a yearly price above 12 × monthly is refused with 422, see SUBS-004. No POST either: an admin-created plan cannot be deleted, and SUBS-005 covers creation.)
 6. Open the admin console login and sign in with the normal (non-admin) user's correct email and password.
 7. As admin open Admin > Audit log and look for the refused console sign-in; call GET /api/v1/rbac/me with the user token and with the admin token.
 
@@ -34,15 +34,15 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 **Steps:**
 
-1. Admin > Plans > Pro > 'Edit plan'. Change Monthly price from 29.99 to 155 and click 'Save changes'.
+1. Admin > Plans > Pro > 'Edit plan'. Change Monthly price from 29.99 to 155 and click 'Save changes'. In 'Confirm Pro pricing' click 'Back', then click 'Save changes' again and 'Confirm and save'.
 2. Open Admin > Audit log and filter for action subscription-plan.update.
 3. As U1 open /subscription and click 'Choose Pro'. Read 'Total due today' in the dialog.
 4. Click 'Continue to payment' and read the amount on the Paystack page.
 5. Pay with a Paystack test success card and let the callback show 'You're all set!'.
 6. In Paystack test dashboard confirm the transaction amount; in DB read subscriptioncheckouts for U1 (baseAmount/finalAmount/currency).
-7. Revert Pro to 29.99.
+7. Revert Pro to 29.99, again through 'Confirm and save'.
 
-**Expect:** The audit entry has severity warning, resource plan:pro, a before/after diff of priceMonthly (29.99 to 155) and the actor admin id. The dialog and Paystack both show GH₵155.00, and Paystack records amount 15500 pesewas in GHS. The checkout row has baseAmount 155, finalAmount 155, currency GHS. Existing Pro subscribers' currentPeriodEnd is unchanged.
+**Expect:** The confirm step lists 'Monthly price' 'GH₵ 29.99 → GH₵ 155 (+416.8%)' and says 'New prices apply to new web checkouts only. App Store and Google Play prices do not change.' 'Back' returns to the edit dialog, and nothing is saved or audited until 'Confirm and save'. The audit entry has severity warning, resource plan:pro, a before/after diff of priceMonthly (29.99 to 155) and the actor admin id. The dialog shows 'Total due today' GH₵155, Paystack asks for the same amount, and Paystack records amount 15500 pesewas in GHS. The checkout row has baseAmount 155, finalAmount 155, currency GHS. Existing Pro subscribers' currentPeriodEnd is unchanged.
 
 **Needs:** Paystack test keys
 
@@ -301,7 +301,7 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 5. Open Admin > Subscriptions and read U2's status and the KPIs.
 6. From the UI click 'Choose Pro' and pay. Read the new period.
 
-**Expect:** The API returns status 'expired', derived at read time; the DB row is not rewritten. The page shows the chip 'Expired' and the alert 'Your Pro plan ended on <date>. Free features apply until you buy a plan again.' The stats show 'Ended' <date>. The Free card shows 'Current Plan', the Pro card offers an enabled 'Choose Pro', and the upgrade call-to-action is shown. LIVE returns 403 'Your Free plan does not include LIVE streaming. Upgrade to unlock it.', and the campaign cap is 1. The admin row shows 'expired', and U2 counts under 'Free or lapsed', not 'Paying now' or 'Estimated MRR (list price)'. The dialog is titled 'Upgrade to Pro' and needs no replace confirmation. After payment Pro is active with a fresh period of now + 30 days.
+**Expect:** The API returns status 'expired', derived at read time; the DB row is not rewritten. The page shows the chip 'Expired' and the alert 'Your Pro plan ended on <date>. Free features apply until you buy a plan again.' The stats show 'Ended' <date>, and 'Platform fee' 5% and 'Active campaigns' 1: the Free plan's, which apply now, not Pro's 2% and 10. The Free card shows 'Current Plan', the Pro card offers an enabled 'Choose Pro', and the upgrade call-to-action offers the plan marked Popular in Admin > Plans, or the cheapest plan on sale (Starter) when none is. LIVE returns 403 'Your Free plan does not include LIVE streaming. Upgrade to unlock it.', and the campaign cap is 1. The admin row shows 'expired', and U2 counts under 'Free or lapsed', not 'Paying now' or 'Estimated MRR (list price)'. The dialog is titled 'Upgrade to Pro' and needs no replace confirmation. After payment Pro is active with a fresh period of now + 30 days.
 
 **Needs:** Staging DB, Paystack test keys
 
@@ -991,10 +991,14 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 3. PUT /api/v1/plans/pro with {tier:'hacked', name:'Pro'}.
 4. POST /api/v1/plans with tier 'Pro Plus' (space/uppercase), then tier 'x', then tier 'pro' (duplicate).
 5. In Admin > Plans > 'New plan', enter tier id 'Bad Id' and try to create.
+6. PUT /api/v1/plans/starter with {priceMonthly: 9.995}, then {priceYearly: 2000000}, then {priceMonthly: 10, priceYearly: 120.01}. PUT /api/v1/plans/pro with {priceMonthly: 1}.
+7. PUT /api/v1/plans/organization with {onBehalfCampaigns: true, maxOnBehalfCampaigns: 0}.
+8. Admin > Plans > Pro > 'Edit plan': type 9.995 in Monthly price, then put 29.99 back. Type 400 in Yearly price and click 'Save changes', then put 299 back. Set Sort order to 3. Switch 'Campaigns on behalf of others' on, set 'Active campaigns on behalf of others' to 0 and click 'Save changes'. Cancel the dialog.
+9. Staging DB only, to match production on 2026-09-30: set Enterprise to onBehalfCampaigns true with maxOnBehalfCampaigns 0. In 'Edit plan' for Enterprise change only Sort order (to 4) and click 'Save changes'. Then set 'Active campaigns on behalf of others' to -1 and save again.
 
-**Expect:** Each invalid PUT returns 400 or 422 with a field message and the plan is unchanged. The tier field in the PUT is ignored: /plans/pro still exists and there is no 'hacked' tier. POST with an invalid id returns 400 'Tier id must be lowercase...'. A duplicate returns 409 'A plan with this tier id already exists'. The admin UI blocks the invalid id before calling the API.
+**Expect:** Each invalid PUT returns 400 or 422 with a field message and the plan is unchanged. The tier field in the PUT is ignored: /plans/pro still exists and there is no 'hacked' tier. POST with an invalid id returns 400 'Tier id must be lowercase...'. A duplicate returns 409 'A plan with this tier id already exists'. The admin UI blocks the invalid id before calling the API. 9.995 returns 400 'Validation failed' with priceMonthly 'Use at most two decimal places', and 2,000,000 returns 400 with priceYearly 'Must be 1,000,000 or less'. A yearly price above 12 × monthly returns 422 'The yearly price is more than 12 times the monthly price (GHS 120.00). Lower it, or set it to 0 if the plan is not sold yearly.'; Pro {priceMonthly: 1} is refused the same way (GHS 12.00), because Pro's yearly price is 299. On-behalf switched on with 0 allowed returns 422 'Switched on, but 0 allowed: nobody on this plan could start one. Set a limit or -1 for unlimited.' In the dialog, 9.995 marks Monthly price with 'Use 0 to 1,000,000, with at most two decimal places.' Yearly 400 shows '≈ GH₵ 33.33/mo · 11.1% above 12 × monthly, so yearly costs more' as an error, and Save is refused with 'The yearly price is more than 12 × the monthly price (GH₵ 359.88). Lower it, or set it to 0 if the plan is not sold yearly.' Sort order 3 warns that another plan uses it, e.g. 'Organization also uses 3; ties are ordered by monthly price, then tier id.' Switching on-behalf on where the limit was 0 sets the limit to -1. A limit of 0 shows 'Switched on, but 0 allowed: nobody on this plan can start one.', and Save is refused with that message plus 'Set a limit, -1 for unlimited, or switch it off.' Nothing is sent or audited for a refused save. Enterprise in that state cannot be saved at all, not even a Sort order change, until the limit is -1 (or the switch is off); then the save succeeds and is audited.
 
-**Needs:** None
+**Needs:** Staging DB for step 9
 
 **Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/planRoutes.ts`, `apps/api/src/application/use-cases/UpdatePlanUseCase.ts`, `apps/api/src/application/use-cases/CreatePlanUseCase.ts`, `apps/admin/src/pages/ManagePlansPage.tsx`
 
@@ -1031,11 +1035,11 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 2. Reload marketing /pricing, the /register Plan step, web /subscription (as U3) and native Subscription (as U3).
 3. As U3 POST /api/v1/subscriptions/checkout {tier:'starter', billingCycle:'monthly'}; open /subscription?tier=starter.
 4. As U3 on native call prepare for the Starter product (tap Subscribe if visible).
-5. As U2 create campaigns up to the Starter cap, open creator page settings and check the GET /api/v1/creators policy.
+5. As U2 create campaigns up to the Starter cap, open creator page settings and check the policy in GET /api/v1/creators/me.
 6. Edit Starter again: Active on, Public off, save. Repeat step 3 and read storebillingaccounts for U3.
 7. Restore Public on. Check Admin > Audit log for the subscription-plan.update entries.
 
-**Expect:** The dialog note reads 'Turning off Active or Public hides this plan from new purchases on the website and in the app store catalog. Existing subscribers are not cancelled.' Each save is a PUT /plans/starter, audited with a diff. With Active off, Starter disappears from every sales surface and from the native catalog. Checkout returns 400 'That subscription plan is not available', prepare returns 422 'This store product is not available.', and /subscription?tier=starter opens no checkout dialog. With Public off (Active on), checkout returns 403 'This plan is arranged through our sales team. Contact sales@ujimora.com.', and no checkout row or provider claim is created. U2 keeps Starter campaign limits until period end. Confirm the creator-donation rule with the owner: creatorPolicy requires plan.active, so U2's creator donations become ineligible while Starter is inactive.
+**Expect:** The dialog note reads 'Turning off Active or Public hides this plan from new purchases on the website and in the app store catalog. Existing subscribers are not cancelled and keep all of the plan's benefits, including creator donations, until their period ends.' Each save is a PUT /plans/starter, audited with a diff. With Active off, Starter disappears from every sales surface and from the native catalog. Checkout returns 400 'That subscription plan is not available', prepare returns 422 'This plan is not available for purchase.' (the Starter product is still in STORE_BILLING_PRODUCTS; only an unmapped product gets 'This store product is not available.'), and /subscription?tier=starter opens no checkout dialog. With Public off (Active on), checkout returns 403 'This plan is arranged through our sales team. Contact sales@ujimora.com.', and no checkout row or provider claim is created. U2 keeps Starter campaign limits until period end, and keeps creator donations too: creatorPolicy does not check plan.active, so policy.eligible stays true until U2's period ends.
 
 **Needs:** Store billing staging config
 
@@ -1076,7 +1080,7 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 4. As U1 POST /api/v1/subscriptions/checkout {tier:'starter', billingCycle:'yearly'}.
 5. Revert priceYearly to 99.
 
-**Expect:** The admin alert says 'A price of 0 on a paid plan means that billing cycle is not offered.' On /subscription the Starter card button reads 'Yearly not offered' and is disabled. At signup Starter shows 'Not offered', its option is disabled, and submit stays disabled if it was selected. The API returns 400 'That billing cycle is not available for this plan' before any checkout row, coupon seat or billing-rail claim. There is no free activation. A coupon that zeroes a positive price still activates without charge (SUBS-041).
+**Expect:** The admin alert says 'A price of 0 on a paid plan means that billing cycle is not offered.' On /subscription the Starter card shows 'Yearly not offered' where the price goes, with no GH₵0 price and no one-time-payment caption, and its button reads 'Yearly not offered' and is disabled, as on marketing /pricing. At signup Starter shows 'Not offered', its option is disabled, and submit stays disabled if it was selected. The API returns 400 'That billing cycle is not available for this plan' before any checkout row, coupon seat or billing-rail claim. There is no free activation. A coupon that zeroes a positive price still activates without charge (SUBS-041).
 
 **Needs:** None
 
@@ -1685,7 +1689,7 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 *Surfaces:* admin, api  ·  *Type:* functional
 
-**Before:** A mix of subscriptions: free; web monthly and yearly (active); Apple and Google (active); one Apple TestFlight/sandbox purchase; one web Pro whose period has ended (stored status still active); one on a custom tier. The admin has edited the Pro monthly price to 155.
+**Before:** A mix of subscriptions: free; web monthly and yearly (active); Apple and Google (active); one Apple TestFlight/sandbox purchase; one web Pro whose period has ended (stored status still active); one on a custom tier; one active Enterprise subscription (sales-led, set up in the staging DB). The admin has edited the Pro monthly price to 155.
 
 **Steps:**
 
@@ -1694,9 +1698,9 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 3. Look at the row actions for an active row.
 4. Compare GET /api/v1/subscriptions for the lapsed web Pro row with its DB status.
 
-**Expect:** KPIs read 'Total Subscribers', 'Estimated MRR (list price)', 'Free or lapsed' and 'Paying now'. 'Paying now' counts only paid tiers that are active and inside their period, excluding sandbox store rows. The lapsed web Pro shows status 'expired' (derived by the API; the DB still says active) and counts under 'Free or lapsed'. MRR prices web-billed rows at live DB prices (Pro 155), and the alert notes 'N paying subscriber(s) … billed by the App Store or Google Play and not priced here.' The alert also says estimates use list prices, ignore discounts, are not money collected, and 'Change or cancel a subscription through its billing provider; this console has no subscription controls.' The strip header is 'Estimated monthly revenue by tier (list price)' and names the custom tier. The tier filter and row chips use live plan names. Rows offer only 'View' (opens /users/<id>), with no Tier or Cancel buttons. Filters, search, pagination and export work, and the export has a Provider column. Record: the export has no environment column, so sandbox rows look like paid Apple rows in the file.
+**Expect:** KPIs read 'Total Subscribers', 'Estimated MRR (list price)', 'Free or lapsed' and 'Paying now'. 'Paying now' counts only paid tiers that are active and inside their period, excluding sandbox store rows. The lapsed web Pro shows status 'expired' (derived by the API; the DB still says active) and counts under 'Free or lapsed'. MRR prices web-billed rows at live DB prices (Pro 155), and the alert notes 'N paying subscriber(s) … billed by the App Store or Google Play and not priced here.' Sales-only plans (Enterprise, or a plan with Public off) are counted but not priced: their tier card reads 'Negotiated', they add nothing to 'Estimated MRR (list price)', and the alert says '1 paying subscriber is on a sales-only plan at a negotiated price and not priced here.' The alert also says estimates use list prices, ignore discounts, are not money collected, and 'Change or cancel a subscription through its billing provider; this console has no subscription controls.' The strip header is 'Estimated monthly revenue by tier (list price)' and names the custom tier. The tier filter and row chips use live plan names. Rows offer only 'View' (opens /users/<id>), with no Tier or Cancel buttons. Filters, search, pagination and export work, and the export has a Provider column. Record: the export has no environment column, so sandbox rows look like paid Apple rows in the file.
 
-**Needs:** Store sandbox for the store rows
+**Needs:** Store sandbox for the store rows, staging DB for the Enterprise row
 
 **Source:** `apps/admin/src/pages/SubscriptionsPage.tsx`, `apps/admin/src/lib/subscriptionMetrics.ts`, `apps/admin/src/lib/subscriptionRevenue.ts`, `apps/api/src/application/use-cases/ListSubscriptionsUseCase.ts`, `apps/api/src/domain/services/subscriptionStatus.ts`
 
@@ -2132,7 +2136,7 @@ Plan catalog, web checkout, App Store and Google Play purchases, restore, server
 
 1. Open Admin > Plans and read the info alert.
 2. Open 'Edit plan' and 'New plan' and read the helper text under Monthly and Yearly price and the Benefits toggle labels.
-3. Change the Pro monthly price to 155 and save.
+3. Change the Pro monthly price to 155, click 'Save changes' and then 'Confirm and save'.
 4. Open web /subscription and the native Subscription screens.
 
 **Expect:** The alert says 'Prices here apply to web checkout (Paystack) only' and that store subscribers pay the App Store or Google Play product price, and asks admins to update the matching store products after a price change. Every price field shows 'Web checkout price. Update store products separately.' The four unbuilt benefit toggles read '(not built — hidden from members)'. Web shows GH₵155, while native still shows the unchanged store displayPrice. docs/compliance/STORE_BILLING.md has a 'Changing plan prices' procedure. Revert to 29.99.
