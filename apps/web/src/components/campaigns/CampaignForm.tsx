@@ -1524,7 +1524,7 @@ function CampaignFormForViewer({ userId, viewer }: { userId: string | null; view
       </Box>
 
       {step === 3 && <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />}
-      {step === 3 && (submitError || submitHeld) && <PublicationReviews />}
+      {step === 3 && (submitError || submitHeld) && <PublicationReviews actions={['campaign.create']} />}
 
       {/* Inline submit error — keeps the wizard on the review step on failure */}
       {step === 3 && options && (

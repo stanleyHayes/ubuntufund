@@ -127,8 +127,8 @@ function EditProfileForViewer() {
         <SelectionField label="Country" value={profile.country} options={Country.getAllCountries().map(c => ({ value: c.name, label: c.name }))} onChange={v => update('country', v)} />
         <Text>Names and images can appear with public contributions. Phone numbers and this biography are excluded from screening.</Text>
         <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />
-        {error ? <><Text accessibilityRole="alert">{error}</Text><PublicationReviews /></> : null}
-        {held ? <><PublicationHeldNotice retry="save it again unchanged" reviews="below" /><PublicationReviews /></> : null}
+        {error ? <><Text accessibilityRole="alert">{error}</Text><PublicationReviews actions={['account.profile']} /></> : null}
+        {held ? <><PublicationHeldNotice retry="save it again unchanged" reviews="below" /><PublicationReviews actions={['account.profile']} /></> : null}
         <Button loading={busy} disabled={busy || uploads > 0 || !profile.name.trim()} mode="contained" onPress={() => void save()}>Save profile</Button>
       </View>
       <View style={{ ...neu.raised, backgroundColor: p.surface, borderRadius: 24, padding: 20, gap: 16 }}><Text variant="titleLarge">Change password</Text>
