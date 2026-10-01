@@ -70,8 +70,16 @@ operator disables a rail via the env flag.
 - **Flutterwave live keys** — set `FLUTTERWAVE_SECRET_KEY` + `FLUTTERWAVE_WEBHOOK_SECRET_HASH`
   and `PAYMENTS_FLUTTERWAVE_ENABLED=true`; run the FLW sandbox smoke test. Confirm
   the v3 endpoints + `verif-hash` scheme against current FLW docs before go-live.
-- **International cards** — confirm Paystack merchant eligibility (§17), then set
-  `PAYMENTS_INTERNATIONAL_CARDS_ENABLED=true` + `PAYMENTS_MULTI_CURRENCY_ENABLED=true`.
+- **International cards** — ON since 2026-09-30. The owner enabled international
+  payments on the Paystack dashboard, and `render.yaml` now sets
+  `PAYMENTS_INTERNATIONAL_CARDS_ENABLED=true`. Web and app checkouts charge the
+  campaign currency (GHS) and send no card country, so Paystack decides which
+  cards it accepts; the flag only gates explicitly international card intents.
+  Still to do: one small real payment with a foreign card to confirm Paystack
+  accepts it (its compliance team can hold the switch for review).
+- **Multi-currency** (charging in USD/GBP/EUR/CAD) — still OFF
+  (`PAYMENTS_MULTI_CURRENCY_ENABLED=false`): the checkout has no currency picker,
+  and GBP/EUR/CAD need the Flutterwave rail above.
 - **Flutterwave refunds** — currently a 501 stub (needs the FLW transaction id +
   creds); Paystack refunds are fully wired.
 - **Accounting/legal review (§10)** of the refund fee treatment (which fees are
@@ -204,8 +212,9 @@ phase is independently reversible (spec §23 DoD).
 
 ## 5. External dependencies / risk gates (cannot be completed by the agent alone)
 
-- **Merchant eligibility** for international cards — product owner must confirm
-  with Paystack (spec §17). Int'l cards stay flag-off until then.
+- **Merchant eligibility** for international cards — confirmed by the product
+  owner on 2026-09-30 (international payments enabled on the Paystack dashboard);
+  the flag is on. Pending: a real foreign-card test payment.
 - **Flutterwave account + sandbox/live API keys + webhook hash** — required to
   build & test the adapter (spec §16). No credentials are in the repo.
 - **Accounting/legal review** of ledger treatment and KYC/KYB/AML (spec §10, §17).
