@@ -53,8 +53,8 @@ function IdentityForm({ organizationId }: { organizationId: string }) {
       <BrandedTextInput label="Organization name" value={name} onChangeText={setName} disabled={busy} />
       <BrandedTextInput label="Website" value={website} onChangeText={setWebsite} disabled={busy} autoCapitalize="none" keyboardType="url" />
       <PublicationConsent value={consent} onChange={setConsent} />
-      {error ? <><Text accessibilityRole="alert">{error}</Text><PublicationReviews /></> : null}
-      {held ? <><PublicationHeldNotice retry="save it again unchanged" reviews="below" /><PublicationReviews /></> : null}
+      {error ? <><Text accessibilityRole="alert">{error}</Text><PublicationReviews actions={['organization.profile']} /></> : null}
+      {held ? <><PublicationHeldNotice retry="save it again unchanged" reviews="below" /><PublicationReviews actions={['organization.profile']} /></> : null}
       {notice ? <Text accessibilityRole="alert">{notice}</Text> : null}
       <Button mode="contained" disabled={busy || name.trim().length < 2} loading={busy} onPress={() => void save()}>Save organization details</Button>
     </>}

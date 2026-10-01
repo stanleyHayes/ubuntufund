@@ -28,7 +28,7 @@ test('retains a held creator draft, pauses separately, and resubmits after staff
     }
     return route.fulfill({ status: 409, json: { message: 'Saved privately for safety review. Your content has not been published.' } })
   })
-  await page.route('**/api/v1/publication-reviews?*', route => route.fulfill({ json: { data: { total: 1, items: [{ id: 'review-creator', action: 'creator.profile', status: approved ? 'approved' : 'pending', text: JSON.stringify({ displayName: 'Ama', bio: 'Proposed new biography' }), ...(approved ? { reviewNotes: 'Complete creator version reviewed.' } : {}) }] } } }))
+  await page.route('**/api/v1/publication-reviews?*', route => route.fulfill({ json: { data: { total: 1, items: [{ id: 'review-creator', action: 'creator.profile', status: approved ? 'approved' : 'pending', text: JSON.stringify({ displayName: 'Ama', bio: 'Proposed new biography' }), ...(approved ? { reviewNotes: 'Complete creator version reviewed.', approvalExpiresAt: new Date(Date.now() + 7 * 86_400_000).toISOString() } : {}) }] } } }))
   await page.goto('/creator')
   const bio = page.getByLabel('About you')
   await expect(bio).toHaveValue('Original biography')
@@ -51,7 +51,8 @@ test('retains a held creator draft, pauses separately, and resubmits after staff
   await page.getByRole('button', { name: 'Save changes', exact: true }).click()
   approved = true
   await page.getByRole('button', { name: 'Refresh publication reviews' }).click()
-  await expect(page.getByText('Review response: Complete creator version reviewed.')).toBeVisible()
+  await expect(page.getByRole('list', { name: 'Review status: Approved' })).toBeVisible()
+  await expect(page.getByText("Reviewer's note: Complete creator version reviewed.")).toBeVisible()
   await page.screenshot({ path: '/tmp/ujimora-creator-review-phone.png', animations: 'disabled' })
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
   await page.getByRole('button', { name: 'Save changes', exact: true }).click()
