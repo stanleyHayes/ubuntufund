@@ -452,8 +452,8 @@ function ProfileForViewer() {
             {/* Edit Profile */}
             <TabPanel value={tab} index={0}>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: '100%' }}>
-                {profileError && <><Alert severity="error">{profileError}</Alert><PublicationReviews /></>}
-                {profileHeld && <><PublicationHeldNotice retry="save it again unchanged" reviews="below" /><PublicationReviews /></>}
+                {profileError && <><Alert severity="error">{profileError}</Alert><PublicationReviews actions={['account.profile']} /></>}
+                {profileHeld && <><PublicationHeldNotice retry="save it again unchanged" reviews="below" /><PublicationReviews actions={['account.profile']} /></>}
                 <TextField id="profile-full-name" label={organizationName ? 'Contact person' : 'Full Name'} value={name} onChange={(e) => setName(e.target.value)} fullWidth />
                 <TextField label="Phone Number" value={phone} onChange={(e) => setPhone(e.target.value)} fullWidth />
                 <Box>

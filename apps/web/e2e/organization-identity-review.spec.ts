@@ -23,7 +23,7 @@ test('holds organization identity changes and resubmits the same approved versio
     name = input.organizationName; website = input.website
     return route.fulfill({ json: { data: { updated: true } } })
   })
-  await page.route('**/api/v1/publication-reviews?*', route => route.fulfill({ json: { data: { total: 1, items: [{ id: 'org-review', action: 'organization.profile', status: approved ? 'approved' : 'pending', text: JSON.stringify({ organizationName: 'Reviewed foundation', website: 'https://reviewed.example.test' }), ...(approved ? { reviewNotes: 'Organization name and website reviewed.' } : {}) }] } } }))
+  await page.route('**/api/v1/publication-reviews?*', route => route.fulfill({ json: { data: { total: 1, items: [{ id: 'org-review', action: 'organization.profile', status: approved ? 'approved' : 'pending', text: JSON.stringify({ organizationName: 'Reviewed foundation', website: 'https://reviewed.example.test' }), ...(approved ? { reviewNotes: 'Organization name and website reviewed.', approvalExpiresAt: new Date(Date.now() + 7 * 86_400_000).toISOString() } : {}) }] } } }))
   await page.goto('/organization-team')
   await expect(page.getByLabel('Organization name')).toHaveValue('Original foundation')
   await page.getByLabel('Organization name').fill('Reviewed foundation')
@@ -38,7 +38,8 @@ test('holds organization identity changes and resubmits the same approved versio
   expect(submissions[0]).toEqual({ organizationName: 'Reviewed foundation', website: 'https://reviewed.example.test', automatedReviewConsent: false })
   approved = true
   await page.getByRole('button', { name: 'Refresh publication reviews' }).click()
-  await expect(page.getByText('Review response: Organization name and website reviewed.')).toBeVisible()
+  await expect(page.getByRole('list', { name: 'Review status: Approved' })).toBeVisible()
+  await expect(page.getByText("Reviewer's note: Organization name and website reviewed.")).toBeVisible()
   await page.screenshot({ path: '/tmp/ujimora-org-identity-review-phone.png', animations: 'disabled' })
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
   await page.getByRole('button', { name: 'Save organization details' }).click()
