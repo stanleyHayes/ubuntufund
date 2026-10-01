@@ -3,11 +3,22 @@ import { Box, Skeleton, Stack, Typography } from '@mui/material'
 import { EmptyState } from '@ubuntu-fund/ui'
 import { raisedSurface } from '@/lib/surfaces'
 
+/**
+ * Below `sm` both stacks are single-line columns with full-width controls: a wrapping column would size
+ * itself to its widest control's natural width (such as a long selected option), not to the toolbar,
+ * and the toolbar clips anything past its edge. From `sm` up the controls wrap in a row.
+ */
 export function ReviewQueueToolbar({ children, title, description, icon }: { children: ReactNode; title?: string; description?: string; icon?: ReactNode }) {
-  return <Stack direction={{ xs: 'column', sm: 'row' }} useFlexGap flexWrap="wrap" spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }} sx={{ ...raisedSurface, position: 'relative', overflow: 'hidden', p: { xs: 2, sm: 2.5 } }}>
+  return <Stack direction={{ xs: 'column', sm: 'row' }} useFlexGap spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }} sx={{ ...raisedSurface, position: 'relative', overflow: 'hidden', p: { xs: 2, sm: 2.5 }, flexWrap: { xs: 'nowrap', sm: 'wrap' } }}>
     {title && <Box sx={{ flex: 1, minWidth: 0, position: 'relative' }}><Typography fontWeight={600}>{title}</Typography><Typography variant="body2" color="text.secondary">{description}</Typography></Box>}
     {icon && <Box aria-hidden="true" sx={{ position: 'absolute', right: 200, top: -24, opacity: .035, pointerEvents: 'none', '& svg': { fontSize: 140 } }}>{icon}</Box>}
-    <Stack direction={{ xs: 'column', sm: 'row' }} useFlexGap flexWrap="wrap" gap={1.5} alignItems={{ xs: 'stretch', sm: 'center' }} sx={{ position: 'relative', flex: title ? '0 1 auto' : 1, minWidth: 0, '& .MuiFormControl-root': { flex: { xs: 'none', sm: '1 1 220px' }, minWidth: 0, maxWidth: { xs: 'none', sm: 420 } }, '& > .MuiButton-root': { flexShrink: 0 }, '& > .MuiBox-root': { mb: 0, '& > .MuiButton-root': { width: { xs: '100%', sm: 'auto' } } } }}>{children}</Stack>
+    <Stack direction={{ xs: 'column', sm: 'row' }} useFlexGap gap={1.5} alignItems={{ xs: 'stretch', sm: 'center' }} sx={{
+      position: 'relative', flex: title ? '0 1 auto' : 1, minWidth: 0, flexWrap: { xs: 'nowrap', sm: 'wrap' },
+      '& .MuiFormControl-root': { flex: { xs: 'none', sm: '1 1 220px' }, minWidth: 0, maxWidth: { xs: 'none', sm: 420 }, width: { xs: '100%', sm: 'auto' } },
+      '& > .MuiButton-root': { flexShrink: 0, width: { xs: '100%', sm: 'auto' } },
+      '& > .MuiToggleButtonGroup-root': { width: { xs: '100%', sm: 'auto' }, '& > .MuiToggleButton-root': { flex: { xs: 1, sm: '0 1 auto' } } },
+      '& > .MuiBox-root': { mb: 0, '& > .MuiButton-root': { width: { xs: '100%', sm: 'auto' } } },
+    }}>{children}</Stack>
   </Stack>
 }
 

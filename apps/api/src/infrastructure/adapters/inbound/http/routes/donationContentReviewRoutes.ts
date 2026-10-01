@@ -11,6 +11,9 @@ import { MongoUnitOfWork } from '../../../outbound/persistence/MongoUnitOfWork.j
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
 import { AppError } from '../../middleware/errorHandler.js';
 
+/** Why a decision was refused with 409, for the admin card's title (`errors.review`). */
+const CONFLICT = { changed: { review: ['changed'] }, decided: { review: ['decided'] }, restricted: { review: ['author_restricted'] } };
+
 export function donationContentReviewFilter(status: 'pending' | 'approved' | 'rejected') {
   return { publicContentRevokedAt: { $exists: false }, $and: [
         status === 'pending' ? { $or: [{ publicContentStatus: 'pending' }, { publicContentStatus: { $exists: false } }, { publicContentStatus: 'approved', publicContentFingerprint: { $exists: false } }] } : { publicContentStatus: status },
@@ -28,7 +31,15 @@ export function createDonationContentReviewRoutes(auth: RequestHandler, admin: R
       const page = Math.max(1, Math.min(10000, Math.floor(Number(req.query.page)) || 1));
       const filter = donationContentReviewFilter(status);
       const [rows, total] = await Promise.all([DonationModel.find(filter).sort({ createdAt: 1 }).skip((page - 1) * pageSize).limit(pageSize), DonationModel.countDocuments(filter)]);
-      res.json({ data: { total, items: rows.map(donation => ({ id: String(donation._id), version: version(donation), action: 'donation.public_content', actorId: donation.donorId === 'guest' ? 'Guest' : donation.donorId, text: JSON.stringify({ donorName: donation.isAnonymous ? 'Anonymous' : donation.donorName ?? '', message: donation.messageHiddenAt ? '' : donation.message ?? '' }), mediaUrls: [], status: donation.publicContentStatus === 'approved' && !isDonationContentApproved(donation) ? 'pending' : donation.publicContentStatus ?? 'pending', reason: 'staff_requested', reviewNotes: donation.publicReviewNotes })) } });
+      // The campaign the donation was made to, so staff can see where the content would appear (and spot their own campaign).
+      const campaignIds = [...new Set(rows.map(donation => donation.campaignId).filter(id => /^[a-f0-9]{24}$/i.test(id)))];
+      const campaigns = new Map((campaignIds.length ? await CampaignModel.find({ _id: { $in: campaignIds } }).select('_id title creatorId').lean() : []).map(campaign => [String(campaign._id), campaign]));
+      res.json({ data: { total, items: rows.map(donation => {
+        const campaign = campaigns.get(donation.campaignId);
+        return { id: String(donation._id), version: version(donation), action: 'donation.public_content', actorId: donation.donorId === 'guest' ? 'Guest' : donation.donorId, text: JSON.stringify({ donorName: donation.isAnonymous ? 'Anonymous' : donation.donorName ?? '', message: donation.messageHiddenAt ? '' : donation.message ?? '' }), mediaUrls: [], status: donation.publicContentStatus === 'approved' && !isDonationContentApproved(donation) ? 'pending' : donation.publicContentStatus ?? 'pending', reason: 'staff_requested', reviewNotes: donation.publicReviewNotes,
+          createdAt: donation.createdAt, reviewedAt: donation.publicReviewedAt, reviewedBy: donation.publicReviewedBy,
+          ...(campaign ? { ownerId: campaign.creatorId, recipient: { kind: 'campaign', id: String(campaign._id), name: campaign.title } } : {}) };
+      }) } });
     } catch (error) { next(error); }
   });
   router.put('/:id/review', async (req: AuthenticatedRequest, res, next) => {
@@ -43,12 +54,12 @@ export function createDonationContentReviewRoutes(auth: RequestHandler, admin: R
         const campaign = await CampaignModel.findById(donation.campaignId);
         if (!campaign) throw new AppError('Campaign is unavailable.', 404);
         if ([donation.donorId, campaign.creatorId].includes(req.userId!)) throw new AppError('Another administrator must review this content.', 403);
-        if (version(donation) !== input.version) throw new AppError('The content changed. Refresh before reviewing.', 409);
+        if (version(donation) !== input.version) throw new AppError('The content changed. Refresh before reviewing.', 409, CONFLICT.changed);
         if ((input.decision !== 'approved' || isDonationContentApproved(donation)) && donation.publicContentStatus === input.decision && donation.publicReviewedBy === req.userId && donation.publicReviewNotes === input.notes) return;
-        if (donation.publicContentStatus === 'rejected' || isDonationContentApproved(donation)) throw new AppError('This content already has a decision.', 409);
+        if (donation.publicContentStatus === 'rejected' || isDonationContentApproved(donation)) throw new AppError('This content already has a decision.', 409, CONFLICT.decided);
         if (input.decision === 'approved' && donation.donorId !== 'guest') {
           const author = await UserModel.findOneAndUpdate({ _id: donation.donorId, deletedAt: null }, { $inc: { publicationWriteVersion: 1 } });
-          if (!author || await ContentRestrictionModel.exists({ userId: donation.donorId })) throw new AppError('This donor cannot publish content.', 409);
+          if (!author || await ContentRestrictionModel.exists({ userId: donation.donorId })) throw new AppError('This donor cannot publish content.', 409, CONFLICT.restricted);
         }
         await DonationModel.updateOne({ _id: id }, { $set: { publicContentStatus: input.decision, publicContentFingerprint: input.version, publicReviewedBy: req.userId, publicReviewedAt: new Date(), publicReviewNotes: input.notes } });
         await AuditLogModel.create({ actorId: req.userId, actorRole: 'admin', action: `donation.content.${input.decision}`, resource: id, details: `Reviewed content version ${input.version}`, reason: input.notes, method: 'PUT', path: '/admin/donation-content-reviews/:id/review', statusCode: 200 });

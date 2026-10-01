@@ -25,7 +25,7 @@ test('retains identity edits and requires separate approval before making the pr
     stored = { ...stored, ...body }
     return route.fulfill({ json: { data: stored } })
   })
-  await page.route('**/api/v1/publication-reviews?*', route => route.fulfill({ json: { data: { total: 1, items: [{ id: 'account-review', action: 'account.profile', text: JSON.stringify({ name: 'Reviewed account name', publicProfile: stored.name === 'Reviewed account name' }), status: approved ? 'approved' : 'pending', ...(approved ? { reviewNotes: 'Complete public account identity reviewed.' } : {}) }] } } }))
+  await page.route('**/api/v1/publication-reviews?*', route => route.fulfill({ json: { data: { total: 1, items: [{ id: 'account-review', action: 'account.profile', text: JSON.stringify({ name: 'Reviewed account name', publicProfile: stored.name === 'Reviewed account name' }), status: approved ? 'approved' : 'pending', ...(approved ? { reviewNotes: 'Complete public account identity reviewed.', approvalExpiresAt: new Date(Date.now() + 7 * 86_400_000).toISOString() } : {}) }] } } }))
   await page.goto('/profile')
   const name = page.getByLabel('Full Name', { exact: true })
   await expect(name).toHaveValue('Current account name')
@@ -41,7 +41,8 @@ test('retains identity edits and requires separate approval before making the pr
   expect(writes[0].automatedReviewConsent).toBe(false)
   approved = true
   await page.getByRole('button', { name: 'Refresh publication reviews' }).click()
-  await expect(page.getByText('Review response: Complete public account identity reviewed.')).toBeVisible()
+  await expect(page.getByRole('list', { name: 'Review status: Approved' })).toBeVisible()
+  await expect(page.getByText("Reviewer's note: Complete public account identity reviewed.")).toBeVisible()
   await page.getByRole('button', { name: 'Save Changes', exact: true }).click()
   await expect.poll(() => stored.name).toBe('Reviewed account name')
   expect(writes[1]).toEqual(writes[0])
@@ -58,7 +59,7 @@ test('retains identity edits and requires separate approval before making the pr
   expect(writes[2]).toEqual({ publicProfile: true, automatedReviewConsent: false })
   approved = true
   await page.getByRole('button', { name: 'Refresh publication reviews' }).click()
-  await expect(page.getByText('Review response: Complete public account identity reviewed.')).toBeVisible()
+  await expect(page.getByText("Reviewer's note: Complete public account identity reviewed.")).toBeVisible()
   await visibility.check()
   await expect(page.getByText('Settings saved', { exact: true })).toBeVisible()
   expect(writes[3]).toEqual(writes[2])

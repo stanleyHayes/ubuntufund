@@ -378,8 +378,8 @@ function CreatorDashboardForViewer() {
             />
           </View>
           <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />
-          {error ? <><Text style={styles.err}>{error}</Text><PublicationReviews /></> : null}
-          {held ? <><PublicationHeldNotice retry="save it again unchanged" reviews="below" /><PublicationReviews /></> : null}
+          {error ? <><Text style={styles.err}>{error}</Text><PublicationReviews actions={['creator.profile']} /></> : null}
+          {held ? <><PublicationHeldNotice retry="save it again unchanged" reviews="below" /><PublicationReviews actions={['creator.profile']} /></> : null}
           {profile?.tipsEnabled && <Button disabled={saving} onPress={() => void pauseTips()}>Pause tips now</Button>}
           <Button
             mode="contained"

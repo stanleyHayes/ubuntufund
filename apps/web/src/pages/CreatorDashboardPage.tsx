@@ -484,7 +484,7 @@ function CreatorDashboardForViewer() {
             sx={{ mb: 1 }}
           />
           <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />
-          {(error || held) && <PublicationReviews />}
+          {(error || held) && <PublicationReviews actions={['creator.profile']} />}
           {profile?.tipsEnabled && <Button disabled={saving} onClick={() => void pauseTips()}>Pause tips now</Button>}
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>

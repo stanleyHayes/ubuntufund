@@ -281,8 +281,8 @@ function OrganizationTeamForViewer() {
                         onChange={(e) => setWebsite(e.target.value)}
                       />
                       <PublicationConsent value={identityConsent} onChange={setIdentityConsent} />
-                      {identityError && <><Alert severity="error">{identityError}</Alert><PublicationReviews /></>}
-                      {identityHeld && <><PublicationHeldNotice retry="save it again unchanged" reviews="below" /><PublicationReviews /></>}
+                      {identityError && <><Alert severity="error">{identityError}</Alert><PublicationReviews actions={['organization.profile']} /></>}
+                      {identityHeld && <><PublicationHeldNotice retry="save it again unchanged" reviews="below" /><PublicationReviews actions={['organization.profile']} /></>}
                       <Button disabled={busy || name.trim().length < 2} onClick={() => void saveIdentity()}>
                         Save organization details
                       </Button>
@@ -507,7 +507,7 @@ function OrganizationTeamForViewer() {
                       >
                         Publish update
                       </Button>
-                      {updateHeld && <><PublicationHeldNotice retry="publish it again unchanged" reviews="below" /><PublicationReviews /></>}
+                      {updateHeld && <><PublicationHeldNotice retry="publish it again unchanged" reviews="below" /><PublicationReviews actions={['update.create', 'update.edit']} /></>}
                     </Stack>
                   </Box>
                 )}

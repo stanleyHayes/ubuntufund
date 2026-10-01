@@ -14,7 +14,7 @@ test('keeps a campaign draft through private safety review and resubmits the exa
     let data: unknown = []
     if (path.endsWith('/notifications/unread-count')) data = { count: 0 }
     if (path.endsWith('/creation-options')) data = { plan: { name: 'Pro', campaignCollaboration: true, maxCollaboratorsPerCampaign: 2 }, maxGoal: 1000, canCreate: true, canSplit: false, splitEnabled: false }
-    if (path.endsWith('/publication-reviews')) data = { total: 1, items: [{ id: 'review-fixture', action: 'campaign.create', status: approved ? 'approved' : 'pending', text: JSON.stringify(Object.fromEntries(Object.entries(submissions[0] ?? {}).filter(([key]) => !['summary', 'automatedReviewConsent', 'imageUrls'].includes(key)))), reviewNotes: approved ? 'Complete campaign version reviewed.' : undefined }] }
+    if (path.endsWith('/publication-reviews')) data = { total: 1, items: [{ id: 'review-fixture', action: 'campaign.create', status: approved ? 'approved' : 'pending', text: JSON.stringify(Object.fromEntries(Object.entries(submissions[0] ?? {}).filter(([key]) => !['summary', 'automatedReviewConsent', 'imageUrls'].includes(key)))), reviewNotes: approved ? 'Complete campaign version reviewed.' : undefined, approvalExpiresAt: approved ? new Date(Date.now() + 7 * 86_400_000).toISOString() : undefined }] }
     if (path.endsWith('/campaigns') && route.request().method() === 'POST') {
       submissions.push(route.request().postDataJSON())
       if (!approved) return route.fulfill({ status: 409, json: { message: 'Saved privately for safety review. Your content has not been published.' } })
@@ -45,7 +45,8 @@ test('keeps a campaign draft through private safety review and resubmits the exa
   const consent = page.getByRole('checkbox', { name: /Use OpenAI to check/ })
   await expect(consent).not.toBeChecked()
   await page.getByRole('button', { name: 'Publish campaign', exact: true }).click()
-  await expect(page.getByText('campaign create · pending')).toBeVisible()
+  await expect(page.getByText('New campaign · Test campaign')).toBeVisible()
+  await expect(page.getByRole('list', { name: 'Review status: In review' })).toBeVisible()
   await expect(page.getByText(/Saved privately for safety review/)).toBeVisible()
   // Being held for review is expected, not a failure: an info status notice, never a red alert.
   await expect(page.getByRole('status').filter({ hasText: 'Waiting for safety review' })).toHaveClass(/MuiAlert-colorInfo/)
@@ -55,7 +56,7 @@ test('keeps a campaign draft through private safety review and resubmits the exa
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
   approved = true
   await page.getByRole('button', { name: 'Refresh publication reviews' }).click()
-  await expect(page.getByText('campaign create · approved')).toBeVisible()
+  await expect(page.getByRole('list', { name: 'Review status: Approved' })).toBeVisible()
   await page.getByRole('button', { name: 'Publish campaign', exact: true }).click()
   await expect(page.getByText('Campaign submitted', { exact: true })).toBeVisible()
   expect(submissions).toHaveLength(2)

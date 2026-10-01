@@ -3,12 +3,16 @@ import { tipContentVersion as version, isTipContentApproved } from '../../../../
 import { Router, type RequestHandler } from 'express';
 import { z } from 'zod';
 import { TipModel } from '../../../../database/models/TipModel.js';
+import { CreatorProfileModel } from '../../../../database/models/CreatorProfileModel.js';
 import { UserModel } from '../../../../database/models/UserModel.js';
 import { ContentRestrictionModel } from '../../../../database/models/ContentRestrictionModel.js';
 import { AuditLogModel } from '../../../../database/models/AuditLogModel.js';
 import { MongoUnitOfWork } from '../../../outbound/persistence/MongoUnitOfWork.js';
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
 import { AppError } from '../../middleware/errorHandler.js';
+
+/** Why a decision was refused with 409, for the admin card's title (`errors.review`). */
+const CONFLICT = { changed: { review: ['changed'] }, decided: { review: ['decided'] }, restricted: { review: ['author_restricted'] } };
 
 export function tipContentReviewFilter(status: 'pending' | 'approved' | 'rejected') {
   return { status: 'SUCCEEDED', checkoutRevokedAt: { $exists: false }, $and: [
@@ -27,7 +31,15 @@ export function createTipContentReviewRoutes(auth: RequestHandler, admin: Reques
       const page = Math.max(1, Math.min(10000, Math.floor(Number(req.query.page)) || 1));
       const filter = tipContentReviewFilter(status);
       const [rows, total] = await Promise.all([TipModel.find(filter).sort({ createdAt: 1 }).skip((page - 1) * pageSize).limit(pageSize), TipModel.countDocuments(filter)]);
-      res.json({ data: { total, items: rows.map(tip => ({ id: String(tip._id), version: version(tip), action: 'tip.public_content', actorId: tip.supporterUserId ?? 'Guest', text: JSON.stringify({ supporterName: tip.isAnonymous ? 'Anonymous' : tip.supporterName ?? '', message: tip.messageHiddenAt ? '' : tip.message ?? '' }), mediaUrls: [], status: tip.publicContentStatus === 'approved' && !isTipContentApproved(tip) ? 'pending' : tip.publicContentStatus ?? 'pending', reason: 'staff_requested', reviewNotes: tip.publicReviewNotes })) } });
+      // The creator page the tip was sent to, so staff can see who receives the content (and spot their own page).
+      const creatorIds = [...new Set(rows.map(tip => tip.creatorUserId))];
+      const pages = new Map((creatorIds.length ? await CreatorProfileModel.find({ userId: { $in: creatorIds } }).select('userId handle displayName').lean() : []).map(profile => [profile.userId, profile]));
+      res.json({ data: { total, items: rows.map(tip => {
+        const recipient = pages.get(tip.creatorUserId);
+        return { id: String(tip._id), version: version(tip), action: 'tip.public_content', actorId: tip.supporterUserId ?? 'Guest', text: JSON.stringify({ supporterName: tip.isAnonymous ? 'Anonymous' : tip.supporterName ?? '', message: tip.messageHiddenAt ? '' : tip.message ?? '' }), mediaUrls: [], status: tip.publicContentStatus === 'approved' && !isTipContentApproved(tip) ? 'pending' : tip.publicContentStatus ?? 'pending', reason: 'staff_requested', reviewNotes: tip.publicReviewNotes,
+          createdAt: tip.createdAt, reviewedAt: tip.publicReviewedAt, reviewedBy: tip.publicReviewedBy, ownerId: tip.creatorUserId,
+          ...(recipient ? { recipient: { kind: 'creator', id: tip.creatorUserId, name: recipient.displayName, handle: recipient.handle } } : {}) };
+      }) } });
     } catch (error) { next(error); }
   });
   router.put('/:id/review', async (req: AuthenticatedRequest, res, next) => {
@@ -40,12 +52,12 @@ export function createTipContentReviewRoutes(auth: RequestHandler, admin: Reques
         const tip = await TipModel.findById(id);
         if (!tip || tip.status !== 'SUCCEEDED' || tip.checkoutRevokedAt) throw new AppError('Supporter content is unavailable.', 404);
         if ([tip.supporterUserId, tip.creatorUserId].includes(req.userId!)) throw new AppError('Another administrator must review this content.', 403);
-        if (version(tip) !== input.version) throw new AppError('The content changed. Refresh before reviewing.', 409);
+        if (version(tip) !== input.version) throw new AppError('The content changed. Refresh before reviewing.', 409, CONFLICT.changed);
         if ((input.decision !== 'approved' || isTipContentApproved(tip)) && tip.publicContentStatus === input.decision && tip.publicReviewedBy === req.userId && tip.publicReviewNotes === input.notes) return;
-        if (tip.publicContentStatus === 'rejected' || isTipContentApproved(tip)) throw new AppError('This content already has a decision.', 409);
+        if (tip.publicContentStatus === 'rejected' || isTipContentApproved(tip)) throw new AppError('This content already has a decision.', 409, CONFLICT.decided);
         if (input.decision === 'approved' && tip.supporterUserId) {
           const author = await UserModel.findOneAndUpdate({ _id: tip.supporterUserId, deletedAt: null }, { $inc: { publicationWriteVersion: 1 } });
-          if (!author || await ContentRestrictionModel.exists({ userId: tip.supporterUserId })) throw new AppError('This supporter cannot publish content.', 409);
+          if (!author || await ContentRestrictionModel.exists({ userId: tip.supporterUserId })) throw new AppError('This supporter cannot publish content.', 409, CONFLICT.restricted);
         }
         await TipModel.updateOne({ _id: id }, { $set: { publicContentStatus: input.decision, publicContentFingerprint: input.version, publicReviewedBy: req.userId, publicReviewedAt: new Date(), publicReviewNotes: input.notes } });
         await AuditLogModel.create({ actorId: req.userId, actorRole: 'admin', action: `tip.content.${input.decision}`, resource: id, details: `Reviewed content version ${input.version}`, reason: input.notes, method: 'PUT', path: '/admin/tip-content-reviews/:id/review', statusCode: 200 });

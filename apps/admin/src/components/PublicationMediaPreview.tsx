@@ -7,12 +7,13 @@ interface Props { url: string; label: string }
 function cloudinaryUrl(url: string): URL | null {
   try { const parsed = new URL(url); return parsed.protocol === 'https:' && parsed.hostname === 'res.cloudinary.com' && !parsed.port && !parsed.username && !parsed.password ? parsed : null } catch { return null }
 }
+/** One attachment. Its label is an h4: it sits under the h3 of the card's media section. */
 export function PublicationMediaPreview({ url, label }: Props) {
   const [failedUrl, setFailedUrl] = useState('')
   const safeUrl = cloudinaryUrl(url)
   return <Box sx={{ minWidth: 0 }}>
-    <Typography variant="subtitle2">{label}</Typography>
-    {!safeUrl ? <Alert severity="warning" sx={{ mt: 1 }}>
+    <Typography component="h4" variant="subtitle2">{label}</Typography>
+    {!safeUrl ? <Alert severity="warning" role="note" sx={{ mt: 1 }}>
       This media is not hosted in Ujimora image storage, so it is not previewed or linked. Do not approve it until you have inspected it through your approved moderation workflow.
       <Typography component="span" variant="body2" sx={{ display: 'block', mt: 1, overflowWrap: 'anywhere' }}>{url}</Typography>
     </Alert> : <>

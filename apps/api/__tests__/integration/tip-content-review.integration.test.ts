@@ -39,11 +39,20 @@ it('holds guest attribution independently of settlement, reviews exact text and 
   const actions = (await request(app).get('/api/v1/admin/action-center').set('Authorization', staff.auth).expect(200)).body.data.items;
   expect(actions.find((item: { id: string }) => item.id === 'tip-content-reviews')).toMatchObject({ count: 1, href: '/publication-reviews?queue=tip-content-reviews' });
   const item = queue.body.data.items.find((value: { id: string }) => value.id === tip.id);
+  // Staff see who receives the content, so they can spot their own page; never the supporter's email.
+  expect(item).toMatchObject({ ownerId: owner.id, recipient: { kind: 'creator', id: owner.id, name: 'Creator', handle: 'review-tip' } });
+  expect(item.createdAt).toEqual(expect.any(String));
+  expect(item.reviewedAt).toBeUndefined();
   const decision = { version: item.version, decision: 'approved', notes: 'Reviewed the exact supporter name and message.' };
   await TipModel.updateOne({ _id: tip.id }, { $set: { message: 'Changed text' } });
-  await request(app).put(`${reviewPath}/${tip.id}/review`).set('Authorization', staff.auth).send(decision).expect(409);
+  const stale = await request(app).put(`${reviewPath}/${tip.id}/review`).set('Authorization', staff.auth).send(decision).expect(409);
+  // The admin card titles a refused decision by this reason.
+  expect(stale.body.errors).toEqual({ review: ['changed'] });
   const current = (await request(app).get(reviewPath).set('Authorization', staff.auth).expect(200)).body.data.items.find((value: { id: string }) => value.id === tip.id);
   await request(app).put(`${reviewPath}/${tip.id}/review`).set('Authorization', staff.auth).send({ ...decision, version: current.version }).expect(200);
+  const approvedQueue = (await request(app).get(`${reviewPath}?status=approved`).set('Authorization', staff.auth).expect(200)).body;
+  expect(approvedQueue.data.items.find((value: { id: string }) => value.id === tip.id)).toMatchObject({ reviewedBy: staff.id, reviewedAt: expect.any(String) });
+  expect(JSON.stringify(approvedQueue)).not.toContain('private@example.com');
   const after = (await request(app).get(publicPath).expect(200)).body.data;
   expect(after.recentTips[0]).toMatchObject({ supporterName: 'Guest name', message: 'Changed text', amount: 30 });
   expect(after.totalReceived).toBe(before.totalReceived);
@@ -82,7 +91,9 @@ it('denies self-review, restricted supporters, closed accounts and demoted staff
   const input = { version: item.version, decision: 'approved', notes: 'Reviewed the exact linked supporter attribution.' };
   await request(app).put(`${path}/${tip.id}/review`).set('Authorization', staff.auth).send(input).expect(403);
   await ContentRestrictionModel.create({ userId: supporter.id, restrictedBy: reviewer.id, reason: 'Public content restriction' });
-  await request(app).put(`${path}/${tip.id}/review`).set('Authorization', reviewer.auth).send(input).expect(409);
+  const restricted = await request(app).put(`${path}/${tip.id}/review`).set('Authorization', reviewer.auth).send(input).expect(409);
+  // Not a conflict a refresh can fix: the API says so, and the admin card does not call it "already decided".
+  expect(restricted.body).toMatchObject({ message: 'This supporter cannot publish content.', errors: { review: ['author_restricted'] } });
   await ContentRestrictionModel.deleteOne({ userId: supporter.id });
   await request(app).delete('/api/v1/profile').set('Authorization', supporter.auth).send({ password: 'SecurePass123' }).expect(200);
   await request(app).put(`${path}/${tip.id}/review`).set('Authorization', reviewer.auth).send(input).expect(404);

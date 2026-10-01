@@ -436,7 +436,7 @@ export function CampaignLivePage() {
             </FormGroup>
 
             <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />
-            <PublicationReviews />
+            <PublicationReviews actions={['live.start']} />
             {startHeld && <PublicationHeldNotice retry="select Go LIVE again with the same title and goal" reviews="above" />}
             <Button
               brandVariant="primary"
