@@ -2,7 +2,7 @@ import { PublicationConsent } from '@/components/safety/PublicationConsent'
 import { MfaSettings } from '@ubuntu-fund/ui'
 import { PublicationReviews } from '@/components/account/PublicationReviews'
 import { PublicationHeldNotice } from '@/components/safety/PublicationHeldNotice'
-import { isPublicationHeld } from '@/lib/publicationDrafts'
+import { publicationHold, type PublicationHold } from '@/lib/publicationDrafts'
 import { DataRightsRequests } from '@/components/account/DataRightsRequests'
 import { DeleteAccountDialog } from '@/components/account/DeleteAccountDialog'
 import { ActivityAlertSettings } from '@/components/account/ActivityAlertSettings'
@@ -169,7 +169,9 @@ function SettingsForViewer() {
   const [identityConsent, setIdentityConsent] = useState(false)
   const [publicationError, setPublicationError] = useState('')
   // Going public was held for safety review: a notice, not an error.
-  const [publicationHeld, setPublicationHeld] = useState(false)
+  const [publicationHeld, setPublicationHeld] = useState<PublicationHold | null>(null)
+  // Bumped by a hold, so Publication reviews lists the held version (and offers to withdraw it).
+  const [reviewsRevision, setReviewsRevision] = useState(0)
 
   // Delete account
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -238,16 +240,17 @@ function SettingsForViewer() {
       try {
         await api.put('/profile', { ...patch, ...(patch.publicProfile === true ? { automatedReviewConsent: identityConsent } : {}) })
         if (!live.current) return
-        if (patch.publicProfile === true) { setPublicationError(''); setPublicationHeld(false) }
+        if (patch.publicProfile === true) { setPublicationError(''); setPublicationHeld(null) }
         Object.assign(confirmed.current, patch)
         if (version === revision.current) { setSnackMessage('Settings saved'); setSnackSeverity('success'); setSnack(true) }
       } catch (err) {
         if (!live.current) return
-        const held = patch.publicProfile === true && isPublicationHeld(err)
+        const held = patch.publicProfile === true ? publicationHold(err) : null
         if (patch.publicProfile === true) {
           setPublicationHeld(held)
           setPublicationError(held ? '' : err instanceof Error ? err.message : 'Could not publish your profile.')
         }
+        if (held) setReviewsRevision(value => value + 1)
         for (const key of Object.keys(patch)) {
           if (fieldRevision.current[key] !== version) continue
           if (key === 'darkMode') setDarkMode(confirmed.current[key] as boolean)
@@ -418,14 +421,14 @@ function SettingsForViewer() {
               description="Control what others can see about you."
             >
               <BlockedUsers />
-              <PublicationReviews />
+              <PublicationReviews key={reviewsRevision} />
               <DataRightsRequests />
               <ToggleRow label="Make my donations anonymous by default" checked={anonymousDonations} onChange={(v) => { setAnonymousDonations(v); persistSettings({ anonymousDonations: v }) }} />
               <ToggleRow label="Show me on leaderboards" checked={showLeaderboards} onChange={(v) => { setShowLeaderboards(v); persistSettings({ showLeaderboards: v }) }} />
               <Typography variant="body2">Making your profile public requires review of its current identity. Hiding it takes effect without review.</Typography>
               <PublicationConsent value={identityConsent} onChange={setIdentityConsent} />
               {publicationError && <Alert severity="error">{publicationError} Check Publication reviews above, then enable the switch again after approval.</Alert>}
-              {publicationHeld && <PublicationHeldNotice retry="turn on “Allow profile to be public” again" reviews="above" />}
+              {publicationHeld && <PublicationHeldNotice {...publicationHeld} retry="turn on “Allow profile to be public” again" reviews="above" />}
               <ToggleRow label="Allow profile to be public" checked={publicProfile} onChange={(v) => { setPublicProfile(v); persistSettings({ publicProfile: v }) }} />
             </SettingsSection>
 

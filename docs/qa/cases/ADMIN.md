@@ -722,7 +722,7 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 
 *Surfaces:* admin, android, api, ios, web  ·  *Type:* compliance
 
-**Before:** Pending items: a comment or update proposal by U1; a donor public name and message on a settled donation; a tip supporter message (web only, because creator tips are not in native apps); a proposal authored by Admin A.
+**Before:** Publishing on approval is on. Pending items: a comment or update proposal by U1; a held comment by U2 on a campaign Admin A owns; a donor public name and message on a settled donation; a tip supporter message (web only, because creator tips are not in native apps); a proposal authored by Admin A.
 
 **Steps:**
 
@@ -731,8 +731,9 @@ Staff access and roles, dashboards, reviews, payouts, refunds, users, audit logs
 3. Approve the donor message and check the campaign page on web and mobile. Check that an anonymous donor's name stays hidden.
 4. Try to review Admin A's own proposal as Admin A.
 5. Have two admins decide the same item at once.
+6. As Admin A, try to decide U2's comment on Admin A's campaign.
 
-**Expect:** Decision buttons are disabled until notes are at least 20 characters. Approval applies to that exact author and version for 7 days (the author must resubmit) and moves no funds. Approved donor and tip text appears publicly; declined text never does. Self-review returns 403 'Another administrator must review your content'. The concurrent decision returns 409 'Another reviewer already decided this submission'.
+**Expect:** Decision buttons are disabled until notes are at least 20 characters. Approving U1's proposal publishes that exact version at once, after U1's checks run again, with no resubmission; the confirmation says whether it was published, is still publishing, or was not published and why, and the decided card shows where it stands. A live-session title, or anything held while publishing on approval was off, still needs its author to submit it again within 7 days. Approval moves no funds. Approved donor and tip text appears publicly; declined text never does. Self-review returns 403 'Another administrator must review your content'. Step 6 returns 403 'Another administrator must review content for a campaign or organization you manage'. The concurrent decision returns 409 'Another reviewer already decided this submission'.
 
 **Needs:** OpenAI (optional automated screening)
 

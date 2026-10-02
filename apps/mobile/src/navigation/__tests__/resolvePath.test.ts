@@ -42,3 +42,17 @@ it('keeps referral codes on native sign-up links', () => {
   expect(resolveNativePath('https://app.ujimora.com/login?returnTo=%2Fwallet')).toBe('/(auth)/login?returnTo=%2Fwallet')
   expect(resolveNativePath('https://app.ujimora.com/')).toBe('/')
 })
+
+it('opens the app screens the in-app notices about publication reviews link to', () => {
+  // A thank-you message approved, or delivered: its composer, not the campaign page.
+  expect(resolveNativePath('/campaigns/abc/thank-you')).toBe('/campaign/thank-you?id=abc')
+  expect(resolveNativePath('https://app.ujimora.com/campaigns/64b000000000000000000001/thank-you')).toBe('/campaign/thank-you?id=64b000000000000000000001')
+  // Organization details are live: an organization edits them in Edit profile; anyone else's team is under Invitations.
+  expect(resolveNativePath('/organization-team', { role: 'organization' })).toBe('/profile/edit')
+  expect(resolveNativePath('/organization-team', { role: 'user' })).toBe('/invitations')
+  expect(resolveNativePath('/organization-team')).toBe('/invitations')
+  // Every other notice opens the reviews in Settings, or where the change shows.
+  expect(resolveNativePath('/settings#privacy')).toBe('/settings')
+  expect(resolveNativePath('/creator')).toBe('/creator')
+  expect(resolveNativePath('/campaigns/abc')).toBe('/campaign/abc')
+})

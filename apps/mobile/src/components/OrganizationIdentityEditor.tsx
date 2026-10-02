@@ -8,7 +8,7 @@ import { GlassSurface } from '@/components/GlassSurface'
 import { PublicationConsent } from '@/components/PublicationConsent'
 import { PublicationReviews } from '@/components/PublicationReviews'
 import { PublicationHeldNotice } from '@/components/PublicationHeldNotice'
-import { isPublicationHeld } from '@/lib/publicationDrafts'
+import { isPublicationHeld, publishesOnApproval } from '@/lib/publicationDrafts'
 
 /** Organization identity is saved and reviewed separately from private account fields. */
 export function OrganizationIdentityEditor() {
@@ -21,8 +21,8 @@ function IdentityForm({ organizationId }: { organizationId: string }) {
   const [consent, setConsent] = useState(false), [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true), [retry, setRetry] = useState(0)
   const [loadError, setLoadError] = useState(''), [error, setError] = useState(''), [notice, setNotice] = useState('')
-  // Held for safety review: a notice, not an error.
-  const [held, setHeld] = useState(false)
+  // Held for safety review: a notice, not an error. `automatic`: its approval publishes it.
+  const [held, setHeld] = useState<'' | 'manual' | 'automatic'>('')
   useEffect(() => { live.current = true; return () => { live.current = false } }, [])
   useEffect(() => {
     let active = true
@@ -35,13 +35,13 @@ function IdentityForm({ organizationId }: { organizationId: string }) {
   }, [organizationId, retry])
   async function save() {
     if (busy) return
-    setBusy(true); setError(''); setHeld(false); setNotice('')
+    setBusy(true); setError(''); setHeld(''); setNotice('')
     try {
       await api.put(`/organization-team/${organizationId}/profile`, { organizationName: name, website, automatedReviewConsent: consent })
       if (live.current) setNotice('Organization profile updated.')
     } catch (cause) {
       if (!live.current) return
-      if (isPublicationHeld(cause)) setHeld(true)
+      if (isPublicationHeld(cause)) setHeld(publishesOnApproval(cause) ? 'automatic' : 'manual')
       else setError(cause instanceof Error ? cause.message : 'Could not save organization details.')
     }
     finally { if (live.current) setBusy(false) }
@@ -54,7 +54,7 @@ function IdentityForm({ organizationId }: { organizationId: string }) {
       <BrandedTextInput label="Website" value={website} onChangeText={setWebsite} disabled={busy} autoCapitalize="none" keyboardType="url" />
       <PublicationConsent value={consent} onChange={setConsent} />
       {error ? <><Text accessibilityRole="alert">{error}</Text><PublicationReviews actions={['organization.profile']} /></> : null}
-      {held ? <><PublicationHeldNotice retry="save it again unchanged" reviews="below" /><PublicationReviews actions={['organization.profile']} /></> : null}
+      {held ? <><PublicationHeldNotice retry="save it again unchanged" reviews="below" publishesOnApproval={held === 'automatic'} /><PublicationReviews actions={['organization.profile']} /></> : null}
       {notice ? <Text accessibilityRole="alert">{notice}</Text> : null}
       <Button mode="contained" disabled={busy || name.trim().length < 2} loading={busy} onPress={() => void save()}>Save organization details</Button>
     </>}

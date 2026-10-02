@@ -3042,24 +3042,24 @@ End-to-end journeys across areas, concurrency, multi-currency, dates and time zo
 
 **Source:** `apps/api/src/application/use-cases/DonateToCampaignUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/controllers/CampaignController.ts`, `apps/web/src/pages/CampaignDetailPage.tsx`, `apps/web/src/lib/checkoutAttempt.ts`
 
-## GAP2-009 · P2 · Publication review decisions (profile, organization profile, creator page, live start, updates, comments) are visible only in review panels
+## GAP2-009 · P2 · Publication review decisions (profile, organization profile, creator page, live start, updates, comments) reach the author as in-app notices
 
 *Surfaces:* admin, android, ios, web  ·  *Type:* functional
 
-**Before:** Users who trigger publications held for review, for example an organization profile or creator page edit with new media, a live start, or a campaign update. Admin with REPORTS permission.
+**Before:** Publishing on approval is on. Users who trigger publications held for review, for example an organization profile or creator page edit with new media, a live start, or a campaign update. Admin with REPORTS permission.
 
 **Steps:**
 
 1. Trigger one held publication of each available type.
 2. In admin /publication-reviews, approve one and reject one with notes.
-3. Check the users' email, in-app and mobile notifications.
+3. Check the users' email, in-app and mobile notifications. Tap each notice.
 4. Open the PublicationReviews panel on web (Settings, Profile, Organization team, Creator dashboard, Campaign live) and mobile (settings, creator, profile/edit, campaign/create, campaign/live).
 
-**Expect:** No notification of any kind. Status and reason appear only in the PublicationReviews panel of the matching screen, on both web and mobile. Rejected content stays unpublished and approved content goes live. Record whether users can find these panels unprompted.
+**Expect:** No email or push is sent. Each decision gives the author one in-app notice, on web and in the app. A decline reads 'Your <item> wasn't approved' ('Read the reviewer's note in Publication reviews.'). An approval of a profile, organization details, creator page, comment or update reads 'Your <item> is live' with what happened (for example 'Approved and now on your creator page.') and opens the item (in the app, organization details open Edit profile for the organization account and Invitations for a teammate, and a thank-you message opens its composer), or 'Your <item> wasn't published' with the reason and next step if it could not be published. An approval of a live start reads 'Your live session title was approved' ('Approved. Start the session again with the same title and goal before <deadline>.') and opens the campaign's live page. An approval of anything held while publishing on approval was off reads 'Your <item> was approved' ('Approved. Save it again unchanged before <deadline> to publish it.', with post, send or submit as the form says). Other notices open Settings > Publication reviews (/settings#privacy; Settings in the app). Notices never include the content or the reviewer's note. A repeated decision adds no second notice. Status and reason also appear in the PublicationReviews panel of the matching screen, on web and mobile. Rejected content stays unpublished, and approved content of the eight publish-on-approval actions goes live without resubmitting.
 
 **Needs:** Cloudinary for media
 
-**Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/publicationReviewRoutes.ts`, `apps/web/src/components/account/PublicationReviews.tsx`, `apps/mobile/src/components/PublicationReviews.tsx`, `apps/admin/src/pages/PublicationReviewsPage.tsx`
+**Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/publicationReviewRoutes.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/publicationNotices.ts`, `packages/types/src/publication-publishing.ts`, `apps/web/src/components/account/PublicationReviews.tsx`, `apps/mobile/src/components/PublicationReviews.tsx`, `apps/admin/src/pages/PublicationReviewsPage.tsx`
 
 ## GAP2-010 · P2 · Decisions on donor messages and tip messages: when and where the supporter learns of them
 

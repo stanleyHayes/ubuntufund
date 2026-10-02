@@ -3,6 +3,7 @@ import { isValidObjectId } from 'mongoose';
 import {
   CampaignStatus,
   DONOR_THANK_YOU_LIMITS,
+  hasCurrentLegalAcceptance,
   type DonorThankYouBlockReason,
   type DonorThankYouContent,
   type DonorThankYouPreview,
@@ -14,16 +15,18 @@ import { DonationIntentModel } from '../../../database/models/DonationIntentMode
 import { PayoutModel } from '../../../database/models/PayoutModel.js';
 import { UserModel } from '../../../database/models/UserModel.js';
 import { AuditLogModel } from '../../../database/models/AuditLogModel.js';
+import { ContentRestrictionModel } from '../../../database/models/ContentRestrictionModel.js';
+import { OrganizationMemberModel } from '../../../database/models/OrganizationMemberModel.js';
 import { DonorThankYouModel, type DonorThankYouDocument } from '../../../database/models/DonorThankYouModel.js';
 import { DonorThankYouDeliveryModel, type DonorThankYouDeliveryDocument } from '../../../database/models/DonorThankYouDeliveryModel.js';
 import { DonorMessageSuppressionModel } from '../../../database/models/DonorMessageSuppressionModel.js';
 import type { PublicationAdmissionPort, PublicationSubmission } from '../../../../domain/ports/outbound/PublicationAdmissionPort.js';
 import type { ActivityEmailSender } from './MongoActivityAlerts.js';
 import type { ThankYouSettings } from '../../../../application/services/CommercialConfigService.js';
-import { AppError } from '../../inbound/middleware/errorHandler.js';
+import { AppError, isDuplicateKeyError } from '../../inbound/middleware/errorHandler.js';
 import { EmailDeliveryError } from '../ResendActivityEmails.js';
 import { renderEmail } from '../emailTemplate.js';
-import { MongoUnitOfWork } from './MongoUnitOfWork.js';
+import { MongoCampaignCreation } from './MongoCampaignCreation.js';
 import { campaignManagerRole, organizerName, recordAccountNotice } from './campaignManagers.js';
 import { logger } from '../../../logging/logger.js';
 
@@ -61,6 +64,32 @@ const REASON_MESSAGES: Record<DonorThankYouBlockReason, string> = {
   email_unavailable: 'Email delivery is temporarily unavailable. Your draft is saved; try again later.',
 };
 
+/**
+ * The code each refusal carries (AppError.code), so publishing on approval
+ * can tell an expected refusal from a failure: the publication fence codes,
+ * or the outcome reason itself. Email that is not configured yet is no
+ * refusal there: queued messages wait for it.
+ */
+const REASON_CODES: Partial<Record<DonorThankYouBlockReason, string>> = {
+  disabled: 'thank_you_disabled',
+  not_authorized: 'permission_changed',
+  not_ended: 'thank_you_not_eligible',
+  campaign_unavailable: 'campaign_unavailable',
+  no_donors: 'thank_you_no_donors',
+  limit_reached: 'thank_you_limit_reached',
+};
+
+const blocked = (reason: DonorThankYouBlockReason) =>
+  new AppError(REASON_MESSAGES[reason], reason === 'email_unavailable' ? 503 : 409, undefined, REASON_CODES[reason]);
+const campaignGone = () => new AppError('Campaign not found', 404, undefined, 'campaign_unavailable');
+const draftChanged = () => new AppError('Your draft changed while it was being checked. Review it and send again.', 409, undefined, 'stale_version');
+const roleChanged = () => new AppError('You no longer manage or benefit from this campaign, so you cannot thank its donors.', 403, undefined, 'permission_changed');
+const actorRestricted = () => new AppError('Publishing is restricted. Contact support@ujimora.com to appeal.', 403, undefined, 'publishing_restricted');
+const ownerRestricted = () => new AppError("Publishing is restricted for this campaign's organizer, so messages to its donors are paused.", 403, undefined, 'organizer_restricted');
+
+const sameContent = (draft: DonorThankYouDocument, content: DonorThankYouContent) =>
+  draft.subject === content.subject && draft.body === content.body && (draft.signature ?? '') === (content.signature ?? '');
+
 function toView(doc: DonorThankYouDocument): DonorThankYouView {
   return {
     id: doc._id.toString(), campaignId: doc.campaignId, status: doc.status, authorRole: doc.authorRole,
@@ -72,6 +101,48 @@ function toView(doc: DonorThankYouDocument): DonorThankYouView {
 }
 
 interface Actor { userId: string; authVersion?: string }
+
+type ThankYouRole = 'manager' | 'beneficiary';
+
+/** What queues a message (MongoDonorThankYous.queueInTransaction). */
+export interface ThankYouQueueRequest {
+  actorId: string;
+  campaignId: string;
+  /** The exact message: the campaign's draft must still hold it. */
+  content: DonorThankYouContent;
+  /** The draft the author sent with their own request; an approval finds the draft by its content. */
+  draftId?: string;
+  /** Unique per campaign: the client's key, or `publication-review-<reviewId>` for an approval. */
+  idempotencyKey: string;
+  settings: ThankYouSettings;
+  /** The approval (publication review) that queues it; absent for the author's own request. */
+  reviewId?: string;
+}
+
+export interface QueuedThankYou {
+  view: DonorThankYouView;
+  role: ThankYouRole;
+  estimatedRecipients: number;
+}
+
+/** A held message a staff approval queues (publishing on approval). */
+export interface ApprovedThankYou {
+  reviewId: string;
+  actorId: string;
+  /** The author's current raw credential version; the publisher fence re-checks it. */
+  authVersion: string;
+  campaignId: string;
+  /** The reviewed message, exactly as it was submitted. */
+  content: DonorThankYouContent;
+  settings: ThankYouSettings;
+  /** Records the publication in the transaction that queues it (PublicationApplyContext.publish). */
+  publish(thankYouId: string): Promise<void>;
+}
+
+/** The publisher fence every publishing write runs in (MongoCampaignCreation). */
+interface PublisherFence {
+  run<T>(userId: string, authVersion: string, work: () => Promise<T>): Promise<T>;
+}
 
 /**
  * Post-campaign thank-you messages from the organizer or beneficiary to the
@@ -85,6 +156,7 @@ interface Actor { userId: string; authVersion?: string }
  */
 export class MongoDonorThankYous {
   private readonly unsubscribeKey: Buffer | null;
+  private readonly fence: PublisherFence;
 
   constructor(private readonly deps: {
     sender: ActivityEmailSender;
@@ -92,10 +164,13 @@ export class MongoDonorThankYous {
     apiUrl: string;
     config: { resolveThankYouConfig(): Promise<ThankYouSettings> };
     admission?: PublicationAdmissionPort;
+    /** The publisher fence a message is queued in (default MongoCampaignCreation). */
+    fence?: PublisherFence;
   }) {
     this.unsubscribeKey = deps.accountEmailKey?.length === 32
       ? Buffer.from(hkdfSync('sha256', deps.accountEmailKey, Buffer.alloc(0), 'ujimora-donor-message-unsubscribe-v1', 32))
       : null;
+    this.fence = deps.fence ?? new MongoCampaignCreation();
   }
 
   /** Sending needs the provider, a signing key for unsubscribe links and an https site to link to. */
@@ -245,51 +320,150 @@ export class MongoDonorThankYous {
     return this.render(cleanContent(content), await this.context(campaign), `${this.deps.sender.webUrl}/unsubscribe/thank-you#token=…`);
   }
 
+  /**
+   * The publishing checks of the sender's own request, before anything is
+   * held for review, as the content-acceptance middleware applies them to the
+   * other publishing routes: an open account, the current agreement (staff
+   * excepted), and no publishing restriction on the sender or on the
+   * campaign's organizer. The queueing transaction repeats them as fences.
+   */
+  private async assertMayPublish(campaign: CampaignDocument, userId: string): Promise<void> {
+    const user = await UserModel.findOne({ _id: userId, deletedAt: null }).select('role legalAcceptance').lean();
+    if (!user) throw new AppError('Account authorization changed. Sign in again.', 401, undefined, 'account_session');
+    if (user.role !== 'admin' && !hasCurrentLegalAcceptance(user.legalAcceptance)) throw new AppError('Accept the current account agreement before publishing.', 428, undefined, 'terms_required');
+    if (await ContentRestrictionModel.exists({ userId })) throw actorRestricted();
+    if (campaign.creatorId !== userId && await ContentRestrictionModel.exists({ userId: campaign.creatorId })) throw ownerRestricted();
+  }
+
+  /**
+   * Who the sender is to the campaign now, inside the queueing transaction:
+   * its owner, an active admin or editor of the open organization that runs
+   * it, or its beneficiary with accepted consent. The membership and the
+   * organization are written (as MongoCampaignContentWrite does), so a
+   * revocation or closure conflicts with the send instead of reading around
+   * it; the beneficiary's consent lives on the campaign, which the caller has
+   * already written.
+   */
+  private async currentRole(campaign: CampaignDocument, userId: string): Promise<ThankYouRole | null> {
+    if (campaign.creatorId === userId) return 'manager';
+    const member = await OrganizationMemberModel.updateOne(
+      { organizationId: campaign.creatorId, userId, status: 'active', role: { $in: ['admin', 'editor'] } },
+      { $inc: { profileWriteVersion: 1 } }, { timestamps: false });
+    if (member.matchedCount) {
+      const organization = await UserModel.updateOne({ _id: campaign.creatorId, role: 'organization', deletedAt: null }, { $inc: { publicationWriteVersion: 1 } }, { timestamps: false });
+      if (organization.matchedCount) return 'manager';
+    }
+    const onBehalf = campaign.onBehalf;
+    if (campaign.creationMode === 'on_behalf' && onBehalf?.beneficiaryUserId === userId && onBehalf.consentStatus === 'accepted') return 'beneficiary';
+    return null;
+  }
+
+  /**
+   * Queues the campaign's draft as its next thank-you message, once. Call it
+   * inside the publisher fence for the sender (MongoCampaignCreation.run:
+   * their open account, credential version, agreement and restriction), as
+   * `submit` and `queueApproved` do. In that transaction it re-checks the
+   * campaign (not deleted; written, so a block, closure or consent change
+   * conflicts with the send), the sender's role, a publishing restriction on
+   * the campaign's organizer, eligibility (email that is not configured yet
+   * aside: queued messages wait for it, nothing is lost), that the draft
+   * still holds exactly this message, and the send limit; then moves the
+   * draft to `queued` with the next send slot (unique per campaign) and
+   * audits it. The worker (`process`) resolves the recipients and emails them
+   * later, skipping donors who were refunded or unsubscribed by then and
+   * accounts that are closed or unverified. Refusals are AppErrors with a
+   * code (REASON_CODES, or a publication fence code).
+   */
+  async queueInTransaction(request: ThankYouQueueRequest): Promise<QueuedThankYou> {
+    const { actorId, campaignId, content } = request;
+    if (!isValidObjectId(campaignId)) throw campaignGone();
+    const campaign = await CampaignModel.findOneAndUpdate({ _id: campaignId, deletedAt: { $exists: false } },
+      { $inc: { commentCreationWriteVersion: 1 } }, { new: true, timestamps: false });
+    if (!campaign) throw campaignGone();
+    const role = await this.currentRole(campaign, actorId);
+    if (!role) throw roleChanged();
+    if (campaign.creatorId !== actorId && await ContentRestrictionModel.exists({ userId: campaign.creatorId })) throw ownerRestricted();
+    const check = await this.eligibility(campaign, request.settings);
+    if (!check.eligible && check.reason !== 'email_unavailable') throw blocked(check.reason!);
+    const draft = await DonorThankYouModel.findOne({ campaignId, status: 'draft', ...(request.draftId ? { _id: request.draftId } : {}) });
+    if (!draft || !sameContent(draft, content)) throw draftChanged();
+    // Counted in this transaction; the send slot's unique index backs the limit.
+    const queued = await DonorThankYouModel.findOneAndUpdate({ _id: draft._id, status: 'draft' }, {
+      $set: { status: 'queued', sendSlot: check.sendsUsed + 1, submitIdempotencyKey: request.idempotencyKey, submittedBy: actorId, submittedAt: new Date(), authorRole: role },
+    }, { new: true });
+    if (!queued) throw new AppError('This message was already sent.', 409, undefined, 'stale_version');
+    const onApproval = request.reviewId ? ` on the approval of publication review ${request.reviewId}` : '';
+    await AuditLogModel.create({
+      actorId, actorRole: role, action: 'donor_thank_you.submitted', resource: campaignId,
+      details: `Thank-you message ${queued._id} queued for about ${check.estimatedRecipients} donors${onApproval}`, severity: 'info', statusCode: 202,
+      ...(request.reviewId ? { method: 'INTERNAL', path: 'internal:publication.published' } : { method: 'POST', path: '/campaigns/:id/thank-you/send' }),
+    });
+    return { view: toView(queued), role, estimatedRecipients: check.estimatedRecipients };
+  }
+
   async submit(campaignId: string, actor: Actor, options: { automatedReviewConsent?: boolean }, idempotencyKey: string | undefined): Promise<{ view: DonorThankYouView; replayed: boolean }> {
     if (!idempotencyKey || !/^[a-zA-Z0-9_-]{16,100}$/.test(idempotencyKey)) throw new AppError('An Idempotency-Key header of 16-100 letters, digits, hyphens or underscores is required.', 400);
-    const { campaign, role } = await this.authorize(campaignId, actor.userId);
+    const { campaign } = await this.authorize(campaignId, actor.userId);
     const replay = await DonorThankYouModel.findOne({ campaignId, submitIdempotencyKey: idempotencyKey });
     if (replay) return { view: toView(replay), replayed: true };
+    await this.assertMayPublish(campaign, actor.userId);
     const settings = await this.deps.config.resolveThankYouConfig();
     const check = await this.eligibility(campaign, settings);
-    if (!check.eligible) throw new AppError(REASON_MESSAGES[check.reason!], check.reason === 'email_unavailable' ? 503 : 409);
+    if (!check.eligible) throw blocked(check.reason!);
     const draft = await DonorThankYouModel.findOne({ campaignId, status: 'draft' });
     if (!draft) throw new AppError('Save your message before sending it.', 409);
-    if (!this.deps.admission?.assertCurrent) throw new AppError('Message safety review is unavailable.', 503);
+    const admission = this.deps.admission;
+    if (!admission?.assertCurrent) throw new AppError('Message safety review is unavailable.', 503);
     // Donor-facing text goes through the same safety review as public content.
+    const content: DonorThankYouContent = { subject: draft.subject, body: draft.body, signature: draft.signature };
     const submission: PublicationSubmission = {
       actorId: actor.userId, action: 'thank_you.send', resourceId: campaignId, mediaUrls: [],
-      text: JSON.stringify({ subject: draft.subject, body: draft.body, signature: draft.signature }),
-      automatedReviewConsent: options.automatedReviewConsent,
+      text: JSON.stringify(content), automatedReviewConsent: options.automatedReviewConsent, authVersion: actor.authVersion,
     };
-    await this.deps.admission.assertAllowed(submission);
+    await admission.assertAllowed(submission);
+    // Queued under the draft's id: the message is the draft, moved to `queued`.
+    const draftId = draft._id.toString();
     try {
-      const view = await new MongoUnitOfWork().run(async () => {
-        await this.deps.admission!.assertCurrent!(submission);
-        const current = await DonorThankYouModel.findOne({ _id: draft._id, status: 'draft' });
-        if (!current || current.subject !== draft.subject || current.body !== draft.body || current.signature !== draft.signature)
-          throw new AppError('Your draft changed while it was being checked. Review it and send again.', 409);
-        const used = await DonorThankYouModel.countDocuments({ campaignId, sendSlot: { $type: 'number' } });
-        if (used >= settings.maxSendsPerCampaign) throw new AppError(REASON_MESSAGES.limit_reached, 409);
-        const now = new Date();
-        const queued = await DonorThankYouModel.findOneAndUpdate({ _id: current._id, status: 'draft' }, {
-          $set: { status: 'queued', sendSlot: used + 1, submitIdempotencyKey: idempotencyKey, submittedBy: actor.userId, submittedAt: now, authorRole: role },
-        }, { new: true });
-        if (!queued) throw new AppError('This message was already sent.', 409);
-        await AuditLogModel.create({ actorId: actor.userId, actorRole: role, action: 'donor_thank_you.submitted', resource: campaignId,
-          details: `Thank-you message ${queued._id} queued for about ${check.estimatedRecipients} donors`, severity: 'info', method: 'POST', path: '/campaigns/:id/thank-you/send', statusCode: 202 });
-        return toView(queued);
+      const queued = await this.fence.run(actor.userId, actor.authVersion ?? '', async () => {
+        // Approvals are single-use: consumed first, so a version its approval published meanwhile is refused as published.
+        await admission.assertCurrent!(submission, { publishedResourceId: draftId });
+        return this.queueInTransaction({ actorId: actor.userId, campaignId, content, draftId, idempotencyKey, settings });
       });
-      logger.info({ event: 'donor_thank_you.send_requested', campaignId, thankYouId: view.id, estimatedRecipients: check.estimatedRecipients, role }, 'donor thank-you queued');
-      return { view, replayed: false };
+      logger.info({ event: 'donor_thank_you.send_requested', campaignId, thankYouId: queued.view.id, estimatedRecipients: queued.estimatedRecipients, role: queued.role }, 'donor thank-you queued');
+      return { view: queued.view, replayed: false };
     } catch (error) {
-      if ((error as { code?: number }).code === 11000) {
+      if (isDuplicateKeyError(error)) {
         const winner = await DonorThankYouModel.findOne({ campaignId, submitIdempotencyKey: idempotencyKey });
         if (winner) return { view: toView(winner), replayed: true };
-        throw new AppError(REASON_MESSAGES.limit_reached, 409);
+        throw blocked('limit_reached');
       }
       throw error;
     }
+  }
+
+  /**
+   * Publishing on approval: queues the approved message as if its author had
+   * pressed Send at this moment, through the same fence and checks as
+   * `submit` (queueInTransaction), under the key
+   * `publication-review-<reviewId>`, and records the publication in the same
+   * transaction. Emails go out once: this only queues; the draft's
+   * compare-and-set, the unique send slot and the publication's own
+   * compare-and-set refuse a second queueing.
+   */
+  async queueApproved(approved: ApprovedThankYou): Promise<QueuedThankYou> {
+    const queued = await this.fence.run(approved.actorId, approved.authVersion, async () => {
+      const result = await this.queueInTransaction({
+        actorId: approved.actorId, campaignId: approved.campaignId, content: approved.content,
+        idempotencyKey: `publication-review-${approved.reviewId}`, settings: approved.settings, reviewId: approved.reviewId,
+      });
+      await approved.publish(result.view.id);
+      return result;
+    });
+    logger.info({
+      event: 'donor_thank_you.send_requested', campaignId: approved.campaignId, thankYouId: queued.view.id, reviewId: approved.reviewId,
+      estimatedRecipients: queued.estimatedRecipients, role: queued.role,
+    }, 'donor thank-you queued on its approval');
+    return queued;
   }
 
   async summary(campaignId: string, thankYouId: string, actor: Actor): Promise<DonorThankYouView> {

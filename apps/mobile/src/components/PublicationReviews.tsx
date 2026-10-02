@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { router, useFocusEffect } from 'expo-router'
-import { StyleSheet, View } from 'react-native'
+import { AccessibilityInfo, StyleSheet, View } from 'react-native'
 import { Icon, Text } from 'react-native-paper'
 import {
   describePublicationReview,
@@ -11,6 +11,8 @@ import {
   type PublicationStepState,
 } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
+import { confirmDestructive, type DestructivePrompt } from '@/lib/confirmDestructive'
+import { clearIdentityDraft } from '@/lib/publicationDrafts'
 import { useAuth } from '@/context/AuthContext'
 import { usePalette } from '@/context/ColorModeContext'
 import type { Palette } from '@/theme'
@@ -26,31 +28,54 @@ const PAGE_SIZE = 25
  */
 const FILTERED_PAGE_SIZE = 100
 
-const STEP_ICON: Record<PublicationStepState, string> = { complete: 'check-circle', current: 'radiobox-marked', upcoming: 'circle-outline', failed: 'close-circle' }
-const stepTone = (state: PublicationStepState, p: Palette) => ({ complete: p.success, current: p.primary, upcoming: p.textSecondary, failed: p.error })[state]
-const lineTone = (state: PublicationStepState, p: Palette) => state === 'upcoming' ? `${p.textSecondary}40` : stepTone(state, p)
-const labelTone = (state: PublicationStepState, p: Palette) => ({ complete: p.text, current: p.text, upcoming: p.textSecondary, failed: p.error })[state]
+/** `skipped` (replaced or withdrawn) stopped unpublished: neutral, neither done nor failed. */
+const STEP_ICON: Record<PublicationStepState, string> = { complete: 'check-circle', current: 'radiobox-marked', upcoming: 'circle-outline', failed: 'close-circle', skipped: 'minus-circle' }
+const stepTone = (state: PublicationStepState, p: Palette) => ({ complete: p.success, current: p.primary, upcoming: p.textSecondary, failed: p.error, skipped: p.textSecondary })[state]
+const lineTone = (state: PublicationStepState, p: Palette) => state === 'upcoming' || state === 'skipped' ? `${p.textSecondary}40` : stepTone(state, p)
+const labelTone = (state: PublicationStepState, p: Palette) => ({ complete: p.text, current: p.text, upcoming: p.textSecondary, failed: p.error, skipped: p.textSecondary })[state]
+
+const WITHDRAW_PROMPT: DestructivePrompt = {
+  title: 'Withdraw this version?',
+  message: "It won't be published. You can submit it again later for a new review.",
+  confirmLabel: 'Withdraw',
+}
+
+/** The kind of change and its subject on one line, e.g. "Comment · Thank you all". */
+const titleOf = ({ label, subject }: { label: string; subject: string }) => (subject ? `${label} · ${subject}` : label)
+/**
+ * Approval publishes it by itself. The API says so only while publishing on
+ * approval is switched on, so a list read while it is off (where a replaced,
+ * withdrawn or author-published version still reports its `publication`)
+ * never claims approval publishes anything.
+ */
+const publishesItself = (item: PublicationReviewItem) => item.publishOnApproval === true
+const statusOf = (err: unknown) => (err as { status?: unknown } | null)?.status
+const announce = (message: string) => AccessibilityInfo.announceForAccessibilityWithOptions(message, { queue: true })
 
 type Styles = ReturnType<typeof makeStyles>
 
 /**
  * The author's own publication reviews as compact status cards: the kind of
  * change and its subject, a Submitted → In review → Approved (or Declined)
- * tracker, the reviewer's note and what to do next. Never the submitted
- * content itself. `actions` narrows the list to one screen's own kinds of
- * change; without it (Settings) every kind is listed.
+ * tracker, with Published after it when the approval publishes the version
+ * by itself, the reviewer's note and what to do next. Never the submitted
+ * content itself. A version that is not published yet can be withdrawn.
+ * `actions` narrows the list to one screen's own kinds of change; without it
+ * (Settings) every kind is listed.
  */
 export function PublicationReviews({ actions }: { actions?: readonly PublicationAction[] }) {
   const { user } = useAuth()
-  return <ViewerReviews key={user?.id ?? 'guest'} actions={actions} />
+  return <ViewerReviews key={user?.id ?? 'guest'} userId={user?.id} actions={actions} />
 }
-function ViewerReviews({ actions }: { actions?: readonly PublicationAction[] }) {
+function ViewerReviews({ userId, actions }: { userId?: string; actions?: readonly PublicationAction[] }) {
   const p = usePalette()
   const styles = useMemo(() => makeStyles(p), [p])
   // A string, so an inline `actions` array does not reload the list on every render.
   const only = actions?.length ? actions.join(' ') : ''
   const [items, setItems] = useState<PublicationReviewItem[]>([]), [page, setPage] = useState(1), [total, setTotal] = useState(0)
   const [older, setOlder] = useState(false), [error, setError] = useState(''), [loading, setLoading] = useState(true)
+  // Why withdrawing a version did not work, on its card until the next Refresh, and the version being withdrawn.
+  const [refusals, setRefusals] = useState<Readonly<Record<string, string>>>({}), [withdrawing, setWithdrawing] = useState('')
   const load = useCallback(async () => {
     setLoading(true)
     try {
@@ -64,14 +89,42 @@ function ViewerReviews({ actions }: { actions?: readonly PublicationAction[] }) 
     finally { setLoading(false) }
   }, [page, only])
   useFocusEffect(useCallback(() => { void load() }, [load]))
+  async function withdraw(item: PublicationReviewItem) {
+    if (withdrawing || !(await confirmDestructive(WITHDRAW_PROMPT))) return
+    const { id } = item
+    setWithdrawing(id); setRefusals(({ [id]: _previous, ...rest }) => rest)
+    // Settled: '' once withdrawn, or why it was refused. A refusal means the version moved on meanwhile (published, replaced or declined).
+    const refusal = await api.post(`/publication-reviews/${encodeURIComponent(id)}/withdraw`).then(
+      () => '',
+      (err: unknown) => (statusOf(err) === 409 ? (err instanceof Error && err.message) || "This version can't be withdrawn now." : null),
+    )
+    // This device keeps a held profile change to submit again; a withdrawn one must not come back with the form.
+    if (refusal === '' && item.action === 'account.profile' && userId) await clearIdentityDraft(userId)
+    setWithdrawing('')
+    // Anything else may never have reached the API: the card keeps its Withdraw to try again. Said out loud too:
+    // a new alert's text is not announced by VoiceOver, nor by TalkBack when it arrives with it (see PublicationHeldNotice).
+    if (refusal === null) {
+      const failed = 'Could not withdraw it. Check your connection and try again.'
+      setRefusals(current => ({ ...current, [id]: failed }))
+      announce(failed)
+      return
+    }
+    if (refusal) setRefusals(current => ({ ...current, [id]: refusal }))
+    announce(refusal || "Withdrawn. It won't be published.")
+    // The card shows where the version stands now.
+    void load()
+  }
   return <View style={{ gap: 12, paddingVertical: 16 }}>
     <View style={styles.header}>
       <Text variant="titleMedium" accessibilityRole="header" style={styles.heading}>Publication reviews</Text>
-      <Button compact icon="refresh" disabled={loading} accessibilityLabel="Refresh publication reviews" onPress={() => void load()}>Refresh</Button>
+      <Button compact icon="refresh" disabled={loading} accessibilityLabel="Refresh publication reviews" onPress={() => { setRefusals({}); void load() }}>Refresh</Button>
     </View>
-    <Text style={styles.muted}>Held changes stay private until they are published.</Text>
+    {/* With publishing on approval on, approval publishes most changes by itself; otherwise (switched off, live sessions, versions held before it) they go public once their author submits them again. */}
+    <Text style={styles.muted}>{items.some(publishesItself) ? "Held changes stay private until they're approved." : 'Held changes stay private until they are published.'}</Text>
     {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-    {loading ? <Text style={styles.muted}>Loading reviews…</Text> : items.map(item => <ReviewCard key={item.id} review={item} styles={styles} p={p} />)}
+    {/* A reload keeps the cards in place, so the one a screen reader is on never disappears while it refreshes. */}
+    {loading && !items.length ? <Text style={styles.muted}>Loading reviews…</Text> : items.map(item => <ReviewCard key={item.id} review={item} styles={styles} p={p}
+      refusal={refusals[item.id]} withdrawing={withdrawing === item.id} locked={!!withdrawing} onWithdraw={item.canWithdraw === true ? () => void withdraw(item) : undefined} />)}
     {!loading && !items.length && !error && <Text style={styles.muted}>Nothing waiting for review.</Text>}
     {older && <View style={{ gap: 4 }}>
       <Text style={styles.muted}>Only your latest submissions are listed here.</Text>
@@ -85,21 +138,31 @@ function ViewerReviews({ actions }: { actions?: readonly PublicationAction[] }) 
   </View>
 }
 
-function ReviewCard({ review, styles, p }: { review: PublicationReviewItem; styles: Styles; p: Palette }) {
-  const { label, subject, note, stage } = describePublicationReview(review)
+function ReviewCard({ review, refusal, withdrawing, locked, onWithdraw, styles, p }: {
+  /** `withdrawing`: this version is being withdrawn; `locked`: one is, so every Withdraw waits. */
+  review: PublicationReviewItem; refusal?: string; withdrawing: boolean; locked: boolean; onWithdraw?: () => void; styles: Styles; p: Palette
+}) {
+  const described = describePublicationReview(review)
+  const { label, subject, note, stage } = described
   return <GlassSurface variant="subtle" style={styles.card}>
     <Text numberOfLines={1} style={styles.title}>{label}{subject ? <Text style={styles.subject}>{` · ${subject}`}</Text> : null}</Text>
     <ReviewSteps stage={stage} styles={styles} p={p} />
     {note ? <ReviewNote text={note} styles={styles} /> : null}
     {stage.hint ? <Text style={styles.body}>{stage.hint}</Text> : null}
     {stage.support ? <Text selectable style={styles.caption}>{stage.support}</Text> : null}
+    {refusal ? <Text accessibilityRole="alert" style={styles.refusal}>{refusal}</Text> : null}
+    {onWithdraw ? <Button compact mode="outlined" icon="undo-variant" loading={withdrawing} disabled={locked} style={{ alignSelf: 'flex-start' }}
+      accessibilityLabel={`Withdraw ${titleOf(described)}`} onPress={onWithdraw}>Withdraw</Button> : null}
   </GlassSurface>
 }
 
 /** Labels sit under their icons, so the steps share the width and read at phone size. */
 function ReviewSteps({ stage, styles, p }: { stage: PublicationReviewStage; styles: Styles; p: Palette }) {
   const submitted = stage.steps.find(step => step.key === 'submitted')?.detail
-  const summary = [`Review status: ${stage.label}`, submitted && `Submitted ${submitted}`].filter(Boolean).join('. ')
+  const published = stage.steps.find(step => step.key === 'publish' && step.state === 'complete')?.detail
+  // An approval that ran out before its version was published (the phase says so when that is all there is to say).
+  const lapsed = stage.phase !== 'approval_expired' && stage.steps.some(step => step.key === 'decision' && step.detail === 'Expired')
+  const summary = [`Review status: ${stage.label}`, submitted && `Submitted ${submitted}`, lapsed && 'Approval expired', published && `Published ${published}`].filter(Boolean).join('. ')
   return <View accessible accessibilityLabel={summary} style={styles.steps}>
     {stage.steps.map((step, index) => {
       const next = stage.steps[index + 1]
@@ -138,6 +201,8 @@ function makeStyles(p: Palette) {
     muted: { fontFamily: 'Outfit_400Regular', color: p.textSecondary, lineHeight: 20 },
     caption: { fontFamily: 'Outfit_400Regular', color: p.textSecondary, fontSize: 12, lineHeight: 16 },
     error: { fontFamily: 'Outfit_400Regular', color: p.error, lineHeight: 20 },
+    // A refused withdrawal is not a failure: the version moved on (published, replaced or declined).
+    refusal: { fontFamily: 'Outfit_400Regular', color: p.warningText, lineHeight: 20 },
     card: { padding: 14, borderRadius: 16, gap: 10 },
     title: { fontFamily: 'Outfit_700Bold', color: p.text, fontSize: 15 },
     subject: { fontFamily: 'Outfit_400Regular', color: p.textSecondary },

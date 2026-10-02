@@ -5,6 +5,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import { ujimoraTheme } from '@ubuntu-fund/ui'
 import AdminProfilePage from '@/pages/AdminProfilePage'
 import { api, credentialApi } from '@/lib/api'
+import { ApiError } from '@/lib/apiError'
 const { updateName, replaceTokens } = vi.hoisted(() => ({ updateName: vi.fn(), replaceTokens: vi.fn() }))
 vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ user: { id: 'admin-1', name: 'Old name', email: 'admin@example.com', role: 'admin' }, updateName, replaceTokens }) }))
 vi.mock('@/lib/api', () => ({ api: { get: vi.fn(), put: vi.fn() }, credentialApi: { get: vi.fn(), post: vi.fn() } }))
@@ -31,9 +32,34 @@ it('preserves entered details and shows the server error on failed save', async 
   vi.mocked(api.put).mockRejectedValue(new Error('Name must contain at least 2 characters'))
   mount(); await screen.findByLabelText('Full Name')
   fireEvent.click(screen.getByRole('button', { name: 'Save Profile' }))
-  await screen.findByText('Name must contain at least 2 characters')
+  // Beside the form and in the snackbar; a failure is not a hold, so it asks for nothing after approval.
+  expect(await screen.findAllByText('Name must contain at least 2 characters')).toHaveLength(2)
+  expect(screen.queryByText(/After approval/)).toBeNull()
+  expect(screen.queryByRole('link', { name: 'Open review queue in a new tab' })).toBeNull()
   expect(screen.getByLabelText('Bio')).toHaveValue('Existing bio')
   expect(updateName).not.toHaveBeenCalled()
+})
+
+const automatic = 'Saved privately for safety review. Your content has not been published yet. It will be published automatically once a reviewer approves it; check Publication reviews for the decision.'
+const manual = 'Saved privately for safety review. Your content has not been published. Keep your draft and check Publication reviews before submitting this same version again.'
+it.each([
+  ['published by approval, with the private fields saved', new ApiError(automatic, 409, { publication: ['held', 'publishes_on_approval'], saved: ['private'] }), `Your other changes are saved. ${automatic}`],
+  ['kept for saving again after approval', new ApiError(manual, 409, { publication: ['held'] }), `${manual} After approval, save the same version here.`],
+])('explains a public identity held for review: %s', async (_, error, notice) => {
+  vi.mocked(api.put).mockRejectedValue(error)
+  mount()
+  fireEvent.change(await screen.findByLabelText('Full Name'), { target: { value: 'New Admin Name' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save Profile' }))
+  expect(await screen.findByText('Saved privately for safety review')).toBeInTheDocument()
+  const alert = screen.getByText((_, element) => !!element?.classList.contains('MuiAlert-message') && element.textContent?.startsWith(notice) === true).closest('.MuiAlert-root')
+  // A hold is not a failure.
+  expect(alert).toHaveClass('MuiAlert-colorInfo')
+  expect(alert).toHaveTextContent(`${notice} Open review queue in a new tab`)
+  expect(screen.getByRole('link', { name: 'Open review queue in a new tab' })).toHaveAttribute('href', '/publication-reviews')
+  // Neither beside the form nor in the snackbar.
+  expect(document.querySelector('.MuiAlert-colorError')).toBeNull()
+  expect(updateName).not.toHaveBeenCalled()
+  expect(screen.getByLabelText('Full Name')).toHaveValue('New Admin Name')
 })
 it('prevents saving unloaded data and retries profile loading', async () => {
   vi.mocked(api.get).mockRejectedValueOnce(new Error('Profile unavailable'))

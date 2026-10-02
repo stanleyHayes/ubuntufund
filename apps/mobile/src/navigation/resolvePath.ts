@@ -1,5 +1,15 @@
+export interface NativePathOptions {
+  /**
+   * The signed-in account's role, when known (in-app notices). The web's
+   * organization team page is two places in the app: an organization's own
+   * details are edited in Edit profile, and a member's team invitations and
+   * memberships are under Invitations.
+   */
+  role?: string
+}
+
 /** Translate public web URLs into native routes before Expo Router navigates. */
-export function resolveNativePath(input: string): string {
+export function resolveNativePath(input: string, options: NativePathOptions = {}): string {
   try {
     const url = new URL(input, 'https://app.ujimora.com')
     let path = url.pathname
@@ -10,6 +20,8 @@ export function resolveNativePath(input: string): string {
     if (parts[0] === 'expo-development-client') return '/'
     if (parts[0] === 'campaigns' && parts[1] === 'new') return '/campaign/create'
     if (parts[0] === 'campaigns' && parts[1] && parts[2] === 'live') return `/campaign/live?id=${encodeURIComponent(parts[1])}`
+    // The thank-you composer (its notices: approved, delivered).
+    if (parts[0] === 'campaigns' && parts[1] && parts[2] === 'thank-you') return `/campaign/thank-you?id=${encodeURIComponent(parts[1])}`
     if (parts[0] === 'campaigns' && parts[1]) return `/campaign/${parts[1]}${query}`
     if (parts[0] === 'c' && parts[1] && parts[2] === 'live' && parts[3]) return `/live/${parts[3]}`
     if (parts[0] === 'c' && parts[1]) return `/campaign/shared?slug=${encodeURIComponent(parts[1])}${parts[2] === 'donate' ? '&donate=1' : ''}${url.searchParams.has('amount') ? '&amount=' + encodeURIComponent(url.searchParams.get('amount') || '') : ''}`
@@ -17,6 +29,7 @@ export function resolveNativePath(input: string): string {
     // Early creator QR codes pointed at /u/:userId, which no route handles.
     if (parts[0] === 'u' && parts[1]) return `/profile/${encodeURIComponent(parts[1])}`
     if (path === '/profile') return '/(tabs)/profile'
+    if (path === '/organization-team') return options.role === 'organization' ? '/profile/edit' : '/invitations'
     if (path === '/subscription' || path === '/subscription/callback' || path === '/subscriptions/callback') return '/(tabs)/subscription'
     if (path === '/campaigns') return '/(tabs)/explore'
     if (parts[0] === 'donations' && parts[1] === 'refund' && parts[2]) return `/refund-request?donationId=${encodeURIComponent(parts[2])}`

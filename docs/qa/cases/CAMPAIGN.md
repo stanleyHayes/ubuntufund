@@ -104,7 +104,7 @@ Creation, review and publication, visibility states, updates and comments, shari
 5. Web and mobile: repeat the uncertain-commit case, but close the tab or kill the app before the response arrives. Reopen, let the draft restore, and publish again.
 6. Check /my-campaigns and GET /campaigns/mine and count the campaigns. Check creation-options totalCount and activeCount.
 
-**Expect:** While the form stays open, exactly one campaign is created per intended submit. The button shows 'Setting up campaign…' and is disabled during the request. Both requests carry the same Idempotency-Key, and the retry returns 200 'Campaign already created' with the same campaign id. The success screen appears, totalCount rises by one and the draft is cleared. Editing any field produces a new key. Log any duplicate in these paths as a P0 defect. Remaining gap: the key is held only in memory. After a tab close or app kill, the restored draft is sent with a new key, so a second campaign is created if the first request had committed, and it uses a lifetime allowance slot. Record the result, and tell organizers in support copy to check My Campaigns before they resubmit. Known open issue I153: an approved content version can be reused for 7 days (single-use approvals are an owner decision).
+**Expect:** While the form stays open, exactly one campaign is created per intended submit. The button shows 'Setting up campaign…' and is disabled during the request. Both requests carry the same Idempotency-Key, and the retry returns 200 'Campaign already created' with the same campaign id. The success screen appears, totalCount rises by one and the draft is cleared. Editing any field produces a new key. Log any duplicate in these paths as a P0 defect. Remaining gap: the key is held only in memory. After a tab close or app kill, the restored draft is sent with a new key, so a second campaign is created if the first request had committed, and it uses a lifetime allowance slot. Record the result, and tell organizers in support copy to check My Campaigns before they resubmit. Issue I153 (reusable approvals) now applies only to campaign proposals stored before 30 September 2026: such an approval can be reused for 7 days. Approvals of comments, updates, profiles, organization details, creator pages, thank-you messages and web addresses are single-use since 2 October 2026.
 
 **Needs:** OpenAI (screening)
 
@@ -164,7 +164,7 @@ Creation, review and publication, visibility states, updates and comments, shari
 4. Replay the original POST body with the Idempotency-Key the browser sent.
 5. Legacy variant: A2 approves the stored proposal in Publication reviews; U1 publishes the exact same version from the restored draft, then replays the POST with a new key within 7 days.
 
-**Expect:** Approve stays disabled until both boxes are ticked (the API refuses with 400 without them). Approval makes the campaign active with no resubmission, U1 is notified 'Your campaign is live', and it becomes public. contentReviewReason stays on organizer and staff reads only. The replay returns 200 'Campaign already created' with the same id. Legacy: the approved version is created under the usual rules (active unless the high-goal or on-behalf rules hold it) without a new content check. Known open issue I153 (unchanged): a legacy approval can be reused with a new key within its 7 days, which creates a second campaign and uses another allowance slot.
+**Expect:** Approve stays disabled until both boxes are ticked (the API refuses with 400 without them). Approval makes the campaign active with no resubmission, U1 is notified 'Your campaign is live', and it becomes public. contentReviewReason stays on organizer and staff reads only. The replay returns 200 'Campaign already created' with the same id. Legacy: the approved version is created under the usual rules (active unless the high-goal or on-behalf rules hold it) without a new content check. A2's approval of the legacy proposal sends U1 the in-app notice 'Your campaign was approved' ('Approved. Submit it again unchanged before <deadline> to publish it.'); an approval never creates the campaign by itself. Issue I153 (reusable approvals) still applies to these legacy proposals: the approval can be reused with a new key within its 7 days, which creates a second campaign and uses another allowance slot.
 
 **Needs:** None
 
@@ -1009,7 +1009,7 @@ Creation, review and publication, visibility states, updates and comments, shari
 
 *Surfaces:* admin, api, web  ·  *Type:* functional
 
-**Before:** Campaign creation stopped storing proposals on 30 September 2026, so this case covers campaign.create items stored before then (vanity URLs still use proposals). A pending campaign.create item from U1, a second pending one, and an approved text-only one that was not yet used. Admin A2. DB access.
+**Before:** Campaign creation stopped storing proposals on 30 September 2026, so this case covers campaign.create items stored before then (web-address changes are still held in Publication reviews; since 2 October 2026 their approval publishes them). A pending campaign.create item from U1, a second pending one, and an approved text-only one that was not yet used. Admin A2. DB access.
 
 **Steps:**
 
@@ -1020,31 +1020,33 @@ Creation, review and publication, visibility states, updates and comments, shari
 5. U1 submits the exact version of the second pending item without consent, then checks admin /publication-reviews.
 6. For the approved item, set approvalExpiresAt to the past in the DB, then resubmit the identical version with consent ticked.
 
-**Expect:** A declined resubmission returns 422 'This version was declined in safety review. Check Publication reviews, revise your draft, or contact support@ujimora.com to appeal.' and creates nothing. The author sees 'Review response: <notes>'. The edited version is a new version: it is created as Pending review ('no_screening_consent' without consent). The second pending item's exact version is created as Pending review and its proposal leaves the Publication reviews queue: staff review it once, in the campaign review. An expired approval is ignored: the version is routed like a new campaign (screened with consent, so a clean text is created live). Nothing returns 409 'Saved privately for safety review…'.
+**Expect:** The decline sends U1 the in-app notice 'Your campaign wasn't approved' ('Read the reviewer's note in Publication reviews.'). A declined resubmission returns 422 'This version was declined in safety review. Check Publication reviews, revise your draft, or contact support@ujimora.com to appeal.' and creates nothing. The author sees 'Review response: <notes>'. The edited version is a new version: it is created as Pending review ('no_screening_consent' without consent). The second pending item's exact version is created as Pending review and its proposal leaves the Publication reviews queue: staff review it once, in the campaign review. An expired approval is ignored: the version is routed like a new campaign (screened with consent, so a clean text is created live). Nothing returns 409 'Saved privately for safety review…'.
 
 **Needs:** OpenAI (consent variant)
 
 **Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/publicationReviewRoutes.ts`, `apps/web/src/components/account/PublicationReviews.tsx`
 
-## CAMPAIGN-021 · P1 · Publication reviewer controls: notes, self-review ban, concurrency and idempotency
+## CAMPAIGN-021 · P1 · Publication reviewer controls: notes, self-review and conflict-of-interest bans, concurrency and idempotency
 
 *Surfaces:* admin, api  ·  *Type:* security/permission
 
-**Before:** Admins A1 and A2. A1 has submitted content of their own (for example a comment).
+**Before:** Admins A1 and A2. A1 has submitted content of their own (for example a comment). A1 is also an active editor of organization ORG, and U1 has a held comment on ORG's campaign C2. U2 has a held profile change and withdrew it in Settings > Publication reviews. U3, an ORG admin, has a held rename of ORG that the ORG owner replaced by submitting a different one. Open the cards for U2's and U3's versions before they change, or use the API.
 
 **Steps:**
 
 1. Enter 19 characters of notes and confirm both decision buttons are disabled. Via API, send notes shorter than 20 characters.
 2. A1 opens their own item and tries to approve it.
-3. A1 and A2 open the same third-party item. A1 approves, then A2 declines.
-4. A1 repeats the identical approve request.
-5. Check the audit log for 'publication.approved'.
+3. A1 tries to approve, then to decline, U1's comment on C2.
+4. A1 and A2 open the same third-party item. A1 approves, then A2 declines.
+5. A1 repeats the identical approve request.
+6. A2 tries to approve U2's withdrawn version and U3's replaced version.
+7. Check the audit log for 'publication.approved'.
 
-**Expect:** Short notes return 400 'Choose a decision and enter at least 20 characters of review notes'. Self-review returns 403 'Another administrator must review your content'. The second, different decision returns 409. An identical replay is a silent no-op. The decision is audited. Staffing requirement: at least 2 admins on duty.
+**Expect:** Short notes return 400 'Choose a decision and enter at least 20 characters of review notes'. Self-review returns 403 'Another administrator must review your content'. Step 3 returns 403 'Another administrator must review content for a campaign or organization you manage' for both decisions; A2 can decide it. The second, different decision returns 409 'A final decision already exists for this version' ('Another reviewer already decided this submission' when both land at once). An identical replay returns 200 with where the version stands and publishes nothing a second time. Step 6 returns 409 'The author withdrew this version.' and 409 'The author replaced this version with a newer one.' The decision is audited as 'publication.approved', with 'publishes on approval: yes' ('no' for a live-session title, or for anything held while publishing on approval was off). A demotion, closure or password change that races a decision is refused with 403 'Current administrator access is required' (covered by the API suite). Staffing requirement: at least 2 admins on duty, including one who does not manage the campaign or organization concerned.
 
 **Needs:** None
 
-**Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/publicationReviewRoutes.ts`, `apps/admin/src/pages/PublicationReviewsPage.tsx`
+**Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/publicationReviewRoutes.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationReviewDecision.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`, `apps/admin/src/pages/PublicationReviewsPage.tsx`
 
 ## CAMPAIGN-023 · P1 · Financial eligibility is rechecked when an approved version is committed
 
@@ -1413,28 +1415,29 @@ Creation, review and publication, visibility states, updates and comments, shari
 
 *Surfaces:* admin, api, web  ·  *Type:* functional
 
-**Before:** Active campaign owned by U1. OpenAI configured. Admin A2. A cover uploaded through POST /api/v1/uploads/image?folder=campaigns (its URL).
+**Before:** Publishing on approval is on. Active campaign owned by U1. OpenAI configured. Admin A2. A cover uploaded through POST /api/v1/uploads/image?folder=campaigns (its URL).
 
 **Steps:**
 
 1. Detail → Updates tab → 'Post Update'.
 2. In the 'Post an Update' dialog: title (at least 3 characters), content, type (milestone/general/thank_you/urgent), tick 'Pin this update to the top' and the consent box. Click 'Post Update'.
 3. Confirm the page reloads and the update is shown pinned first.
-4. Post another update without consent. Confirm the held message appears in the dialog, then A2 approves and you resubmit the identical update.
+4. Post another update without consent, with 'Pin this update to the top' ticked. Confirm the held notice, then A2 approves it. Do not post it again.
 5. Via API post with mediaUrls holding the uploaded Cloudinary URL. Then post with a third-party https image URL.
 6. As a guest read GET /campaigns/:id/updates.
+7. U1 posts the update from step 4 again, unchanged (as an older app would).
 
-**Expect:** A consented text update publishes immediately. A non-consented one is held privately until it is approved and resubmitted. Platform-hosted media always goes to staff review. A third-party or non-https media URL is rejected with 400 'Validation failed' ('Upload the image through Ujimora'). Donors see published updates in order with the pinned one first.
+**Expect:** A consented text update publishes immediately. A non-consented one is held privately: the API answers 409 'Saved privately for safety review. Your content has not been published yet. It will be published automatically once a reviewer approves it; check Publication reviews for the decision.' A2's approval posts it on the campaign by itself, pinned as asked, and U1 gets the in-app notice 'Your campaign update is live' ('Approved and posted on the campaign.'). Step 7 returns that same update instead of posting a copy. Platform-hosted media always goes to staff review. A third-party or non-https media URL is rejected with 400 'Validation failed' ('Upload the image through Ujimora'). Donors see published updates in order with the pinned one first.
 
 **Needs:** OpenAI, Cloudinary
 
-**Source:** `apps/web/src/components/campaigns/CreateUpdateDialog.tsx`, `apps/web/src/pages/CampaignDetailPage.tsx`, `apps/api/src/application/use-cases/CreateCampaignUpdateUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/campaignUpdateRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/urlSchemas.ts`
+**Source:** `apps/web/src/components/campaigns/CreateUpdateDialog.tsx`, `apps/web/src/pages/CampaignDetailPage.tsx`, `apps/api/src/application/use-cases/CreateCampaignUpdateUseCase.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/publication-apply/updateCreate.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/campaignUpdateRoutes.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/urlSchemas.ts`
 
 ## CAMPAIGN-056 · P1 · Update visibility, reporting and staff hide
 
 *Surfaces:* admin, android, ios, web  ·  *Type:* security/permission
 
-**Before:** A pending campaign with an update (owner-posted). An active campaign owned by U1 with an update. Donor D. Admins A1 and A2.
+**Before:** A pending campaign with an update (owner-posted). An active campaign owned by U1 with an update. An update that an organization editor posted through the workspace after this release (CREATOR-071). Donor D. Admins A1 and A2.
 
 **Steps:**
 
@@ -1445,8 +1448,9 @@ Creation, review and publication, visibility states, updates and comments, shari
 5. Check U1's and D's in-app notifications.
 6. U1 reposts the hidden update with the exact same title, content and type.
 7. D blocks the update author and reloads the updates list.
+8. Repeat steps 4 and 6 on the workspace update.
 
-**Expect:** The pending campaign's updates return 404 to the guest. The report is captured with an evidence snapshot. A1 gets 403 'Another administrator must review this report.' (the same applies to the author or the campaign owner). After the hide, the update disappears publicly and funds are untouched. U1 gets 'Your campaign update was removed', with support@ujimora.com for appeals, and D gets 'We reviewed your report'. The verbatim repost is refused with 422 'This version was declined in safety review…'. Blocked authors are filtered from that viewer.
+**Expect:** The pending campaign's updates return 404 to the guest. The report is captured with an evidence snapshot. A1 gets 403 'Another administrator must review this report.' (the same applies to the author or the campaign owner). After the hide, the update disappears publicly and funds are untouched. U1 gets 'Your campaign update was removed', with support@ujimora.com for appeals, and D gets 'We reviewed your report'. The verbatim repost is refused with 422 'This version was declined in safety review…'. The workspace update behaves the same: updates posted through the workspace now keep their approved version, so hiding one also declines it. Blocked authors are filtered from that viewer.
 
 **Needs:** None
 
@@ -1456,25 +1460,25 @@ Creation, review and publication, visibility states, updates and comments, shari
 
 *Surfaces:* admin, android, ios, web  ·  *Type:* functional
 
-**Before:** Active campaign. D1 without a profile avatar. D2 whose avatar was uploaded in Settings after this release and approved in profile media review. D3 with a legacy avatar (set before this release, so it has no reviewed-avatar record). OpenAI configured. Admin A2.
+**Before:** Publishing on approval is on. Active campaign. D1 without a profile avatar. D2 whose avatar was uploaded in Settings after this release and approved in profile media review. D3 with a legacy avatar (set before this release, so it has no reviewed-avatar record). OpenAI configured. Admin A2.
 
 **Steps:**
 
 1. D1 writes a comment, ticks consent and posts. It appears immediately.
-2. D1 posts without consent. It is held with the 409 message.
+2. D1 posts without consent.
 3. D2 posts with consent.
 4. D3 posts with consent. Check the admin queue reason.
-5. A2 approves D3's item and D3 resubmits the identical text.
-6. D3 changes display name while an item is pending, then resubmits.
+5. A2 approves D3's item. D3 then posts the identical text again (as an older app would).
+6. D3 posts another comment, changes display name while it is pending, and A2 approves it.
 7. Try 1001 characters (the counter caps at 1000) and a whitespace-only comment via the API.
 8. As a guest, check the comment box state.
 9. On native, tap a comment author's name or avatar.
 
-**Expect:** Consented clean text publishes instantly both for users without an avatar and for users whose current avatar passed profile media review; that avatar is bound into the screened text instead of being sent as media. A legacy or unreviewed avatar still sends the comment to staff (reason 'media'), so it needs approval plus an identical resubmission. An identity change returns 409 'Your public identity changed during review. Refresh and submit again.' Whitespace returns 400. Guests are prompted to sign in. Native behaves the same, and tapping an author's name or avatar opens their public profile (/profile/<id>).
+**Expect:** Consented clean text publishes instantly both for users without an avatar and for users whose current avatar passed profile media review; that avatar is bound into the screened text instead of being sent as media. Step 2 is held: 409 'Saved privately for safety review. Your content has not been published yet. It will be published automatically once a reviewer approves it; check Publication reviews for the decision.' A legacy or unreviewed avatar still sends the comment to staff (reason 'media'). A2's approval posts D3's comment by itself, with the avatar that was reviewed, and D3 gets the in-app notice 'Your comment is live' ('Approved and posted on the campaign.'). D3's identical post in step 5 returns that same comment (201, same id), and the campaign shows it once. Step 6 is not published: D3 gets 'Your comment wasn't published' ('Your public name or photo changed after you submitted it. Submit your latest version if it still needs review.'). A name change during D3's own post returns 409 'Your public identity changed during review. Refresh and submit again.' Whitespace returns 400. Guests are prompted to sign in. Native behaves the same, and tapping an author's name or avatar opens their public profile (/profile/<id>).
 
 **Needs:** OpenAI
 
-**Source:** `apps/api/src/application/use-cases/CampaignCommentUseCases.ts`, `apps/api/src/domain/entities/User.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoAccountProfileWrite.ts`, `apps/web/src/components/campaigns/CampaignComments.tsx`, `apps/mobile/src/components/CampaignComments.tsx`
+**Source:** `apps/api/src/application/use-cases/CampaignCommentUseCases.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/publication-apply/commentCreate.ts`, `apps/api/src/domain/entities/User.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoAccountProfileWrite.ts`, `apps/web/src/components/campaigns/CampaignComments.tsx`, `apps/mobile/src/components/CampaignComments.tsx`
 
 ## CAMPAIGN-058 · P1 · Comment moderation permissions and blocking
 
@@ -1920,7 +1924,7 @@ Creation, review and publication, visibility states, updates and comments, shari
 
 *Surfaces:* android, api, ios, web  ·  *Type:* security/permission
 
-**Before:** U1-Pro's campaign with an accepted collaborator (role editor), donor D, and a second campaign's update id. OpenAI configured.
+**Before:** Publishing on approval is on. U1-Pro's campaign with an accepted collaborator (role editor), donor D, and a second campaign's update id. OpenAI configured.
 
 **Steps:**
 
@@ -1928,12 +1932,12 @@ Creation, review and publication, visibility states, updates and comments, shari
 2. As U1 pin and unpin an update on web. Delete one through the confirmation dialog.
 3. As D: DELETE and POST /pin on an update.
 4. Call PUT /campaigns/:idA/updates/<update from campaign B>.
-5. As U1 edit via PUT /campaigns/:id/updates/:updateId (there is no UI) with and without consent.
+5. As U1 edit via PUT /campaigns/:id/updates/:updateId (there is no UI) with and without consent. A2 approves the held edit. Hold another edit, then pin or unpin that update before A2 approves it.
 6. Native as U1: open the campaign detail. In Updates tap 'Post an update'. Check the fields (Update type, Title, Update, consent, 'Pin this update to the top') and that 'Post update' stays disabled until the title has 3 or more characters and content is entered. Post a consented text update, then one without consent.
 7. Native as U1: use 'Pin'/'Unpin' and 'Delete' on an update.
 8. Native as D: open the same campaign.
 
-**Expect:** Non-owners get 403 'Only the campaign creator can post updates' or 'You can only … your own updates'. A cross-campaign id returns 404. Edits go back through admission ('update.edit'). On native the owner's consented post shows 'Update posted.' and the list refreshes. The non-consented post keeps the dialog open with the 409 held-for-review message. Pin and Unpin toggle the order, and Delete asks 'Delete update?' / 'This removes the update for everyone.' before removing it. Limits match web (title 3–200, content up to 5,000). D sees no owner tools.
+**Expect:** Non-owners get 403 'Only the campaign creator can post updates' or 'You can only … your own updates'. A cross-campaign id returns 404. Edits go back through admission ('update.edit'). A2's approval applies the held edit by itself and keeps the pin, and U1 gets 'Your edited campaign update is live' ('Approved; the campaign update now shows your changes.'). An edit whose update changed after it was submitted (another edit, a pin or unpin, a staff hide) is not applied: U1 gets 'Your earlier edited campaign update wasn't published' ('It changed after you submitted it, so this version wasn't published. Submit your latest version if it still needs review.'). On native the owner's consented post shows 'Update posted.' and the list refreshes. The non-consented post is held for review, and the app says it is published automatically once approved. Pin and Unpin toggle the order, and Delete asks 'Delete update?' / 'This removes the update for everyone.' before removing it. Limits match web (title 3–200, content up to 5,000). D sees no owner tools.
 
 **Needs:** OpenAI
 

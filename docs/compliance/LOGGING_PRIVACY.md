@@ -40,3 +40,15 @@ previously exposed tokens or personal data. This change does not erase historica
 logs, revoke historical tokens, change financial audit records, or certify a
 retention policy. Audit records intentionally retain actor/financial references
 and require their own lawful retention and access controls.
+
+## Publishing on approval (2 October 2026)
+
+The publication applier (`PublicationApplier`, see `PUBLICATION_REVIEWS.md`) logs under `event: 'publication.apply'`, and only these fields:
+
+- **Outcome (info).** `reviewId`, `action`, `state`, `reason` (an outcome code) and `attempt`, with the message 'Publication on approval ended'.
+- **A retry (warning).** `reviewId`, `action`, `state: 'queued'`, `attempt`, `nextAttemptAt`, `errName` and `errCode`, with the message 'Publication attempt failed; it will be retried'.
+- **Giving up as `unavailable` (error).** The outcome fields plus `errName` and `errCode`, with the message 'Publication on approval failed'.
+- **Switched off.** `state: 'released'` and a `count`, when waiting approvals are returned to their authors.
+- **A failed sweep, attempt or decision start (error).** `errName` and `errCode`, with the review id when there is one.
+
+`errName` is the error's class name when it is a plain identifier, otherwise `Error`; `errCode` is kept only when it is a number or an identifier. Error messages are never logged: they can carry submitted text, and a duplicate-key message carries the key's value. No log carries the content, the credential digest, the lease token or an email address. A thank-you message queued on approval logs `donor_thank_you.send_requested` with the campaign, message and review ids, the estimated recipient count and the author's role, never recipients.

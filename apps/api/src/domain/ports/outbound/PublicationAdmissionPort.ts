@@ -8,6 +8,25 @@ export interface PublicationSubmission {
   text: string;
   mediaUrls: string[];
   automatedReviewConsent?: boolean;
+  /**
+   * The credential version the request was authenticated with
+   * (`req.authVersion`; '' for an account that never rotated). Every author
+   * request passes it: a held version publishes on approval only when it was
+   * submitted with one, and keeps only its digest. Not part of the version,
+   * so never in the fingerprint.
+   */
+  authVersion?: string;
+  /** update.create only: how an approved update is published (pinned or not). Not reviewed content, not in the fingerprint. */
+  applyOptions?: { isPinned?: boolean };
+}
+
+/** An item a publication changes, and who is acting on it. */
+export type PublicationItem = Pick<PublicationSubmission, 'actorId' | 'action' | 'resourceId'>;
+
+/** What an author's own request published, for the review record. */
+export interface PublicationConsumption {
+  /** The comment or update created, the queued thank-you message, or the item changed. */
+  publishedResourceId?: string;
 }
 
 /**
@@ -59,9 +78,36 @@ export interface CampaignChangeContext {
 
 /** All callers must authorize the actor and supply the complete proposed public version. */
 export interface PublicationAdmissionPort {
-  /** Revalidate and serialize a previously approved version inside the caller transaction. */
-  assertCurrent?(submission: PublicationSubmission): Promise<void>;
+  /**
+   * Revalidate and serialize a previously approved version inside the caller
+   * transaction. For the publish-on-approval actions this consumes the
+   * approval: the version is recorded as published by the author, and a
+   * second consumption fails (409 `errors.publication: ['published']`).
+   * Call it once the publication is written, with what it created or changed.
+   */
+  assertCurrent?(submission: PublicationSubmission, consumption?: PublicationConsumption): Promise<void>;
+  /**
+   * Admits the exact version or holds it for review (409). A held version of
+   * a publish-on-approval action is published by its approval; a newer
+   * version of a single item supersedes the earlier unpublished ones; a
+   * version of these actions that is already published is refused with
+   * PublicationAlreadyPublished (it is the same post, or an older app saving
+   * the published edit again), except a campaign web address, whose earlier
+   * address can come back (A→X→A→X): that version is reviewed again.
+   */
   assertAllowed(submission: PublicationSubmission): Promise<void>;
+  /**
+   * An author saved a single item (SINGLE_ITEM_ACTIONS) exactly as it
+   * already is, so there is nothing to review or write. That save is still
+   * the item's newest version: in one transaction, once `isUnchanged`
+   * (reading in that transaction) confirms the item still reads that way,
+   * every version of it still open (waiting for a decision, or approved and
+   * not yet published) is closed as superseded, as a newer submission closes
+   * them: audited, and another author told. A version already published is
+   * no longer open, so saving it again (an older app, say) changes nothing.
+   * Returns false, having changed nothing, when the item changed meanwhile.
+   */
+  supersedeOpenVersions?(item: PublicationItem, isUnchanged: () => Promise<boolean>): Promise<boolean>;
   /**
    * campaign.create only, before the creation transaction. Applies the same
    * content limits (400), account availability (401), publishing restriction

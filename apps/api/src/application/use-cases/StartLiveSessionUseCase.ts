@@ -70,7 +70,7 @@ export class StartLiveSessionUseCase {
     const submission: PublicationSubmission = {
       actorId: requester.userId, action: 'live.start', resourceId: campaign.id,
       text: JSON.stringify([input.title ?? '', input.targetAmount ?? null]),
-      mediaUrls: [], automatedReviewConsent: input.automatedReviewConsent,
+      mediaUrls: [], automatedReviewConsent: input.automatedReviewConsent, authVersion: requester.authVersion,
     };
     await this.admission.assertAllowed(submission);
     // Screening may involve a staff-held retry or provider delay. Recheck the

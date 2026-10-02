@@ -2,7 +2,7 @@ import { useAuth } from '@/context/AuthContext'
 import { PublicationReviews } from '@/components/account/PublicationReviews'
 import { PublicationConsent } from '@/components/safety/PublicationConsent'
 import { PublicationHeldNotice } from '@/components/safety/PublicationHeldNotice'
-import { isPublicationHeld } from '@/lib/publicationDrafts'
+import { publicationHold, type PublicationHold } from '@/lib/publicationDrafts'
 import { useSeo } from '@/lib/seo'
 import { useEffect, useState, useRef } from 'react'
 import {
@@ -82,8 +82,8 @@ function OrganizationTeamForViewer() {
   const [identityConsent, setIdentityConsent] = useState(false)
   const [identityError, setIdentityError] = useState('')
   // Identity changes or a campaign update held for safety review: notices, not errors.
-  const [identityHeld, setIdentityHeld] = useState(false)
-  const [updateHeld, setUpdateHeld] = useState(false)
+  const [identityHeld, setIdentityHeld] = useState<PublicationHold | null>(null)
+  const [updateHeld, setUpdateHeld] = useState<PublicationHold | null>(null)
   const [campaign, setCampaign] = useState('')
   const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)
   const [title, setTitle] = useState('')
@@ -115,7 +115,7 @@ function OrganizationTeamForViewer() {
       active = false
     }
   }, [selected, version])
-  async function mutate(action: () => Promise<unknown>, message: string, onHeld?: () => void) {
+  async function mutate(action: () => Promise<unknown>, message: string, onHeld?: (hold: PublicationHold) => void) {
     if (busy) return
     setBusy(true)
     setError('')
@@ -128,7 +128,8 @@ function OrganizationTeamForViewer() {
       setVersion((v) => v + 1)
     } catch (err) {
       if (!live.current) return
-      if (onHeld && isPublicationHeld(err)) onHeld()
+      const hold = onHeld ? publicationHold(err) : null
+      if (onHeld && hold) onHeld(hold)
       else setError(err instanceof Error ? err.message : 'Please try again')
     } finally {
       if (live.current) setBusy(false)
@@ -136,14 +137,15 @@ function OrganizationTeamForViewer() {
   }
   async function saveIdentity() {
     if (busy) return
-    setBusy(true); setIdentityError(''); setIdentityHeld(false); setNotice('')
+    setBusy(true); setIdentityError(''); setIdentityHeld(null); setNotice('')
     try {
       await api.put(`/organization-team/${selected}/profile`, { organizationName: name, website, automatedReviewConsent: identityConsent })
       if (!live.current) return
       setNotice('Organization profile updated.'); setLoading(true); setVersion(value => value + 1)
     } catch (cause) {
       if (!live.current) return
-      if (isPublicationHeld(cause)) setIdentityHeld(true)
+      const hold = publicationHold(cause)
+      if (hold) setIdentityHeld(hold)
       else setIdentityError(cause instanceof Error ? cause.message : 'Could not save organization details.')
     }
     finally { if (live.current) setBusy(false) }
@@ -243,7 +245,7 @@ function OrganizationTeamForViewer() {
                   setLoading(true)
                   setDetail(null)
                   setSelected(e.target.value)
-                  setCampaign(''); setTitle(''); setContent(''); setIdentityConsent(false); setAutomatedReviewConsent(false); setIdentityError(''); setIdentityHeld(false); setUpdateHeld(false); setError(''); setNotice('')
+                  setCampaign(''); setTitle(''); setContent(''); setIdentityConsent(false); setAutomatedReviewConsent(false); setIdentityError(''); setIdentityHeld(null); setUpdateHeld(null); setError(''); setNotice('')
                 }}
               >
                 {workspaces
@@ -282,7 +284,7 @@ function OrganizationTeamForViewer() {
                       />
                       <PublicationConsent value={identityConsent} onChange={setIdentityConsent} />
                       {identityError && <><Alert severity="error">{identityError}</Alert><PublicationReviews actions={['organization.profile']} /></>}
-                      {identityHeld && <><PublicationHeldNotice retry="save it again unchanged" reviews="below" /><PublicationReviews actions={['organization.profile']} /></>}
+                      {identityHeld && <><PublicationHeldNotice {...identityHeld} retry="save it again unchanged" reviews="below" /><PublicationReviews actions={['organization.profile']} /></>}
                       <Button disabled={busy || name.trim().length < 2} onClick={() => void saveIdentity()}>
                         Save organization details
                       </Button>
@@ -493,7 +495,7 @@ function OrganizationTeamForViewer() {
                         variant="contained"
                         disabled={busy || !campaign || title.trim().length < 3 || !content.trim()}
                         onClick={() => {
-                          setUpdateHeld(false)
+                          setUpdateHeld(null)
                           void mutate(
                             () =>
                               api.post(
@@ -501,13 +503,17 @@ function OrganizationTeamForViewer() {
                                 { title, content, automatedReviewConsent },
                               ),
                             'Campaign update published under your name.',
-                            () => setUpdateHeld(true),
+                            (hold) => {
+                              setUpdateHeld(hold)
+                              // Its approval publishes it, so there is nothing to publish again: the composer starts afresh.
+                              if (hold.publishesOnApproval) { setTitle(''); setContent(''); setAutomatedReviewConsent(false) }
+                            },
                           )
                         }}
                       >
                         Publish update
                       </Button>
-                      {updateHeld && <><PublicationHeldNotice retry="publish it again unchanged" reviews="below" /><PublicationReviews actions={['update.create', 'update.edit']} /></>}
+                      {updateHeld && <><PublicationHeldNotice {...updateHeld} retry="publish it again unchanged" reviews="below" /><PublicationReviews actions={['update.create', 'update.edit']} /></>}
                     </Stack>
                   </Box>
                 )}

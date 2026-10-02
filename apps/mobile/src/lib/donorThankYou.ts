@@ -1,6 +1,8 @@
 import { randomUUID } from 'expo-crypto'
 import {
   DONOR_THANK_YOU_LIMITS,
+  parsePublicationReviewPage,
+  waitingThankYou,
   type DonorThankYouBlockReason,
   type DonorThankYouContent,
   type DonorThankYouPreview,
@@ -138,8 +140,23 @@ export function sendConfirmPrompt(estimatedRecipients: number) {
 
 const base = (campaignId: string) => `/campaigns/${encodeURIComponent(campaignId)}/thank-you`
 
+/** The author's latest submissions (the list API's largest page), where a message waiting for review is found. */
+const REVIEWS_PAGE = '/publication-reviews?page=1&pageSize=100'
+
 export const thankYouApi = {
   state: (campaignId: string) => api.get<DonorThankYouState>(base(campaignId)),
+  /**
+   * The author's message for this campaign that its approval is still to send
+   * by itself, as its signature (thankYouSignature); null when none is
+   * waiting, or the list can't be read (best effort: only a warning depends on it).
+   */
+  waitingForReview: async (campaignId: string): Promise<string | null> => {
+    try {
+      const page = parsePublicationReviewPage(await api.get<unknown>(REVIEWS_PAGE))
+      const waiting = page ? waitingThankYou(page.items, campaignId) : null
+      return waiting ? thankYouSignature(waiting) : null
+    } catch { return null }
+  },
   saveDraft: (campaignId: string, content: DonorThankYouContent) => api.put<DonorThankYouView>(`${base(campaignId)}/draft`, cleanThankYou(content)),
   discardDraft: (campaignId: string) => api.delete<null>(`${base(campaignId)}/draft`),
   preview: (campaignId: string, content: DonorThankYouContent) => api.post<DonorThankYouPreview>(`${base(campaignId)}/preview`, cleanThankYou(content)),

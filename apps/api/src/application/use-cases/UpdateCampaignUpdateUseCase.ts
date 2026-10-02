@@ -5,6 +5,7 @@ import type { CampaignUpdateRepositoryPort } from '../../domain/ports/outbound/C
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { CampaignUpdateEntity } from '../../domain/entities/CampaignUpdate.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import { PublicationAlreadyPublished } from '../../infrastructure/adapters/inbound/middleware/publicationErrors.js';
 import { publicationFingerprint } from '../../domain/services/publicationFingerprint.js';
 
 function toDTO(entity: CampaignUpdateEntity): CampaignUpdate {
@@ -53,20 +54,59 @@ export class UpdateCampaignUpdateUseCase {
     }
 
     const baseVersion = update.updatedAt.toISOString();
+    const current = toDTO(update);
     update.applyEdits({
       title: input.title,
       content: input.content,
       type: input.type,
       mediaUrls: input.mediaUrls,
     });
+    // Nothing to publish: the update already reads exactly like this, for
+    // example a client saving again an edit its approval already published.
+    // No review is held, and nothing is written. It is still the newest
+    // version: an edit held before it is never published by its approval (it
+    // is superseded), so saving the live text reverts a held edit.
+    if (sameContent(current, update)) {
+      const unchanged = await this.admission?.supersedeOpenVersions?.(
+        { actorId: userId, action: 'update.edit', resourceId: updateId },
+        async () => {
+          const latest = await this.updateRepo.findById(updateId);
+          return latest?.campaignId === campaignId && sameContent(toDTO(latest), update);
+        },
+      ) ?? true;
+      if (!unchanged) throw new AppError('This update changed or was removed. Reload it before submitting your changes.', 409);
+      return current;
+    }
 
     if (!this.admission) throw new AppError('Publication review is unavailable', 503);
-    const submission: PublicationSubmission = { actorId: userId, action: 'update.edit', resourceId: updateId, baseVersion, text: JSON.stringify([update.title, update.content, update.type]), mediaUrls: update.mediaUrls, automatedReviewConsent: input.automatedReviewConsent };
-    await this.admission.assertAllowed(submission);
-    if (!this.publication || !this.admission.assertCurrent) throw new AppError('Update publication verification is unavailable', 503);
-    return this.publication.run(userId, authVersion, campaignId, campaign.creatorId, async () => {
-      await this.admission!.assertCurrent!(submission);
-      return toDTO(await this.updateRepo.update(update, new Date(baseVersion), { publicationFingerprint: publicationFingerprint(submission) }));
-    });
+    const submission: PublicationSubmission = { actorId: userId, action: 'update.edit', resourceId: updateId, baseVersion, text: JSON.stringify([update.title, update.content, update.type]), mediaUrls: update.mediaUrls, automatedReviewConsent: input.automatedReviewConsent, authVersion };
+    try {
+      await this.admission.assertAllowed(submission);
+      if (!this.publication || !this.admission.assertCurrent) throw new AppError('Update publication verification is unavailable', 503);
+      return await this.publication.run(userId, authVersion, campaignId, campaign.creatorId, async () => {
+        // Consumes the approval first: a version already published (by its approval, say) is reported as such, not as an edit conflict.
+        await this.admission!.assertCurrent!(submission, { publishedResourceId: updateId });
+        return toDTO(await this.updateRepo.update(update, new Date(baseVersion), { publicationFingerprint: publicationFingerprint(submission) }));
+      });
+    } catch (error) {
+      if (error instanceof PublicationAlreadyPublished) return this.alreadyPublished(updateId, campaignId);
+      throw error;
+    }
   }
+
+  /**
+   * This exact edit was published meanwhile (by its approval): the update
+   * now reads like it, so the request is answered with the update as it is.
+   */
+  private async alreadyPublished(updateId: string, campaignId: string): Promise<CampaignUpdate> {
+    const existing = await this.updateRepo.findById(updateId);
+    if (existing?.campaignId === campaignId) return toDTO(existing);
+    throw new AppError('This update was removed after your edit was published.', 409);
+  }
+}
+
+/** The public content of an update: title, text, type and media, in order. */
+function sameContent(current: CampaignUpdate, edited: CampaignUpdateEntity): boolean {
+  return current.title === edited.title && current.content === edited.content && current.type === edited.type
+    && current.mediaUrls.length === edited.mediaUrls.length && current.mediaUrls.every((url, index) => url === edited.mediaUrls[index]);
 }

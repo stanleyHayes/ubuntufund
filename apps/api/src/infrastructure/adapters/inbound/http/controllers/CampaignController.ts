@@ -189,7 +189,7 @@ export class CampaignController {
       const campaign = await this.setCampaignSlugUseCase.execute(
         req.params.id as string,
         req.body.slug as string,
-        { userId: req.userId!, role: req.userRole },
+        { userId: req.userId!, role: req.userRole, authVersion: req.authVersion },
         req.body.automatedReviewConsent === true
       );
       res.json({

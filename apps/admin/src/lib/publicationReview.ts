@@ -51,6 +51,22 @@ export interface RecipientSummary {
   handle?: string
 }
 
+/** Where an approved version stands on its way to publication, as the admin list sends it (raw state). */
+export interface ItemPublication {
+  /** queued, applying, published, not_published, superseded or withdrawn. */
+  state: string
+  /** Why it was not published or was replaced: a code from @ubuntu-fund/types. */
+  reason?: string
+  at?: string
+  /** Who published it: the approval itself, or the author submitting it again. */
+  via?: string
+  /** Publishing attempts so far. */
+  attempts?: number
+  nextAttemptAt?: string
+  /** What the publication created or changed. */
+  resourceId?: string
+}
+
 export interface PublicationReviewItem {
   id: string
   action: string
@@ -78,6 +94,18 @@ export interface PublicationReviewItem {
   /** Tip and donation content: who owns the page or campaign the content was sent to. */
   ownerId?: string
   recipient?: RecipientSummary
+  /**
+   * Publishing on approval: approving publishes this version by itself (and,
+   * once approved, it did). False while publishing on approval is switched
+   * off; absent from older APIs. Read it through `approvalEffect`.
+   */
+  publishOnApproval?: boolean
+  /** Approved versions of the publish-on-approval actions. Read it through `publicationOf`. */
+  publication?: ItemPublication
+  /** update.create: how the update is published (not reviewed content). */
+  applyOptions?: { isPinned?: boolean }
+  /** The review that replaced this version. */
+  supersededBy?: string
 }
 
 export type ReviewQueue = 'publication' | 'content'
@@ -155,11 +183,49 @@ export function approvalDeadline(now: number, purgeAt?: string): string {
   return new Date(Number.isFinite(purge) ? Math.min(week, purge) : week).toISOString()
 }
 
-export function statusView(item: Pick<PublicationReviewItem, 'status' | 'approvalExpiresAt' | 'purgeAt'>, now: number): ChipView {
+/** Publish states after which an approval can never publish again: its expiry no longer matters. */
+const CLOSED_PUBLISH_STATES = new Set(['published', 'superseded', 'withdrawn'])
+
+const isoString = (value: unknown): string | undefined => (typeof value === 'string' && Number.isFinite(Date.parse(value)) ? value : undefined)
+const plainString = (value: unknown): string | undefined => (typeof value === 'string' && value ? value : undefined)
+
+/**
+ * The item's publication, read leniently: a malformed field is dropped, and a
+ * publication without a state is no publication. Unknown states and reasons
+ * pass through; the guidance decides how (or whether) to word them.
+ */
+export function publicationOf(item: { publication?: unknown }): ItemPublication | null {
+  const value = item.publication
+  if (!isPlainObject(value)) return null
+  const state = plainString(value.state)
+  if (!state) return null
+  const attempts = value.attempts
+  const reason = plainString(value.reason), at = isoString(value.at), via = plainString(value.via)
+  const nextAttemptAt = isoString(value.nextAttemptAt), resourceId = plainString(value.resourceId)
+  return {
+    state,
+    ...(reason ? { reason } : {}),
+    ...(at ? { at } : {}),
+    ...(via ? { via } : {}),
+    ...(isFiniteNumber(attempts) && attempts >= 0 ? { attempts } : {}),
+    ...(nextAttemptAt ? { nextAttemptAt } : {}),
+    ...(resourceId ? { resourceId } : {}),
+  }
+}
+
+/** The approval was used or closed (published, replaced or withdrawn), so it can never publish again. */
+export function approvalClosed(item: { publication?: unknown }): boolean {
+  const publication = publicationOf(item)
+  return !!publication && CLOSED_PUBLISH_STATES.has(publication.state)
+}
+
+export function statusView(item: Pick<PublicationReviewItem, 'status' | 'approvalExpiresAt' | 'purgeAt' | 'publication'>, now: number): ChipView {
   if (item.status === 'pending') return { label: 'Waiting for review', color: 'var(--text-warning)' }
   if (item.status === 'approved') {
     const validUntil = Date.parse(approvalValidUntil(item) ?? '')
-    return Number.isFinite(validUntil) && validUntil <= now ? { label: 'Approval expired', color: 'text.secondary' } : { label: 'Approved', color: 'var(--text-success)' }
+    // A used or closed approval did not expire unused: its card says where it ended.
+    const expired = Number.isFinite(validUntil) && validUntil <= now && !approvalClosed(item)
+    return expired ? { label: 'Approval expired', color: 'text.secondary' } : { label: 'Approved', color: 'var(--text-success)' }
   }
   if (item.status === 'rejected') return { label: 'Declined', color: 'var(--text-error)' }
   return { label: item.status ? humanizeKey(item.status) : 'Unknown status', color: 'text.secondary' }

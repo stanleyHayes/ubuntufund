@@ -69,7 +69,8 @@ export class MongoCampaignUpdateRepository implements CampaignUpdateRepositoryPo
     );
 
     if (!doc) {
-      throw new AppError('This update changed or was removed. Reload it before submitting your changes.', 409);
+      // Edited, pinned, hidden or removed since `expectedUpdatedAt`: publishing on approval reads it as edited since submitted.
+      throw new AppError('This update changed or was removed. Reload it before submitting your changes.', 409, undefined, 'stale_version');
     }
     return toDomain(doc);
   }

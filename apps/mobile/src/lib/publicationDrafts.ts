@@ -1,10 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { PUBLICATION_HELD, PUBLISHES_ON_APPROVAL } from '@ubuntu-fund/types'
 
 /**
  * Unsent public-content versions, per account, so a version held for safety
- * review can be resubmitted unchanged (images included) after approval even if
- * the app was closed. Review records are purged after 30 days, so older drafts
- * are discarded. Storage failures never block a form.
+ * review can be resubmitted unchanged (images included) after approval, or
+ * after an approval could not publish it, even if the app was closed. Review
+ * records are purged after 30 days, so older drafts are discarded. Storage
+ * failures never block a form.
  */
 const PREFIX = 'ujimora:publication-draft:'
 const MAX_AGE_MS = 30 * 86_400_000
@@ -60,26 +62,58 @@ export const clearCampaignDraft = (userId: string) => clearDraft('campaign', use
 const IDENTITY_FIELDS = ['name', 'country', 'avatarUrl', 'coverUrl'] as const
 export type IdentityDraft = Partial<Record<(typeof IDENTITY_FIELDS)[number], string>>
 
-export const loadIdentityDraft = (userId: string) => loadDraft('account-identity', userId, value => {
-  const draft: IdentityDraft = {}
-  for (const field of IDENTITY_FIELDS) if (typeof value[field] === 'string') draft[field] = value[field] as string
-  return Object.keys(draft).length ? draft : null
+/** A held profile change kept on this device, and whether its approval publishes it by itself. */
+export interface HeldIdentity {
+  fields: IdentityDraft
+  publishesOnApproval: boolean
+}
+
+export const loadIdentityDraft = (userId: string) => loadDraft<HeldIdentity>('account-identity', userId, value => {
+  const fields: IdentityDraft = {}
+  for (const field of IDENTITY_FIELDS) if (typeof value[field] === 'string') fields[field] = value[field] as string
+  // A draft kept before publishing on approval has no flag: its approval never published it.
+  return Object.keys(fields).length ? { fields, publishesOnApproval: value.publishesOnApproval === true } : null
 })
-export const saveIdentityDraft = (userId: string, draft: IdentityDraft) => saveDraft('account-identity', userId, draft)
+export const saveIdentityDraft = (userId: string, fields: IdentityDraft, publishesOnApproval = false) =>
+  saveDraft('account-identity', userId, publishesOnApproval ? { ...fields, publishesOnApproval } : fields)
 export const clearIdentityDraft = (userId: string) => clearDraft('account-identity', userId)
+
+/** One `errors` list of an `ApiError`-shaped error, or none. */
+function errorMarkers(err: unknown, field: string): unknown[] {
+  const list = (err as { errors?: Record<string, unknown> } | null)?.errors?.[field]
+  return Array.isArray(list) ? list : []
+}
 
 /**
  * The API saved this public change privately for staff safety review (HTTP 409
  * with `errors.publication: ['held']`). That is an expected state, not a
- * failure: show a neutral notice, keep the draft, and submit the same version
- * again after approval. A declined version (422) is still an error. The
- * message check covers an API deployed before the `errors` marker existed.
- * Duck-typed so it works with any `ApiError`-shaped error.
+ * failure: show a neutral notice and keep the draft. A declined version (422)
+ * is still an error. The message check covers an API deployed before the
+ * `errors` marker existed. Duck-typed so it works with any `ApiError`-shaped
+ * error.
  */
 export function isPublicationHeld(err: unknown): boolean {
   if (!(err instanceof Error)) return false
-  const { status, errors } = err as Error & { status?: unknown; errors?: Record<string, unknown> }
-  if (status !== 409) return false
-  const publication = errors?.publication
-  return (Array.isArray(publication) && publication.includes('held')) || err.message.startsWith('Saved privately for safety review')
+  if ((err as { status?: unknown }).status !== 409) return false
+  return errorMarkers(err, 'publication').includes(PUBLICATION_HELD) || err.message.startsWith('Saved privately for safety review')
+}
+
+/**
+ * A held version that a reviewer's approval publishes by itself
+ * (`errors.publication` also carries `publishes_on_approval`): the author
+ * never submits it again, so a composer can start afresh. Without the marker
+ * (live sessions, versions held before publishing on approval, or while it is
+ * switched off) the author submits the same version again after approval.
+ */
+export function publishesOnApproval(err: unknown): boolean {
+  return isPublicationHeld(err) && errorMarkers(err, 'publication').includes(PUBLISHES_ON_APPROVAL)
+}
+
+/**
+ * A held profile save still saved its private settings, such as the phone
+ * number or biography (`errors.saved: ['private']`): only the public part
+ * waits for review.
+ */
+export function savedPrivateChanges(err: unknown): boolean {
+  return isPublicationHeld(err) && errorMarkers(err, 'saved').includes('private')
 }

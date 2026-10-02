@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   actionLabel,
+  approvalClosed,
   approvalDeadline,
   approvalValidUntil,
   contextNames,
@@ -14,6 +15,7 @@ import {
   mediaHeading,
   mediaLabel,
   parseSubmission,
+  publicationOf,
   reasonView,
   statusView,
   thankYouText,
@@ -299,5 +301,33 @@ describe('status and approval dates', () => {
     expect(approvalValidUntil({ approvalExpiresAt: '2026-10-07T00:00:00.000Z', purgeAt: '2026-10-02T00:00:00.000Z' })).toBe('2026-10-02T00:00:00.000Z')
     expect(approvalValidUntil({ approvalExpiresAt: '2026-10-07T00:00:00.000Z' })).toBe('2026-10-07T00:00:00.000Z')
     expect(approvalValidUntil({})).toBeUndefined()
+  })
+
+  it('never calls a used or closed approval expired', () => {
+    const past = { status: 'approved', approvalExpiresAt: '2026-09-29T00:00:00.000Z' }
+    for (const state of ['published', 'superseded', 'withdrawn']) {
+      expect(statusView({ ...past, publication: { state } }, now), state).toEqual({ label: 'Approved', color: 'var(--text-success)' })
+      expect(approvalClosed({ publication: { state } }), state).toBe(true)
+    }
+    // Not published, or still publishing: the approval can run out unused.
+    expect(statusView({ ...past, publication: { state: 'not_published', reason: 'restricted' } }, now).label).toBe('Approval expired')
+    expect(approvalClosed({ publication: { state: 'queued' } })).toBe(false)
+    expect(approvalClosed({})).toBe(false)
+  })
+})
+
+describe('publication of an approved version', () => {
+  it('keeps every well-formed field', () => {
+    const publication = { state: 'published', reason: 'credentials_changed', at: '2026-09-30T10:00:00.000Z', via: 'approval', attempts: 2, nextAttemptAt: '2026-09-30T10:05:00.000Z', resourceId: 'c'.repeat(24) }
+    expect(publicationOf({ publication })).toEqual(publication)
+    // States and reasons this console does not know yet pass through; the guidance decides how to word them.
+    expect(publicationOf({ publication: { state: 'archived', reason: 'from_the_future' } })).toEqual({ state: 'archived', reason: 'from_the_future' })
+  })
+
+  it('drops a malformed field, and reads a publication without a state as none', () => {
+    expect(publicationOf({ publication: { state: 'queued', reason: 3, at: 'soon', via: '', attempts: -1, nextAttemptAt: null, resourceId: {} } })).toEqual({ state: 'queued' })
+    expect(publicationOf({ publication: { state: 'queued', attempts: Number.NaN } })).toEqual({ state: 'queued' })
+    expect(publicationOf({ publication: { state: 'queued', attempts: 0 } })).toEqual({ state: 'queued', attempts: 0 })
+    for (const publication of [undefined, null, 'published', ['published'], {}, { state: '' }, { state: 5 }]) expect(publicationOf({ publication }), JSON.stringify(publication)).toBeNull()
   })
 })

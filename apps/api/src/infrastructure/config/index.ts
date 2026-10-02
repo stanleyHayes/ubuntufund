@@ -181,6 +181,16 @@ export interface AppConfig {
    * sign-off (plan §6) before it may be enabled in production.
    */
   splitProceedsEnabled: boolean;
+  /**
+   * A staff approval publishes held content by itself, after the author's own
+   * checks run again (docs/compliance/PUBLICATION_REVIEWS.md). Default OFF
+   * until every part (API, apps, admin, legal text) is deployed. Versions held
+   * while it is off keep "approve, then the author submits again" for good.
+   * Switching it off is a kill switch: nothing is attempted, and approvals
+   * still waiting to publish become plain ones that their authors are told
+   * to submit again; they stay that way if it is switched on again.
+   */
+  publishOnApprovalEnabled: boolean;
   /** Crypto donation rail (Crypto Donations plan). Default OFF: needs provider
    * onboarding + Ghana legal/compliance sign-off (§16) before production. */
   crypto: CryptoConfig;
@@ -353,6 +363,7 @@ export const config: AppConfig = {
     dualApprovalAmount: envNumber(process.env.PAYOUT_DUAL_APPROVAL_AMOUNT, 0),
   },
   splitProceedsEnabled: process.env.SPLIT_PROCEEDS_ENABLED === 'true',
+  publishOnApprovalEnabled: process.env.PUBLISH_ON_APPROVAL_ENABLED === 'true',
   // Crypto rail defaults OFF (§22/§23). The sandbox `mock` provider is the
   // default so dev/tests exercise the full flow without an external account.
   crypto: {

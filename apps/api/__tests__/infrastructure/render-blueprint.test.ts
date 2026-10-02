@@ -101,6 +101,12 @@ describe('render.yaml blueprint', () => {
     expect(blueprint).not.toMatch(/^\s*autoDeploy: true\s*$/m);
   });
 
+  it('keeps publishing on approval off until every part ships', () => {
+    // Turn it on once every part is deployed; the Privacy and Cookie notices ship with the releases, not on that day (docs/compliance/PUBLICATION_REVIEWS.md).
+    expect(declared.get('PUBLISH_ON_APPROVAL_ENABLED')).toBe('value');
+    expect(readFileSync(join(repoRoot, 'render.yaml'), 'utf8')).toMatch(/- key: PUBLISH_ON_APPROVAL_ENABLED\n(?:\s*#.*\n)*\s*value: "false"\n/);
+  });
+
   it('does not declare the test-only mock crypto secret', () => {
     expect(declared.has('CRYPTO_MOCK_WEBHOOK_SECRET')).toBe(false);
   });

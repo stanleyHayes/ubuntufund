@@ -421,25 +421,25 @@ Reports, blocking, the staff safety queue, publication reviews, restrictions and
 
 **Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`, `apps/api/src/infrastructure/adapters/outbound/ai/OpenAiPublicationScreener.ts`, `apps/api/src/app.ts`, `render.yaml`
 
-## SAFETY-48 · P0 · Exact-version approval: resubmit same text within 7 days publishes; changes need new review
+## SAFETY-48 · P0 · Staff approval publishes the exact approved version once, with no resubmission; changes need a new review
 
 *Surfaces:* admin, api, ios, web  ·  *Type:* functional
 
-**Before:** Held comment from SAFETY-44 (pending).
+**Before:** Publishing on approval is on. Held comment from SAFETY-44 (pending).
 
 **Steps:**
 
 1. As ADMIN-2 in /publication-reviews enter 20+ char notes, 'Approve this version'.
-2. As Kofi refresh Publication reviews: see status approved, 'Review response', 'Approval expires <date>'.
+2. As Kofi, without posting anything, open C1, the notifications and Publication reviews.
 3. Post the exact same comment text again.
 4. Post the same text with one character changed.
 5. Change Kofi's display name, then post the originally approved text.
 
-**Expect:** Exact resubmission publishes (201). Changed text and changed name each create a new pending review (409 held). Comment content is trimmed, so leading/trailing whitespace alone does not break the match.
+**Expect:** The approval posts the comment on C1 by itself, and it appears without Kofi posting again. Kofi gets the in-app notice 'Your comment is live' ('Approved and posted on the campaign.'), which opens C1, and Publication reviews shows the steps Submitted, In review, Approved and Published. Step 3 returns 201 with the same comment, and C1 still shows it once. Changed text and a changed name each create a new pending review (409 held). Comment content is trimmed, so leading/trailing whitespace alone does not break the match. Variant: a comment held while publishing on approval was off is not posted by its approval. Kofi gets 'Your comment was approved' ('Approved. Post it again unchanged before <deadline> to publish it.'), and the exact repost before then publishes it (201), once.
 
 **Needs:** None
 
-**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/publicationReviewRoutes.ts`, `apps/web/src/components/account/PublicationReviews.tsx`
+**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationReviewDecision.ts`, `apps/api/src/application/services/PublicationApplier.ts`, `apps/api/src/application/use-cases/CampaignCommentUseCases.ts`, `apps/web/src/components/account/PublicationReviews.tsx`
 
 ## SAFETY-49 · P0 · Declined version stays declined; author sees notes and appeal path
 
@@ -479,22 +479,23 @@ Reports, blocking, the staff safety queue, publication reviews, restrictions and
 
 **Source:** `apps/api/src/application/use-cases/CreateCampaignUseCase.ts`, `apps/web/src/components/campaigns/CampaignForm.tsx`, `apps/mobile/app/campaign/create.tsx`, `docs/compliance/PUBLICATION_REVIEWS.md`
 
-## SAFETY-57 · P0 · Approval does not bypass later restriction or missing agreement
+## SAFETY-57 · P0 · Approval does not bypass a later restriction or missing agreement
 
 *Surfaces:* api, web  ·  *Type:* security/permission
 
-**Before:** Kofi has an approved, unexpired comment version.
+**Before:** Publishing on approval is on. Kofi has two held comments, K1 and K2 (pending), and one comment, K3, that was approved while publishing on approval was off and never posted.
 
 **Steps:**
 
-1. Restrict Kofi (via report), then resubmit the approved comment.
-2. Restore Kofi; set Kofi's legalAcceptance to an older version (staging), resubmit.
+1. Restrict Kofi (via report). ADMIN-2 approves K1. Then Kofi resubmits K3.
+2. Restore Kofi; set Kofi's legalAcceptance to an older version (staging). ADMIN-2 approves K2. Kofi resubmits K3.
+3. Kofi accepts the current agreement, then posts K2 and K3 again.
 
-**Expect:** Restricted: 403 'Publishing is restricted...'. Outdated agreement: 428 'Review the current account agreement and confirm you are at least 18...' and web/native show the Account agreement notice linking to /account-agreement. After accepting, resubmit publishes.
+**Expect:** Step 1: the approval does not post K1; Kofi gets 'Your comment wasn't published' ('Publishing is restricted on this account. Contact support@ujimora.com to appeal.'). Resubmitting K3 returns 403 'Publishing is restricted...'. Step 2: K2 is not posted; Kofi gets 'Your comment wasn't published' ('You need to accept the current account agreement before it can be published. Post it again if you still want it published.'; the comment form was cleared on the hold, so it never promises a word-for-word repost). Resubmitting K3 returns 428 'Review the current account agreement and confirm you are at least 18...', and web/native show the Account agreement notice linking to /account-agreement. Step 3: after accepting, posting K2 again publishes it at once (201), and so does posting K3.
 
 **Needs:** Staging MongoDB access
 
-**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`, `apps/api/src/infrastructure/adapters/inbound/middleware/authMiddleware.ts`, `apps/web/src/components/auth/AccountAgreement.tsx`, `apps/mobile/src/components/AccountAgreementNotice.tsx`
+**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`, `apps/api/src/application/services/PublicationApplier.ts`, `apps/api/src/infrastructure/adapters/inbound/middleware/authMiddleware.ts`, `apps/web/src/components/auth/AccountAgreement.tsx`, `apps/mobile/src/components/AccountAgreementNotice.tsx`
 
 ## SAFETY-60 · P0 · Donor name/message pending until staff approval; decision never moves money
 
@@ -939,7 +940,7 @@ Reports, blocking, the staff safety queue, publication reviews, restrictions and
 
 *Surfaces:* admin, api, web  ·  *Type:* negative/edge
 
-**Before:** Kofi (no avatar) has two approved but unused comment reviews, A and B. Staging DB access. OpenAI is configured.
+**Before:** Publishing on approval is on. Kofi (no avatar) has two approved but unused comment reviews, A and B, held while publishing on approval was off (so their approvals did not post them). Staging DB access. OpenAI is configured.
 
 **Steps:**
 
@@ -950,7 +951,7 @@ Reports, blocking, the staff safety queue, publication reviews, restrictions and
 5. Set B's approvalExpiresAt to a past date. Kofi resubmits B's exact (benign) content with OpenAI consent checked.
 6. Resubmit with a small change.
 
-**Expect:** Step 2 returns 409 'Saved privately for safety review. Your content has not been published. Keep your draft and check Publication reviews before submitting this same version again.' The same review record goes back to status pending with reason 'staff_requested': reviewedBy, reviewNotes and approvalExpiresAt are cleared, and purgeAt moves to about 30 days out. It shows as pending for Kofi and appears in the admin queue and action-center count. Step 4 publishes (201). In step 5 the record is re-screened automatically: it is approved again by 'automated:openai' with a new approvalExpiresAt about 7 days out, and the comment publishes immediately (201). The changed content in step 6 creates a new pending review. The old message 'This safety approval expired...' no longer appears.
+**Expect:** Step 2 returns 409 'Saved privately for safety review. Your content has not been published yet. It will be published automatically once a reviewer approves it; check Publication reviews for the decision.' The same review record goes back to status pending with reason 'staff_requested': reviewedBy, reviewNotes and approvalExpiresAt are cleared, and purgeAt moves to about 30 days out. It shows as pending for Kofi and appears in the admin queue and action-center count. Step 4: ADMIN-2's approval posts the comment by itself, and Kofi's identical resubmission returns 201 with that same comment. In step 5 the record is re-screened automatically: it is approved again by 'automated:openai' with a new approvalExpiresAt about 7 days out, and the comment publishes immediately (201). The changed content in step 6 creates a new pending review. The old message 'This safety approval expired...' no longer appears.
 
 **Needs:** Staging MongoDB access; OpenAI key
 
@@ -976,24 +977,26 @@ Reports, blocking, the staff safety queue, publication reviews, restrictions and
 
 **Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/publicationReviewRoutes.ts`, `apps/admin/src/pages/PublicationReviewsPage.tsx`
 
-## SAFETY-54 · P1 · Campaign update create/edit held; published version stays live while edit pending
+## SAFETY-54 · P1 · Campaign update create/edit held; published version stays live while an edit is pending; approval publishes it unless the update changed
 
 *Surfaces:* admin, api, web  ·  *Type:* functional
 
-**Before:** Ama owns C1 with published update U2.
+**Before:** Publishing on approval is on. Ama owns C1 with published update U2.
 
 **Steps:**
 
 1. Create Update dialog: new update without consent -> held.
 2. Edit U2 content without consent.
 3. View C1 as Yaw.
-4. Approve the edit and resubmit exact edit; meanwhile have a teammate edit U2 first (concurrent).
+4. Approve the new update and the edit.
+5. Hold another edit of U2, then pin or unpin U2, then approve the held edit.
+6. Hold another edit of U2, then submit a newer edit of U2 and try to approve the first one.
 
-**Expect:** New update not visible until approved and resubmitted. While edit is held, the original U2 text remains public. After approval exact resubmit applies; if U2 changed meanwhile, fingerprint/base version mismatch forces a new review or 409.
+**Expect:** The new update is not visible until approved; the approval posts it by itself. While the edit is held, the original U2 text remains public; the approval applies the edit with no resubmission. In step 5 the approval does not apply the edit, because U2 changed after it was submitted: Ama gets 'Your earlier edited campaign update wasn't published' ('It changed after you submitted it, so this version wasn't published. Submit your latest version if it still needs review.'), and U2 keeps its current text. In step 6 the newer edit replaces the held one: approving the first returns 409 'The author replaced this version with a newer one.'
 
 **Needs:** None
 
-**Source:** `apps/api/src/application/use-cases/CreateCampaignUpdateUseCase.ts`, `apps/api/src/application/use-cases/UpdateCampaignUpdateUseCase.ts`, `apps/web/src/components/campaigns/CreateUpdateDialog.tsx`
+**Source:** `apps/api/src/application/use-cases/CreateCampaignUpdateUseCase.ts`, `apps/api/src/application/use-cases/UpdateCampaignUpdateUseCase.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/publication-apply/updateEdit.ts`, `apps/web/src/components/campaigns/CreateUpdateDialog.tsx`
 
 ## SAFETY-55 · P1 · Live session start with title held; approved resubmit starts session
 
@@ -1017,7 +1020,7 @@ Reports, blocking, the staff safety queue, publication reviews, restrictions and
 
 *Surfaces:* admin, android, api, ios, web  ·  *Type:* functional
 
-**Before:** Kofi is a member with an existing public avatar. Ama is a creator on a paid plan with an avatar. ORG has a team member. C1 has a slug. OpenAI is optional.
+**Before:** Publishing on approval is on. Kofi is a member with an existing public avatar. Ama is a creator on a paid plan with an avatar. ORG has a team member. C1 has a slug. OpenAI is optional.
 
 **Steps:**
 
@@ -1031,7 +1034,7 @@ Reports, blocking, the staff safety queue, publication reviews, restrictions and
 8. Pause tips only from the creator dashboard.
 9. On native profile/edit, change the name and pick a new avatar, save, leave the screen and return.
 
-**Expect:** Every identity or public change is held (409) and listed in Publication reviews, and public values stay the same until an approved exact resubmission. The name change without consent is held as 'staff_requested'; with consent it goes to text screening, not 'media', even though Kofi has an avatar. A new avatar or creator image is held with reason 'media'. Reopening the image editor shows the held image and the note 'This is the image you last submitted. If it is waiting for review, save it again after it is approved.' After approval, 'Save image' applies it without a new upload. Removing the avatar applies immediately (200) with no review record. Ama's text-only creator edit is screened as text (unchanged photos are not sent as media). Settings shows the error plus 'Check Publication reviews above...'. Pausing tips and hiding the profile apply immediately without review. Native shows 'We restored the changes you last submitted for review. Save them again once they are approved.'
+**Expect:** Every identity or public change is held (409) and listed in Publication reviews, and public values stay the same until staff approve; the approval then publishes each change with no resubmission. The name change without consent is held as 'staff_requested'; with consent it goes to text screening, not 'media', even though Kofi has an avatar. A new avatar or creator image is held with reason 'media'. Reopening the image editor shows the held image with a note that it is the image last submitted. After approval the image is live without saving again; if the approval could not publish it, 'Save image' publishes it without a new upload. Removing the avatar applies immediately (200) with no review record. Ama's text-only creator edit is screened as text (unchanged photos are not sent as media). Settings shows the error plus 'Check Publication reviews above...'. Pausing tips and hiding the profile apply immediately without review. Native restores the held changes on profile/edit with a note that they were last submitted for review.
 
 **Needs:** Cloudinary; OpenAI optional
 
@@ -1327,7 +1330,7 @@ Reports, blocking, the staff safety queue, publication reviews, restrictions and
 6. Sign out, sign in as Kofi on the same browser, and open /campaigns/new and the avatar editor.
 7. Repeat step 1 in the private window with storage blocked.
 
-**Expect:** The reopened form shows 'We restored your unsent draft from this browser.' with a 'Start over' action that clears the form and the stored draft, and the same cover URL with no re-upload. Since 30 September 2026 a campaign is never held for resubmission: the submit in step 3 creates it as Pending review ('Saved · Pending review', checked by ADMIN-2 in the campaign review) and clears the draft, so step 4 shows an empty form. The reopened image editor shows the held image and 'This is the image you last submitted. If it is waiting for review, save it again after it is approved.' Drafts are per account and explicit sign-out removes all of them, so Kofi sees none of Ama's. Drafts older than 30 days are discarded. With storage blocked, the forms work normally with no restore and no errors.
+**Expect:** The reopened form shows 'We restored your unsent draft from this browser.' with a 'Start over' action that clears the form and the stored draft, and the same cover URL with no re-upload. Since 30 September 2026 a campaign is never held for resubmission: the submit in step 3 creates it as Pending review ('Saved · Pending review', checked by ADMIN-2 in the campaign review) and clears the draft, so step 4 shows an empty form. The reopened image editor shows the held image with a note that it is the image last submitted for review; it goes live when staff approve it, and can be saved again from here if the approval could not publish it. Drafts are per account and explicit sign-out removes all of them, so Kofi sees none of Ama's. Drafts older than 30 days are discarded. With storage blocked, the forms work normally with no restore and no errors.
 
 **Needs:** Cloudinary
 
@@ -1358,19 +1361,19 @@ Reports, blocking, the staff safety queue, publication reviews, restrictions and
 
 *Surfaces:* admin, android, api, ios  ·  *Type:* functional
 
-**Before:** Signed native build. Ama owns the active campaign C1. Yaw is a non-owner. ADMIN-2. Ama is restricted in one run.
+**Before:** Publishing on approval is on. Signed native build. Ama owns the active campaign C1. Yaw is a non-owner. ADMIN-2. Ama is restricted in one run.
 
 **Steps:**
 
 1. As Ama, open campaign/[C1] and find 'Post an update' in the Updates section.
 2. Tap it. Check that 'Post update' is disabled while the title is under 3 characters or the content is empty. Fill type, title and content, leave consent unchecked, and post.
-3. ADMIN-2 approves in /publication-reviews. Ama taps 'Post update' again without editing.
+3. ADMIN-2 approves in /publication-reviews. Ama reopens campaign/[C1] without posting again.
 4. Post another update with consent and benign text.
 5. Pin, then Unpin, an update. Delete one and confirm the 'Delete update?' dialog.
 6. As Yaw, open campaign/[C1].
 7. As restricted Ama, try to post an update.
 
-**Expect:** The first post keeps the dialog open with 'Saved privately for safety review. Your content has not been published. Keep your draft and check Publication reviews before submitting this same version again.' and keeps the fields. After approval the identical post shows 'Update posted.' and the update appears. The consented benign update posts immediately. Pin/Unpin toggle. Delete asks 'Delete update?' / 'This removes the update for everyone.' and removes it. Yaw sees no composer, Pin or Delete, but does see 'Report' on Ama's updates. Restricted Ama sees 'Publishing is restricted following a moderation review. Contact support@ujimora.com to appeal. Your account settings and funds remain accessible.'
+**Expect:** The first post is held: the dialog clears and shows the app's 'Waiting for safety review' notice, 'Saved privately for safety review. It isn't public yet. Once a reviewer approves it, it's published automatically, so you don't need to submit it again. Check Settings → Publication reviews for the decision; you can withdraw it there.' The app never shows the API's own 409 message. ADMIN-2's approval posts the update by itself: it appears in C1's Updates, and Ama gets 'Your campaign update is live'. The consented benign update posts immediately. Pin/Unpin toggle. Delete asks 'Delete update?' / 'This removes the update for everyone.' and removes it. Yaw sees no composer, Pin or Delete, but does see 'Report' on Ama's updates. Restricted Ama sees 'Publishing is restricted following a moderation review. Contact support@ujimora.com to appeal. Your account settings and funds remain accessible.'
 
 **Needs:** Signed native builds; OpenAI optional
 
@@ -1513,24 +1516,25 @@ Reports, blocking, the staff safety queue, publication reviews, restrictions and
 
 **Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/safetyReportRoutes.ts`
 
-## SAFETY-52 · P2 · Approved versions stay reusable within 7 days until a moderator removes one
+## SAFETY-52 · P2 · An approved comment publishes once; a moderator's hide declines it; legacy campaign approvals stay reusable
 
 *Surfaces:* admin, api, web  ·  *Type:* negative/edge
 
-**Before:** Kofi has an approved comment version for C1. Ama has an approved campaign.create version within her plan allowance. ADMIN-2.
+**Before:** Publishing on approval is on. Kofi posted comment K1 on C1 without screening consent; ADMIN-1 approved it and it is live. Kofi posted comment K2 on C1 the same way, then deleted it. Ama has an approved campaign.create version, stored before 30 September 2026, within her plan allowance. ADMIN-2.
 
 **Steps:**
 
-1. Post the identical approved comment 3 times in a row.
-2. Yaw reports one of the copies. ADMIN-2 clicks 'Hide comment' with notes.
-3. Kofi posts the identical text again, then opens Settings > Publication reviews.
-4. In the web campaign form, submit the approved campaign twice from the same tab. Then call POST /api/v1/campaigns twice with the same payload and two different Idempotency-Key values.
+1. Kofi posts the identical text of K1 three times in a row (web, then POST /api/v1/campaigns/C1/comments).
+2. Kofi posts the identical text of K2.
+3. Yaw reports K1. ADMIN-2 clicks 'Hide comment' with notes.
+4. Kofi posts the identical text of K1 again, then opens Settings > Publication reviews.
+5. In the web campaign form, submit Ama's approved campaign twice from the same tab. Then call POST /api/v1/campaigns twice with the same payload and two different Idempotency-Key values.
 
-**Expect:** Each post in step 1 publishes (201); approvals are not single-use. After the hide, the identical repost returns 422 'This version was declined in safety review. Check Publication reviews, revise your draft, or contact support@ujimora.com to appeal.', and Publication reviews shows that version as rejected with notes 'Removed after safety report <report id>'. Copies that were not hidden stay visible. The web form reuses one Idempotency-Key per payload, so the second submit returns the existing campaign and creates no duplicate. The API calls with different keys create a second campaign, because the approval is not consumed. Known open issue I153 (owner decision): fully single-use approvals are not implemented.
+**Expect:** Step 1: each post returns 201 with K1's id, and C1 shows K1 once: the approval was used up when it published K1. Step 2 returns 409 'You already posted this exact comment; change it to post again.' Step 4 returns 422 'This version was declined in safety review. Check Publication reviews, revise your draft, or contact support@ujimora.com to appeal.', and Publication reviews shows that version as declined with the note 'Removed after safety report <report id>'. The web form reuses one Idempotency-Key per payload, so the second submit returns the existing campaign and creates no duplicate. The API calls with different keys create a second campaign, because a legacy campaign approval is not consumed. Single-use holds with publishing on approval on or off. Issue I153 (reusable approvals) was closed on 2 October 2026 for comments, campaign updates and edits, profiles, organization details, creator pages, thank-you messages and web addresses. Approvals of campaign proposals stored before 30 September 2026 and of live-session titles can still be reused within their 7 days.
 
 **Needs:** None
 
-**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/safetyReportRoutes.ts`, `apps/api/src/domain/services/publicationFingerprint.ts`, `apps/web/src/components/campaigns/CampaignForm.tsx`
+**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`, `apps/api/src/application/use-cases/CampaignCommentUseCases.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/safetyReportRoutes.ts`, `apps/api/src/domain/services/publicationFingerprint.ts`, `apps/web/src/components/campaigns/CampaignForm.tsx`
 
 ## SAFETY-65 · P2 · AI daily quotas (per user and global) and double-click
 
@@ -1609,7 +1613,7 @@ Reports, blocking, the staff safety queue, publication reviews, restrictions and
 
 *Surfaces:* admin, android, ios  ·  *Type:* cross-platform
 
-**Before:** Signed native build. Ama can create a campaign. ADMIN-2.
+**Before:** Publishing on approval is on. Signed native build. Ama can create a campaign. ADMIN-2.
 
 **Steps:**
 
@@ -1617,9 +1621,9 @@ Reports, blocking, the staff safety queue, publication reviews, restrictions and
 2. Force-quit the app, reopen it and open campaign/create.
 3. Tap 'Start over'. Fill the form again with the cover, leave consent unchecked and tap 'Create campaign'.
 4. On profile/edit, change the name and pick a new avatar, then tap 'Save profile' (held). Leave the screen and return.
-5. After ADMIN-2 approves, tap 'Save profile'. Then sign out and sign back in.
+5. ADMIN-2 approves. Return to profile/edit without saving. Then sign out and sign back in.
 
-**Expect:** campaign/create shows 'We restored your unsent draft from this device.' with 'Start over', which clears the form and the saved draft. Step 3 creates the campaign as Pending review ('Saved · Pending review', with 'Go to my campaigns') for ADMIN-2 to check in the campaign review, and clears the draft; there is nothing to resubmit. profile/edit shows 'We restored the changes you last submitted for review. Save them again once they are approved.' with the held values filled in. After a successful save the notice disappears. Signing out clears all drafts on the device.
+**Expect:** campaign/create shows 'We restored your unsent draft from this device.' with 'Start over', which clears the form and the saved draft. Step 3 creates the campaign as Pending review ('Saved · Pending review', with 'Go to my campaigns') for ADMIN-2 to check in the campaign review, and clears the draft; there is nothing to resubmit. profile/edit restores the held values with a note that they were last submitted for review. ADMIN-2's approval publishes them without saving again; once they are live, profile/edit no longer offers them as held changes. Signing out clears all drafts on the device.
 
 **Needs:** Signed native builds; Cloudinary
 

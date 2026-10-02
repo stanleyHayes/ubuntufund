@@ -1,9 +1,11 @@
 import { MongoCampaignContentWrite } from '../../../outbound/persistence/MongoCampaignContentWrite.js'
-import { createHash } from 'node:crypto'
-import { hasCurrentLegalAcceptance } from '@ubuntu-fund/types'
+import { publicationFingerprint } from '../../../../../domain/services/publicationFingerprint.js'
+import { PublicationAlreadyPublished } from '../../middleware/publicationErrors.js'
+import {
+  MongoOrganizationIdentityWrite, isCurrentOrganizationIdentity, organizationIdentityVersion,
+} from '../../../outbound/persistence/MongoOrganizationIdentityWrite.js'
 import type { UnitOfWorkPort } from '../../../../../domain/ports/outbound/UnitOfWorkPort.js'
 import { ContentRestrictionModel } from '../../../../database/models/ContentRestrictionModel.js'
-import { AuditLogModel } from '../../../../database/models/AuditLogModel.js'
 import type { PublicationAdmissionPort } from '../../../../../domain/ports/outbound/PublicationAdmissionPort.js'
 import { Router, type RequestHandler } from 'express'
 import { isValidObjectId } from 'mongoose'
@@ -59,6 +61,8 @@ export type TeamSeatAllowance = (organizationId: string) => Promise<{ limit: num
 
 export function createOrganizationTeamRoutes(auth: RequestHandler, admission: PublicationAdmissionPort, uow: UnitOfWorkPort, teamSeats?: TeamSeatAllowance) {
   const router = Router()
+  // Shared with publishing on approval, so an approved change runs the same checks.
+  const organizationIdentity = new MongoOrganizationIdentityWrite()
   router.use((_req, res, next) => { res.set('Cache-Control', 'private, no-store'); next() })
   router.use(auth)
   router.get(
@@ -288,33 +292,39 @@ export function createOrganizationTeamRoutes(auth: RequestHandler, admission: Pu
         automatedReviewConsent: z.boolean().optional(),
       }).strict().parse(req.body)
       const fields = { organizationName: input.organizationName, website: input.website }
-      const baseVersion = createHash('sha256').update(JSON.stringify([organizationId, org.organizationProfileRevision ?? 0, org.organizationName ?? '', org.website ?? ''])).digest('hex')
-      if (!admission || !uow) throw new AppError('Organization publication review is unavailable', 503)
+      // The current details publish nothing new (an older app saving what an approval
+      // already published, say): no review and no write, so no revision bump either.
+      // They are still the newest version: a change held before them is never
+      // published by its approval (it is superseded), so saving the live details
+      // reverts a held rename.
+      if (isCurrentOrganizationIdentity(org, fields)) {
+        const unchanged = await admission?.supersedeOpenVersions?.(
+          { actorId: req.userId!, action: 'organization.profile', resourceId: organizationId },
+          async () => {
+            const latest = await UserModel.findOne({ _id: organizationId, role: 'organization', deletedAt: null }).lean()
+            return !!latest && isCurrentOrganizationIdentity(latest, fields)
+          },
+        ) ?? true
+        if (!unchanged) throw new AppError('The organization changed during review. Reload its current details before retrying.', 409)
+        return { updated: true }
+      }
+      const baseVersion = organizationIdentityVersion(organizationId, org)
+      if (!admission?.assertCurrent || !uow) throw new AppError('Organization publication review is unavailable', 503)
       if (await ContentRestrictionModel.exists({ userId: organizationId })) throw new AppError('Publishing for this organization is restricted', 403)
-      await admission.assertAllowed({ actorId: req.userId!, action: 'organization.profile', resourceId: organizationId, baseVersion,
-        text: JSON.stringify(fields), mediaUrls: [], automatedReviewConsent: input.automatedReviewConsent })
+      const submission = { actorId: req.userId!, action: 'organization.profile' as const, resourceId: organizationId, baseVersion,
+        text: JSON.stringify(fields), mediaUrls: [], automatedReviewConsent: input.automatedReviewConsent, authVersion: req.authVersion }
+      try {
+        await admission.assertAllowed(submission)
+      } catch (error) {
+        // These exact details are published already: an older app saving them again,
+        // its read of the organization racing the approval that published them.
+        if (error instanceof PublicationAlreadyPublished) return { updated: true }
+        throw error
+      }
       await uow.run(async () => {
-        // Real writes fence concurrent credential changes, closure and membership revocation.
-        const actor = await UserModel.findOneAndUpdate({ _id: req.userId, deletedAt: null,
-          ...(req.authVersion ? { authVersion: req.authVersion } : { $or: [{ authVersion: '' }, { authVersion: null }] }),
-        }, { $inc: { profileWriteVersion: 1 } }, { new: true })
-        if (!actor) throw new AppError('Your session ended. Sign in again before saving.', 401)
-        if (actor.role !== 'admin' && !hasCurrentLegalAcceptance(actor.legalAcceptance)) throw new AppError('Accept the current agreement before publishing', 428)
-        if (await ContentRestrictionModel.exists({ userId: { $in: [req.userId!, organizationId] } })) throw new AppError('Publishing is restricted', 403)
-        if (req.userId !== organizationId) {
-          const membership = await Members.findOneAndUpdate({ organizationId, userId: req.userId, status: 'active', role: 'admin' }, { $inc: { profileWriteVersion: 1 } }, { new: true })
-          if (!membership) throw new AppError('You no longer have permission to edit this organization', 403)
-        }
-        const revision = org.organizationProfileRevision ?? 0
-        const saved = await UserModel.findOneAndUpdate({ _id: organizationId, role: 'organization', deletedAt: null,
-          organizationName: org.organizationName ?? null, website: org.website ?? null,
-          ...(revision === 0 ? { $or: [{ organizationProfileRevision: 0 }, { organizationProfileRevision: null }] } : { organizationProfileRevision: revision }),
-        }, { $set: fields, $inc: { organizationProfileRevision: 1 } }, { new: true })
-        if (!saved) throw new AppError('The organization changed during review. Reload its current details before retrying.', 409)
-        if (!hasCurrentLegalAcceptance(saved.legalAcceptance)) throw new AppError('The organization must accept the current agreement before publishing', 428)
-        await AuditLogModel.create({ actorId: req.userId, actorRole: actor.role, action: 'organization.profile.updated', resource: organizationId,
-          details: `Reviewed organization identity saved; base version ${baseVersion}; revision ${saved.organizationProfileRevision}`,
-          severity: 'info', method: 'PUT', path: '/organization-team/:organizationId/profile', statusCode: 200 })
+        await organizationIdentity.commit({ actorId: req.userId!, authVersion: req.authVersion ?? '', organizationId, fields, baseVersion })
+        // Approvals are single-use: this request publishes the approved version, once.
+        await admission.assertCurrent!(submission, { publishedResourceId: organizationId })
       })
       return { updated: true }
     }),
@@ -340,14 +350,27 @@ export function createOrganizationTeamRoutes(auth: RequestHandler, admission: Pu
           content: z.string().trim().min(1).max(5000),
         })
         .parse(req.body)
-      const submission = { actorId: req.userId!, action: 'update.create' as const, resourceId: campaignId, text: JSON.stringify([input.title, input.content, 'general']), mediaUrls: [], automatedReviewConsent: input.automatedReviewConsent }
-      await admission.assertAllowed(submission)
-      if (!admission.assertCurrent) throw new AppError('Update publication verification is unavailable', 503)
-      return new MongoCampaignContentWrite().run(req.userId!, req.authVersion ?? '', campaignId, organizationId, async () => {
-        await admission.assertCurrent!(submission)
-        const update = await CampaignUpdateModel.create({ campaignId, authorId: req.userId, title: input.title, content: input.content, type: 'general', mediaUrls: [], isPinned: false })
-        return { id: String(update._id) }
-      })
+      const submission = { actorId: req.userId!, action: 'update.create' as const, resourceId: campaignId, text: JSON.stringify([input.title, input.content, 'general']), mediaUrls: [], automatedReviewConsent: input.automatedReviewConsent,
+        authVersion: req.authVersion, applyOptions: { isPinned: false } }
+      try {
+        await admission.assertAllowed(submission)
+        if (!admission.assertCurrent) throw new AppError('Update publication verification is unavailable', 503)
+        return await new MongoCampaignContentWrite().run(req.userId!, req.authVersion ?? '', campaignId, organizationId, async () => {
+          // The approved version's fingerprint stays on the update, so moderation that hides it also revokes the approval.
+          const update = await CampaignUpdateModel.create({ campaignId, authorId: req.userId, title: input.title, content: input.content, type: 'general', mediaUrls: [], isPinned: false, publicationFingerprint: publicationFingerprint(submission) })
+          // Consumes the approval with what it published; a version already published (by its approval, say) rolls this back.
+          await admission.assertCurrent!(submission, { publishedResourceId: String(update._id) })
+          return { id: String(update._id) }
+        })
+      } catch (error) {
+        // The identical update again, once published (by its approval, say): the same post.
+        if (!(error instanceof PublicationAlreadyPublished)) throw error
+        const posted = error.resourceId && isValidObjectId(error.resourceId)
+          ? await CampaignUpdateModel.exists({ _id: error.resourceId, campaignId, authorId: req.userId, deletedAt: { $exists: false } })
+          : null
+        if (!posted) throw new AppError('You already posted this exact update; change it to post again.', 409)
+        return { id: String(posted._id) }
+      }
     }),
   )
   return router

@@ -19,6 +19,29 @@ The implementation supplies report intake, blocking and administrator actions. E
 - Report reasons now include intellectual property / copyright and privacy or likeness, for safety reports and campaign reports. Takedown intake for rights-holders (address, required details, response targets) still needs an owner decision.
 - Restrictions still do not block an account's campaigns or change donations; use the separate campaign *block* moderation action for that (owner decision whether restricting should offer it).
 
+## Publication reviews: approving publishes (2 October 2026)
+
+With `PUBLISH_ON_APPROVAL_ENABLED` on, approving a held version publishes it at once. This covers comments, campaign updates and update edits, account and organization profiles, creator pages, thank-you messages and campaign web addresses. Nobody resubmits it. The author's checks run again first: account, sign-in, restriction, agreement, permission, plan, and that the item has not changed. Details are in `PUBLICATION_REVIEWS.md`, "Publishing on approval".
+
+- **Check before approving.** Check every field and every image of the exact version. An approval cannot be taken back once the version is published.
+- **Thank-you messages.** Approving one emails the campaign's eligible donors and cannot be recalled. Unsubscribed and refunded donors are skipped.
+- **Web addresses.** Approving one changes the campaign's web address; old links keep working.
+- **What approval does not publish.** Live-session titles and campaign proposals are not published by approval: their authors still start or submit them again. Nor is a version submitted before the switch: the staff view shows `publishOnApproval: false` for it.
+- **Changed items.** If the author changed the item after submitting, the approval does not publish it. The author is told to submit the latest version.
+- **Where each approved version stands.** The decision response and the staff list show it: published, publishing, not published (with the reason), replaced by a newer version, or withdrawn by the author. A version the author withdrew or replaced before any decision cannot be decided (409). An approval that does not publish by itself reads 'Not published by its approval: the author publishes it by submitting it again.' Approvals made before this deploy recorded no publication by their author, so neither the card nor the export says they were never published: once run out, the export reads 'Approval expired; no publication recorded'.
+- **Conflict of interest.** An administrator cannot approve or decline a version:
+  - for a campaign they own, benefit from, or help run as an active admin or editor of its organization;
+  - written by, or changing, an organization they belong to.
+
+  The answer is 403 'Another administrator must review content for a campaign or organization you manage'. Self-review stays refused, with 403 'Another administrator must review your content'. Both apply with the switch on or off. With one administrator, such items wait for a second.
+- **Current access.** Every decision re-checks the administrator's access in its own transaction. Demoted, closed, or with a password changed since sign-in: 403 'Current administrator access is required'.
+- **Failures.** Publication retries automatically, with backoff over about ten hours (eight attempts). A version that still fails ends "Not published" (`unavailable`) and the API logs an error. Watch for these, and for versions stuck in `publishing`. The admin page has no filter for this yet: each approved card shows its status line, and the API takes a `publishState` query (`GET /admin/publication-reviews?status=approved&publishState=publishing`, or `queued`, `applying`, `published`, `not_published`, `superseded`, `withdrawn`).
+- **Hidden content stays declined.** Hiding a reported comment or update still turns its approval into a decline, so the identical post is refused with 422.
+- **Pausing it (kill switch).** Set `PUBLISH_ON_APPROVAL_ENABLED` to `"false"` in `render.yaml` and redeploy, after checking the Render dashboard has no override.
+  - Approvals already waiting are returned to their authors as plain approvals, with a notice to submit them again.
+  - They stay that way if the switch is turned back on.
+  - The Privacy and Cookie notices need no change: they are worded to be true with the switch on or off (`LEGAL_REVISIONS.md`).
+
 ## Required operating process
 
 1. Assign accountable moderators and coverage, including a backup. Confirm access to the support appeal inbox and restrict report/audit exports to people handling the case. Confirm all launch languages have an escalation path.

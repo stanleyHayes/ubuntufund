@@ -18,7 +18,7 @@ Run the plan against a staging stack, not production. Today the web, admin and m
 
 | Piece | Staging setup |
 | --- | --- |
-| API | A separate Render service (not the free plan) with NODE_ENV=production so the reconciliation, erasure, store-billing and email sweeps run, and its own MongoDB replica set with backups. |
+| API | A separate Render service (not the free plan) with NODE_ENV=production so the reconciliation, erasure, store-billing and email sweeps run, and its own MongoDB replica set with backups. Set PUBLISH_ON_APPROVAL_ENABLED as production has it (true from the day it is switched on; see docs/compliance/PUBLICATION_REVIEWS.md). Cases that depend on it say so under Before. |
 | Web, admin, marketing | Vercel preview or staging projects whose /api/v1 rewrite points at the staging API. |
 | Mobile | EAS preview builds with EXPO_PUBLIC_API_URL and EXPO_PUBLIC_WEB_URL set to staging; release (not dev-client) builds for the store-review and 16 KB cases. |
 | Paystack | Test-mode keys, webhook URL and Transfer Approval URL pointed at staging. Keep a ledger of every reference you create. |

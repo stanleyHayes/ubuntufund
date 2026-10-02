@@ -40,12 +40,12 @@ function walk(dir: string): string[] {
 const PUBLISHED: Record<string, { effectiveDate: string; sha256: string }> = {
   'delete-account': { effectiveDate: '12 September 2026', sha256: '48e5b632cb69db39c35b692401529532380183e6d01682c7c65374ad4b8cdb22' },
   terms: { effectiveDate: '25 September 2026', sha256: '1f44b9d86dfe7ac265d93c52089accadca157b563c19dd866bc8aeb10432df7c' },
-  privacy: { effectiveDate: '29 September 2026', sha256: 'a8f92b3fff93b2c617d926a630225e9c80d4999fbafb41deb00bc3b48a0cf6ed' },
+  privacy: { effectiveDate: '2 October 2026', sha256: '88e1a4d06791fe705d59a39d31cc136aa9262c49806d077513965261282ddaf2' },
   'organizer-agreement': { effectiveDate: '29 September 2026', sha256: 'aedef5be09b2bfd0e4f31b95e0f3f86897f55f847c454f4aba025ea293c0e808' },
   'contributor-terms': { effectiveDate: '29 September 2026', sha256: 'be6e46a7e246dfedebb5d5a7deea945468655fb525cd320cfec15414640530dc' },
   'refund-policy': { effectiveDate: '8 September 2026', sha256: '8391898b228ebf3664bc903b28a30ba398d4e8444600d428092966e15cec7765' },
   'acceptable-use': { effectiveDate: '8 September 2026', sha256: '255d7c5a5c588e8d1a4e650be17a82a4f8f08af1a06209f86c21d7bffa44d78f' },
-  cookies: { effectiveDate: '29 September 2026', sha256: 'bcc4280d7e272264bb715dd96ff7edd19f9bbfaf592bdd6c87e51e5e75334a34' },
+  cookies: { effectiveDate: '2 October 2026', sha256: '4f4a5f71c921bfeb13e2490c6244adeb0b4d326ed317b6d627ce2e49a3c05819' },
   'billing-terms': { effectiveDate: '25 September 2026', sha256: '7c2a73ad1bb1fcd89ae853cf24a79f5d79789ac126aed11c62398c8790630fe3' },
 }
 
@@ -137,5 +137,21 @@ describe('legal pack describes what actually happens', () => {
     expect(privacy).not.toMatch(/appropriately governed analytics/)
     expect(privacy).not.toMatch(/controlled through appropriate consent and preferences/)
     expect(policyText('cookies')).not.toMatch(/do not currently set cookies or use analytics/)
+  })
+
+  it('privacy and cookie notices describe publishing on approval truthfully whether it is switched on or off', () => {
+    // The text ships with the releases, before the switch is turned on, and stays in installed apps through a switch-off.
+    const privacy = policyText('privacy')
+    expect(privacy).toMatch(/When automatic publishing applies to a held version, staff approval publishes it, after the same checks as when you publish it yourself/)
+    expect(privacy).toMatch(/if your password or two-step verification settings changed since then/)
+    expect(privacy).toMatch(/one-way fingerprint of your sign-in settings is stored with such a version and deleted with its review record/)
+    // Switched off, held before it, or a live session: the author submits it again.
+    expect(privacy).toMatch(/Otherwise, and always for live-session titles, which are published only when the host starts the session, an approved version must be submitted again within seven days of approval/)
+    expect(privacy).toMatch(/Publication reviews and your notification inbox show which applies/)
+    // Never an unconditional promise either way.
+    expect(privacy).not.toMatch(/When staff approve a held version, it is published automatically/)
+    expect(privacy).not.toMatch(/An approved version must be submitted again within seven days/)
+    expect(policyText('cookies')).toMatch(/profile images held for safety review, so the same image can be saved again if approval does not publish it/)
+    expect(policyText('cookies')).not.toMatch(/can be submitted again once approved/)
   })
 })

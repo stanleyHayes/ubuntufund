@@ -105,6 +105,17 @@ services:
       # NaN, so these are literals, not sync:false; edit here + redeploy to change.
       - key: SPLIT_PROCEEDS_ENABLED
         value: "true" # split-proceeds campaigns ON in prod (§6 cleared)
+      - key: PUBLISH_ON_APPROVAL_ENABLED
+        # A staff approval publishes held content by itself (comments, updates,
+        # profiles, organization details, creator pages, thank-you messages,
+        # campaign links). OFF until every part is deployed (API, web, app,
+        # admin). The Privacy and Cookie notices dated 2 October 2026 hold
+        # with it on or off, so they ship with those releases, not on the day
+        # it is switched on. Versions held while OFF keep "approve, then the
+        # author submits again". Switching it back OFF is a kill switch:
+        # approvals still waiting to publish become plain ones and their
+        # authors are told to submit again. See docs/compliance/PUBLICATION_REVIEWS.md.
+        value: "false"
       - key: LOG_LEVEL
         value: info
       # Preview/estimate fees only — the real Paystack fee comes from the webhook.

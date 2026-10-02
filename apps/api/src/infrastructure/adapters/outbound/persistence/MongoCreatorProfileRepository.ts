@@ -63,10 +63,10 @@ export class MongoCreatorProfileRepository
     const owner = await UserModel.findOneAndUpdate({ _id: userId, deletedAt: null,
       ...(context.authVersion ? { authVersion: context.authVersion } : { $or: [{ authVersion: '' }, { authVersion: null }] }),
     }, { $inc: { profileWriteVersion: 1 } }, { new: true });
-    if (!owner) throw new AppError('Your session ended. Sign in again before saving.', 401);
+    if (!owner) throw new AppError('Your session ended. Sign in again before saving.', 401, undefined, 'account_session');
     if (context.publicChange) {
-      if (await ContentRestrictionModel.exists({ userId })) throw new AppError('Publishing is restricted. Contact support@ujimora.com to appeal.', 403);
-      if (owner.role !== 'admin' && !hasCurrentLegalAcceptance(owner.legalAcceptance)) throw new AppError('Accept the current account agreement before publishing', 428);
+      if (await ContentRestrictionModel.exists({ userId })) throw new AppError('Publishing is restricted. Contact support@ujimora.com to appeal.', 403, undefined, 'publishing_restricted');
+      if (owner.role !== 'admin' && !hasCurrentLegalAcceptance(owner.legalAcceptance)) throw new AppError('Accept the current account agreement before publishing', 428, undefined, 'terms_required');
     }
     if (context.expectedRevision === null) {
       const doc = await CreatorProfileModel.create({ userId, ...fields, revision: 0 });
@@ -78,7 +78,7 @@ export class MongoCreatorProfileRepository
       { $set: { ...fields, handle: fields.handle.toLowerCase() }, $inc: { revision: 1 } },
       { new: true }
     );
-    if (!doc) throw new AppError('Your creator page changed during review. Reload and retry.', 409);
+    if (!doc) throw new AppError('Your creator page changed during review. Reload and retry.', 409, undefined, 'stale_version');
     return toDomain(doc);
   }
 }
