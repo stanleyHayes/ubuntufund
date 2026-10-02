@@ -6,7 +6,7 @@ import {
 } from '@ubuntu-fund/types';
 import { UserModel } from '../../../database/models/UserModel.js';
 import { ContentRestrictionModel } from '../../../database/models/ContentRestrictionModel.js';
-import type { CampaignAdmission, CampaignAdmissionEvidence, CampaignChangeContext, PublicationAdmissionPort, PublicationConsumption, PublicationSubmission, PublicationTextScreener } from '../../../../domain/ports/outbound/PublicationAdmissionPort.js';
+import type { CampaignAdmission, CampaignAdmissionEvidence, CampaignChangeContext, PublicationAdmissionPort, PublicationConsumption, PublicationItem, PublicationSubmission, PublicationTextScreener } from '../../../../domain/ports/outbound/PublicationAdmissionPort.js';
 import { PublicationReviewModel } from '../../../database/models/PublicationReviewModel.js';
 import { AuditLogModel } from '../../../database/models/AuditLogModel.js';
 import { publicationFingerprint } from '../../../../domain/services/publicationFingerprint.js';
@@ -65,18 +65,30 @@ type ReviewReason = 'staff_requested' | 'media' | 'screening' | 'flagged' | 'una
 const isUnexpired = (review: ReviewState, now: Date) => !!review.approvalExpiresAt && review.approvalExpiresAt > now;
 
 /**
+ * The one publish-on-approval action whose base a later version can return
+ * to: a campaign's web address, proposed against the address it replaces
+ * (A→X, then X→A, then A→X again). Every other edit is proposed against a
+ * revision or a timestamp that its own publication moves on (account,
+ * organization and creator profiles; an update's `updatedAt`), and a
+ * create-type version has no base: once published, the same version again
+ * can only be that publication repeated (an older app saving it again, its
+ * read of the item racing the approval), never a new change.
+ */
+const reopensOncePublished = (action: string) => action === 'campaign.slug';
+
+/**
  * A closed version that submitting it again opens for a fresh decision:
  * closed before a decision (superseded, withdrawn), an approval that was
- * superseded, withdrawn or expired without publishing, and, for the actions
- * that change an existing item, a version already published once (an
- * A→X→A→X round trip). A published create-type version is never reopened:
- * the same version would be posted twice.
+ * superseded, withdrawn or expired without publishing, and a web address
+ * already published once (an A→X→A→X round trip). Any other published
+ * version is never reopened: it would be posted twice, or reviewed again
+ * only to end as superseded, losing its published state.
  */
 function isReopenable(review: ReviewState, now: Date): boolean {
   if (review.status === 'superseded' || review.status === 'withdrawn') return true;
   if (review.status !== 'approved') return false;
   if (review.publishState === 'superseded' || review.publishState === 'withdrawn') return true;
-  if (review.publishState === 'published') return isAutoPublishAction(review.action) && !isCreateAction(review.action);
+  if (review.publishState === 'published') return reopensOncePublished(review.action);
   return !isUnexpired(review, now);
 }
 
@@ -88,7 +100,7 @@ function reopenFilter(fingerprint: string, action: string, now: Date) {
       { status: { $in: ['superseded', 'withdrawn'] } },
       { status: 'approved', publishState: { $in: ['superseded', 'withdrawn'] } },
       { status: 'approved', publishState: { $ne: 'published' }, $or: [{ approvalExpiresAt: { $lte: now } }, { approvalExpiresAt: null }] },
-      ...(isAutoPublishAction(action) && !isCreateAction(action) ? [{ status: 'approved', publishState: 'published' }] : []),
+      ...(reopensOncePublished(action) ? [{ status: 'approved', publishState: 'published' }] : []),
     ],
   };
 }
@@ -110,12 +122,15 @@ interface EarlierVersion { _id: Types.ObjectId; actorId: string; action: string;
  * Closes a version still waiting for a decision, or stops an approved one not
  * yet published; false when it changed meanwhile. A publishing attempt in
  * progress loses its lease, so its own publish step can no longer match.
+ * `newerId`: the version that replaced it, or null when the author saved the
+ * item exactly as it already is (supersedeOpenVersions).
  */
-async function closeAsSuperseded(version: EarlierVersion, newerId: string, now: Date): Promise<boolean> {
+async function closeAsSuperseded(version: EarlierVersion, newerId: string | null, now: Date): Promise<boolean> {
+  const replacedBy = newerId ? { supersededBy: newerId } : {};
   const changed = version.status === 'pending'
-    ? await PublicationReviewModel.updateOne({ _id: version._id, status: 'pending' }, { $set: { status: 'superseded', supersededBy: newerId, closedAt: now } })
+    ? await PublicationReviewModel.updateOne({ _id: version._id, status: 'pending' }, { $set: { status: 'superseded', ...replacedBy, closedAt: now } })
     : await PublicationReviewModel.updateOne({ _id: version._id, status: 'approved', publishState: { $in: OPEN_STATES } }, {
-      $set: { publishState: 'superseded', publishReason: 'newer_version_submitted', publishStateAt: now, supersededBy: newerId },
+      $set: { publishState: 'superseded', publishReason: 'newer_version_submitted', publishStateAt: now, ...replacedBy },
       $unset: { publishNextAt: 1, publishLeaseUntil: 1, publishLeaseToken: 1 },
     });
   return changed.modifiedCount > 0;
@@ -124,30 +139,38 @@ async function closeAsSuperseded(version: EarlierVersion, newerId: string, now: 
 /**
  * An approval superseded, or another author's version superseded, is
  * audited; another author is told in the app. Neither carries the content.
+ * `newerId` as for closeAsSuperseded.
  */
-async function reportSupersession(input: PublicationSubmission, version: EarlierVersion, newerId: string, actorRole: string | undefined, now: Date): Promise<void> {
+async function reportSupersession(input: PublicationItem, version: EarlierVersion, newerId: string | null, actorRole: string | undefined, now: Date): Promise<void> {
   const id = String(version._id);
   const beforeDecision = version.status === 'pending';
   const otherAuthor = version.actorId !== input.actorId;
   if (otherAuthor || !beforeDecision) {
     const route = routeOf(input.action);
+    const replacement = newerId ? 'A newer version of the same item' : 'Saving the same item exactly as it already is';
     await AuditLogModel.create({
       actorId: input.actorId, ...(actorRole ? { actorRole } : {}), action: 'publication.superseded', resource: id,
-      details: beforeDecision ? 'A newer version of the same item replaced this one before a decision' : 'A newer version of the same item replaced this approved version before it was published',
+      details: beforeDecision ? `${replacement} replaced this one before a decision` : `${replacement} replaced this approved version before it was published`,
       changes: [
         beforeDecision ? { field: 'status', before: 'pending', after: 'superseded' } : { field: 'publishState', before: version.publishState ?? null, after: 'superseded' },
-        { field: 'supersededBy', before: null, after: newerId },
+        ...(newerId ? [{ field: 'supersededBy', before: null, after: newerId }] : []),
       ],
-      // 202: the newer version was accepted for review.
-      severity: 'info', method: route.method, path: route.path, statusCode: 202,
+      // 202: the newer version was accepted for review; 200: the item was saved as it is.
+      severity: 'info', method: route.method, path: route.path, statusCode: newerId ? 202 : 200,
     });
   }
   if (otherAuthor) {
     const copy = publicationOutcomeCopy({ action: version.action, state: 'superseded', reason: 'newer_version_submitted' });
     // `now` is fixed outside the transaction: a retried callback writes the same notice once.
-    await recordStaffDecisionNotice({ key: `publication-review:${id}:${newerId}:${now.getTime()}:superseded`, userId: version.actorId, title: copy.title, body: copy.body, path: REVIEWS_PATH });
+    await recordStaffDecisionNotice({ key: `publication-review:${id}:${newerId ?? 'unchanged'}:${now.getTime()}:superseded`, userId: version.actorId, title: copy.title, body: copy.body, path: REVIEWS_PATH });
   }
 }
+
+/** Every version of an item that is still open: waiting for a decision, or approved and not yet published. */
+const openVersionsOf = (item: PublicationItem, except?: string) => PublicationReviewModel.find({
+  action: item.action, resourceId: item.resourceId, ...(except ? { _id: { $ne: except } } : {}),
+  $or: [{ status: 'pending' }, { status: 'approved', publishState: { $in: OPEN_STATES } }],
+}).select('_id actorId action status publishState').lean<EarlierVersion[]>();
 
 /** The review a version starts with: media always needs a person; consented text is screened. */
 const reviewReasonOf = (input: PublicationSubmission): ReviewReason => {
@@ -221,7 +244,7 @@ export class MongoPublicationAdmission implements PublicationAdmissionPort {
    * Queue insertion (and re-queueing) must serialize with closure, including
    * teammate-owned organization drafts. Returns the author's current role.
    */
-  private async lockSubjects(input: PublicationSubmission): Promise<{ actorRole?: string }> {
+  private async lockSubjects(input: PublicationItem): Promise<{ actorRole?: string }> {
     const subjects = [...new Set([input.actorId, ...(input.action === 'organization.profile' ? [input.resourceId] : [])])].sort();
     let actorRole: string | undefined;
     for (const subjectId of subjects) {
@@ -314,14 +337,38 @@ export class MongoPublicationAdmission implements PublicationAdmissionPort {
    */
   private async supersedeEarlierVersions(input: PublicationSubmission, newerId: string, actorRole: string | undefined, now: Date): Promise<void> {
     if (!isSingleItemAction(input.action)) return;
-    const earlier = await PublicationReviewModel.find({
-      action: input.action, resourceId: input.resourceId, _id: { $ne: newerId },
-      $or: [{ status: 'pending' }, { status: 'approved', publishState: { $in: OPEN_STATES } }],
-    }).select('_id actorId action status publishState').lean();
+    const earlier = await openVersionsOf(input, newerId);
     // Sequential: each write belongs to the one transaction.
     for (const version of earlier) {
       if (await closeAsSuperseded(version, newerId, now)) await reportSupersession(input, version, newerId, actorRole, now);
     }
+  }
+
+  /**
+   * The author saved a single item exactly as it is: nothing to review or
+   * write, but the newest version of the item all the same, so no version
+   * submitted before it may still be published by its approval (an author
+   * who reverted a held change, or took back a held photo, by saving what is
+   * live). Runs in its own transaction, which `isUnchanged` reads in: an item
+   * changed since the caller's read (an approval publishing a held version
+   * meanwhile, say) is never answered as saved. Without open versions it
+   * writes nothing at all.
+   */
+  async supersedeOpenVersions(item: PublicationItem, isUnchanged: () => Promise<boolean>): Promise<boolean> {
+    return this.uow.run(async () => {
+      if (!(await isUnchanged())) return false;
+      if (!isSingleItemAction(item.action)) return true;
+      const open = await openVersionsOf(item);
+      if (!open.length) return true;
+      // As an insertion does: serialized with closure (and the organization's, for its details).
+      const { actorRole } = await this.lockSubjects(item);
+      // Inside the transaction: a retried callback commits only its own run's notices.
+      const now = new Date();
+      for (const version of open) {
+        if (await closeAsSuperseded(version, null, now)) await reportSupersession(item, version, null, actorRole, now);
+      }
+      return true;
+    });
   }
 
   /** Saves a version submitted for the first time; false when a concurrent request saved it first. */
@@ -419,8 +466,9 @@ export class MongoPublicationAdmission implements PublicationAdmissionPort {
     if (!review) throw new AppError('The safety review could not be saved. Please try again.', 503);
     if (review.status === 'approved') {
       const auto = isAutoPublishAction(review.action);
-      // Approvals of these actions are single-use: the identical post again is the same post.
-      if (auto && review.publishState === 'published' && isCreateAction(review.action)) throw new PublicationAlreadyPublished(review.publishedResourceId ?? undefined);
+      // Approvals of these actions are single-use: the identical post again is the same post, and
+      // a published edit sent again is that publication repeated (a web address that came back was reopened above).
+      if (auto && review.publishState === 'published') throw new PublicationAlreadyPublished(review.publishedResourceId ?? undefined);
       // Approved and not published, superseded or withdrawn: the author's own request publishes it.
       if (isUnexpired(review, new Date()) && !(auto && CLOSED_STATES.has(review.publishState))) {
         // Screening may take seconds; authorization state must still be current afterwards.

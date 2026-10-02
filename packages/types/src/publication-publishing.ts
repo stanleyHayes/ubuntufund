@@ -81,6 +81,7 @@ export const PUBLICATION_NOT_PUBLISHED_REASONS = [
   'account_unavailable',
   'credentials_changed',
   'restricted',
+  'organizer_restricted',
   'terms_not_accepted',
   'organization_terms_not_accepted',
   'permission_changed',
@@ -141,7 +142,14 @@ const REASONS: Readonly<Record<PublicationOutcomeReason, PublicationReasonCopy>>
   },
   restricted: {
     author: `Publishing is restricted on this account. Contact ${SUPPORT} to appeal.`,
-    staff: 'publishing is restricted for the author or their organization',
+    staff: 'publishing is restricted for the author',
+    resubmit: 'none',
+  },
+  // The author's own account is fine: the organization they publish for, or
+  // the campaign's organizer (for a teammate or a beneficiary), is restricted.
+  organizer_restricted: {
+    author: `Publishing is restricted for the organization or campaign organizer you publish for. They can contact ${SUPPORT} to appeal.`,
+    staff: 'publishing is restricted for the organization or campaign organizer the author publishes for',
     resubmit: 'none',
   },
   terms_not_accepted: {

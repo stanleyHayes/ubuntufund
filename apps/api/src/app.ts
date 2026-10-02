@@ -159,6 +159,7 @@ import { GetCampaignUseCase } from './application/use-cases/GetCampaignUseCase.j
 import { ExpireEndedCampaignsUseCase } from './application/use-cases/ExpireEndedCampaignsUseCase.js'
 import { GetCampaignBySlugUseCase } from './application/use-cases/GetCampaignBySlugUseCase.js'
 import { SetCampaignSlugUseCase } from './application/use-cases/SetCampaignSlugUseCase.js'
+import { MongoCampaignSlugWrite } from './infrastructure/adapters/outbound/persistence/MongoCampaignSlugWrite.js'
 import { DonateToCampaignUseCase } from './application/use-cases/DonateToCampaignUseCase.js'
 import { PostDonationJournalUseCase } from './application/use-cases/PostDonationJournalUseCase.js'
 import { SettleDonationUseCase } from './application/use-cases/SettleDonationUseCase.js'
@@ -769,7 +770,7 @@ export function createApp(options: {
     config.publicWebUrl,
     donationRepo,
   )
-  const setCampaignSlugUseCase = new SetCampaignSlugUseCase(campaignRepo, publicationAdmission, userRepo)
+  const setCampaignSlugUseCase = new SetCampaignSlugUseCase(campaignRepo, publicationAdmission, new MongoCampaignSlugWrite(campaignRepo))
 
   // Donation-intent rail: guest-capable checkout backed by the immutable
   // ledger. settleDonation() is the seam Phase 4 (Paystack) also calls.

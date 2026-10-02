@@ -54,13 +54,16 @@ export class PublicationAlreadyPublished extends AppError {
  * publishing on approval can tell an expected refusal from a failure:
  * `account_session` (401: account closed or credentials changed),
  * `terms_required` and `organization_terms_required` (428),
- * `publishing_restricted` and `permission_changed` (403),
+ * `publishing_restricted` (403: the author's own account),
+ * `organizer_restricted` (403: the organization or campaign organizer a
+ * teammate or beneficiary publishes for, never the author's own account),
+ * `permission_changed` (403),
  * `campaign_unavailable` (409: the campaign closed or changed hands) and
  * `stale_version` (409: the item changed since the version was proposed).
  */
 export const PUBLICATION_FENCE_CODES = [
   'account_session', 'terms_required', 'organization_terms_required',
-  'publishing_restricted', 'permission_changed', 'campaign_unavailable', 'stale_version',
+  'publishing_restricted', 'organizer_restricted', 'permission_changed', 'campaign_unavailable', 'stale_version',
 ] as const;
 export type PublicationFenceCode = (typeof PUBLICATION_FENCE_CODES)[number];
 
@@ -78,6 +81,7 @@ export function publicationFenceOutcome(code: PublicationFenceCode): { state: 'n
     case 'terms_required': return { state: 'not_published', reason: 'terms_not_accepted' };
     case 'organization_terms_required': return { state: 'not_published', reason: 'organization_terms_not_accepted' };
     case 'publishing_restricted': return { state: 'not_published', reason: 'restricted' };
+    case 'organizer_restricted': return { state: 'not_published', reason: 'organizer_restricted' };
     case 'permission_changed': return { state: 'not_published', reason: 'permission_changed' };
     case 'campaign_unavailable': return { state: 'not_published', reason: 'campaign_unavailable' };
     case 'stale_version': return { state: 'superseded', reason: 'edited_since_submitted' };

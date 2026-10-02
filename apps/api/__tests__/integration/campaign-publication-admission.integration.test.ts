@@ -989,6 +989,9 @@ it('reviews URL replacements and preserves concurrent donations and moderation s
   const review = await PublicationReviewModel.findOne({ actorId: owner.id, action: 'campaign.slug', status: 'pending' });
   await decide(review!.id, admin, 'approved');
   await request(app).patch(path).set('Authorization', owner.auth).send({ slug: 'private-proposed-url' }).expect(200);
+  // Approvals are single-use: consumed in the transaction that changed the address, which is audited.
+  expect(await PublicationReviewModel.findById(review!.id).lean()).toMatchObject({ status: 'approved', publishState: 'published', publishedVia: 'author', publishedResourceId: id });
+  expect(await AuditLogModel.countDocuments({ action: 'campaign.slug_changed', resource: id })).toBe(1);
   screen.mockImplementationOnce(async () => { await CampaignModel.updateOne({ _id: id }, { $set: { raisedAmount: 175.25, status: 'blocked' } }); return 'allowed'; });
   await request(app).patch(path).set('Authorization', owner.auth).send({ slug: 'reviewed-new-url', automatedReviewConsent: true }).expect(200);
   const stored = await CampaignModel.findById(id);
@@ -996,9 +999,12 @@ it('reviews URL replacements and preserves concurrent donations and moderation s
   screen.mockImplementationOnce(async () => { await CampaignModel.updateOne({ _id: id }, { $set: { slug: 'concurrent-url' } }); return 'allowed'; });
   await request(app).patch(path).set('Authorization', owner.auth).send({ slug: 'stale-new-url', automatedReviewConsent: true }).expect(409);
   expect((await CampaignModel.findById(id))?.slug).toBe('concurrent-url');
+  // The refused change consumed nothing: its approval rolled back with it.
+  expect(await PublicationReviewModel.findOne({ action: 'campaign.slug', resourceId: id, text: 'stale-new-url' }).lean()).not.toHaveProperty('publishState');
   screen.mockImplementationOnce(async () => { await UserModel.findByIdAndUpdate(admin.id, { role: 'user' }); return 'allowed'; });
   await request(app).patch(path).set('Authorization', admin.auth).send({ slug: 'revoked-staff-url', automatedReviewConsent: true }).expect(403);
   expect((await CampaignModel.findById(id))?.slug).toBe('concurrent-url');
+  expect(await AuditLogModel.countDocuments({ action: 'campaign.slug_changed', resource: id })).toBe(2);
   await request(app).get(`/api/v1/campaigns/${id}`).expect(404);
 });
 

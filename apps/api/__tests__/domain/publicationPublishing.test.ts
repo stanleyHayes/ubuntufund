@@ -104,5 +104,21 @@ describe('publication errors', () => {
     for (const code of PUBLICATION_FENCE_CODES) expect(PUBLICATION_OUTCOME_REASONS).toContain(publicationFenceOutcome(code).reason);
     expect(publicationFenceOutcome('stale_version')).toEqual({ state: 'superseded', reason: 'edited_since_submitted' });
     expect(publicationFenceOutcome('terms_required')).toEqual({ state: 'not_published', reason: 'terms_not_accepted' });
+    // A restriction on the author's own account, and one on the organization or organizer they publish for.
+    expect(publicationFenceOutcome('publishing_restricted')).toEqual({ state: 'not_published', reason: 'restricted' });
+    expect(publicationFenceOutcome('organizer_restricted')).toEqual({ state: 'not_published', reason: 'organizer_restricted' });
+  });
+
+  it("tells an author whether the restriction is on their own account or on the organization or organizer they publish for", () => {
+    expect(publicationOutcomeCopy({ action: 'update.create', state: 'not_published', reason: 'restricted' })).toMatchObject({
+      body: 'Publishing is restricted on this account. Contact support@ujimora.com to appeal.',
+      staff: 'Not published: publishing is restricted for the author',
+      resubmit: 'none',
+    });
+    expect(publicationOutcomeCopy({ action: 'update.create', state: 'not_published', reason: 'organizer_restricted' })).toMatchObject({
+      body: 'Publishing is restricted for the organization or campaign organizer you publish for. They can contact support@ujimora.com to appeal.',
+      staff: 'Not published: publishing is restricted for the organization or campaign organizer the author publishes for',
+      resubmit: 'none',
+    });
   });
 });

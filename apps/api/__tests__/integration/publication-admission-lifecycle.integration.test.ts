@@ -178,19 +178,27 @@ it('consumes an approval once: the same post again is the same post, even concur
   await comment(owner, campaign.id, content).expect(409);
   await decide(staff, String((await reviewOf({ fingerprint }))!._id)).expect(200);
   const responses = await Promise.all([comment(owner, campaign.id, content), comment(owner, campaign.id, content)]);
-  expect(responses.map(response => response.status).sort()).toEqual([201, 409]);
-  expect(responses.find(response => response.status === 409)!.body).toMatchObject({ message: 'This version is already published.', errors: { publication: ['published'] } });
+  // The request that lost is answered with the comment the other posted: the same post (CampaignCommentUseCases).
+  expect(responses.map(response => response.status)).toEqual([201, 201]);
+  const commentId = responses[0].body.data.id as string;
+  expect(responses[1].body.data.id).toBe(commentId);
   expect(await CampaignCommentModel.countDocuments({ campaignId: campaign.id })).toBe(1);
   const published = await reviewOf({ fingerprint });
-  expect(published).toMatchObject({ status: 'approved', publishState: 'published', publishedVia: 'author', consumptionWriteVersion: 1 });
+  expect(published).toMatchObject({ status: 'approved', publishState: 'published', publishedVia: 'author', publishedResourceId: commentId, consumptionWriteVersion: 1 });
   expect(published!.publishStateAt).toBeInstanceOf(Date);
   // One publication, one audit: the losing request rolled its own back.
   expect(await AuditLogModel.find({ action: 'publication.published', resource: String(published!._id) }).lean()).toEqual([
-    expect.objectContaining({ actorId: owner.id, changes: [expect.objectContaining({ before: null, after: 'published' }), expect.objectContaining({ field: 'publishedVia' })] }),
+    expect.objectContaining({ actorId: owner.id, changes: [
+      expect.objectContaining({ before: null, after: 'published' }), expect.objectContaining({ field: 'publishedVia' }),
+      expect.objectContaining({ field: 'publishedResourceId', before: null, after: commentId }),
+    ] }),
   ]);
   // Never published twice while its record exists, even once the approval window has ended.
   await PublicationReviewModel.updateOne({ fingerprint }, { $set: { approvalExpiresAt: new Date(Date.now() - 1000) } });
-  expect((await comment(owner, campaign.id, content).expect(409)).body.errors).toEqual({ publication: ['published'] });
+  await expect(admission.assertAllowed({ ...commentVersion(owner, campaign.id, content), authVersion: '' })).rejects.toMatchObject({
+    statusCode: 409, message: 'This version is already published.', errors: { publication: ['published'] }, resourceId: commentId,
+  });
+  expect((await comment(owner, campaign.id, content).expect(201)).body.data.id).toBe(commentId);
   expect(await CampaignCommentModel.countDocuments({ campaignId: campaign.id })).toBe(1);
   expect(await reviewOf({ fingerprint })).toMatchObject({ status: 'approved', publishState: 'published' });
   expect(screen).not.toHaveBeenCalled();
@@ -244,9 +252,10 @@ it('lets the author publish an approved version that is still queued or could no
       publishState: state, publishStateAt: new Date(), publishAttempts: 1,
       ...(state === 'not_published' ? { publishReason: 'credentials_changed' } : { publishNextAt: new Date(Date.now() + 60000), publishLeaseUntil: new Date(Date.now() + 120000), publishLeaseToken: 'lease-fixture' }),
     }) });
-    expect((await comment(owner, campaign.id, content).expect(201)).body.data.content).toBe(content);
+    const posted = await comment(owner, campaign.id, content).expect(201);
+    expect(posted.body.data.content).toBe(content);
     const row = await reviewOf({ fingerprint });
-    expect(row, state).toMatchObject({ status: 'approved', publishState: 'published', publishedVia: 'author' });
+    expect(row, state).toMatchObject({ status: 'approved', publishState: 'published', publishedVia: 'author', publishedResourceId: posted.body.data.id });
     // A publishing attempt still holding its lease can no longer publish it.
     for (const field of ['publishReason', ...LEASE_FIELDS]) expect(row, `${state}: ${field}`).not.toHaveProperty(field);
     // Audited in the transaction that published it, as the author's: ids only, never the content.
@@ -256,6 +265,7 @@ it('lets the author publish an approved version that is still queued or could no
       changes: [
         expect.objectContaining({ field: 'publishState', before: state, after: 'published' }),
         expect.objectContaining({ field: 'publishedVia', before: null, after: 'author' }),
+        expect.objectContaining({ field: 'publishedResourceId', before: null, after: posted.body.data.id }),
       ],
     })]);
     expect(JSON.stringify(audits), state).not.toContain(content);
@@ -302,6 +312,31 @@ it('opens a closed version again for a fresh decision, keeping a flag screening 
   await expect(admission.assertAllowed(flaggedVersion)).rejects.toMatchObject({ statusCode: 409 });
   expect(screen).not.toHaveBeenCalled();
   expect(await reviewOf({ fingerprint: flaggedPrint })).toMatchObject({ status: 'pending', reason: 'flagged' });
+});
+
+it('never reopens a published edit whose base cannot come back: the same version again is already published', async () => {
+  const owner = await account(), organization = await account({ organization: true });
+  // Proposed against a revision or a timestamp that their own publication moved on, unlike a web address (above).
+  const items: Array<[PublicationSubmission['action'], string]> = [
+    ['account.profile', owner.id], ['creator.profile', owner.id], ['organization.profile', organization.id], ['update.edit', '64b0000000000000000000f1'],
+  ];
+  for (const [action, resourceId] of items) {
+    const version: PublicationSubmission = { actorId: owner.id, action, resourceId, baseVersion: `base-${action}`, text: `published ${action}`, mediaUrls: [], authVersion: '' };
+    const fingerprint = publicationFingerprint(version);
+    await expect(admission.assertAllowed(version), action).rejects.toMatchObject({ statusCode: 409, errors: { publication: ['held', 'publishes_on_approval'] } });
+    // As its approval leaves it once published.
+    const published = approval({ publishState: 'published', publishedVia: 'approval', publishedResourceId: resourceId, publishStateAt: new Date(), publishAttempts: 1 });
+    await PublicationReviewModel.updateOne({ fingerprint }, { $set: published });
+    // An older app saving it again, its read of the item racing that approval: the same publication, never a new review.
+    const again = admission.assertAllowed(version);
+    await expect(again, action).rejects.toBeInstanceOf(PublicationAlreadyPublished);
+    await expect(again, action).rejects.toMatchObject({ statusCode: 409, errors: { publication: ['published'] }, resourceId });
+    // Even once the approval window has ended.
+    await PublicationReviewModel.updateOne({ fingerprint }, { $set: { approvalExpiresAt: new Date(Date.now() - 1000) } });
+    await expect(admission.assertAllowed(version), action).rejects.toBeInstanceOf(PublicationAlreadyPublished);
+    expect(await reviewOf({ fingerprint }), action).toMatchObject({ status: 'approved', publishState: 'published', publishedVia: 'approval', reviewedBy: published.reviewedBy, publishAttempts: 1 });
+    expect(await PublicationReviewModel.countDocuments({ action, resourceId }), action).toBe(1);
+  }
 });
 
 it('supersedes the earlier unpublished versions of the same item, telling and auditing another author', async () => {

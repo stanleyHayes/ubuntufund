@@ -36,10 +36,12 @@ it('holds the full public identity but excludes private phone and biography from
   screen.mockReset(); screen.mockResolvedValue('allowed');
   const owner = await account();
   await save(owner, { phone: '0550000001', bio: 'Private personal biography' }).expect(200);
-  await save(owner, { name: 'Proposed account name', phone: '0550000002', bio: 'Revised private biography' }).expect(409);
+  const held = await save(owner, { name: 'Proposed account name', phone: '0550000002', bio: 'Revised private biography' }).expect(409);
   expect(screen).not.toHaveBeenCalled();
   expect((await UserModel.findById(owner.id))?.name).toBe('Original account name');
-  expect((await ProfileModel.findOne({ userId: owner.id }))?.phone).toBe('0550000001');
+  // The private settings sent with a held identity are saved at once; only the identity waits.
+  expect(held.body.errors).toMatchObject({ publication: ['held'], saved: ['private'] });
+  expect((await ProfileModel.findOne({ userId: owner.id }))?.phone).toBe('0550000002');
   const review = await approve(owner);
   expect(JSON.parse(review.text)).toEqual({ name: 'Proposed account name', country: '', avatarUrl: '', coverUrl: '', publicProfile: true });
   expect(review.text).not.toContain('055'); expect(review.text).not.toContain('biography');

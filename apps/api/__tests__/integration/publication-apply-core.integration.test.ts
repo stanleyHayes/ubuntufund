@@ -19,6 +19,7 @@ import { MongoCampaignCreation } from '../../src/infrastructure/adapters/outboun
 import { MongoAccountErasure } from '../../src/infrastructure/adapters/outbound/persistence/MongoAccountErasure.js';
 import { AppError } from '../../src/infrastructure/adapters/inbound/middleware/errorHandler.js';
 import { PublicationApplyRefusal } from '../../src/infrastructure/adapters/inbound/middleware/publicationErrors.js';
+import { notBuiltYet } from '../../src/infrastructure/adapters/outbound/persistence/publication-apply/notBuiltYet.js';
 import { PublicationReviewModel } from '../../src/infrastructure/database/models/PublicationReviewModel.js';
 import { UserModel } from '../../src/infrastructure/database/models/UserModel.js';
 import { CampaignModel } from '../../src/infrastructure/database/models/CampaignModel.js';
@@ -111,8 +112,8 @@ beforeAll(async () => {
   const options = { publicationAdmission: admission, publishOnApproval: switchedOn };
   app = await createTestApp({ ...options, publicationApplyHandlers: registry });
   quickApp = await createTestApp({ ...options, publicationApplyHandlers: registry, publicationDecisionWaitMs: 150 });
-  // The handlers app.ts builds today (stage 1).
-  stubApp = await createTestApp(options);
+  // Handlers of actions not built yet (stage 1 shipped them for every action; the real ones replace them per action).
+  stubApp = await createTestApp({ ...options, publicationApplyHandlers: new Map(AUTO_PUBLISH_ACTIONS.map(action => [action, notBuiltYet(action)])) });
   staff = await account('Core staff', true);
   otherStaff = await account('Second staff', true);
 });
