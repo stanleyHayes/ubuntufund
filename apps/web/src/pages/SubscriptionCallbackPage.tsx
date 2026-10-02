@@ -9,7 +9,7 @@ import Button from '@mui/material/Button'
 import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded'
 import { keyframes } from '@emotion/react'
 import { ItemNotFound, BrandLogo, formatCurrency, SHAPE } from '@ubuntu-fund/ui'
-import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from '@ubuntu-fund/types'
+import { usePlanMap } from '@/hooks/useSubscription'
 import {
   getSubscriptionCheckoutStatus,
   readSubscriptionCheckout,
@@ -119,6 +119,11 @@ export function SubscriptionCallbackPage() {
   const [view, setView] = useState<SubscriptionCheckout | null>(null)
   const [pollNonce, setPollNonce] = useState(0)
   const [rateLimited, setRateLimited] = useState(false)
+  const tier = view?.tier ?? handoff?.tier
+  // Plan names come from the live plans, as on the plans page, never the code
+  // seed. This route is open to signed-out visitors and GET /plans needs a
+  // session, so nothing is fetched until there is a plan to name.
+  const { plans } = usePlanMap({ enabled: Boolean(tier) })
 
   // Re-enable "Keep checking" once the rate-limit cooldown has passed.
   useEffect(() => {
@@ -192,10 +197,7 @@ export function SubscriptionCallbackPage() {
     // pollNonce lets "Keep checking" restart the loop after a timeout.
   }, [checkoutId, reference, pollNonce])
 
-  const tier = view?.tier ?? handoff?.tier
-  const planName = tier
-    ? (SUBSCRIPTION_PLANS as Record<string, SubscriptionPlan>)[tier]?.name
-    : undefined
+  const planName = tier ? plans[tier]?.name : undefined
   const chargedAmount = view?.finalAmount ?? handoff?.finalAmount
   const currency = view?.currency ?? handoff?.currency ?? 'GHS'
   const retryPath = `${subscriptionPath()}?${new URLSearchParams({ ...(tier ? { tier } : {}), billingCycle: view?.billingCycle ?? handoff?.billingCycle ?? 'monthly' })}`

@@ -6,7 +6,7 @@ process.env.PAYSTACK_SECRET_KEY = PAYSTACK_SECRET
 process.env.PAYSTACK_PUBLIC_KEY = 'pk_test_payout_idempotency_public'
 process.env.PUBLIC_WEB_URL = 'https://give.example.test'
 
-import { describe, it, beforeAll, afterAll, beforeEach, expect, vi } from 'vitest'
+import { describe, it, beforeAll, afterAll, expect, vi } from 'vitest'
 import request from 'supertest'
 import type { Express } from 'express'
 import { createTestApp } from '../helpers/testApp.js'
@@ -175,7 +175,7 @@ describe('Payout settlement idempotency + repair (G5)', () => {
     const campaignId = camp.body.data.id as string
     await CampaignModel.findByIdAndUpdate(campaignId, { status: 'active' })
 
-    // Fund (net 965), add recipient, request + approve a payout (→ PROCESSING, available reserved to 0).
+    // Fund (net 950 after Free's 5%), add recipient, request + approve a payout (→ PROCESSING, available reserved to 0).
     const checkout = await request(app)
       .post('/api/v1/donation-intents')
       .send({
@@ -219,7 +219,7 @@ describe('Payout settlement idempotency + repair (G5)', () => {
     const reqRes = await request(app)
       .post(`/api/v1/campaigns/${campaignId}/payouts`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ amount: 965 })
+      .send({ amount: 950 })
       .expect(201)
     const payoutId = reqRes.body.data.id as string
     await request(app)
@@ -255,7 +255,7 @@ describe('Payout settlement idempotency + repair (G5)', () => {
     expect(rec.body.data.repaired).toBeGreaterThanOrEqual(1)
 
     bal = await CampaignBalanceModel.findOne({ campaignId })
-    expect(bal?.paidOutBalance).toBe(965) // repaired
+    expect(bal?.paidOutBalance).toBe(950) // repaired
     const payout = await PayoutModel.findById(payoutId)
     expect(payout?.settlementApplied).toBe(true)
 
@@ -266,6 +266,6 @@ describe('Payout settlement idempotency + repair (G5)', () => {
       .send({ olderThanMinutes: 1 })
       .expect(200)
     bal = await CampaignBalanceModel.findOne({ campaignId })
-    expect(bal?.paidOutBalance).toBe(965) // not double-applied
+    expect(bal?.paidOutBalance).toBe(950) // not double-applied
   })
 })

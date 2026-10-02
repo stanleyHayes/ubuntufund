@@ -613,7 +613,7 @@ Legal identity, consent records, data protection, financial authorization, store
 
 *Surfaces:* android, api, web  ·  *Type:* compliance
 
-**Before:** Staging with Paystack test keys. A GHS campaign owned by a Community-plan organizer (3.5% platform fee).
+**Before:** Staging with Paystack test keys. A GHS campaign owned by a Free-plan organizer (5% platform fee).
 
 **Steps:**
 

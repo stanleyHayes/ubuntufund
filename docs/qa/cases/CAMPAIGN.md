@@ -49,14 +49,14 @@ Creation, review and publication, visibility states, updates and comments, shari
 
 *Surfaces:* android, api, ios, web  ·  *Type:* negative/edge
 
-**Before:** Verified individuals on each plan: Community (10,000), Plus (50,000), Pro (250,000), Organization (1,000,000), Enterprise (unlimited, admin-assigned).
+**Before:** Verified individuals on each plan: Free (10,000), Starter (50,000), Pro (250,000), Organization (1,000,000), Enterprise (unlimited, admin-assigned).
 
 **Steps:**
 
-1. Community: enter Goal amount 10000 in the wizard. Continue is enabled.
+1. Free: enter Goal amount 10000 in the wizard. Continue is enabled.
 2. Enter 10000.01 and observe the inline error 'Your current limit is GH₵10,000.00…'.
 3. Bypass the UI: POST /campaigns with goalAmount 10000.01.
-4. Repeat at the Plus 50,000/50,000.01 and Pro 250,000/250,000.01 boundaries, and for Organization at 1,000,000.
+4. Repeat at the Starter 50,000/50,000.01 and Pro 250,000/250,000.01 boundaries, and for Organization at 1,000,000.
 5. For Enterprise, POST 5,000,000.
 6. POST goalAmount 0, -5, 'abc' and 1e308.
 
@@ -93,7 +93,7 @@ Creation, review and publication, visibility states, updates and comments, shari
 
 *Surfaces:* android, api, ios, web  ·  *Type:* recovery/idempotency
 
-**Before:** U1-Plus with allowance 3 and 3 plan slots. Consent path configured so creation succeeds immediately. Devtools network throttling or a proxy.
+**Before:** U1-Starter with allowance 3 and 3 plan slots. Consent path configured so creation succeeds immediately. Devtools network throttling or a proxy.
 
 **Steps:**
 
@@ -417,17 +417,17 @@ Creation, review and publication, visibility states, updates and comments, shari
 
 *Surfaces:* admin, api, web  ·  *Type:* functional
 
-**Before:** U1-Pro (2.5% fee). Admin with PLANS permission. Paystack test keys.
+**Before:** U1-Pro (2% fee). Admin with PLANS permission. Paystack test keys.
 
 **Steps:**
 
-1. U1-Pro creates campaign C1. In admin detail, check the fee lock is 2.5.
+1. U1-Pro creates campaign C1. In admin detail, check the fee lock is 2.
 2. Admin → Plans changes Pro platformFeePercent to 3.0.
 3. Donate GHS 200 to C1 and inspect the fee breakdown in the receipt, ledger and admin donation.
 4. U1-Pro creates campaign C2 and donates GHS 200 to it.
-5. Downgrade U1 to Free (3.5%) and donate to C1 again.
+5. Downgrade U1 to Free (5%) and donate to C1 again.
 
-**Expect:** Every donation to C1 is charged at 2.5% (GHS 5.00 on 200) regardless of later plan changes or downgrade. C2 is charged 3.0% (GHS 6.00). Net-to-campaign amounts are exact to the pesewa.
+**Expect:** Every donation to C1 is charged at 2% (GHS 4.00 on 200) regardless of later plan changes or downgrade. C2 is charged 3.0% (GHS 6.00). Net-to-campaign amounts are exact to the pesewa.
 
 **Needs:** Paystack test keys
 
@@ -524,7 +524,7 @@ Creation, review and publication, visibility states, updates and comments, shari
 
 *Surfaces:* android, api, ios, web  ·  *Type:* functional
 
-**Before:** SPLIT_PROCEEDS_ENABLED=true in staging. U-Pro and U-Plus.
+**Before:** SPLIT_PROCEEDS_ENABLED=true in staging. U-Pro and U-Starter.
 
 **Steps:**
 
@@ -533,10 +533,10 @@ Creation, review and publication, visibility states, updates and comments, shari
 3. Set 33.333: client rejects it.
 4. Via API: 1 allocation; shares totalling 9999 bps; duplicate beneficiaryId; 51 rows; shareBps 0.
 5. Save a valid 3-way 33.33/33.33/33.34 draft. Confirm the alert 'Split saved as a draft. Beneficiary consent and activation are still required.'
-6. U-Plus tries to POST a split.
+6. U-Starter tries to POST a split.
 7. Mobile Manage campaign → SplitManager: create the same draft.
 
-**Expect:** The server gives 400 with specific messages ('A split needs at least two beneficiaries', 'Shares must total 100% (10000 bps); got 9999', 'Duplicate beneficiary…'). U-Plus gets 403. The detail page shows 'Split proceeds · draft' and every allocation 'Consent: pending'. Web and native behave the same.
+**Expect:** The server gives 400 with specific messages ('A split needs at least two beneficiaries', 'Shares must total 100% (10000 bps); got 9999', 'Duplicate beneficiary…'). U-Starter gets 403. The detail page shows 'Split proceeds · draft' and every allocation 'Consent: pending'. Web and native behave the same.
 
 **Needs:** None
 
@@ -813,7 +813,7 @@ Creation, review and publication, visibility states, updates and comments, shari
 
 *Surfaces:* android, ios, marketing, web  ·  *Type:* functional
 
-**Before:** Logged out in the browser and the apps. Test account U1 (identity KYC approved, Community/Free plan, no campaigns).
+**Before:** Logged out in the browser and the apps. Test account U1 (identity KYC approved, Free plan, no campaigns).
 
 **Steps:**
 
@@ -856,7 +856,7 @@ Creation, review and publication, visibility states, updates and comments, shari
 
 *Surfaces:* android, api, ios, web  ·  *Type:* functional
 
-**Before:** U1 on the Community (Free) plan with 1 active campaign and allowance left. Paystack test keys for a web subscription, or a store sandbox for native.
+**Before:** U1 on the Free plan with 1 active campaign and allowance left. Paystack test keys for a web subscription, or a store sandbox for native.
 
 **Steps:**
 
@@ -864,10 +864,10 @@ Creation, review and publication, visibility states, updates and comments, shari
 2. Confirm the alert with a 'Manage plan' button to /subscription, and that Continue is disabled.
 3. POST /api/v1/campaigns directly.
 4. Put one campaign in pending_review and one in funded state and confirm both still use a slot. Block one and confirm the slot is freed.
-5. Upgrade to Plus (web Paystack test, or App Store/Play sandbox IAP on native).
+5. Upgrade to Starter (web Paystack test, or App Store/Play sandbox IAP on native).
 6. Reload the wizard and create a second campaign.
 
-**Expect:** While at the limit: creationBlockReason 'plan_limit'; the API returns 403 'Your Community plan allows 1 active campaign. Upgrade to create more.'; mobile shows 'Your plan's active campaign allowance is full.' pending_review and funded campaigns count toward the slot; blocked ones do not. After the upgrade, creation succeeds up to 3 active campaigns.
+**Expect:** While at the limit: creationBlockReason 'plan_limit'; the API returns 403 'Your Free plan allows 1 active campaign. Upgrade to create more.'; mobile shows 'Your plan's active campaign allowance is full.' pending_review and funded campaigns count toward the slot; blocked ones do not. After the upgrade, creation succeeds up to 3 active campaigns.
 
 **Needs:** Paystack test keys (web subscription) or store sandbox (native IAP)
 
@@ -1050,7 +1050,7 @@ Creation, review and publication, visibility states, updates and comments, shari
 
 *Surfaces:* api, web  ·  *Type:* recovery/idempotency
 
-**Before:** U1-Plus has a staff-approved campaign.create proposal stored before 30 September 2026 (form still open). Admin access to the subscription or KYC records. New campaigns get the same recheck inside the creation transaction, after screening (API test 'rechecks restrictions and verification after screening').
+**Before:** U1-Starter has a staff-approved campaign.create proposal stored before 30 September 2026 (form still open). Admin access to the subscription or KYC records. New campaigns get the same recheck inside the creation transaction, after screening (API test 'rechecks restrictions and verification after screening').
 
 **Steps:**
 
@@ -1605,11 +1605,11 @@ Creation, review and publication, visibility states, updates and comments, shari
 
 *Surfaces:* android, api, ios, web  ·  *Type:* functional
 
-**Before:** Owners on each plan: U-Free, U-Plus, U-Pro (up to 3 collaborators) and U-Org (10). Existing users C1–C4. Split flag off.
+**Before:** Owners on each plan: U-Free, U-Starter, U-Pro (up to 3 collaborators) and U-Org (10). Existing users C1–C4. Split flag off.
 
 **Steps:**
 
-1. U-Free and U-Plus: the wizard shows 'Your plan does not include collaborator invitations.' POST /collaborators/invite returns 403.
+1. U-Free and U-Starter: the wizard shows 'Your plan does not include collaborator invitations.' POST /collaborators/invite returns 403.
 2. U-Pro on detail: CollaboratorSection → 'Invite collaborator'. Confirm the fields are 'Email Address', 'Their role' (Editor, Co-owner, Featured partner) and 'Invitation Message (optional)', with no 'Revenue Share %' field. Invite C1 as Editor.
 3. Invite an unregistered email. Invite yourself. Invite C1 again.
 4. Invite C2 and C3, then C4 (the 4th).
@@ -1770,11 +1770,11 @@ Creation, review and publication, visibility states, updates and comments, shari
 
 *Surfaces:* admin, api, web  ·  *Type:* functional
 
-**Before:** Staging API with NODE_ENV not 'test' and readable logs. DB access. Organizer U-Plus (3 active slots) with campaigns in active, funded, pending_review and blocked states, all with end dates in the future. Admin A2.
+**Before:** Staging API with NODE_ENV not 'test' and readable logs. DB access. Organizer U-Starter (3 active slots) with campaigns in active, funded, pending_review and blocked states, all with end dates in the future. Admin A2.
 
 **Steps:**
 
-1. As U-Plus call GET /campaigns/creation-options and note activeCount.
+1. As U-Starter call GET /campaigns/creation-options and note activeCount.
 2. Set endDate to 1 minute ago on the active, funded, pending_review and blocked campaigns.
 3. Call creation-options again straight away.
 4. Wait up to 5 minutes (the sweep runs every 300 s) and read each campaign's status in admin or the DB.

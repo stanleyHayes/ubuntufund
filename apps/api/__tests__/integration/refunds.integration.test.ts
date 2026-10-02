@@ -173,10 +173,10 @@ describe('Refunds (spec §14)', () => {
     const { intentId } = await settleDonation(app, campaignId);
     const originalBefore = await JournalEntryModel.findOne({ donationIntentId: intentId }).lean();
 
-    // Settled: raised 200, pending 189.70 (200 - 7 platform (Free 3.5%) - 3.30 processor).
+    // Settled: raised 200, pending 186.70 (200 - 10 platform (Free 5%) - 3.30 processor).
     let balance = await CampaignBalanceModel.findOne({ campaignId });
     expect(balance?.totalRaised).toBe(200);
-    expect(balance?.pendingBalance).toBe(189.7);
+    expect(balance?.pendingBalance).toBe(186.7);
 
     const res = await request(app)
       .post(`/api/v1/admin/payments/${intentId}/refund`)
@@ -366,7 +366,7 @@ describe('Refunds (spec §14)', () => {
     const intent = await DonationIntentModel.findById(intentId);
     expect(intent?.status).toBe('SUCCEEDED');
     expect(intent?.refundedAmountMinor ?? 0).toBe(0);
-    expect((await CampaignBalanceModel.findOne({ campaignId }))?.pendingBalance).toBe(189.7);
+    expect((await CampaignBalanceModel.findOne({ campaignId }))?.pendingBalance).toBe(186.7);
   });
 
   it('requires manual handling for different charge and settlement currencies before reserving or moving funds', async () => {
@@ -381,7 +381,7 @@ describe('Refunds (spec §14)', () => {
     const intent = await DonationIntentModel.findById(intentId);
     expect(intent?.status).toBe('SUCCEEDED');
     expect(intent?.refundedAmountMinor ?? 0).toBe(0);
-    expect((await CampaignBalanceModel.findOne({ campaignId }))?.pendingBalance).toBe(189.7);
+    expect((await CampaignBalanceModel.findOne({ campaignId }))?.pendingBalance).toBe(186.7);
   });
 
   it('retains a durable reservation after a timeout and blocks new keys across a fresh app instance', async () => {
@@ -403,7 +403,7 @@ describe('Refunds (spec §14)', () => {
       .set('Authorization', `Bearer ${adminToken}`).send({}).expect(409);
     expect(providerRefundBodies()).toHaveLength(1);
     expect((await DonationIntentModel.findById(intentId))?.refundedAmountMinor).toBe(10000);
-    expect((await CampaignBalanceModel.findOne({ campaignId }))?.pendingBalance).toBe(94.85);
+    expect((await CampaignBalanceModel.findOne({ campaignId }))?.pendingBalance).toBe(93.35);
   });
 
   it('does not reserve or contact the provider if durable attempt creation fails', async () => {
@@ -419,7 +419,7 @@ describe('Refunds (spec §14)', () => {
     expect(await RefundOperationModel.countDocuments({ intentId })).toBe(0);
     expect((await DonationIntentModel.findById(intentId))?.refundedAmountMinor ?? 0).toBe(0);
     const balance = await CampaignBalanceModel.findOne({ campaignId });
-    expect(balance?.pendingBalance).toBe(189.7);
+    expect(balance?.pendingBalance).toBe(186.7);
     expect(balance?.refundHolds).toEqual([]);
   });
 
@@ -428,15 +428,15 @@ describe('Refunds (spec §14)', () => {
     const campaignId = await createActiveCampaign(app, token, userId);
     const { intentId } = await settleDonation(app, campaignId);
     const beneficiaryId = randomUUID();
-    await CampaignBeneficiaryAccrualModel.create({ campaignId, donationIntentId: intentId, splitVersion: 1, currency: 'GHS', entries: [{ beneficiaryId, amount: 189.7 }] });
-    await CampaignBeneficiaryBalanceModel.create({ campaignId, beneficiaryId, currency: 'GHS', pendingBalance: 189.7 });
+    await CampaignBeneficiaryAccrualModel.create({ campaignId, donationIntentId: intentId, splitVersion: 1, currency: 'GHS', entries: [{ beneficiaryId, amount: 186.7 }] });
+    await CampaignBeneficiaryBalanceModel.create({ campaignId, beneficiaryId, currency: 'GHS', pendingBalance: 186.7 });
     refundStatus = 'pending';
     const response = await request(app).post(`/api/v1/admin/payments/${intentId}/refund`).set('Authorization', `Bearer ${adminToken}`).send({}).expect(202);
     const operationId = response.body.data.operationId;
     const campaignBalances = new MongoCampaignBalanceRepository();
     const beneficiaryBalances = new MongoCampaignBeneficiaryBalanceRepository();
-    expect((await campaignBalances.findByCampaignId(campaignId))?.refundHeldBalance).toBe(189.7);
-    expect((await beneficiaryBalances.findOne(campaignId, beneficiaryId, 'GHS'))?.refundHeldBalance).toBe(189.7);
+    expect((await campaignBalances.findByCampaignId(campaignId))?.refundHeldBalance).toBe(186.7);
+    expect((await beneficiaryBalances.findOne(campaignId, beneficiaryId, 'GHS'))?.refundHeldBalance).toBe(186.7);
     expect(await campaignBalances.clearPendingToAvailable(campaignId, 1)).toBeNull();
     expect(await beneficiaryBalances.clearPendingToAvailable(campaignId, beneficiaryId, 'GHS', 1)).toBe(false);
     expect(await campaignBalances.reserveForPayout(campaignId, 1)).toBeNull();
@@ -458,14 +458,14 @@ describe('Refunds (spec §14)', () => {
     const campaignId = await createActiveCampaign(app, token, userId);
     const { intentId } = await settleDonation(app, campaignId);
     const beneficiaryId = randomUUID();
-    await CampaignBeneficiaryAccrualModel.create({ campaignId, donationIntentId: intentId, splitVersion: 1, currency: 'GHS', entries: [{ beneficiaryId, amount: 189.7 }] });
-    await CampaignBeneficiaryBalanceModel.create({ campaignId, beneficiaryId, currency: 'GHS', pendingBalance: 100, availableBalance: 89.7 });
+    await CampaignBeneficiaryAccrualModel.create({ campaignId, donationIntentId: intentId, splitVersion: 1, currency: 'GHS', entries: [{ beneficiaryId, amount: 186.7 }] });
+    await CampaignBeneficiaryBalanceModel.create({ campaignId, beneficiaryId, currency: 'GHS', pendingBalance: 100, availableBalance: 86.7 });
     await request(app).post(`/api/v1/admin/payments/${intentId}/refund`).set('Authorization', `Bearer ${adminToken}`).send({}).expect(409);
     expect(providerRefundBodies()).toHaveLength(0);
     expect(await RefundOperationModel.countDocuments({ intentId })).toBe(0);
     expect((await DonationIntentModel.findById(intentId))?.refundedAmountMinor ?? 0).toBe(0);
     const balance = await CampaignBalanceModel.findOne({ campaignId });
-    expect(balance?.pendingBalance).toBe(189.7);
+    expect(balance?.pendingBalance).toBe(186.7);
     expect(balance?.refundHolds).toEqual([]);
   });
 
@@ -486,14 +486,14 @@ describe('Refunds (spec §14)', () => {
     const response = request(app).post(`/api/v1/admin/payments/${intentId}/refund`).set('Authorization', `Bearer ${adminToken}`).send({}).then(result => result);
     try {
       await enteredHold;
-      expect(await new MongoCampaignBalanceRepository().clearPendingToAvailable(campaignId, 189.7)).not.toBeNull();
+      expect(await new MongoCampaignBalanceRepository().clearPendingToAvailable(campaignId, 186.7)).not.toBeNull();
     } finally { release(); }
     try { expect((await response).status).toBe(409); } finally { pause.mockRestore(); }
     expect(providerRefundBodies()).toHaveLength(0);
     expect((await DonationIntentModel.findById(intentId))?.refundedAmountMinor ?? 0).toBe(0);
     expect(await RefundOperationModel.countDocuments({ intentId })).toBe(0);
     const balance = await CampaignBalanceModel.findOne({ campaignId });
-    expect(balance?.availableBalance).toBe(189.7);
+    expect(balance?.availableBalance).toBe(186.7);
     expect(balance?.refundHolds).toEqual([]);
   });
 
@@ -572,7 +572,7 @@ describe('Refunds (spec §14)', () => {
     const operationId = response!.body.data.operationId;
     expect((await RefundOperationModel.findById(operationId))?.state).toBe('reversal_pending');
     expect((await CampaignBalanceModel.findOne({ campaignId }))?.pendingBalance).toBe(0);
-    expect((await CampaignBalanceModel.findOne({ campaignId }))?.refundHolds.map(hold => ({ operationId: hold.operationId, amount: hold.amount }))).toEqual([{ operationId, amount: 189.7 }]);
+    expect((await CampaignBalanceModel.findOne({ campaignId }))?.refundHolds.map(hold => ({ operationId: hold.operationId, amount: hold.amount }))).toEqual([{ operationId, amount: 186.7 }]);
     expect((await CampaignModel.findById(campaignId))?.raisedAmount).toBe(200);
     expect((await DonationIntentModel.findById(intentId))?.status).toBe('SUCCEEDED');
     expect(await JournalEntryModel.countDocuments({ externalRef: `refund:${operationId}` })).toBe(0);

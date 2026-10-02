@@ -365,17 +365,17 @@ The demo account is not staff and never hits an MFA or biometric gate.
 4. Search the screen for any web price, Paystack, coupon field, 'cheaper on web' text or external link.
 5. Check the 'Manage App Store subscription' / 'Manage Google Play subscription' button visibility for a store-subscribed account.
 
-**Expect:** Prices come from the store (localized displayPrice) with '/ month' or '/ year'; auto-renewal terms specific to the store; 'Deleting your Ujimora account does not cancel a store subscription.' present; links open the in-app policy pages. No Paystack/web checkout, coupon or external purchase link (web SubscriptionScreen.tsx must not load on native). Store-price-unavailable plans show 'Store price unavailable' with disabled Subscribe.
+**Expect:** Prices come from the store (localized displayPrice) with '/ month' or '/ year'; each card states the plan's live platform fee first: Starter reads '3.5% platform fee on new campaigns · 3 active campaigns' (Admin > Plans values), and above the cards 'Campaigns you already run keep the fee they were created with; creator withdrawals use your current plan’s fee.'; auto-renewal terms specific to the store; 'Deleting your Ujimora account does not cancel a store subscription.' present; links open the in-app policy pages. No Paystack/web checkout, coupon or external purchase link (web SubscriptionScreen.tsx must not load on native). Store-price-unavailable plans show 'Store price unavailable' with disabled Subscribe.
 
 **Needs:** App Store Connect sandbox, Google Play license testers
 
-**Source:** `apps/mobile/src/screens/SubscriptionScreen.native.tsx`, `apps/mobile/src/lib/storeBilling.ts`, `apps/mobile/src/lib/subscriptions.ts`, `docs/compliance/STORE_BILLING.md`
+**Source:** `apps/mobile/src/screens/SubscriptionScreen.native.tsx`, `apps/mobile/src/lib/storeBilling.ts`, `apps/mobile/src/lib/subscriptions.ts`, `apps/mobile/src/lib/subscriptionStatus.ts`, `docs/compliance/STORE_BILLING.md`
 
 ## MOBILE-042 · P0 · IAP subscribe happy path with server verification and feature unlock
 
 *Surfaces:* admin, android, api, ios  ·  *Type:* functional
 
-**Before:** Sandbox tester (Apple) / license tester (Google) signed in on device; Ujimora account on Community plan whose campaign limit is full; API with Apple/Google IAP credentials and webhooks configured.
+**Before:** Sandbox tester (Apple) / license tester (Google) signed in on device; Ujimora account on the Free plan whose campaign limit is full; API with Apple/Google IAP credentials and webhooks configured.
 
 **Steps:**
 

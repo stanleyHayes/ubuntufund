@@ -2,7 +2,7 @@ import ExportMenu from '@/components/ExportMenu'
 import { exportTable } from '@/lib/exports/report'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -32,6 +32,24 @@ import {
 } from '@ubuntu-fund/types'
 import { raisedSurface, insetSurface } from '@/lib/surfaces'
 import { api } from '@/lib/api'
+import { ApiError } from '@/lib/apiError'
+import { formatPlanPrice, toPesewas } from '@/lib/money'
+import {
+  comparePlans,
+  cyclePrice,
+  isFreePlan,
+  isSalesOnly,
+  MAX_PLAN_PRICE,
+  onBehalfBlocked,
+  ON_BEHALF_BLOCKED,
+  priceInvalid,
+  pricingChanges,
+  SALES_ONLY_HINT,
+  sortOrderTie,
+  withFeature,
+  yearlyNote,
+  type PricingChange,
+} from '@/lib/plans'
 import { useAdminPlans } from '@/hooks/useApiData'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import PageHeader from '@/components/PageHeader'
@@ -52,7 +70,13 @@ const FEATURE_TOGGLES: { key: keyof SubscriptionPlan; label: string }[] = [
 /** Plan prices only drive web (Paystack) checkout; store prices live on the store products. */
 const WEB_PRICE_HELP = 'Web checkout price. Update store products separately.'
 
-const NUMERIC_LIMITS: { key: keyof SubscriptionPlan; label: string; unlimited?: boolean; help?: string; invalid?: (plan: SubscriptionPlan) => boolean }[] = [
+/** The prices the API accepts: checkout charges whole pesewas, so more decimals would differ from the amount charged. */
+const PRICE_RANGE = `0 to ${MAX_PLAN_PRICE.toLocaleString('en-GH')}, with at most two decimal places`
+const PRICE_ERROR = `Use ${PRICE_RANGE}.`
+
+const PLATFORM_FEE_HELP = 'Between 0 and 100. Locked onto each campaign when it is created (existing campaigns keep their rate); creator-page withdrawals use the current rate.'
+
+const NUMERIC_LIMITS: { key: keyof SubscriptionPlan; label: string; unlimited?: boolean; help?: string; error?: (plan: SubscriptionPlan) => string | null }[] = [
   { key: 'maxActiveCampaigns', label: 'Max active campaigns', unlimited: true },
   { key: 'maxCampaignGoal', label: 'Max campaign goal (GH₵)', unlimited: true },
   { key: 'maxMediaPerCampaign', label: 'Max media per campaign', unlimited: true },
@@ -64,7 +88,7 @@ const NUMERIC_LIMITS: { key: keyof SubscriptionPlan; label: string; unlimited?: 
     label: 'Active campaigns on behalf of others',
     unlimited: true,
     help: '-1 = unlimited. They also count toward max active campaigns.',
-    invalid: onBehalfLimitInvalid,
+    error: onBehalfLimitError,
   },
 ]
 
@@ -76,6 +100,13 @@ function onBehalfLimitInvalid(plan: SubscriptionPlan): boolean {
   return !Number.isInteger(plan.maxOnBehalfCampaigns) || plan.maxOnBehalfCampaigns < -1
 }
 
+/** The inline error under the on-behalf limit, or null. */
+function onBehalfLimitError(plan: SubscriptionPlan): string | null {
+  if (onBehalfLimitInvalid(plan)) return LIMIT_ERROR
+  if (onBehalfBlocked(plan)) return `${ON_BEHALF_BLOCKED}.`
+  return null
+}
+
 function onBehalfFeeInvalid(plan: SubscriptionPlan): boolean {
   return !Number.isFinite(plan.onBehalfFeePercent) || plan.onBehalfFeePercent < 0 || plan.onBehalfFeePercent > 100
 }
@@ -83,8 +114,48 @@ function onBehalfFeeInvalid(plan: SubscriptionPlan): boolean {
 /** Why the on-behalf fields cannot be saved (the API's plan schema), or null. */
 function onBehalfError(plan: SubscriptionPlan): string | null {
   if (onBehalfLimitInvalid(plan)) return 'Active campaigns on behalf of others must be a whole number, or -1 for unlimited.'
+  if (onBehalfBlocked(plan)) return `${ON_BEHALF_BLOCKED}. Set a limit, -1 for unlimited, or switch it off.`
   if (onBehalfFeeInvalid(plan)) return 'The extra fee on campaigns on behalf of others must be between 0 and 100%.'
   return null
+}
+
+/** Why either plan dialog cannot save, or null. */
+function planError(plan: SubscriptionPlan): string | null {
+  if (priceInvalid(plan.priceMonthly) || priceInvalid(plan.priceYearly)) return `Prices must be ${PRICE_RANGE}.`
+  if (yearlyNote(plan)?.exceeds) {
+    return `The yearly price is more than 12 × the monthly price (${formatPlanPrice((12 * toPesewas(plan.priceMonthly)) / 100)}). Lower it, or set it to 0 if the plan is not sold yearly.`
+  }
+  return onBehalfError(plan)
+}
+
+type PriceKey = 'priceMonthly' | 'priceYearly'
+
+/** Monthly and yearly prices, with the yearly price's monthly equivalent, in both plan dialogs. */
+function PriceFields({ plan, onChange }: { plan: SubscriptionPlan; onChange: (key: PriceKey, value: number) => void }) {
+  const yearly = yearlyNote(plan)
+  const field = (key: PriceKey, label: string, help: ReactNode, error = false) => (
+    <TextField
+      label={label} type="number" fullWidth size="small"
+      value={plan[key]}
+      onChange={(e) => onChange(key, Number(e.target.value))}
+      error={priceInvalid(plan[key]) || error}
+      InputProps={{ startAdornment: <InputAdornment position="start">GH₵</InputAdornment> }}
+      inputProps={{ min: 0, max: MAX_PLAN_PRICE, step: 0.01 }}
+      helperText={priceInvalid(plan[key]) ? PRICE_ERROR : help}
+    />
+  )
+  return (
+    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+      {field('priceMonthly', 'Monthly price', WEB_PRICE_HELP)}
+      {field('priceYearly', 'Yearly price', yearly ? (
+        <>
+          {/* At or above 12 × monthly, yearly saves nothing: a warning, and an error once it costs more. */}
+          <Box component="span" sx={{ display: 'block', ...(yearly.warning && !yearly.exceeds && { color: 'var(--text-warning)', fontWeight: 600 }) }}>{yearly.text}</Box>
+          {WEB_PRICE_HELP}
+        </>
+      ) : WEB_PRICE_HELP, yearly?.exceeds)}
+    </Box>
+  )
 }
 
 /** Shown beside the on-behalf limit in both plan dialogs. */
@@ -105,6 +176,41 @@ function OnBehalfFeeField({ plan, onChange }: { plan: SubscriptionPlan; onChange
   )
 }
 
+/** Sort order in both plan dialogs, warning when another plan already uses it. */
+function SortOrderField({ value, tie, onChange }: { value: number; tie: string | null; onChange: (value: number) => void }) {
+  return (
+    <TextField
+      label="Sort order" type="number" size="small" fullWidth
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+      helperText={tie ? (
+        <>
+          {/* A tie is ordered by price, not by the admin: a warning, since the order may still be intended. */}
+          <Box component="span" sx={{ display: 'block', color: 'var(--text-warning)', fontWeight: 600 }}>{tie}</Box>
+          Lower = shown first
+        </>
+      ) : 'Lower = shown first'}
+    />
+  )
+}
+
+/** Field labels for the API's validation errors, which name fields by key. */
+const FIELD_LABELS: Record<string, string> = {
+  tier: 'Tier id', name: 'Name', description: 'Description', priceMonthly: 'Monthly price', priceYearly: 'Yearly price',
+  platformFeePercent: 'Platform fee', onBehalfFeePercent: 'Extra fee on those campaigns', sortOrder: 'Sort order', accentColor: 'Accent colour',
+  ...Object.fromEntries(NUMERIC_LIMITS.map((limit) => [limit.key, limit.label])),
+}
+
+/** A failed save's message, with each field the API refused ('Validation failed' alone names none). */
+function saveErrorText(error: unknown, fallback: string): string {
+  if (!(error instanceof Error)) return fallback
+  const fields = error instanceof ApiError ? Object.entries(error.errors ?? {}) : []
+  const details = fields.flatMap(([field, messages]) =>
+    messages.filter((message) => message !== error.message).map((message) => `${FIELD_LABELS[field] ?? field}: ${message}`))
+  if (details.length === 0) return error.message
+  return [error.message, ...details].map((text) => (/[.!?]$/.test(text) ? text : `${text}.`)).join(' ')
+}
+
 /** The editable subset sent to `PUT /plans/:tier` (tier is immutable). */
 function toPatch(plan: SubscriptionPlan): UpdateSubscriptionPlanInput {
   const { tier: _tier, ...rest } = plan
@@ -115,11 +221,29 @@ function limitDisplay(value: number): string {
   return value === -1 ? 'Unlimited' : value.toLocaleString()
 }
 
+/** The card headline: 'Free', 'GH₵ 9.99/mo', or 'Monthly not offered' on a yearly-only paid plan. */
+function monthlyHeadline(plan: SubscriptionPlan): string {
+  if (isFreePlan(plan)) return 'Free'
+  return plan.priceMonthly > 0 ? `${formatPlanPrice(plan.priceMonthly)}/mo` : 'Monthly not offered'
+}
+
+/** The card's yearly row: the yearly price, its monthly equivalent and how it compares with 12 × monthly. */
+function yearlyPrice(plan: SubscriptionPlan): ReactNode {
+  const note = yearlyNote(plan)
+  if (!note) return cyclePrice(plan.priceYearly, plan)
+  return (
+    <>
+      {formatPlanPrice(plan.priceYearly)}/yr
+      <Box component="span" sx={{ fontWeight: 400, color: note.warning ? 'var(--text-warning)' : 'text.secondary' }}> · {note.text}</Box>
+    </>
+  )
+}
+
 /** A blank plan for the "new tier" form; admins fill in the tier id + details. */
 function blankPlan(nextSortOrder: number): SubscriptionPlan {
   return {
     tier: '', name: '', description: '',
-    priceMonthly: 0, priceYearly: 0, platformFeePercent: 3.5,
+    priceMonthly: 0, priceYearly: 0, platformFeePercent: 5,
     maxActiveCampaigns: 1, maxCampaignGoal: 10000,
     featuredListing: false, prioritySupport: false, advancedAnalytics: false,
     customBranding: false, maxMediaPerCampaign: 3, escrowSupport: false,
@@ -148,16 +272,19 @@ export default function ManagePlansPage() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ text: string; severity: 'success' | 'error' } | null>(null)
   const [createForm, setCreateForm] = useState<SubscriptionPlan | null>(null)
+  /** Price and fee changes awaiting confirmation before the PUT. */
+  const [confirming, setConfirming] = useState<PricingChange[] | null>(null)
 
   useEffect(() => { setPlans(data) }, [data])
 
   const ordered = useMemo(
     // Admin-set order (sortOrder), so admin-ADDED tiers slot in wherever configured.
-    () => [...plans].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.priceMonthly - b.priceMonthly),
+    () => [...plans].sort(comparePlans),
     [plans],
   )
   const pagination = usePagination(ordered, 12)
-  const paidCount = useMemo(() => plans.filter((plan) => plan.priceMonthly > 0).length, [plans])
+  const paidCount = useMemo(() => plans.filter((plan) => !isFreePlan(plan)).length, [plans])
+  const formYearly = form ? yearlyNote(form) : null
 
   function openEdit(plan: SubscriptionPlan) {
     if (!canUpdate) return
@@ -167,6 +294,7 @@ export default function ManagePlansPage() {
 
   function closeEdit() {
     if (saving) return
+    setConfirming(null)
     setEditing(null)
     setForm(null)
   }
@@ -175,25 +303,39 @@ export default function ManagePlansPage() {
     setForm((current) => (current ? { ...current, [key]: value } : current))
   }
 
+  function setFeature(key: keyof SubscriptionPlan, on: boolean) {
+    setForm((current) => (current ? withFeature(current, key, on) : current))
+  }
+
   async function handleSave() {
-    if (!form) return
-    const invalid = onBehalfError(form)
+    if (!form || !editing) return
+    const invalid = planError(form)
     if (invalid) {
       setMessage({ text: invalid, severity: 'error' })
       return
     }
+    // One mistyped digit changes a live price, so every price and fee change is confirmed first.
+    const changes = pricingChanges(editing, form)
+    if (changes.length > 0) {
+      setConfirming(changes)
+      return
+    }
+    await saveEdit()
+  }
+
+  async function saveEdit() {
+    if (!form) return
     setSaving(true)
     try {
       const updated = await api.put<SubscriptionPlan>(`/plans/${form.tier}`, toPatch(form))
       setPlans((current) => current.map((plan) => (plan.tier === updated.tier ? updated : plan)))
       setMessage({ text: `${updated.name} plan updated.`, severity: 'success' })
+      setConfirming(null)
       setEditing(null)
       setForm(null)
     } catch (saveError) {
-      setMessage({
-        text: saveError instanceof Error ? saveError.message : 'Unable to update the plan.',
-        severity: 'error',
-      })
+      setConfirming(null)
+      setMessage({ text: saveErrorText(saveError, 'Unable to update the plan.'), severity: 'error' })
     } finally {
       setSaving(false)
     }
@@ -214,13 +356,17 @@ export default function ManagePlansPage() {
     setCreateForm((current) => (current ? { ...current, [key]: value } : current))
   }
 
+  function setCreateFeature(key: keyof SubscriptionPlan, on: boolean) {
+    setCreateForm((current) => (current ? withFeature(current, key, on) : current))
+  }
+
   async function handleCreate() {
     if (!createForm) return
     if (!isValidTierId(createForm.tier)) {
       setMessage({ text: 'Tier id must be lowercase letters/digits/-/_ (min 2 chars).', severity: 'error' })
       return
     }
-    const invalid = onBehalfError(createForm)
+    const invalid = planError(createForm)
     if (invalid) {
       setMessage({ text: invalid, severity: 'error' })
       return
@@ -232,10 +378,7 @@ export default function ManagePlansPage() {
       setMessage({ text: `${created.name} plan created.`, severity: 'success' })
       setCreateForm(null)
     } catch (createError) {
-      setMessage({
-        text: createError instanceof Error ? createError.message : 'Unable to create the plan.',
-        severity: 'error',
-      })
+      setMessage({ text: saveErrorText(createError, 'Unable to create the plan.'), severity: 'error' })
     } finally {
       setSaving(false)
     }
@@ -254,7 +397,7 @@ export default function ManagePlansPage() {
           { label: 'Paid tiers', value: isLoading ? <Skeleton width={40} /> : error ? '—' : paidCount },
           { label: 'Editing', value: canUpdate ? 'Enabled' : 'View only' },
         ]}
-      actions={<ExportMenu title="Subscription plans" disabled={isLoading || !!error} getReport={() => ({ title: "Subscription plans", filters: ['Published configuration'], tables: [exportTable("Subscription plans", plans, { Tier: r => r.tier, Name: r => r.name, 'Monthly (GHS)': r => r.priceMonthly, 'Yearly (GHS)': r => r.priceYearly, 'Platform fee (%)': r => r.platformFeePercent, 'Active campaigns': r => r.maxActiveCampaigns, 'Maximum goal (GHS)': r => r.maxCampaignGoal, 'Campaigns on behalf of others': r => r.onBehalfCampaigns, 'On-behalf active limit': r => r.maxOnBehalfCampaigns, 'On-behalf extra fee (%)': r => r.onBehalfFeePercent, Description: r => r.description })] })} />}
+      actions={<ExportMenu title="Subscription plans" disabled={isLoading || !!error} getReport={() => ({ title: "Subscription plans", filters: ['Published configuration'], tables: [exportTable("Subscription plans", ordered, { Tier: r => r.tier, Name: r => r.name, 'Monthly (GHS)': r => r.priceMonthly, 'Yearly (GHS)': r => r.priceYearly, 'Platform fee (%)': r => r.platformFeePercent, 'Active campaigns': r => r.maxActiveCampaigns, 'Maximum goal (GHS)': r => r.maxCampaignGoal, 'Campaigns on behalf of others': r => r.onBehalfCampaigns, 'On-behalf active limit': r => r.maxOnBehalfCampaigns, 'On-behalf extra fee (%)': r => r.onBehalfFeePercent, Description: r => r.description })] })} />}
       />
 
 
@@ -276,8 +419,9 @@ export default function ManagePlansPage() {
         and Android subscribers pay the price set on each App Store and Google Play product, so changing a price here
         does not change store prices. After a price change, update the matching products in App Store Connect and
         Google Play Console (mapped by the server&apos;s STORE_BILLING_PRODUCTS). A price of 0 on a paid plan means that
-        billing cycle is not offered. Admins can add new tiers and reorder them; the code-defined defaults seed this
-        list and act as a safe fallback. Use -1 for an unlimited numeric limit.
+        billing cycle is not offered. Admins can add new tiers and reorder them. The code-defined defaults only add
+        built-in tiers that are missing; they never change a plan that already exists, whether or not it was edited
+        here. Use -1 for an unlimited numeric limit.
       </Alert>
       {error && plans.length > 0 && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 
@@ -305,34 +449,42 @@ export default function ManagePlansPage() {
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', xl: 'repeat(4, minmax(0, 1fr))' }, gap: 2.5 }}>
           {pagination.page.map((plan) => {
             const features = FEATURE_TOGGLES.filter((toggle) => plan[toggle.key]).map((toggle) => toggle.label)
+            const free = isFreePlan(plan)
+            const salesOnly = isSalesOnly(plan)
+            const details: [string, ReactNode][] = [
+              ['Yearly price', yearlyPrice(plan)],
+              ['Platform fee', `${plan.platformFeePercent}%`],
+              ['Active campaigns', limitDisplay(plan.maxActiveCampaigns)],
+              ['Payout accounts', limitDisplay(plan.maxPayoutAccounts ?? 1)],
+              ['Campaign goal', plan.maxCampaignGoal === -1 ? 'Unlimited' : formatPlanPrice(plan.maxCampaignGoal)],
+              ...(plan.onBehalfCampaigns
+                ? [['On behalf of others', `${limitDisplay(plan.maxOnBehalfCampaigns)} active · +${plan.onBehalfFeePercent}% fee`] as [string, ReactNode]]
+                : []),
+            ]
             return (
               <Card key={plan.tier} sx={{ ...raisedSurface, height: '100%' }}>
                 <CardContent sx={{ p: 3 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', alignItems: 'center', gap: 1, mb: 2 }}>
                     <Typography variant="h6" sx={{ fontWeight: 800 }}>{plan.name}</Typography>
-                    <Chip label={plan.priceMonthly === 0 ? 'Free' : 'Paid'} size="small" color={plan.priceMonthly === 0 ? 'default' : 'success'} />
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                      {salesOnly && <Chip label="Sales only" size="small" sx={{ color: 'var(--text-info)' }} />}
+                      <Chip label={free ? 'Free' : 'Paid'} size="small" sx={free ? undefined : { color: 'var(--text-success)' }} />
+                    </Box>
                   </Box>
                   <Typography color="text.secondary" sx={{ minHeight: 48, mb: 2 }}>{plan.description}</Typography>
-                  <Typography variant="h5" sx={{ fontWeight: 900, mb: 2 }}>
-                    {plan.priceMonthly === 0 ? 'Free' : `GH₵ ${plan.priceMonthly}/mo`}
+                  <Typography variant="h5" sx={{ fontWeight: 900, mb: salesOnly ? 0.5 : 2 }}>
+                    {monthlyHeadline(plan)}
                   </Typography>
+                  {salesOnly && <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{SALES_ONLY_HINT}.</Typography>}
                   <Box component="dl" sx={{ ...insetSurface, m: 0, p: 2, mb: 3, display: 'grid', gap: 2 }}>
-                    {[
-                      ['Yearly price', plan.priceYearly === 0 ? 'Free' : `GH₵ ${plan.priceYearly.toLocaleString()}`],
-                      ['Platform fee', `${plan.platformFeePercent}%`],
-                      ['Active campaigns', limitDisplay(plan.maxActiveCampaigns)],
-                      ['Payout accounts', limitDisplay(plan.maxPayoutAccounts ?? 1)],
-                      ['Campaign goal', plan.maxCampaignGoal === -1 ? 'Unlimited' : `GH₵ ${plan.maxCampaignGoal.toLocaleString()}`],
-                      ...(plan.onBehalfCampaigns
-                        ? [['On behalf of others', `${limitDisplay(plan.maxOnBehalfCampaigns)} active · +${plan.onBehalfFeePercent}% fee`]]
-                        : []),
-                    ].map(([label, value]) => (
+                    {details.map(([label, value]) => (
                       <Box key={label}>
                         <Typography component="dt" variant="caption" color="text.secondary">{label}</Typography>
                         <Typography component="dd" sx={{ m: 0, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{value}</Typography>
                       </Box>
                     ))}
                   </Box>
+                  {onBehalfBlocked(plan) && <Alert severity="warning" sx={{ mb: 3 }}>{ON_BEHALF_BLOCKED}.</Alert>}
                   <Typography variant="overline" color="text.secondary" sx={{ display: 'block', mb: 1 }}>Included features</Typography>
                   {features.length === 0 && <Typography variant="body2" color="text.secondary">Core campaign tools</Typography>}
                   {features.map((feature) => (
@@ -370,28 +522,13 @@ export default function ManagePlansPage() {
             <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}>
               <TextField label="Name" fullWidth size="small" value={form.name} onChange={(e) => setField('name', e.target.value)} />
               <TextField label="Description" fullWidth size="small" multiline minRows={2} value={form.description} onChange={(e) => setField('description', e.target.value)} />
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <TextField
-                  label="Monthly price" type="number" fullWidth size="small"
-                  value={form.priceMonthly}
-                  onChange={(e) => setField('priceMonthly', Number(e.target.value))}
-                  InputProps={{ startAdornment: <InputAdornment position="start">GH₵</InputAdornment> }}
-                  helperText={WEB_PRICE_HELP}
-                />
-                <TextField
-                  label="Yearly price" type="number" fullWidth size="small"
-                  value={form.priceYearly}
-                  onChange={(e) => setField('priceYearly', Number(e.target.value))}
-                  InputProps={{ startAdornment: <InputAdornment position="start">GH₵</InputAdornment> }}
-                  helperText={WEB_PRICE_HELP}
-                />
-              </Box>
+              <PriceFields plan={form} onChange={setField} />
               <TextField
                 label="Platform fee" type="number" fullWidth size="small"
                 value={form.platformFeePercent}
                 onChange={(e) => setField('platformFeePercent', Number(e.target.value))}
                 InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
-                helperText="Between 0 and 100"
+                helperText={PLATFORM_FEE_HELP}
               />
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
                 {NUMERIC_LIMITS.map((limit) => (
@@ -402,14 +539,14 @@ export default function ManagePlansPage() {
                     size="small"
                     value={form[limit.key] as number}
                     onChange={(e) => setField(limit.key, Number(e.target.value) as SubscriptionPlan[typeof limit.key])}
-                    error={limit.invalid?.(form)}
-                    helperText={limit.invalid?.(form) ? LIMIT_ERROR : limit.help ?? (limit.unlimited ? '-1 = unlimited' : undefined)}
+                    error={Boolean(limit.error?.(form))}
+                    helperText={limit.error?.(form) ?? limit.help ?? (limit.unlimited ? '-1 = unlimited' : undefined)}
                   />
                 ))}
                 <OnBehalfFeeField plan={form} onChange={(value) => setField('onBehalfFeePercent', value)} />
               </Box>
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <TextField label="Sort order" type="number" size="small" fullWidth value={form.sortOrder} onChange={(e) => setField('sortOrder', Number(e.target.value))} helperText="Lower = shown first" />
+              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+                <SortOrderField value={form.sortOrder} tie={sortOrderTie(plans, form.sortOrder, form.tier)} onChange={(value) => setField('sortOrder', value)} />
                 <TextField label="Accent colour" size="small" fullWidth value={form.accentColor} onChange={(e) => setField('accentColor', e.target.value)} helperText="#RRGGBB" />
               </Box>
               <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
@@ -428,7 +565,7 @@ export default function ManagePlansPage() {
                     control={
                       <Switch
                         checked={Boolean(form[toggle.key])}
-                        onChange={(e) => setField(toggle.key, e.target.checked as SubscriptionPlan[typeof toggle.key])}
+                        onChange={(e) => setFeature(toggle.key, e.target.checked)}
                       />
                     }
                     label={toggle.label}
@@ -452,6 +589,50 @@ export default function ManagePlansPage() {
         )}
       </Dialog>
 
+      {/* Confirm step: every changed price and fee, old → new, before the PUT */}
+      <Dialog open={confirming !== null} onClose={() => !saving && setConfirming(null)} maxWidth="xs" fullWidth aria-labelledby="confirm-plan-pricing-title">
+        {confirming && form && (
+          <>
+            <DialogTitle id="confirm-plan-pricing-title" sx={{ fontWeight: 800 }}>Confirm {form.name} pricing</DialogTitle>
+            <DialogContent>
+              <Box component="dl" sx={{ ...insetSurface, border: 'var(--neu-border)', backdropFilter: 'var(--neu-backdrop)', WebkitBackdropFilter: 'var(--neu-backdrop)', m: 0, p: 2, display: 'grid', gap: 1.5 }}>
+                {confirming.map((change) => (
+                  <Box key={change.label}>
+                    <Typography component="dt" variant="caption" color="text.secondary">{change.label}</Typography>
+                    <Typography component="dd" sx={{ m: 0, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                      {change.from} → {change.to}{change.change && ` (${change.change})`}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+              {formYearly?.warning && <Alert severity="warning" sx={{ mt: 2 }}>Yearly: {formYearly.text}.</Alert>}
+              {confirming.some((change) => change.kind === 'price') && (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                  New prices apply to new web checkouts only. App Store and Google Play prices do not change.
+                </Typography>
+              )}
+              {confirming.some((change) => change.kind === 'fee') && (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                  A new fee is locked onto campaigns created from now on; existing campaigns keep their rate. Creator-page withdrawals use the current platform fee straight away.
+                </Typography>
+              )}
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2 }}>
+              <Button onClick={() => setConfirming(null)} disabled={saving} sx={{ textTransform: 'none' }}>Back</Button>
+              <Button
+                variant="contained"
+                onClick={() => void saveEdit()}
+                disabled={saving}
+                startIcon={saving ? <LoadingDots size={6} /> : undefined}
+                sx={{ textTransform: 'none', fontWeight: 700 }}
+              >
+                {saving ? 'Saving…' : 'Confirm and save'}
+              </Button>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
+
       {/* Create dialog — add a brand-new tier */}
       <Dialog open={createForm !== null} onClose={closeCreate} maxWidth="sm" fullWidth>
         {createForm && (
@@ -467,25 +648,22 @@ export default function ManagePlansPage() {
                 <TextField label="Name" fullWidth size="small" value={createForm.name} onChange={(e) => setCreateField('name', e.target.value)} />
               </Box>
               <TextField label="Description" fullWidth size="small" multiline minRows={2} value={createForm.description} onChange={(e) => setCreateField('description', e.target.value)} />
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <TextField label="Monthly price" type="number" fullWidth size="small" value={createForm.priceMonthly} onChange={(e) => setCreateField('priceMonthly', Number(e.target.value))} InputProps={{ startAdornment: <InputAdornment position="start">GH₵</InputAdornment> }} helperText={WEB_PRICE_HELP} />
-                <TextField label="Yearly price" type="number" fullWidth size="small" value={createForm.priceYearly} onChange={(e) => setCreateField('priceYearly', Number(e.target.value))} InputProps={{ startAdornment: <InputAdornment position="start">GH₵</InputAdornment> }} helperText={WEB_PRICE_HELP} />
-              </Box>
-              <TextField label="Platform fee" type="number" fullWidth size="small" value={createForm.platformFeePercent} onChange={(e) => setCreateField('platformFeePercent', Number(e.target.value))} InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }} helperText="Between 0 and 100" />
+              <PriceFields plan={createForm} onChange={setCreateField} />
+              <TextField label="Platform fee" type="number" fullWidth size="small" value={createForm.platformFeePercent} onChange={(e) => setCreateField('platformFeePercent', Number(e.target.value))} InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }} helperText={PLATFORM_FEE_HELP} />
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
                 {NUMERIC_LIMITS.map((limit) => (
                   <TextField
                     key={limit.key} label={limit.label} type="number" size="small"
                     value={createForm[limit.key] as number}
                     onChange={(e) => setCreateField(limit.key, Number(e.target.value) as SubscriptionPlan[typeof limit.key])}
-                    error={limit.invalid?.(createForm)}
-                    helperText={limit.invalid?.(createForm) ? LIMIT_ERROR : limit.help ?? (limit.unlimited ? '-1 = unlimited' : undefined)}
+                    error={Boolean(limit.error?.(createForm))}
+                    helperText={limit.error?.(createForm) ?? limit.help ?? (limit.unlimited ? '-1 = unlimited' : undefined)}
                   />
                 ))}
                 <OnBehalfFeeField plan={createForm} onChange={(value) => setCreateField('onBehalfFeePercent', value)} />
               </Box>
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <TextField label="Sort order" type="number" size="small" fullWidth value={createForm.sortOrder} onChange={(e) => setCreateField('sortOrder', Number(e.target.value))} helperText="Lower = shown first" />
+              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+                <SortOrderField value={createForm.sortOrder} tie={sortOrderTie(plans, createForm.sortOrder)} onChange={(value) => setCreateField('sortOrder', value)} />
                 <TextField label="Accent colour" size="small" fullWidth value={createForm.accentColor} onChange={(e) => setCreateField('accentColor', e.target.value)} helperText="#RRGGBB" />
               </Box>
               <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
@@ -498,7 +676,7 @@ export default function ManagePlansPage() {
                 {FEATURE_TOGGLES.map((toggle) => (
                   <FormControlLabel
                     key={toggle.key}
-                    control={<Switch checked={Boolean(createForm[toggle.key])} onChange={(e) => setCreateField(toggle.key, e.target.checked as SubscriptionPlan[typeof toggle.key])} />}
+                    control={<Switch checked={Boolean(createForm[toggle.key])} onChange={(e) => setCreateFeature(toggle.key, e.target.checked)} />}
                     label={toggle.label}
                   />
                 ))}

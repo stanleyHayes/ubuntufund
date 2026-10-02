@@ -163,12 +163,12 @@ describe('Split-proceeds accrual Integration (flag on, spec §17)', () => {
       .send({})
       .expect(200);
 
-    // A donation settles: net 975 (Pro 2.5%) → 60/40 = 585 / 390.
+    // A donation settles: net 980 (Pro 2%) → 60/40 = 588 / 392.
     await fundCampaign(app, campaignId, 1000);
 
     // Campaign-level projection is unchanged (still tracks the full net).
     const campaignBalance = await CampaignBalanceModel.findOne({ campaignId });
-    expect(campaignBalance?.pendingBalance).toBe(975);
+    expect(campaignBalance?.pendingBalance).toBe(980);
 
     // Per-beneficiary buckets accrued exactly.
     const balancesRes = await request(app)
@@ -180,8 +180,8 @@ describe('Split-proceeds accrual Integration (flag on, spec §17)', () => {
         (b) => [b.beneficiaryId, b.pendingBalance]
       )
     );
-    expect(byId[ama.beneficiaryId]).toBe(585);
-    expect(byId[kofi.beneficiaryId]).toBe(390);
+    expect(byId[ama.beneficiaryId]).toBe(588);
+    expect(byId[kofi.beneficiaryId]).toBe(392);
 
     // The split locked on the first contribution.
     const disclosure = await request(app).get(`/api/v1/campaigns/${campaignId}/split`);
@@ -192,11 +192,11 @@ describe('Split-proceeds accrual Integration (flag on, spec §17)', () => {
       .get(`/api/v1/campaigns/${campaignId}/split/beneficiaries/${ama.beneficiaryId}/statement`)
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
-    expect(statement.body.data.balance.pendingBalance).toBe(585);
+    expect(statement.body.data.balance.pendingBalance).toBe(588);
     expect(statement.body.data.entries).toHaveLength(1);
     expect(statement.body.data.entries[0]).toMatchObject({
       kind: 'accrual',
-      amount: 585,
+      amount: 588,
       splitVersion: 1,
     });
   });
@@ -213,6 +213,6 @@ describe('Split-proceeds accrual Integration (flag on, spec §17)', () => {
     expect(balancesRes.body.data).toHaveLength(0);
     // Campaign-level projection still works normally.
     const campaignBalance = await CampaignBalanceModel.findOne({ campaignId });
-    expect(campaignBalance?.pendingBalance).toBe(975);
+    expect(campaignBalance?.pendingBalance).toBe(980);
   });
 });

@@ -10,6 +10,13 @@ import { ProviderTransactionNotFoundError } from '../../domain/errors/ProviderTr
 export const SUBSCRIPTION_CHECKOUT_TTL_MS = 24 * 60 * 60 * 1000;
 
 /**
+ * How many of a member's newest PENDING checkouts a new purchase resolves
+ * (settles, expires, resumes or refuses over) before it opens a charge. The
+ * coupon preview reads the same ones, so the two agree on what is still open.
+ */
+export const OPEN_CHECKOUTS_PER_PURCHASE = 5;
+
+/**
  * Prefix of the synthetic reference a coupon-zeroed checkout settles under
  * inline. No provider ever saw it, so it can never be verified or paid.
  */

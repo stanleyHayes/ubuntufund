@@ -8,6 +8,7 @@ import { randomUUID } from 'expo-crypto'
 import { SegmentedButtons } from '@/components/RoundedControls'
 import { api } from '@/lib/api'
 import { parseMoneyInput } from '@/lib/moneyInput'
+import { formatMoney } from '@/lib/money'
 import { SelectionField } from '@/components/SelectionField'
 import type { SavedAccount } from '@/components/SavedPayoutAccounts'
 import { Chip } from '@/components/Chip'
@@ -256,7 +257,7 @@ function CreatorDashboardForViewer() {
     }
   }
 
-  const fmt = (n: number) => `GH₵${(n ?? 0).toLocaleString()}`
+  const fmt = (n: number) => formatMoney(n ?? 0)
   const pageUrl = profile ? `${WEB_BASE}/creators/${profile.handle}` : ''
 
   if (loading)

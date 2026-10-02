@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { formatAmountValue, formatMoney } from '../money'
+import { formatAmountValue, formatMoney, formatPlanPrice } from '../money'
+import { yearlyPricePerMonth } from '@ubuntu-fund/types'
 
 describe('money formatting', () => {
   it('always shows two decimals in cedis', () => {
@@ -17,5 +18,19 @@ describe('money formatting', () => {
     expect(formatMoney(12.5, 'USDT')).toBe('USDT 12.50')
     expect(formatMoney(Number.NaN)).toBe('GH₵0.00')
     expect(formatAmountValue(1500)).toBe('1,500.00')
+  })
+})
+
+describe('plan prices', () => {
+  it('match the web and marketing pricing pages: whole cedis bare, anything else two decimals', () => {
+    expect(formatPlanPrice(3990)).toBe('GH₵3,990')
+    expect(formatPlanPrice(9.99)).toBe('GH₵9.99')
+    expect(formatPlanPrice(332.5)).toBe('GH₵332.50')
+    expect(formatPlanPrice(0)).toBe('GH₵0')
+    expect(formatPlanPrice(Number.NaN)).toBe('GH₵0')
+  })
+  it('shows a yearly price per month from the shared pesewa helper', () => {
+    expect(formatPlanPrice(yearlyPricePerMonth(99))).toBe('GH₵8.25')
+    expect(formatPlanPrice(yearlyPricePerMonth(3990))).toBe('GH₵332.50')
   })
 })

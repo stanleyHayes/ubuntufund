@@ -12,14 +12,18 @@ export class PlanController {
     private readonly createPlanUseCase: CreatePlanUseCase
   ) {}
 
-  /** GET /plans — authed display of all plans (DB-backed, defaults as fallback). */
+  /**
+   * GET /plans — authed display of all plans. Strict: when plans cannot be
+   * read this is an error, never the code defaults shown as the live price
+   * list (the admin editor would save them back over the real plans).
+   */
   list = async (
     _req: Request,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
     try {
-      const plans = await this.listPlansUseCase.execute();
+      const plans = await this.listPlansUseCase.execute(true);
       res.json({ data: plans, message: 'Plans retrieved', status: 200 });
     } catch (error) {
       next(error);

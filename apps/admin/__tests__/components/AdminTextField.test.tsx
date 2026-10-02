@@ -21,18 +21,24 @@ it('retains coupon checkbox selection and the caller’s compact multi-select su
   function Field() {
     const [value, setValue] = useState<string[]>([])
     return <AdminSelect multiple value={value} displayEmpty optionContext="coupon" renderValue={values => values.length ? values.join(', ') : 'All tiers'} onChange={event => setValue(event.target.value as string[])}>
-      {['starter', 'pro'].map(tier => <MenuItem key={tier} value={tier}><Checkbox checked={value.includes(tier)} /><ListItemText primary={tier === 'starter' ? 'Plus' : 'Pro'} /></MenuItem>)}
+      {['starter', 'pro'].map(tier => <MenuItem key={tier} value={tier}><Checkbox checked={value.includes(tier)} /><ListItemText primary={tier === 'starter' ? 'Starter' : 'Pro'} /></MenuItem>)}
     </AdminSelect>
   }
   render(<ThemeProvider theme={ujimoraTheme}><Field /></ThemeProvider>)
   const field = screen.getByRole('combobox')
   fireEvent.mouseDown(field)
-  expect(screen.getByRole('option', { name: 'Plus' })).toHaveAccessibleDescription('Members on the Plus subscription tier.')
-  fireEvent.click(screen.getByRole('option', { name: 'Plus' }))
+  // Plan names are admin-editable, so the fallback description never names a plan.
+  expect(screen.getByRole('option', { name: 'Starter' })).toHaveAccessibleDescription('Members on this subscription plan.')
+  fireEvent.click(screen.getByRole('option', { name: 'Starter' }))
   expect(field).toHaveTextContent('starter')
   expect(screen.getAllByRole('checkbox')[0]).toBeChecked()
   fireEvent.click(screen.getByRole('option', { name: 'Pro' }))
   expect(field).toHaveTextContent('starter, pro')
-  fireEvent.click(screen.getByRole('option', { name: 'Plus' }))
+  fireEvent.click(screen.getByRole('option', { name: 'Starter' }))
   expect(field).toHaveTextContent('pro')
+})
+it('prefers a caller-supplied description, such as a live plan name', () => {
+  render(<ThemeProvider theme={ujimoraTheme}><TextField select label="Tier" optionContext="subscription" value="all" onChange={() => {}}><MenuItem value="all">All Tiers</MenuItem><MenuItem value="free"><ListItemText primary="Community" secondary="Members on the Community plan." /></MenuItem></TextField></ThemeProvider>)
+  fireEvent.mouseDown(screen.getByRole('combobox'))
+  expect(screen.getByRole('option', { name: 'Community' })).toHaveAccessibleDescription('Members on the Community plan.')
 })

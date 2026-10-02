@@ -18,5 +18,10 @@ describe('an earlier unpaid checkout blocking a new purchase',()=>{
   expect(checkoutInProgressId(new ApiError(409,'Confirm the switch',{code:['replace_current_plan']}))).toBeNull()
   expect(checkoutInProgressId(new Error('other'))).toBeNull()
  })
+ it('names the open checkout of the same purchase at an old price, so the sheet offers to cancel it',()=>{
+  const priced=new ApiError(409,'That payment page charges GH₵26.99, but this purchase now costs GH₵23.99. Cancel it to pay the current price.',{checkoutId:['earlier'],code:['checkout_in_progress','checkout_price_changed']})
+  expect(checkoutInProgressId(priced)).toBe('earlier')
+  expect(checkoutInProgressId(new ApiError(409,'That payment page charges GH₵26.99.',{checkoutId:['older'],code:['checkout_price_changed']}))).toBe('older')
+ })
  it('cancels the earlier checkout and forgets it for recovery',async()=>{data.set('ujimora:subscription:owner','earlier');post.mockResolvedValue({id:'earlier',status:'expired'});expect((await abandonSubscriptionCheckout('earlier')).status).toBe('expired');expect(post).toHaveBeenCalledWith('/subscriptions/checkout/earlier/abandon');expect(data.size).toBe(0)})
 })

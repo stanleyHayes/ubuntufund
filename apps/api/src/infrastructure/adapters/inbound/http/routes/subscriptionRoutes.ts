@@ -18,7 +18,10 @@ const upgradeSubscriptionSchema = z.object({
 });
 
 const createCheckoutSchema = z.object({
-  tier: z.nativeEnum(SubscriptionTier),
+  // Free-form, like plan tiers themselves, so a tier an admin created can be
+  // bought. The use case refuses unknown, inactive, hidden, Free and
+  // Enterprise plans.
+  tier: z.string().trim().min(1).max(60),
   billingCycle: z.nativeEnum(BillingCycle),
   couponCode: z.string().min(1).max(50).optional(),
   replaceCurrentPlan: z.boolean().optional(),

@@ -35,7 +35,8 @@ describe('Sensitive money-config change auditing (ADR-5)', () => {
   it('records the old→new diff of a plan pricing/fee change', async () => {
     const { repo, entries } = makeAuditSpy();
     const before = basePlan();
-    const after = basePlan({ platformFeePercent: 0, priceMonthly: 99 });
+    // 129 a month keeps the stored 1,490 a year within 12 monthly payments.
+    const after = basePlan({ platformFeePercent: 0, priceMonthly: 129 });
     const planRepo = {
       async findByTier() {
         return before;
@@ -49,7 +50,7 @@ describe('Sensitive money-config change auditing (ADR-5)', () => {
     const useCase = new UpdatePlanUseCase(planRepo, repo);
     await useCase.execute(
       'pro',
-      { platformFeePercent: 0, priceMonthly: 99 },
+      { platformFeePercent: 0, priceMonthly: 129 },
       { userId: 'admin-1', role: 'admin' }
     );
 
@@ -61,7 +62,7 @@ describe('Sensitive money-config change auditing (ADR-5)', () => {
       (entries[0]!.changes ?? []).map((c) => [c.field, [c.before, c.after]])
     );
     expect(changed.platformFeePercent).toEqual([2.5, 0]);
-    expect(changed.priceMonthly).toEqual([149, 99]);
+    expect(changed.priceMonthly).toEqual([149, 129]);
   });
 
   it('does not audit when nothing actually changed', async () => {

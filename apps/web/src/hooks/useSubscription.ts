@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import type { Subscription, SubscriptionPlan } from '@ubuntu-fund/types'
 import {
   SubscriptionTier,
   SubscriptionStatus,
   BillingCycle,
-  SUBSCRIPTION_PLANS,
 } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
 
@@ -86,41 +85,47 @@ export function useMySubscription(): UseMySubscriptionResult {
 // usePlanMap
 // ---------------------------------------------------------------------------
 
+interface UsePlanMapResult {
+  /** Keyed by the (string) tier id so admin-ADDED tiers render too. */
+  plans: Record<string, SubscriptionPlan>
+  loaded: boolean
+  error: boolean
+  retry: () => void
+}
+
 /**
- * The DB-backed plans keyed by tier for display. Seeded from the code-defined
- * `SUBSCRIPTION_PLANS` so cards render immediately with no flash/empty state,
- * then overlaid with the live plans from `GET /plans`. A failed fetch keeps the
- * seeded defaults, so pricing/limits are always shown.
+ * The live plans from `GET /plans`, keyed by tier. Starts empty rather than
+ * from the code seed, so a price is never shown that checkout would not
+ * charge: callers wait for `loaded` and offer `retry` when `error` is set.
+ * `GET /plans` needs a session and a 401 signs the browser out, so a page
+ * open to signed-out visitors passes `enabled: false` until it has a plan to
+ * show.
  */
-export function usePlanMap(): Record<string, SubscriptionPlan> {
-  // Keyed by the (string) tier id so admin-ADDED tiers from GET /plans render too.
-  const [planMap, setPlanMap] = useState<Record<string, SubscriptionPlan>>(SUBSCRIPTION_PLANS)
-
+export function usePlanMap({ enabled = true }: { enabled?: boolean } = {}): UsePlanMapResult {
+  const [plans, setPlans] = useState<Record<string, SubscriptionPlan>>({})
+  const [loaded, setLoaded] = useState(false)
+  const [error, setError] = useState(false)
+  const [attempt, setAttempt] = useState(0)
   useEffect(() => {
-    let cancelled = false
-
-    api
-      .get<SubscriptionPlan[]>('/plans')
-      .then((data) => {
-        if (cancelled || !Array.isArray(data)) return
-        setPlanMap((current) => {
-          const next = { ...current }
-          for (const plan of data) {
-            if (plan && plan.tier) next[plan.tier] = plan
-          }
-          return next
-        })
-      })
-      .catch(() => {
-        // Keep the seeded defaults on failure.
-      })
-
-    return () => {
-      cancelled = true
+    if (!enabled) return
+    let active = true
+    // Awaited, so a malformed response takes the same path as a failed request.
+    const load = async () => {
+      try {
+        const rows = await api.get<SubscriptionPlan[]>('/plans')
+        if (!Array.isArray(rows) || !rows.length) throw new Error('Plans unavailable')
+        if (!active) return
+        setPlans(Object.fromEntries(rows.filter((plan) => plan?.tier).map((plan) => [plan.tier, plan])))
+        setLoaded(true)
+      } catch {
+        if (active) setError(true)
+      }
     }
-  }, [])
-
-  return planMap
+    load()
+    return () => { active = false }
+  }, [attempt, enabled])
+  const retry = useCallback(() => { setError(false); setAttempt((value) => value + 1) }, [])
+  return { plans, loaded, error, retry }
 }
 
 /** Signup must show confirmed public prices, never seeded commercial defaults. */

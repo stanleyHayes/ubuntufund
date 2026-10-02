@@ -45,6 +45,8 @@ const FALSE_CLAIMS: [string, RegExp][] = [
   // Organizers are verified; campaigns are screened, not verified.
   ['verified campaigns', /verified campaigns?\b/i],
   ['human review of every campaign', /Human review\./],
+  // The Free plan charges its platform fee (5%) on every donation.
+  ['fee-free personal campaigns', /free for personal campaigns/i],
 ]
 
 const SEED = '../api/src/infrastructure/database/siteContentDefaults.json'

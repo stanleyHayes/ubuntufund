@@ -515,8 +515,9 @@ export function createApp(options: {
   const paymentProviderRepo = new MongoPaymentProviderRepository()
   const subscriptionPlanRepo = new MongoSubscriptionPlanRepository()
   // Seed the plan matrix once at startup (idempotent — only inserts a tier's row
-  // when absent, never overwriting admin edits). Fire-and-forget; a seed failure
-  // is logged and PlanService still falls back to the code-defined defaults.
+  // when absent, never overwriting admin edits, and warns about built-in rows
+  // that differ from the code price book). Fire-and-forget; a seed failure is
+  // logged and PlanService still falls back to the code-defined defaults.
   void subscriptionPlanRepo
     .seedDefaults()
     .catch((error) => logger.error({ err: error }, 'subscription plan seed failed'))
@@ -1368,7 +1369,11 @@ export function createApp(options: {
   const listCouponsUseCase = new ListCouponsUseCase(couponRepo)
   const getCouponUseCase = new GetCouponUseCase(couponRepo)
   const deleteCouponUseCase = new DeleteCouponUseCase(couponRepo, couponRedemptionRepo)
-  const previewCouponUseCase = new PreviewCouponUseCase(couponService, planService, affiliateCodePricing, planLimitsService)
+  // Reads the member's open checkouts as checkout does, so a coupon seat their
+  // own unpaid checkout holds is quoted at the price Continue charges.
+  const previewCouponUseCase = new PreviewCouponUseCase(
+    couponService, planService, affiliateCodePricing, planLimitsService, subscriptionCheckoutRepo,
+  )
 
   // Affiliate/referral program: owner surface + admin console + payout rail.
   const enrollAffiliateUseCase = new EnrollAffiliateUseCase(affiliateRepo, affiliateBalanceRepo)

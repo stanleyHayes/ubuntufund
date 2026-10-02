@@ -450,14 +450,14 @@ End-to-end journeys across areas, concurrency, multi-currency, dates and time zo
 
 1. Admin: POST /api/v1/admin/payments/<checkoutId>/reconcile. Expect 404 'Contribution not found' (the tool only handles donations). Confirm admin /subscriptions has no verify action.
 2. As the user, within an hour, start another checkout on /subscription for the same plan.
-3. As another test user with an unpaid checkout opened less than an hour ago, start a second checkout.
+3. As another test user with an unpaid checkout opened less than an hour ago, start the same purchase again (same plan, cycle and code), then a different one (another plan or cycle).
 4. Recovery: the signed-in user opens https://app.ujimora.com/subscription/callback?reference=<sub-ref>. This calls the owner-only verify endpoint and settles.
 5. Confirm the subscription is active, the period starts at settlement, and coupon or affiliate effects are applied once.
 6. The second user opens the same URL. Expect 404 and no settlement.
 7. With a paid plan in force, choose a different paid plan on /subscription.
 8. Write the support runbook: find the sub- reference in Paystack by customer email, send the user the callback link, or rely on the 5-minute sweep; refund if needed.
 
-**Expect:** Starting a second checkout resolves the earlier one with Paystack first. A paid earlier checkout is settled and the new one refused with 409 'Your earlier plan payment went through and that plan is now active. Review your subscription before buying again.' An unpaid checkout under an hour old refuses with 409 'You already have a plan payment in progress. Finish it in the payment window, or check its status on your subscription page, before starting another.' No second charge can open. Owner-only recovery works and other users get 404. Buying a different plan while one is in force needs confirmation: 409 'Your <plan> plan is active until <date>. Buying <other> now replaces it straight away, and unused time is not refunded or credited. Confirm the switch to continue.', and the web button reads 'Switch to <plan>' with that warning. There is still no admin verify action for subscription checkouts; the sweep and the callback link are the recovery paths.
+**Expect:** Starting a second checkout resolves the earlier one with Paystack first. A paid earlier checkout is settled and the new one refused with 409 'Your earlier plan payment went through and that plan is now active. Review your subscription before buying again.' An unpaid checkout under an hour old is reused for the same purchase: the API answers resumed: true with its reference and authorization URL, so the member returns to that Paystack page. A different purchase is refused with 409 'You already have a plan payment in progress. Finish it in the payment window, or cancel it before starting another.' and errors.code ['checkout_in_progress'], so the web dialog offers 'Cancel it and continue' and 'Check that payment'. No second charge can open. Owner-only recovery works and other users get 404. Buying a different plan while one is in force needs confirmation: 409 'Your <plan> plan is active until <date>. Buying <other> now replaces it straight away, and unused time is not refunded or credited. Confirm the switch to continue.', and the web button reads 'Switch to <plan>' with that warning. There is still no admin verify action for subscription checkouts; the sweep and the callback link are the recovery paths.
 
 **Needs:** Paystack test
 
@@ -3270,7 +3270,7 @@ End-to-end journeys across areas, concurrency, multi-currency, dates and time zo
 5. Call POST /api/v1/live-sessions/:id/video/host-token directly with C's bearer token and record the HTTP status.
 6. C clicks 'End session' and confirms 'End broadcast' in the 'End broadcast?' dialog.
 
-**Expect:** Behaviour matches docs/live-broadcasting.md. An already-connected host is not disconnected by the lapse (no sweep), and V keeps watching. A new host token is refused with 403 'Your Community plan does not include LIVE streaming. Upgrade to unlock it.' (the owner's plan name), and C sees that message. Viewer tokens are unaffected. The GHS 5 donation settles and is attributed exactly once. 'End session' still works, closes the LiveKit room, and V sees the broadcast end.
+**Expect:** Behaviour matches docs/live-broadcasting.md. An already-connected host is not disconnected by the lapse (no sweep), and V keeps watching. A new host token is refused with 403 'Your Free plan does not include LIVE streaming. Upgrade to unlock it.' (the owner's plan name), and C sees that message. Viewer tokens are unaffected. The GHS 5 donation settles and is attributed exactly once. 'End session' still works, closes the LiveKit room, and V sees the broadcast end.
 
 **Needs:** LiveKit credentials; Paystack test keys
 
@@ -3289,7 +3289,7 @@ End-to-end journeys across areas, concurrency, multi-currency, dates and time zo
 3. Open /campaigns/<C2>/live and click 'Go LIVE'.
 4. Check the OBS overlay link for C1's session and the number of active sessions for C1 in the DB.
 
-**Expect:** Both calls return 403 'Your Community plan does not include LIVE streaming. Upgrade to unlock it.'; the plan check now runs before an existing active session is returned, so a lapsed plan cannot re-enter the old broadcast. No second active session is created for C1. The existing session keeps running until ended or until the 12-hour live-safety limit, and its overlay keeps working.
+**Expect:** Both calls return 403 'Your Free plan does not include LIVE streaming. Upgrade to unlock it.'; the plan check now runs before an existing active session is returned, so a lapsed plan cannot re-enter the old broadcast. No second active session is created for C1. The existing session keeps running until ended or until the 12-hour live-safety limit, and its overlay keeps working.
 
 **Needs:** LiveKit credentials
 
@@ -3346,13 +3346,13 @@ End-to-end journeys across areas, concurrency, multi-currency, dates and time zo
 
 1. In the campaign's collaborator section, O invites I1, I2 and I3. Confirm the form no longer asks for a revenue share and roles are described as listing labels.
 2. I1 accepts at app.ujimora.com/invitations.
-3. Force O's plan lapse to Free (Community).
+3. Force O's plan lapse to Free.
 4. I2 clicks Accept at /invitations. I3 clicks Accept.
 5. I2 clicks Decline instead.
 6. O re-subscribes, then I3 accepts again.
 7. Downgrade O to a tier with max collaborators = 1 while 2 have accepted, then have O invite another user.
 
-**Expect:** Step 4 is refused with 403 and the invitations stay PENDING (not consumed). The message comes from the owner's plan: 'Your Community plan does not include campaign collaboration. Upgrade to unlock it.' This still wrongly addresses the invitee; file P2 copy defect. Decline still works. After re-subscribing, I3's accept succeeds. I1's accepted access is unchanged by the lapse, and the policy on existing collaborators is documented. In step 7, existing collaborators are kept and the new invite is refused with the 'allows 1 collaborator(s)' message.
+**Expect:** Step 4 is refused with 403 and the invitations stay PENDING (not consumed). The message comes from the owner's plan: 'Your Free plan does not include campaign collaboration. Upgrade to unlock it.' This still wrongly addresses the invitee; file P2 copy defect. Decline still works. After re-subscribing, I3's accept succeeds. I1's accepted access is unchanged by the lapse, and the policy on existing collaborators is documented. In step 7, existing collaborators are kept and the new invite is refused with the 'allows 1 collaborator(s)' message.
 
 **Needs:** none
 

@@ -13,9 +13,7 @@ import {
   SubscriptionStatus,
   SubscriptionCheckoutStatus,
   BillingCycle,
-  SUBSCRIPTION_PLANS,
   type SubscriptionPlan,
-  type CouponPreview,
 } from '@ubuntu-fund/types'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import type { Palette, NeuRecipes } from '@/theme'
@@ -28,7 +26,24 @@ import {
   isPaymentsNotConfigured,
 } from '@/lib/subscriptions'
 import { previewCoupon } from '@/lib/coupons'
-import { isCurrentPlanTier, isPaidPlanInForce, planCardPrice } from '@/lib/subscriptionStatus'
+import { formatPlanPrice } from '@/lib/money'
+import {
+  EXISTING_CAMPAIGN_FEE_NOTE,
+  checkoutSheetPrice,
+  couponQuoteKey,
+  cycleOption,
+  effectivePlan,
+  feePlan,
+  isCurrentPlanTier,
+  isPaidPlanInForce,
+  isStoreManaged,
+  planCardPrice,
+  planDateLine,
+  planTermsLine,
+  sandboxFeeNote,
+  upgradeOffer,
+  type SheetQuote,
+} from '@/lib/subscriptionStatus'
 import { useAuth } from '@/context/AuthContext'
 import { SignInRequired } from '@/components/SignInRequired'
 import { GlassSurface } from '@/components/GlassSurface'
@@ -38,17 +53,17 @@ const ENTERPRISE_CONTACT = 'mailto:sales@ujimora.com?subject=Enterprise%20plan%2
 const POLL_INTERVAL_MS = 2000
 const MAX_POLL_ATTEMPTS = 15 // ~30s
 
-function formatGhs(n: number): string {
-  return `GH₵ ${n.toFixed(2)}`
-}
-
-/** Order plans cheapest → richest by the admin-set sortOrder. */
+/** Order plans cheapest → richest by the admin-set sortOrder; ties by price, then tier id. */
 function bySortOrder(a: SubscriptionPlan, b: SubscriptionPlan): number {
-  return a.sortOrder - b.sortOrder || a.priceMonthly - b.priceMonthly
+  return a.sortOrder - b.sortOrder || a.priceMonthly - b.priceMonthly || a.tier.localeCompare(b.tier)
 }
 
 interface SubscriptionData {
   billingProvider?: 'web' | 'apple' | 'google'
+  /** Store plans only: 'sandbox' for App Review / TestFlight purchases. */
+  billingEnvironment?: 'production' | 'sandbox'
+  /** Store plans: automatic renewal is off. */
+  cancelAtPeriodEnd?: boolean
   currentPeriodEnd?: string
   tier: string
   status: SubscriptionStatus
@@ -102,6 +117,7 @@ function makeStyles(p: Palette, neu: NeuRecipes) {
 
     // Section title
     sectionTitle: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: p.text, marginBottom: 12 },
+    plansErrorText: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: p.textSecondary, textAlign: 'center', marginBottom: 16 },
 
     // Plans row
     plansScroll: { flexGrow: 0 },
@@ -271,7 +287,8 @@ function CheckoutSheet({
   const styles = useStyles()
   const [billingCycle, setBillingCycle] = useState<BillingCycle>(BillingCycle.MONTHLY)
   const [couponCode, setCouponCode] = useState('')
-  const [preview, setPreview] = useState<CouponPreview | null>(null)
+  /** The latest coupon quote, with the code, plan and cycle it was priced for. */
+  const [quote, setQuote] = useState<SheetQuote | null>(null)
   const [previewing, setPreviewing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -285,7 +302,7 @@ function CheckoutSheet({
       const opened = tier ? plans[tier] : undefined
       setBillingCycle(opened && !(opened.priceMonthly > 0) && opened.priceYearly > 0 ? BillingCycle.YEARLY : BillingCycle.MONTHLY)
       setCouponCode('')
-      setPreview(null)
+      setQuote(null)
       setError(null)
       setBlockingCheckoutId(null)
       setSubmitting(false)
@@ -299,17 +316,19 @@ function CheckoutSheet({
     if (!tier) return
     const code = couponCode.trim()
     if (!code) {
-      setPreview(null)
+      setQuote(null)
       setPreviewing(false)
       return
     }
     setPreviewing(true)
+    // The quote belongs to these inputs; the sheet ignores it once any changes.
+    const key = couponQuoteKey(tier, billingCycle, code)
     const timer = setTimeout(async () => {
       try {
         const result = await previewCoupon({ code, tier, billingCycle })
-        if (id === reqId.current) setPreview(result)
+        if (id === reqId.current) setQuote({ key, preview: result })
       } catch {
-        if (id === reqId.current) setPreview(null)
+        if (id === reqId.current) setQuote({ key, preview: null })
       } finally {
         if (id === reqId.current) setPreviewing(false)
       }
@@ -321,17 +340,17 @@ function CheckoutSheet({
 
   const plan = plans[tier]
   if (!plan) return null
-  const baseAmount = billingCycle === BillingCycle.YEARLY ? plan.priceYearly : plan.priceMonthly
-  const validCoupon = preview?.valid ? preview : null
-  const finalAmount = validCoupon ? validCoupon.finalAmount : baseAmount
-  const discount = validCoupon ? validCoupon.discountAmount : 0
-  const offered = baseAmount > 0
+  const listPrice = billingCycle === BillingCycle.YEARLY ? plan.priceYearly : plan.priceMonthly
   // Buying a different plan while one is running replaces it immediately, with
   // no credit for unused time; the member confirms that by paying from here.
   const switching = isPaidPlanInForce(current) && current.tier !== tier
   // Buying the plan you have while it runs adds the time to its end.
   const renewing = isPaidPlanInForce(current) && current.tier === tier
-  const payLabel = !offered ? 'Not offered' : finalAmount === 0 ? 'Activate plan' : switching ? `Replace plan and pay ${formatGhs(finalAmount)}` : `Pay ${formatGhs(finalAmount)}`
+  // Only a quote for this code, plan and cycle is shown or paid; until it is
+  // in, Pay waits (checkout charges the code, plan and cycle on screen).
+  const price = checkoutSheetPrice({ listPrice, tier, billingCycle, couponCode, quote, switching })
+  const { baseAmount, finalAmount, payLabel } = price
+  const discount = price.discountAmount
 
   const handleCheckout = async () => {
     setSubmitting(true)
@@ -427,27 +446,34 @@ function CheckoutSheet({
           <Text style={styles.sheetSub}>{plan.description}</Text>
 
           {/* Billing cycle */}
-          <View style={styles.cycleRow}>
+          <View style={styles.cycleRow} accessibilityRole="radiogroup" accessibilityLabel="Billing cycle">
             {[BillingCycle.MONTHLY, BillingCycle.YEARLY].map((cycle) => {
               const active = billingCycle === cycle
-              const amount = cycle === BillingCycle.YEARLY ? plan.priceYearly : plan.priceMonthly
+              // A cycle priced 0 is not offered, never a GH₵0 price.
+              const option = cycleOption(cycle, plan)
               return (
                 <TouchableRipple
                   key={cycle}
                   style={[styles.cycleOption, active && styles.cycleOptionActive]}
                   rippleColor={p.ripple}
                   onPress={() => setBillingCycle(cycle)}
-                  disabled={!(amount > 0)}
-                  accessibilityState={{ selected: active, disabled: !(amount > 0) }}
+                  disabled={!option.offered}
+                  accessibilityRole="radio"
+                  accessibilityLabel={option.accessibilityLabel}
+                  accessibilityState={{ selected: active, checked: active, disabled: !option.offered }}
                 >
                   <View style={{ alignItems: 'center' }}>
                     <Text style={[styles.cycleText, active && styles.cycleTextActive]}>
-                      {cycle === BillingCycle.YEARLY ? 'Yearly' : 'Monthly'}
+                      {option.title}
                     </Text>
                     <Text style={[styles.cycleHint, active && styles.cycleHintActive]}>
-                      {formatGhs(amount)}
-                      {cycle === BillingCycle.YEARLY ? ' / 1 year' : ' / 30 days'}
+                      {option.price}
                     </Text>
+                    {option.perMonth ? (
+                      <Text style={[styles.cycleHint, active && styles.cycleHintActive]}>
+                        {option.perMonth}
+                      </Text>
+                    ) : null}
                   </View>
                 </TouchableRipple>
               )
@@ -483,28 +509,31 @@ function CheckoutSheet({
               ) : undefined
             }
           />
-          {preview && !preview.valid && couponCode.trim() ? (
-            <Text style={styles.couponError}>{preview.reason ?? "This coupon can't be applied."}</Text>
+          {price.quote && !price.quote.valid ? (
+            <Text style={styles.couponError}>{price.quote.reason ?? "This coupon can't be applied."}</Text>
+          ) : null}
+          {price.unchecked ? (
+            <Text style={styles.couponError}>We could not check this coupon. Check your connection, then edit the code to try again, or remove it.</Text>
           ) : null}
 
           {/* Price summary */}
           <View style={styles.priceSummary}>
             <View style={styles.priceLine}>
               <Text style={styles.priceLabel}>Plan</Text>
-              <Text style={discount > 0 ? styles.priceBase : styles.priceValue}>{formatGhs(baseAmount)}</Text>
+              <Text style={discount > 0 ? styles.priceBase : styles.priceValue}>{formatPlanPrice(baseAmount)}</Text>
             </View>
             {discount > 0 ? (
               <>
                 <View style={styles.priceLine}>
                   <Text style={styles.priceLabel}>Discount</Text>
-                  <Text style={[styles.priceValue, { color: p.success }]}>-{formatGhs(discount)}</Text>
+                  <Text style={[styles.priceValue, { color: p.success }]}>-{formatPlanPrice(discount)}</Text>
                 </View>
-                <Text style={styles.savingLine}>Coupon applied — you save {formatGhs(discount)}</Text>
+                <Text style={styles.savingLine}>Coupon applied — you save {formatPlanPrice(discount)}</Text>
               </>
             ) : null}
             <View style={styles.priceLine}>
               <Text style={styles.priceLabel}>Total</Text>
-              <Text style={styles.priceFinal}>{formatGhs(finalAmount)}</Text>
+              <Text style={styles.priceFinal}>{price.checking ? 'Checking…' : price.unchecked ? '—' : formatPlanPrice(finalAmount)}</Text>
             </View>
           </View>
 
@@ -514,7 +543,8 @@ function CheckoutSheet({
               mode="outlined"
               textColor={p.primary}
               style={styles.renewButton}
-              disabled={submitting}
+              // Continuing charges the code and cycle on screen, so it waits for their total too.
+              disabled={submitting || !price.canPay}
               onPress={cancelEarlierAndContinue}
             >
               Cancel it and continue
@@ -528,7 +558,7 @@ function CheckoutSheet({
             style={styles.payButton}
             contentStyle={styles.payButtonContent}
             loading={submitting}
-            disabled={submitting || !offered}
+            disabled={submitting || !price.canPay}
             onPress={handleCheckout}
             accessibilityLabel={payLabel}
           >
@@ -548,15 +578,20 @@ export default function SubscriptionScreen() {
   const p = usePalette()
   const styles = useStyles()
   const [currentSub, setCurrentSub] = useState<SubscriptionData>(DEFAULT_SUB)
-  // A running store plan is managed in that store; a lapsed one no longer blocks
-  // a web purchase (the API still refuses while the store could charge).
-  const storeManaged = (currentSub.billingProvider === 'apple' || currentSub.billingProvider === 'google') && isPaidPlanInForce(currentSub)
+  // A running store plan is managed in that store, and so is a lapsed one the
+  // store may still renew (the API refuses web checkout for both). Once the
+  // store can no longer charge, the web can sell a plan again.
+  const storeManaged = isStoreManaged(currentSub)
+  const storeRetrying = storeManaged && !isPaidPlanInForce(currentSub)
+  const storeLabel = currentSub.billingProvider === 'apple' ? 'App Store' : 'Google Play'
   const storeManagementUrl = currentSub.billingProvider === 'apple' ? 'https://apps.apple.com/account/subscriptions' : 'https://play.google.com/store/account/subscriptions?package=com.ujimora.app'
   const [isLoading, setIsLoading] = useState(true)
   const [checkoutTier, setCheckoutTier] = useState<string | null>(null)
-  // DB-backed plans (seeded from SUBSCRIPTION_PLANS, overlaid from GET /plans) so
-  // admin-added tiers appear here too.
-  const [plans, setPlans] = useState<Record<string, SubscriptionPlan>>(SUBSCRIPTION_PLANS)
+  // Live plans from GET /plans (so admin-added tiers appear too). No seeded
+  // defaults: the screen waits for them and offers a retry if they fail.
+  const [plans, setPlans] = useState<Record<string, SubscriptionPlan>>({})
+  const [plansLoaded, setPlansLoaded] = useState(false)
+  const [plansError, setPlansError] = useState(false)
 
   const fetchSubscription = useCallback(async () => {
     try {
@@ -570,45 +605,50 @@ export default function SubscriptionScreen() {
     }
   }, [])
 
-  // Refetch whenever the tab regains focus, so a subscription that settled via
-  // the Paystack webhook (after our ~30s poll window) is reflected without an
-  // app relaunch. Runs on first focus too, replacing the old mount effect.
-  useFocusEffect(
-    useCallback(() => {
-      if (user) fetchSubscription()
-    }, [user, fetchSubscription]),
-  )
-
-  // Overlay the live, admin-managed plans over the seeded defaults.
-  useEffect(() => {
-    let cancelled = false
-    api
-      .get<SubscriptionPlan[]>('/plans')
-      .then((data) => {
-        if (cancelled || !Array.isArray(data)) return
-        setPlans((current) => {
-          const next = { ...current }
-          for (const pl of data) if (pl && pl.tier) next[pl.tier] = pl
-          return next
-        })
-      })
-      .catch(() => {
-        // Keep the seeded defaults on failure.
-      })
-    return () => {
-      cancelled = true
+  // GET /plans needs a session, so it runs once the member is signed in. A
+  // failed refresh keeps plans already loaded; only a first failure shows.
+  const fetchPlans = useCallback(async () => {
+    try {
+      const data = await api.get<SubscriptionPlan[]>('/plans')
+      if (!Array.isArray(data) || !data.length) throw new Error('Plans unavailable')
+      setPlans(Object.fromEntries(data.filter((pl) => pl?.tier).map((pl) => [pl.tier, pl])))
+      setPlansLoaded(true)
+      setPlansError(false)
+    } catch {
+      setPlansError(true)
     }
   }, [])
+
+  // Refetch whenever the tab regains focus, so a subscription that settled via
+  // the Paystack webhook (after our ~30s poll window) or a plan an admin just
+  // edited is reflected without an app relaunch. Runs on first focus too.
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        fetchSubscription()
+        fetchPlans()
+      }
+    }, [user, fetchSubscription, fetchPlans]),
+  )
 
   const orderedPlans = Object.values(plans)
     .filter((pl) => pl.active !== false && pl.isPublic !== false)
     .sort(bySortOrder)
-  const currentPlan = plans[currentSub.tier] ?? SUBSCRIPTION_PLANS[SubscriptionTier.FREE]
+  // A tier missing from the live plans reads as Free instead of breaking the screen.
+  const currentPlan = plans[currentSub.tier] ?? plans[SubscriptionTier.FREE]
   // Web plans never renew on their own: once the period ends the member is
   // back on Free and may buy any plan again, including the one that lapsed.
   const paidInForce = isPaidPlanInForce(currentSub)
   const lapsed = currentSub.tier !== SubscriptionTier.FREE && !paidInForce
   const statusOk = !lapsed && currentSub.status === SubscriptionStatus.ACTIVE
+  // The limits that apply now: Free's once a paid plan has ended.
+  const planInEffect = effectivePlan(plans, currentSub) ?? currentPlan
+  // The fee new campaigns get: Free's for a lapsed plan and for an App Store
+  // sandbox (App Review / TestFlight) plan, which never gets the lower fee.
+  const feeTerms = feePlan(plans, currentSub) ?? planInEffect
+  const sandbox = currentSub.billingEnvironment === 'sandbox'
+  // Hidden while a store manages the plan or nothing can be bought.
+  const cta = upgradeOffer(orderedPlans, currentSub)
 
   if (!user) {
     return (
@@ -618,7 +658,19 @@ export default function SubscriptionScreen() {
     )
   }
 
-  if (isLoading) {
+  // No seeded prices stand in for live ones, so without plans nothing can be bought.
+  if ((plansError && !plansLoaded) || (plansLoaded && !currentPlan)) {
+    return (
+      <View style={[styles.container, styles.centered, styles.content]}>
+        <Text style={styles.plansErrorText}>Current plans and prices could not be loaded, so checkout is unavailable.</Text>
+        <Button mode="outlined" textColor={p.primary} onPress={() => { setPlansError(false); fetchPlans() }}>
+          Retry
+        </Button>
+      </View>
+    )
+  }
+
+  if (isLoading || !plansLoaded) {
     return (
       <View style={[styles.container, styles.centered]}>
         <SkeletonLoader size="large" color={p.primary} />
@@ -632,7 +684,9 @@ export default function SubscriptionScreen() {
       <Text style={styles.eyebrow}>MEMBERSHIP</Text>
       <Text style={styles.title}>Manage Your Plan</Text>
       <Text style={styles.lede}>Compare tiers and upgrade anytime.</Text>
-      {storeManaged && <View style={{ marginBottom: 16, gap: 8 }}><Text style={styles.billingText}>This subscription is managed through {currentSub.billingProvider === 'apple' ? 'App Store' : 'Google Play'}. Change plans or cancel there to avoid a second subscription.</Text><Button mode="outlined" onPress={() => void Linking.openURL(storeManagementUrl)}>Manage store subscription</Button></View>}
+      {storeManaged && <View style={{ marginBottom: 16, gap: 8 }}><Text style={styles.billingText}>{storeRetrying
+        ? `Your ${storeLabel} subscription has lapsed, but ${storeLabel} may still renew it. Update your payment details or cancel it there before buying a plan here, to avoid a second subscription.`
+        : `This subscription is managed through ${storeLabel}. Change plans or cancel there to avoid a second subscription.`}</Text><Button mode="outlined" onPress={() => void Linking.openURL(storeManagementUrl)}>Manage store subscription</Button></View>}
 
       {/* Current plan card */}
       <GlassSurface variant="raised" style={styles.currentPlanCard}>
@@ -649,10 +703,13 @@ export default function SubscriptionScreen() {
           </Text>
         </View>
         <Text style={styles.renewText}>
-          Access through: {currentSub.currentPeriodEnd ? new Date(currentSub.currentPeriodEnd).toLocaleDateString() : currentSub.renewDate}
+          {planDateLine(currentSub)}
         </Text>
         <Text style={styles.feeText}>
-          {currentPlan.platformFeePercent}% platform fee | {currentPlan.maxActiveCampaigns === -1 ? 'Unlimited' : currentPlan.maxActiveCampaigns} campaigns
+          {planTermsLine({ feePlan: feeTerms, limitsPlan: planInEffect, lapsed })}
+        </Text>
+        <Text style={[styles.feeText, { marginTop: 4 }]}>
+          {sandbox ? `${sandboxFeeNote(plans[SubscriptionTier.FREE]?.name)} ` : ''}{EXISTING_CAMPAIGN_FEE_NOTE}
         </Text>
       </GlassSurface>
 
@@ -691,7 +748,7 @@ export default function SubscriptionScreen() {
                 <Text style={styles.planPrice}>Contact Us</Text>
               ) : price ? (
                 <View style={styles.priceRow}>
-                  <Text style={styles.planPrice}>GH₵ {price.amount}</Text>
+                  <Text style={styles.planPrice}>{formatPlanPrice(price.amount)}</Text>
                   <Text style={styles.priceUnit}>{price.per === 'month' ? '/mo' : ` / ${price.per}`}</Text>
                 </View>
               ) : (
@@ -779,15 +836,15 @@ export default function SubscriptionScreen() {
         })}
       </ScrollView>
 
-      {/* Upgrade CTA */}
-      {(currentSub.tier === SubscriptionTier.FREE || lapsed) && (
+      {/* Upgrade CTA: the plan an admin marks Popular, else the cheapest one for sale */}
+      {cta && (
         <View style={styles.upgradeCta}>
           <View style={styles.upgradeIconTile}>
             <Icon source="crown" size={22} color={p.secondaryDark} />
           </View>
-          <Text style={styles.upgradeTitle}>Unlock more with Pro</Text>
+          <Text style={styles.upgradeTitle}>Unlock more with {cta.plan.name}</Text>
           <Text style={styles.upgradeDesc}>
-            Lower platform fees, more active campaigns, and premium features. Active paid plans include creator profile donations; creator withdrawals deduct the current plan’s platform-fee percentage. Free plans and trials do not include creator donations.
+            Lower platform fees on new campaigns, more active campaigns, and premium features. Campaigns you already run keep the fee they were created with. Active paid plans include creator profile donations; creator withdrawals deduct the current plan’s platform-fee percentage. Free plans and trials do not include creator donations.
           </Text>
           <Button
             mode="contained"
@@ -795,10 +852,9 @@ export default function SubscriptionScreen() {
             textColor="#221B0E"
             style={styles.upgradeButton}
             contentStyle={styles.upgradeButtonContent}
-            onPress={() => setCheckoutTier(SubscriptionTier.PRO)}
-            disabled={storeManaged}
+            onPress={() => setCheckoutTier(cta.plan.tier)}
           >
-            Upgrade to Pro
+            {cta.label}
           </Button>
         </View>
       )}

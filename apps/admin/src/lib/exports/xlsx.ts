@@ -21,7 +21,8 @@ export async function xlsxBlob(report: ExportReport): Promise<Blob> {
         cell.font = { name: 'Outfit', size: 11 }
         cell.alignment = { vertical: 'top', wrapText: true }
         if (table.columns[column - 1].type === 'date') cell.numFmt = 'yyyy-mm-dd hh:mm:ss "UTC"'
-        if (typeof cell.value === 'number') cell.numFmt = '#,##0.###############'
+        // Whole numbers without a trailing point ('3,990'); others with at least two decimals ('9,999.90').
+        if (typeof cell.value === 'number') cell.numFmt = Number.isInteger(cell.value) ? '#,##0' : '#,##0.00##########'
         // Strings remain explicit string cells; no formula or hyperlink objects are accepted.
         if (typeof cell.value === 'string' && cellText(cell.value).length > 32767) throw new Error('An Excel cell exceeds 32,767 characters. Use CSV or PDF for this report.')
       })

@@ -44,8 +44,9 @@ const details: Record<string, Detail> = {
   open: [ForumRounded, 'Awaiting investigation or a response.'], resolved: [CheckCircleRounded, 'The issue has been addressed and closed.'], dismissed: [CancelRounded, 'Closed without further action.'],
   cancelled: [CancelRounded, 'The subscription has been cancelled.'], past_due: [WarningRounded, 'A subscription payment is overdue.'], trialing: [ScheduleRounded, 'The account is in its trial period.'],
   new: [ForumRounded, 'Received and waiting for an initial response.'], in_progress: [FactCheckRounded, 'The team is working on this submission.'], archived: [ArchiveRounded, 'Kept for reference outside the active workflow.'], inactive: [VisibilityOffRounded, 'Disabled and unavailable for new use.'], published: [ArticleRounded, 'Visible to visitors on the public site.'], suspended: [ShieldRounded, 'Activity has been temporarily restricted.'],
-  starter: [WorkspacePremiumRounded, 'Members on the Plus subscription tier.'],
-  free: [PeopleRounded, 'Members on the Community subscription tier.'], plus: [WorkspacePremiumRounded, 'Members on the Plus subscription tier.'], pro: [WorkspacePremiumRounded, 'Members on the Pro subscription tier.'], enterprise: [BusinessRounded, 'Accounts on the Enterprise subscription tier.'],
+  // Plan names are admin-editable, so tier descriptions never name a plan (the title shows the live name).
+  starter: [WorkspacePremiumRounded, 'Members on this subscription plan.'],
+  free: [PeopleRounded, 'Members on this subscription plan.'], plus: [WorkspacePremiumRounded, 'Members on this subscription plan.'], pro: [WorkspacePremiumRounded, 'Members on this subscription plan.'], enterprise: [BusinessRounded, 'Accounts on this subscription plan.'],
   admin: [ShieldRounded, 'Staff accounts with administrative responsibilities.'], organization: [BusinessRounded, 'Accounts representing an organization.'], user: [PersonRounded, 'Individual member accounts.'],
   identity: [BadgeRounded, 'Documents that establish who the applicant is.'], address: [HomeRounded, 'Evidence of the applicant’s residential address.'], business: [BusinessRounded, 'Business registration or organization evidence.'], political: [CampaignRounded, 'Political affiliation or public-office verification.'], media: [ArticleRounded, 'Media affiliation or professional credentials.'],
   medical: [LocalHospitalRounded, 'Healthcare, treatment and medical support.'], education: [SchoolRounded, 'Learning, school fees and educational projects.'], emergency: [WarningRounded, 'Urgent relief and unexpected hardship.'], community: [PeopleRounded, 'Projects that benefit a shared community.'], religious: [VolunteerActivismRounded, 'Faith-based causes and community service.'], creative: [PaletteRounded, 'Arts, creative work and cultural projects.'],
@@ -63,8 +64,8 @@ const details: Record<string, Detail> = {
 }
 const scoped: Record<string, Record<string, string>> = {
   campaign: { active: 'Published campaigns currently accepting support.', business: 'Entrepreneurship, livelihoods and business projects.', expired: 'The campaign’s fundraising period has ended.' },
-  subscription: { active: 'Subscriptions within their active billing period.', organization: 'Accounts on the Organization subscription tier.', expired: 'The subscription’s paid access period has ended.' },
-  coupon: { active: 'Enabled coupons; date and redemption limits still apply.', inactive: 'Disabled coupons that cannot be redeemed.', organization: 'Include the Organization subscription tier.' },
+  subscription: { active: 'Subscriptions within their active billing period.', organization: 'Accounts on this subscription plan.', expired: 'The subscription’s paid access period has ended.' },
+  coupon: { active: 'Enabled coupons; date and redemption limits still apply.', inactive: 'Disabled coupons that cannot be redeemed.', organization: 'Include this subscription plan.' },
   privacy: { active: 'Requests that are open or being reviewed.' },
   affiliate: { active: 'Affiliates currently enabled to participate.', pending: 'Affiliate applications waiting for review.' },
   beneficiary: { organization: 'An organization, which accepts from its organization account.' },

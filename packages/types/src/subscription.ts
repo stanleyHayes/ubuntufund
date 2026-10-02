@@ -1,9 +1,7 @@
 import type { CouponCommissionBase } from './coupon'
 
-// The v6 commercial model uses five tiers: Community / Plus / Pro / Organization
-// / Enterprise. The enum VALUES are kept stable (free/starter/pro/enterprise) so
-// existing subscription records need no migration — `free` presents as Community
-// and `starter` as Plus; only `organization` is genuinely new.
+// Five tiers: Free / Starter / Pro / Organization / Enterprise. The enum values
+// are stable record keys; each plan's display name comes from the database.
 export enum SubscriptionTier {
   FREE = 'free',
   STARTER = 'starter',
@@ -273,19 +271,32 @@ export interface PlanLimits {
 }
 
 /**
- * Seed plan configurations (v6 commercial model). These are the INITIAL values
- * only — plans are DB-backed and admin-editable, and administrators may add
- * further tiers from the dashboard. Code reads plans through the API/PlanService,
- * never this constant directly (except as the seed + offline fallback).
+ * The per-month figure shown beside a yearly plan price, worked out in whole
+ * pesewas so every surface shows the same amount: 99 a year is 8.25 a month,
+ * 3,990 is 332.50 and 9,999.90 is 833.33.
+ */
+export function yearlyPricePerMonth(priceYearly: number): number {
+  return Math.round(Math.round(priceYearly * 100) / 12) / 100
+}
+
+/**
+ * Seed plan configurations: the live price book the owner kept on 2026-09-30
+ * (Free 5%, Starter 9.99, Pro 29.99, Organization 399, Enterprise sales-only).
+ * They are the INITIAL values only — plans are DB-backed and admin-editable, and
+ * administrators may add further tiers. Seeding never overwrites a stored plan;
+ * startup logs any built-in plan whose name, prices, fee or order differ from
+ * these. Code reads plans through the API/PlanService; this constant is only
+ * the seed and the API's fallback when a row is missing or a non-checkout read
+ * fails, so it must stay equal to the live price book.
  */
 export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
   [SubscriptionTier.FREE]: {
     tier: SubscriptionTier.FREE,
-    name: 'Community',
-    description: 'Free for individuals and small community causes',
+    name: 'Free',
+    description: 'Get started with basic crowdfunding',
     priceMonthly: 0,
     priceYearly: 0,
-    platformFeePercent: 3.5,
+    platformFeePercent: 5,
     maxActiveCampaigns: 1,
     maxCampaignGoal: 10000,
     featuredListing: false,
@@ -309,11 +320,11 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
   },
   [SubscriptionTier.STARTER]: {
     tier: SubscriptionTier.STARTER,
-    name: 'Plus',
-    description: 'For serious individual fundraisers running a few causes',
-    priceMonthly: 49,
-    priceYearly: 490,
-    platformFeePercent: 3.0,
+    name: 'Starter',
+    description: 'For individuals and small causes',
+    priceMonthly: 9.99,
+    priceYearly: 99,
+    platformFeePercent: 3.5,
     maxActiveCampaigns: 3,
     maxCampaignGoal: 50000,
     featuredListing: false,
@@ -338,10 +349,10 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
   [SubscriptionTier.PRO]: {
     tier: SubscriptionTier.PRO,
     name: 'Pro',
-    description: 'For creators, groups and frequent fundraisers',
-    priceMonthly: 149,
-    priceYearly: 1490,
-    platformFeePercent: 2.5,
+    description: 'For serious fundraisers and organizations',
+    priceMonthly: 29.99,
+    priceYearly: 299,
+    platformFeePercent: 2,
     maxActiveCampaigns: 10,
     maxCampaignGoal: 250000,
     featuredListing: true,
@@ -395,10 +406,10 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
   [SubscriptionTier.ENTERPRISE]: {
     tier: SubscriptionTier.ENTERPRISE,
     name: 'Enterprise',
-    description: 'For large institutions and major programs (from GHS 1,500; negotiated)',
-    priceMonthly: 1500,
-    priceYearly: 15000,
-    platformFeePercent: 1.25,
+    description: 'For NGOs, hospitals, schools, and large organizations',
+    priceMonthly: 999.99,
+    priceYearly: 9999.9,
+    platformFeePercent: 1,
     maxActiveCampaigns: -1, // unlimited (fair-use / negotiated)
     maxCampaignGoal: -1, // unlimited (GHS 5M+ subject to approval)
     featuredListing: true,

@@ -34,6 +34,8 @@ export interface SubscriptionPlanRepositoryPort {
   /**
    * Upsert each `SUBSCRIPTION_PLANS[tier]` ONLY when that tier's row is absent.
    * Idempotent and never overwrites admin edits — safe to run on every boot.
+   * Stored built-in plans that differ from the code price book are reported
+   * (logged), never changed.
    */
   seedDefaults(): Promise<void>;
 }

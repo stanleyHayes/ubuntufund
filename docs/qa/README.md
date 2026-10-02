@@ -26,6 +26,25 @@ Run the plan against a staging stack, not production. Today the web, admin and m
 | Email | Resend with a verified sending domain and the encryption keys set (AUTH_EMAIL_ENCRYPTION_KEY_BASE64, MFA_ENCRYPTION_KEY); use inboxes you control. |
 | Other providers | LiveKit test project, Cloudinary folder separate from production, OpenAI key (optional screening), Bitnob sandbox only if crypto will launch. |
 
+## Plan data the cases expect
+
+Plan cases quote the names, prices and fees of the live price book the owner kept on 2026-09-30, and the plan limits of the code seed (`SUBSCRIPTION_PLANS` in packages/types/src/subscription.ts). Production's limits differ from the seed, so check Admin > Plans before running any case that depends on a plan.
+
+1. Admin > Plans shows the live price book: Free 5%; Starter GH₵9.99 a month or GH₵99 a year, 3.5%; Pro GH₵29.99 or GH₵299, 2%; Organization GH₵399 or GH₵3,990, 2%; Enterprise 1%, sold by the sales team (reference price GH₵999.99 or GH₵9,999.90; customers see 'Custom'). At boot the API logs 'Plan "<tier>" differs from the code price book: …' for each built-in plan whose name, prices, fee or sort order differ, so a clean boot log means the price book matches. Seeding never overwrites a stored plan, so a database first seeded between 2026-09-07 and 2026-09-30 still has that period's rows: Community (the Free tier) at 3.5%, Plus (Starter) at GH₵49 and 3%, Pro at GH₵149 and 2.5%, and Enterprise at GH₵1,500 and 1.25%. Correct those rows in Admin > Plans (each save is audited), or start from an empty database.
+2. Limits are the seed's. A freshly seeded database has them; production on 2026-09-30 did not:
+
+| Limit | Seed (what the cases expect) | Production on 2026-09-30 |
+| --- | --- | --- |
+| Max campaign goal | Free 10,000; Starter 50,000; Pro 250,000; Organization 1,000,000; Enterprise unlimited | Free 5,000; Starter 25,000; Pro 100,000 |
+| Organization team seats (incl. owner) | Starter 1; Pro 3; Organization 10 | Starter 2; Pro 5 |
+| Live streaming | On for Pro, Organization and Enterprise | Off for Pro |
+| Campaign collaboration | Pro on, 3 collaborators per campaign | Pro off |
+| Campaigns on behalf of others | Organization and Enterprise on, unlimited (-1) | Organization off; Enterprise on with 0 allowed, so every attempt is refused |
+| Popular (recommended plan) | Pro | None |
+| Enterprise sort order | 4 | 3, the same as Organization |
+
+Active campaigns (1, 3, 10, 25, unlimited), media per campaign and saved payout accounts are the same in both. On any other plan data, read the limit from Admin > Plans and expect that value instead of the one a case quotes.
+
 ## Accounts to create
 
 - Two donors aged 18+ (one with MFA on), plus a guest checkout email.

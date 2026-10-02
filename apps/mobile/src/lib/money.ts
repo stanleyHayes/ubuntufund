@@ -25,3 +25,17 @@ export function formatMoney(amount: number, currency: string | null | undefined 
 export function formatAmountValue(amount: number): string {
   return plainFormatter.format(Number.isFinite(amount) ? amount : 0)
 }
+
+/**
+ * A plan price as the web and marketing pricing pages show it: whole cedis
+ * with no decimals, anything else with two ('GH₵3,990', 'GH₵9.99', 'GH₵332.50').
+ */
+export function formatPlanPrice(amount: number): string {
+  const value = Number.isFinite(amount) ? amount : 0
+  const minimumFractionDigits = Number.isInteger(Math.round(value * 100) / 100) ? 0 : 2
+  try {
+    return new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS', minimumFractionDigits, maximumFractionDigits: 2 }).format(value)
+  } catch {
+    return `GH₵ ${value.toLocaleString('en-GH', { minimumFractionDigits, maximumFractionDigits: 2 })}`
+  }
+}

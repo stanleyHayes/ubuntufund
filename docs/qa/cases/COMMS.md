@@ -456,7 +456,7 @@ In-app notifications, activity alerts, transactional email, newsletter, marketin
 
 1. For each plan, compare ujimora.com/pricing (Monthly and Yearly) with admin /plans and the amount shown at web /subscription checkout.
 2. Monthly: check the price suffix '/ 30 days' and the line 'One-time payment on the website · does not auto-renew'.
-3. Yearly: check the per-month figure (priceYearly/12, up to 2 decimals) and 'GH₵ X for 1 year · One-time payment on the website · does not auto-renew'.
+3. Yearly: check the per-month figure (priceYearly/12 rounded to the pesewa, shown with two decimals unless it is whole, e.g. GH₵332.50, never GH₵332.5) and 'GH₵X for 1 year · One-time payment on the website · does not auto-renew' (e.g. 'GH₵3,990 for 1 year').
 4. Check the platform fee %, the goal caps ('No goal limit' for unlimited plans), 'Split proceeds', 'Live streaming', 'Organization team seats (incl. owner)' and the collaboration rows.
 5. Read the pricing FAQ entries 'Do plans renew automatically?', 'How does the yearly option work?' and 'What happens if I stop paying?'.
 6. Confirm Enterprise links to /contact.
