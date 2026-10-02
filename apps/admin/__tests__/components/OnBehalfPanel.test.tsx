@@ -170,3 +170,69 @@ it('retries the details after a failed load', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Retry beneficiary details' }))
   expect(await screen.findByRole('region', { name: 'On behalf of Ama Mensah' })).toBeVisible()
 })
+
+it('shows an invitation held for the content check as not sent, and says a reassignment waits for it too', async () => {
+  const held: CampaignBeneficiaryDetails = { ...details, consentStatus: 'pending', consentAt: undefined, linked: false, invitationStatus: 'held', invitationSentAt: undefined, invitationExpiresAt: undefined, payoutAuthority: 'none' }
+  const onChanged = mount(vi.fn(), held)
+  const panel = await screen.findByRole('region', { name: 'On behalf of Ama Mensah' })
+  expect(within(panel).getByText('Not sent: waits for the content check')).toBeVisible()
+  expect(within(panel).getByText('Invitation to')).toBeVisible()
+  expect(within(panel).queryByText('Invitation sent to')).not.toBeInTheDocument()
+  fireEvent.click(within(panel).getByRole('button', { name: 'Reassign beneficiary' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Reassign beneficiary' })
+  expect(within(dialog).getByText(/invitation waits for the campaign’s content check/)).toBeVisible()
+  expect(within(dialog).queryByText(/is emailed an invitation/)).not.toBeInTheDocument()
+  fireEvent.change(within(dialog).getByRole('textbox', { name: 'Beneficiary email' }), { target: { value: 'ama.new@example.com' } })
+  fireEvent.change(within(dialog).getByRole('textbox', { name: 'Staff reason (at least 20 characters)' }), { target: { value: REASON } })
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Reassign and invite' }))
+  await waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+  expect(onChanged.mock.calls[0][0]).toMatch(/invitation is sent once the content check is cleared/)
+})
+
+it('shows an invitation withdrawn when the campaign was declined as withdrawn and never sent, and holds a reassignment for the check', async () => {
+  const withdrawn: CampaignBeneficiaryDetails = { ...details, consentStatus: 'pending', consentAt: undefined, linked: false, invitationEmailHint: undefined, invitationStatus: 'superseded', invitationSentAt: undefined, invitationExpiresAt: undefined, payoutAuthority: 'none', nextStep: 'name_beneficiary' }
+  state.post.mockResolvedValue({ invitationHeld: true })
+  const onChanged = mount(vi.fn(), withdrawn)
+  const panel = await screen.findByRole('region', { name: 'On behalf of Ama Mensah' })
+  expect(within(panel).getByText('Withdrawn: no invitation is waiting')).toBeVisible()
+  expect(within(panel).queryByText('Replaced by a newer invitation')).not.toBeInTheDocument()
+  fireEvent.click(within(panel).getByRole('button', { name: 'Reassign beneficiary' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Reassign beneficiary' })
+  expect(within(dialog).getByText(/invitation waits for the campaign’s content check/)).toBeVisible()
+  expect(within(dialog).queryByText(/is emailed an invitation/)).not.toBeInTheDocument()
+  fireEvent.change(within(dialog).getByRole('textbox', { name: 'Beneficiary email' }), { target: { value: 'ama.new@example.com' } })
+  fireEvent.change(within(dialog).getByRole('textbox', { name: 'Staff reason (at least 20 characters)' }), { target: { value: REASON } })
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Reassign and invite' }))
+  await waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+  expect(onChanged.mock.calls[0][0]).toMatch(/invitation is sent once the content check is cleared/)
+})
+
+it('confirms a reassignment from the API\'s answer', async () => {
+  // The panel's details still show the old pending invitation, but the API held the new one.
+  const pending: CampaignBeneficiaryDetails = { ...details, consentStatus: 'pending', consentAt: undefined, linked: false, invitationStatus: 'pending', payoutAuthority: 'none' }
+  state.post.mockResolvedValue({ invitationHeld: true })
+  const onChanged = mount(vi.fn(), pending)
+  const panel = await screen.findByRole('region', { name: 'On behalf of Ama Mensah' })
+  fireEvent.click(within(panel).getByRole('button', { name: 'Reassign beneficiary' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Reassign beneficiary' })
+  fireEvent.change(within(dialog).getByRole('textbox', { name: 'Beneficiary email' }), { target: { value: 'ama.new@example.com' } })
+  fireEvent.change(within(dialog).getByRole('textbox', { name: 'Staff reason (at least 20 characters)' }), { target: { value: REASON } })
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Reassign and invite' }))
+  await waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+  expect(onChanged.mock.calls[0][0]).toMatch(/invitation is sent once the content check is cleared/)
+})
+
+it('says how a changed beneficiary\'s new details were admitted, and flags a change nobody checked', async () => {
+  const changes = [
+    { event: 'beneficiary_changed', actorRole: 'organizer', actorId: 'organizer', admission: 'screening', createdAt: '2026-09-21T10:00:00.000Z' },
+    { event: 'beneficiary_changed', actorRole: 'organizer', actorId: 'organizer', admission: 'staff_review', reason: 'The invitation waits for our team to check the campaign.', createdAt: '2026-09-22T10:00:00.000Z' },
+    // Recorded before changes were checked like new content.
+    { event: 'beneficiary_changed', actorRole: 'organizer', actorId: 'organizer', createdAt: '2026-09-18T10:00:00.000Z' },
+  ]
+  state.get.mockImplementation(async (path: string) => (path.endsWith('/events') ? changes : details))
+  render(<MemoryRouter><OnBehalfPanel campaign={campaign} onChanged={vi.fn()} /></MemoryRouter>)
+  const history = await screen.findByRole('list', { name: 'Consent history' })
+  expect(within(history).getByText('New details: Cleared by automated screening')).toBeVisible()
+  expect(within(history).getByText('New details: Checked by our team in the campaign review')).toBeVisible()
+  expect(within(history).getByText(/New details: Not checked/)).toBeVisible()
+})

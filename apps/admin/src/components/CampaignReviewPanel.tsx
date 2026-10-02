@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Alert, Box, Button, Checkbox, FormControlLabel, Stack, TextField, Typography } from '@mui/material'
-import type { Campaign } from '@ubuntu-fund/types'
+import { Alert, Box, Button, Checkbox, Chip, FormControlLabel, Stack, TextField, Typography } from '@mui/material'
+import { isContentCheckOutstanding, type Campaign, type CampaignBeneficiaryDetails, type CampaignContentReviewReason } from '@ubuntu-fund/types'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 import ExportMenu from './ExportMenu'
@@ -8,6 +8,13 @@ import { loadAll } from '@/lib/exports/loadAll'
 import { dateCell, exportTable } from '@/lib/exports/report'
 
 type Decision = 'approve' | 'reject' | 'block' | 'reopen'
+/** Why creation sent the campaign to a person instead of publishing it, and what to look at. */
+const CONTENT_CHECKS: Record<CampaignContentReviewReason, { label: string; detail: string }> = {
+  new_media: { label: 'New photos or video', detail: 'Open and inspect every attachment before approving.' },
+  no_screening_consent: { label: 'Not screened: no consent', detail: 'The organizer did not opt in to automated screening. Read the complete story and beneficiary details.' },
+  screening_flagged: { label: 'Flagged by automated screening', detail: 'Automated screening flagged the text. Read it closely before approving.' },
+  screening_unavailable: { label: 'Automated screening unavailable', detail: 'Screening could not run, so the text has not been screened. Read it in full.' },
+}
 type Review = { id: string; version: string; actorId: string; action: Decision; reason: string; beforeStatus: string; afterStatus: string; createdAt: string; snapshotErasedAt?: string; snapshot?: { title: string; description: string; beneficiaries: string[]; imageUrls: string[]; goalAmount: number; currency: string; slug: string } }
 export default function CampaignReviewPanel({ campaign, onChanged }: { campaign: Campaign; onChanged: () => void }) {
   const { user } = useAuth()
@@ -30,6 +37,26 @@ function ViewerReview({ campaign, onChanged }: { campaign: Campaign; onChanged: 
     return () => { current = false }
   }, [campaign.id, page, retry])
   const disabled = busy || notes.trim().length < 20 || !campaign.reviewVersion || user?.id === campaign.creatorId
+  // Only while the check is outstanding: once staff cleared it, a later return to
+  // review for another reason (a reopen, the beneficiary's acceptance) is about
+  // something else. A beneficiary change that screening did not clear reopens it.
+  const reason = campaign.status === 'pending_review' && isContentCheckOutstanding(campaign) ? campaign.contentReviewReason : undefined
+  const contentCheck = reason ? CONTENT_CHECKS[reason] ?? { label: reason, detail: '' } : undefined
+  const changedBeneficiary = !!contentCheck && campaign.contentReviewTrigger === 'beneficiary_change'
+  // Its beneficiary invitation waits for this check; approving sends it.
+  const releasesInvitation = !!contentCheck && campaign.creationMode === 'on_behalf' && !campaign.onBehalf?.beneficiaryConfirmed
+  // Unless it was withdrawn when the content was declined: then the organizer
+  // names the beneficiary again first (the API refuses approval until then).
+  const [awaitsBeneficiary, setAwaitsBeneficiary] = useState(false)
+  useEffect(() => {
+    if (!releasesInvitation) return
+    let current = true
+    api.get<CampaignBeneficiaryDetails>(`/campaigns/${campaign.id}/beneficiary`)
+      .then(details => { if (current) setAwaitsBeneficiary(details?.nextStep === 'name_beneficiary') })
+      // Without the details the panel keeps the usual note; the API still decides.
+      .catch(() => {})
+    return () => { current = false }
+  }, [campaign.id, releasesInvitation])
   async function decide(action: Decision) {
     if (disabled || (action === 'approve' && (!content || !fundraising))) return
     setBusy(true); setError('')
@@ -42,6 +69,16 @@ function ViewerReview({ campaign, onChanged }: { campaign: Campaign; onChanged: 
   return <Stack spacing={2} sx={{ p: 2.5, minWidth: 0 }}>
     <Typography variant="h6">Staff decision</Typography>
     <Typography variant="body2">Review the complete story, beneficiary details, public media and organizer evidence before approving. Returning a blocked campaign to review keeps it private.</Typography>
+    {contentCheck && <Box>
+      <Typography variant="subtitle2">Why it is waiting</Typography>
+      {/* Theme chip with the AA text token, which follows every skin and mode. */}
+      <Chip size="small" label={`Content check · ${contentCheck.label}`} sx={{ mt: 0.5, color: 'var(--text-warning)', maxWidth: '100%', height: 'auto', '& .MuiChip-label': { whiteSpace: 'normal', overflowWrap: 'anywhere', py: 0.25 } }} />
+      {contentCheck.detail && <Typography variant="body2" sx={{ mt: 0.75 }}>{contentCheck.detail}</Typography>}
+      {changedBeneficiary && <Typography variant="body2" sx={{ mt: 0.75 }}>The organizer changed the beneficiary after the campaign was checked. Read the new beneficiary name and reason closely; nothing else has changed since then.</Typography>}
+      {releasesInvitation && (awaitsBeneficiary
+        ? <Typography variant="body2" sx={{ mt: 0.75 }}>No beneficiary invitation is waiting: it was withdrawn when the campaign was declined, and nothing was sent. The organizer has to name the beneficiary again before it can be approved; the team is emailed when they do.</Typography>
+        : <Typography variant="body2" sx={{ mt: 0.75 }}>Nothing has been sent to the beneficiary yet. Approving clears the content and sends their invitation; if publication waits for their consent, the campaign stays in review until they accept.</Typography>)}
+    </Box>}
     {campaign.imageUrls.length > 0 && <Box><Typography variant="subtitle2">Public media to inspect</Typography>{campaign.imageUrls.map((url, index) => <Button key={`${index}:${url}`} component="a" href={url} target="_blank" rel="noopener noreferrer">Open attachment {index + 1}</Button>)}</Box>}
     {campaign.status === 'pending_review' && <>
       <FormControlLabel control={<Checkbox checked={content} disabled={busy} onChange={e => setContent(e.target.checked)} />} label="I reviewed the complete public content and every media attachment." />

@@ -46,6 +46,7 @@ import Alert from '@mui/material/Alert'
 import { api, type AuthUser } from '@/lib/api'
 import { uploadImageViaApi } from '@/lib/uploadImage'
 import { clearDraftSubmission, clearPublicationDraft, draftSubmission, publicationDraftKey, readPublicationDraft, writePublicationDraft, type DraftSubmission } from '@/lib/publicationDrafts'
+import { CAMPAIGN_SCREENING_NOTE, pendingReviewMessage } from '@/lib/campaignReview'
 import { useCampaignCreationOptions, type CampaignCreationOptions } from '@/hooks/useCampaignCreationOptions'
 import { EMPTY_BENEFICIARY, RELATIONSHIP_LABELS, beneficiaryInput, creationGateText, partyLabel, payoutArrangementText, validateBeneficiary, type BeneficiaryDraft, type BeneficiaryField } from '@/lib/onBehalf'
 import { CampaignCreationExtras, type SplitRow } from './CampaignCreationExtras'
@@ -213,6 +214,8 @@ function validate(data: FormData): FormErrors {
   if (!data.goalAmount) e.goalAmount = 'Set a goal amount'
   else if (!Number.isFinite(Number(data.goalAmount))) e.goalAmount = 'Enter a number'
   else if (Number(data.goalAmount) <= 0) e.goalAmount = 'Goal must be greater than zero'
+  // Whole pesewas, as the goal is stored (the API refuses more decimals).
+  else if (!/^\d+(\.\d{1,2})?$/.test(data.goalAmount.trim())) e.goalAmount = 'Use at most two decimal places'
 
   if (!data.endDate) e.endDate = 'Choose an end date'
   else if (new Date(data.endDate) <= new Date()) e.endDate = 'Pick a future date'
@@ -518,6 +521,8 @@ function CampaignFormForViewer({ userId, viewer }: { userId: string | null; view
   >([])
   const [setupBusy, setSetupBusy] = useState(false)
   const [createdStatus, setCreatedStatus] = useState<CampaignStatus | null>(null)
+  // Why a person checks the new campaign before it goes live, when one does.
+  const [createdReviewReason, setCreatedReviewReason] = useState<string | undefined>(undefined)
   const inviteEmails = [
     ...new Set(
       invitations
@@ -548,9 +553,10 @@ function CampaignFormForViewer({ userId, viewer }: { userId: string | null; view
                 rows.reduce((sum, row) => sum + Math.round(Number(row.percent) * 100), 0) !== 10000)
             ? 'Check split eligibility, names, emails, and shares totalling 100% (up to two decimals).'
             : ''
-  // The exact submitted version (cover included) survives closing the tab, so
-  // a campaign held for safety review can be resubmitted unchanged once
-  // approved: any change, even a re-uploaded cover, needs a new review.
+  // The unsent version (cover included) survives closing the tab, so nothing
+  // typed is lost and a resubmit after a lost response reuses its stored
+  // Idempotency-Key. A campaign that needs a person's check is still created
+  // (as Pending review), so there is no held version to resubmit.
   const draftKey = userId ? publicationDraftKey('campaign', userId) : null
   const [restoredDraft] = useState(() => (draftKey ? readPublicationDraft(draftKey, parseFormDraft) : null))
   const [restoredOnBehalf] = useState(() => (draftKey ? readPublicationDraft(draftKey, parseOnBehalfDraft) : null))
@@ -717,6 +723,7 @@ function CampaignFormForViewer({ userId, viewer }: { userId: string | null; view
       }
       setCreatedId(created.id)
       setCreatedStatus(created.status)
+      setCreatedReviewReason(created.contentReviewReason)
       setSetupBusy(true)
       const failures: string[] = []
       const pending: typeof pendingSetup = []
@@ -771,8 +778,9 @@ function CampaignFormForViewer({ userId, viewer }: { userId: string | null; view
       setSetupBusy(false)
       setSubmitted(true)
     } catch (err) {
-      // Surfaced via `submitError` (or `submitHeld` for a safety-review hold); stay on the review step so the user
-      // can retry without losing anything they entered.
+      // Surfaced via `submitError` (or `submitHeld` from an API older than the
+      // pending-review change); stay on the review step so the user can retry
+      // without losing anything they entered.
       if (!forOthers || !live.current) return
       const status = (err as { status?: unknown } | null)?.status
       const message = err instanceof Error ? err.message : ''
@@ -801,6 +809,10 @@ function CampaignFormForViewer({ userId, viewer }: { userId: string | null; view
   // Success state — preserves the current mock message
   // -------------------------------------------------------------------------
   if (submitted) {
+    // Saved, but a person checks the content before it goes live. Until then
+    // nothing about it is sent to anyone: not the beneficiary's invitation, not
+    // collaborator invitations.
+    const contentCheck = createdStatus === CampaignStatus.PENDING_REVIEW && !!createdReviewReason
     return (
       <Box sx={{ textAlign: 'center', py: { xs: 2, sm: 4 } }}>
         <Box
@@ -820,16 +832,16 @@ function CampaignFormForViewer({ userId, viewer }: { userId: string | null; view
         >
           <CheckRoundedIcon sx={{ fontSize: 34 }} />
         </Box>
-        <Eyebrow>Campaign submitted</Eyebrow>
+        <Eyebrow>{contentCheck ? 'Saved · Pending review' : 'Campaign submitted'}</Eyebrow>
         <Typography sx={{ mt: 1, fontWeight: 800, fontSize: '1.5rem', color: INK }}>
-          {formData.title || 'Your campaign'} is on its way
+          {formData.title || 'Your campaign'} {contentCheck ? 'is saved' : 'is on its way'}
         </Typography>
         <Typography
           sx={{ mt: 1.5, color: INK_SECONDARY, maxWidth: 440, mx: 'auto', lineHeight: 1.6 }}
         >
           {createdStatus === CampaignStatus.ACTIVE
             ? 'Your campaign is live. Share it with your community.'
-            : 'Your campaign is awaiting review. You can share it once it is live.'}
+            : pendingReviewMessage(createdReviewReason)}
         </Typography>
         {setupErrors.map((message) => (
           <Alert severity="warning" key={message} sx={{ mt: 2, textAlign: 'left' }}>
@@ -856,11 +868,17 @@ function CampaignFormForViewer({ userId, viewer }: { userId: string | null; view
         {createdId && forOthers && (
           <Alert severity="info" sx={{ mt: 3, textAlign: 'left' }}>
             <AlertTitle>Waiting for {beneficiaryName}</AlertTitle>
-            We emailed {beneficiaryName} an invitation. Nothing can be paid out until they accept
-            {createdStatus === CampaignStatus.PENDING_REVIEW ? ', and the campaign goes live only after it passes review' : ''}. Payouts go to{' '}
+            {contentCheck
+              ? `We will email ${beneficiaryName} an invitation once our team has checked the campaign. Nothing can be paid out until they accept, and the campaign goes live only after it passes review`
+              : <>We emailed {beneficiaryName} an invitation. Nothing can be paid out until they accept{createdStatus === CampaignStatus.PENDING_REVIEW ? ', and the campaign goes live only after it passes review' : ''}</>}. Payouts go to{' '}
             {payoutArrangementText(beneficiary.payoutArrangement, beneficiaryName, managerName || undefined)}
             {beneficiary.payoutArrangement === 'organization' ? ', if they agree' : ''}. The campaign page shows what
-            else waits for their answer, and lets you send the invitation again.
+            else waits for their answer{contentCheck ? '' : ', and lets you send the invitation again'}.
+          </Alert>
+        )}
+        {contentCheck && inviteEmails.length > 0 && !setupErrors.some((message) => message.startsWith('Invitation to')) && (
+          <Alert severity="info" sx={{ mt: 2, textAlign: 'left' }}>
+            Your collaborator {inviteEmails.length === 1 ? 'invitation is' : 'invitations are'} saved and will be sent once our team has checked the campaign.
           </Alert>
         )}
         {createdId && !split && !forOthers && (
@@ -898,9 +916,16 @@ function CampaignFormForViewer({ userId, viewer }: { userId: string | null; view
           >
             {createdId ? 'View campaign' : 'Go to my campaigns'}
           </Button>
-          <Button component={RouterLink} to="/explore" sx={{ color: 'primary.main' }}>
-            Explore campaigns
-          </Button>
+          {createdId && createdStatus === CampaignStatus.PENDING_REVIEW ? (
+            // Where it waits: My campaigns shows it as Pending review.
+            <Button component={RouterLink} to="/my-campaigns" sx={{ color: 'primary.main' }}>
+              Go to my campaigns
+            </Button>
+          ) : (
+            <Button component={RouterLink} to="/explore" sx={{ color: 'primary.main' }}>
+              Explore campaigns
+            </Button>
+          )}
         </Box>
       </Box>
     )
@@ -922,7 +947,7 @@ function CampaignFormForViewer({ userId, viewer }: { userId: string | null; view
           onClose={() => setDraftNotice(false)}
           action={<Button color="inherit" size="small" onClick={discardDraft}>Start over</Button>}
         >
-          We restored your unsent draft from this browser. If it is waiting for safety review, submit this same version again once it is approved.
+          We restored your unsent draft from this browser.
           {restoredOnBehalf && ' Enter the beneficiary’s email address again: it is not kept in this browser.'}
         </Alert>
       )}
@@ -1523,7 +1548,8 @@ function CampaignFormForViewer({ userId, viewer }: { userId: string | null; view
         )}
       </Box>
 
-      {step === 3 && <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />}
+      {step === 3 && <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} note={CAMPAIGN_SCREENING_NOTE} />}
+      {/* A version declined in a publication or campaign review is refused: its notes are here. */}
       {step === 3 && (submitError || submitHeld) && <PublicationReviews actions={['campaign.create']} />}
 
       {/* Inline submit error — keeps the wizard on the review step on failure */}
@@ -1587,6 +1613,7 @@ function CampaignFormForViewer({ userId, viewer }: { userId: string | null; view
         </Box>
       )}
 
+      {/* Only an API older than the 30 September 2026 change holds a new campaign (409). */}
       {step === STEPS.length - 1 && submitHeld && (
         <PublicationHeldNotice retry="select Publish campaign again without changes" reviews="above" sx={{ mt: 3 }} />
       )}

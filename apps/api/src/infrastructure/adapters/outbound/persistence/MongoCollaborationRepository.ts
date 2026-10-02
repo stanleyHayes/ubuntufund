@@ -18,6 +18,7 @@ function toDomain(doc: CollaborationDocument): CollaborationEntity {
     logoUrl: doc.logoUrl,
     inviteMessage: doc.inviteMessage,
     respondedAt: doc.respondedAt,
+    heldForContentCheck: doc.heldForContentCheck,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   });
@@ -37,6 +38,7 @@ export class MongoCollaborationRepository implements CollaborationRepositoryPort
       logoUrl: plain.logoUrl,
       inviteMessage: plain.inviteMessage,
       respondedAt: plain.respondedAt,
+      ...(plain.heldForContentCheck ? { heldForContentCheck: true } : {}),
     });
     return toDomain(doc);
   }
@@ -80,12 +82,12 @@ export class MongoCollaborationRepository implements CollaborationRepositoryPort
       inviteMessage: plain.inviteMessage,
     };
 
-    const update: Record<string, unknown> = { $set: setFields };
-    if (plain.respondedAt) {
-      setFields.respondedAt = plain.respondedAt;
-    } else {
-      update.$unset = { respondedAt: '' };
-    }
+    const unset: Record<string, ''> = {};
+    if (plain.respondedAt) setFields.respondedAt = plain.respondedAt;
+    else unset.respondedAt = '';
+    if (plain.heldForContentCheck) setFields.heldForContentCheck = true;
+    else unset.heldForContentCheck = '';
+    const update: Record<string, unknown> = { $set: setFields, $unset: unset };
 
     const doc = await CollaborationModel.findByIdAndUpdate(plain.id, update, {
       new: true,

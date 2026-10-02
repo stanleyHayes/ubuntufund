@@ -5,7 +5,7 @@ import type { CampaignBeneficiaryDetails, CampaignOnBehalfSummary } from '@ubunt
 import { api } from '@/lib/api'
 import { usePalette } from '@/context/ColorModeContext'
 import { GlassSurface } from './GlassSurface'
-import { consentLabel, payoutNote } from '@/lib/onBehalf'
+import { consentLabel, invitationSummary, nextStepLine, payoutNote } from '@/lib/onBehalf'
 
 function formatDate(iso?: string) {
   if (!iso) return ''
@@ -32,9 +32,9 @@ export function OnBehalfStatus({ campaignId, summary, payoutAuthority }: { campa
   const beneficiaryView = !!details?.viewer?.beneficiary && !details.viewer.manager
   const consent = details ? consentLabel(details.consentStatus, beneficiaryView ? 'beneficiary' : 'manager')
     : summary.beneficiaryConfirmed ? 'Accepted by the beneficiary' : 'Waiting for the beneficiary to accept'
-  const invitation = details?.invitationEmailHint && (details.invitationStatus === 'pending' || details.invitationStatus === 'expired')
-    ? `Invitation sent to ${details.invitationEmailHint}${details.invitationExpiresAt ? ` · ${details.invitationStatus === 'expired' ? 'expired' : 'expires'} ${formatDate(details.invitationExpiresAt)}` : ''}`
-    : ''
+  const invitation = invitationSummary(details, formatDate)
+  // What makes it go live from here, as the server's rules say.
+  const next = nextStepLine(details)
   const payout = payoutAuthority ? beneficiaryView ? 'Payouts come to you.' : 'You can request payouts for this campaign.' : payoutNote({ onBehalf: summary }, details)
   return <GlassSurface style={{ padding: 20, borderRadius: 24, gap: 12 }}>
     <Text variant="titleLarge">Beneficiary</Text>
@@ -44,6 +44,7 @@ export function OnBehalfStatus({ campaignId, summary, payoutAuthority }: { campa
     </View>
     <Text style={{ color: p.text }}>{consent}</Text>
     {invitation ? <Text style={{ color: p.textSecondary }}>{invitation}</Text> : null}
+    {next ? <Text style={{ color: p.text }}>{next}</Text> : null}
     <Text style={{ color: p.textSecondary }}>{payout}</Text>
     {details?.canResendInvitation || details?.canChangeBeneficiary ? <Text style={{ color: p.textSecondary }}>To resend the invitation or change the beneficiary, use ujimora.com.</Text> : null}
   </GlassSurface>

@@ -63,6 +63,23 @@ function toDomain(doc: CampaignDocument): CampaignEntity {
     creationMode: doc.creationMode,
     creatorType: doc.creatorType,
     createdByActorId: doc.createdByActorId,
+    contentReviewReason: doc.contentReviewReason,
+    contentReviewTrigger: doc.contentReviewTrigger,
+    contentReviewClearedAt: doc.contentReviewClearedAt,
+    contentReviewClearedBy: doc.contentReviewClearedBy,
+    contentAdmission: doc.contentAdmission ? {
+      basis: doc.contentAdmission.basis,
+      reason: doc.contentAdmission.reason,
+      trigger: doc.contentAdmission.trigger,
+      fingerprint: doc.contentAdmission.fingerprint,
+      automatedConsentAt: doc.contentAdmission.automatedConsentAt,
+      screenedAt: doc.contentAdmission.screenedAt,
+      screener: doc.contentAdmission.screener,
+      priorReviewId: doc.contentAdmission.priorReviewId,
+      priorReviewReason: doc.contentAdmission.priorReviewReason,
+      admittedAt: doc.contentAdmission.admittedAt,
+      erasedAt: doc.contentAdmission.erasedAt,
+    } : undefined,
     onBehalf: doc.onBehalf ? {
       beneficiaryType: doc.onBehalf.beneficiaryType,
       beneficiaryName: doc.onBehalf.beneficiaryName,
@@ -79,6 +96,7 @@ function toDomain(doc: CampaignDocument): CampaignEntity {
       donationsRequireConsent: doc.onBehalf.donationsRequireConsent,
       staffReviewRequired: doc.onBehalf.staffReviewRequired,
       autoPublishOnConsent: doc.onBehalf.autoPublishOnConsent ?? false,
+      autoPublishAfterContentCheck: doc.onBehalf.autoPublishAfterContentCheck,
       entitlementPlanTier: doc.onBehalf.entitlementPlanTier,
       feePercentApplied: doc.onBehalf.feePercentApplied,
       invitedAt: doc.onBehalf.invitedAt,
@@ -112,6 +130,8 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
       ...(plain.creationMode ? { creationMode: plain.creationMode } : {}),
       ...(plain.creatorType ? { creatorType: plain.creatorType } : {}),
       ...(plain.createdByActorId ? { createdByActorId: plain.createdByActorId } : {}),
+      ...(plain.contentReviewReason ? { contentReviewReason: plain.contentReviewReason } : {}),
+      ...(plain.contentAdmission ? { contentAdmission: plain.contentAdmission } : {}),
       ...(plain.onBehalf ? { onBehalf: plain.onBehalf } : {}),
     });
     return toDomain(doc);
@@ -234,6 +254,34 @@ export class MongoCampaignRepository implements CampaignRepositoryPort {
     return CampaignModel.countDocuments({
       creatorId,
       deletedAt: { $exists: false },
+    });
+  }
+
+  /**
+   * Every campaign uses one of the creator's lifetime verification slots,
+   * except one whose creation content check never cleared and that can no
+   * longer go live: rejected or blocked while it waited (BLOCKED), or never
+   * reviewed before its end date (review refuses an ended campaign). Before
+   * campaigns were held for review as campaigns, a declined proposal used no
+   * slot either. Reopening such a campaign makes it count again. A campaign
+   * that raised money always counts, and so does one whose check a later
+   * beneficiary change reopened: its content was admitted at creation.
+   */
+  async countTowardCampaignAllowance(creatorId: string): Promise<number> {
+    const now = new Date();
+    return CampaignModel.countDocuments({
+      creatorId,
+      deletedAt: { $exists: false },
+      $nor: [{
+        contentReviewReason: { $exists: true },
+        contentReviewTrigger: { $exists: false },
+        contentReviewClearedAt: { $exists: false },
+        raisedAmount: { $lte: 0 },
+        $or: [
+          { status: CampaignStatus.BLOCKED },
+          { status: CampaignStatus.PENDING_REVIEW, endDate: { $lte: now } },
+        ],
+      }],
     });
   }
 

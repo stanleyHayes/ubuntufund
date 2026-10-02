@@ -1,6 +1,6 @@
 # Ujimora launch QA plan
 
-Generated 25 September 2026 from the current source by a 14-area inventory plus a coverage critic. 1546 cases (612 P0). The interactive tracker (shared pass/fail results) is published as a Claude artifact; this file is the versioned copy. Case IDs are stable between the two.
+Generated 25 September 2026 from the current source by a 14-area inventory plus a coverage critic. 1552 cases (618 P0). The interactive tracker (shared pass/fail results) is published as a Claude artifact; this file is the versioned copy. Case IDs are stable between the two.
 
 ## When you are ready to launch
 
@@ -376,7 +376,7 @@ The inventory agents noted 320 risks, which were deduplicated into 184 issues (I
 | --- | --- | --- | --- |
 | Accounts & sign-in | 91 | 29 | [cases/AUTH.md](cases/AUTH.md) |
 | Profile, settings & privacy | 95 | 29 | [cases/PROFILE.md](cases/PROFILE.md) |
-| Campaigns | 90 | 32 | [cases/CAMPAIGN.md](cases/CAMPAIGN.md) |
+| Campaigns | 96 | 38 | [cases/CAMPAIGN.md](cases/CAMPAIGN.md) |
 | Donations & checkout | 92 | 44 | [cases/DONATE.md](cases/DONATE.md) |
 | Wallet, ledger & refunds | 86 | 47 | [cases/WALLET.md](cases/WALLET.md) |
 | KYC, KYB & payouts | 86 | 41 | [cases/PAYOUT.md](cases/PAYOUT.md) |

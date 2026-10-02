@@ -38,6 +38,14 @@ export interface CampaignRepositoryPort {
   delete(id: string): Promise<void>;
   countByCreatorId(creatorId: string): Promise<number>;
   /**
+   * Campaigns that use one of the creator's lifetime verification slots: all
+   * of them except those whose creation content check never cleared and that
+   * can no longer go live (rejected/blocked while waiting, or ended
+   * unreviewed). A check reopened by a beneficiary change does not count as
+   * never cleared.
+   */
+  countTowardCampaignAllowance(creatorId: string): Promise<number>;
+  /**
    * Count a creator's campaigns that occupy an "active" slot for plan-limit
    * purposes: pending_review, active or funded campaigns whose end date is
    * still in the future, excluding soft-deleted ones. A campaign whose end date

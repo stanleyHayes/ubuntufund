@@ -12,6 +12,7 @@ import { CampaignCategory, CampaignPriority, ORGANIZER_AGREEMENT_NOTICE, type Su
 import { api } from '@/lib/api'
 import { clearCampaignDraft, isPublicationHeld, loadCampaignDraft, saveCampaignDraft } from '@/lib/publicationDrafts'
 import { creationRequestKey } from '@/lib/campaignCreationKey'
+import { CAMPAIGN_SCREENING_NOTE, QUEUED_COLLABORATOR_INVITES, createdCampaignSummary } from '@/lib/campaignReview'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import { BrandedTextInput as TextInput } from '@/components/BrandedTextInput'
 import { BrandedDateField } from '@/components/BrandedDateField'
@@ -54,15 +55,17 @@ function CampaignFormForViewer() {
   const [uploading, setUploading] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  // The campaign was held for safety review: a notice, not an error.
+  // A campaign a person must check first is still created, as pending_review with its reason.
+  const [created, setCreated] = useState<{ id: string; status: string; contentReviewReason?: string } | null>(null)
+  // Only an API older than the 30 September 2026 change holds a new campaign
+  // privately (409): a neutral notice, not an error.
   const [held, setHeld] = useState(false)
-  const [created, setCreated] = useState<{ id: string; status: string } | null>(null)
   const [setupErrors, setSetupErrors] = useState<string[]>([])
   const [draftRestored, setDraftRestored] = useState(false)
   const [draftLoaded, setDraftLoaded] = useState(false)
   const creationKey = useRef<{ payload: string; key: string } | null>(null)
-  // Restore the unsent version once, then keep saving it, so a held campaign
-  // can be resubmitted unchanged after approval even if the app was closed.
+  // Restore the unsent version once, then keep saving it, so nothing typed is
+  // lost if the app is closed before the campaign is created.
   useEffect(() => {
     if (!user) return
     let active = true
@@ -100,6 +103,8 @@ function CampaignFormForViewer() {
     if (stage === 1 && (description.trim().length < 20 || description.length > 5000 || !beneficiaries.trim())) return 'Enter a story of 20–5,000 characters and name at least one beneficiary.'
     if (stage === 2) {
       if (!Number.isFinite(Number(amount)) || Number(amount) <= 0 || (options?.maxGoal != null && Number(amount) > options.maxGoal)) return 'Enter a positive goal within your current campaign limit.'
+      // Whole pesewas, as the goal is stored (the API refuses more decimals).
+      if (!/^\d+(\.\d{1,2})?$/.test(amount.trim())) return 'Enter the goal with at most two decimal places.'
       if (!end || Date.parse(end) <= Date.now()) return 'Choose a future end date.'
       if (emails.length && (!options?.plan.campaignCollaboration || emails.some(e => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) || (options.plan.maxCollaboratorsPerCampaign >= 0 && emails.length > options.plan.maxCollaboratorsPerCampaign))) return 'Check collaborator emails and your plan’s collaborator allowance.'
       if (split && (!options?.canSplit || allocations.length < 2 || allocations.length > 50 || allocations.some(a => !a.name.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.email) || !/^\d+(\.\d{1,2})?$/.test(a.percent) || Number(a.percent) <= 0) || allocations.reduce((n, a) => n + Math.round(Number(a.percent) * 100), 0) !== 10000)) return 'Add 2–50 split recipients with names, emails and positive shares adding to 100%.'
@@ -115,7 +120,7 @@ function CampaignFormForViewer() {
       const payload = { title: title.trim(), description: description.trim(), category, priority, beneficiaries: beneficiaries.split(',').map(s => s.trim()).filter(Boolean), imageUrls: cover ? [cover] : [], goalAmount: Number(amount), currency: 'GHS', endDate: new Date(end).toISOString() }
       // Same version, same key: a retry after a lost response cannot create a duplicate.
       creationKey.current = creationRequestKey(creationKey.current, payload)
-      const campaign = await api.post<{ id: string; status: string }>('/campaigns', { automatedReviewConsent, ...payload }, { 'Idempotency-Key': creationKey.current.key })
+      const campaign = await api.post<{ id: string; status: string; contentReviewReason?: string }>('/campaigns', { automatedReviewConsent, ...payload }, { 'Idempotency-Key': creationKey.current.key })
       if (!live.current) return
       if (user) void clearCampaignDraft(user.id)
       setCreated(campaign)
@@ -144,8 +149,8 @@ function CampaignFormForViewer() {
           <Button compact style={{ alignSelf: 'flex-start' }} icon="open-in-new" onPress={() => void openWebCreation()}>Open ujimora.com</Button>
         </View>
       </View>}
-      {created ? <View style={card}><Text variant="titleLarge">Campaign created</Text><Text>Status: {created.status}</Text>{!split && <><Text>Next: set up your payout account for review.</Text><CampaignCashout campaignId={created.id} /></>}{setupErrors.map(e => <Text key={e} style={{ color: p.error }}>{e}</Text>)}{setupErrors.length > 0 && <Text>Your campaign was saved. Complete the remaining invitations or split from campaign management; do not create it again.</Text>}<Button loading={busy} disabled={busy} mode="contained" onPress={() => router.replace(`/campaign/${created.id}`)}>View campaign</Button></View> : loadError ? <View><Text>{loadError}</Text><Button onPress={() => setRetry(n => n + 1)}>Retry</Button></View> : !options?.canCreate ? <View style={card}><Text>{options?.creationBlockReason?.startsWith('verification') ? 'Complete verification before creating another campaign.' : 'Your plan’s active campaign allowance is full.'}</Text><Button onPress={() => router.push(options?.creationBlockReason?.startsWith('verification') ? '/kyc' : '/(tabs)/subscription')}>Review eligibility</Button></View> : <>
-        {draftRestored && <View style={card}><Text>We restored your unsent draft from this device. If it is waiting for safety review, submit this same version again once it is approved.</Text><Button onPress={discardDraft}>Start over</Button></View>}
+      {created ? <View style={card}><Text variant="titleLarge" style={{ fontFamily: 'Outfit_700Bold', color: p.text }}>{createdCampaignSummary(created).title}</Text><Text style={{ fontFamily: 'Outfit_400Regular', color: p.text, lineHeight: 21 }}>{createdCampaignSummary(created).message}</Text>{created.status === 'pending_review' && !!created.contentReviewReason && emails.length > 0 && setupErrors.length === 0 && <Text style={{ fontFamily: 'Outfit_400Regular', color: p.text, lineHeight: 21 }}>{QUEUED_COLLABORATOR_INVITES}</Text>}{!split && <><Text>Next: set up your payout account for review.</Text><CampaignCashout campaignId={created.id} /></>}{setupErrors.map(e => <Text key={e} style={{ color: p.error }}>{e}</Text>)}{setupErrors.length > 0 && <Text>Your campaign was saved. Complete the remaining invitations or split from campaign management; do not create it again.</Text>}<Button loading={busy} disabled={busy} mode="contained" onPress={() => router.replace(`/campaign/${created.id}`)}>View campaign</Button>{created.status === 'pending_review' && <Button disabled={busy} onPress={() => router.replace('/my-campaigns')}>Go to my campaigns</Button>}</View> : loadError ? <View><Text>{loadError}</Text><Button onPress={() => setRetry(n => n + 1)}>Retry</Button></View> : !options?.canCreate ? <View style={card}><Text>{options?.creationBlockReason?.startsWith('verification') ? 'Complete verification before creating another campaign.' : 'Your plan’s active campaign allowance is full.'}</Text><Button onPress={() => router.push(options?.creationBlockReason?.startsWith('verification') ? '/kyc' : '/(tabs)/subscription')}>Review eligibility</Button></View> : <>
+        {draftRestored && <View style={card}><Text>We restored your unsent draft from this device.</Text><Button onPress={discardDraft}>Start over</Button></View>}
         <Text style={{ color: p.textSecondary }}>Step {step + 1} of 4 · {labels[step]}</Text><ProgressBar progress={(step + 1) / 4} color={p.primary} />
         <View style={card}>
           {step === 0 && <><TextInput label="Campaign title" value={title} onChangeText={setTitle} maxLength={200} /><SelectionField label="Category" value={category} options={Object.values(CampaignCategory).map(value => ({ value, label: value }))} onChange={v => setCategory(v as CampaignCategory)} /></>}
@@ -160,7 +165,7 @@ function CampaignFormForViewer() {
             {split && allocations.map((a, i) => <View key={i} style={{ gap: 8 }}><Text>Beneficiary {i + 1}</Text>{(['name', 'email', 'percent'] as const).map(key => <TextInput key={key} label={key === 'percent' ? 'Share (%)' : key} value={a[key]} keyboardType={key === 'percent' ? 'decimal-pad' : key === 'email' ? 'email-address' : 'default'} onChangeText={v => setAllocations(rows => rows.map((row, index) => index === i ? { ...row, [key]: v } : row))} />)}<Button onPress={() => setAllocations(rows => rows.filter((_, index) => index !== i))}>Remove recipient</Button></View>)}
             {split && <Button onPress={() => setAllocations(rows => [...rows, { name: '', email: '', percent: '' }])}>Add recipient</Button>}
           </>}
-          {step === 3 && <><Text variant="titleLarge">{title}</Text><Text>{description}</Text><Text>Goal: GH₵{amount} · Ends {end}</Text><Text>Category: {category} · Urgency: {priority}</Text><Text>Beneficiaries: {beneficiaries}</Text><Text>Safety checks and financial approval apply separately. Goals above GH₵250,000 need staff financial approval unless you are currently verified and have a previous published campaign.</Text><PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />{held && <PublicationHeldNotice retry="select Create campaign again without changes" reviews="below" />}{(!!error || held) && <PublicationReviews actions={['campaign.create']} />}<Text style={{ color: p.textSecondary }}>{ORGANIZER_AGREEMENT_NOTICE} <Text accessibilityRole="link" style={{ color: p.primary }} onPress={() => router.push('/organizer-agreement')}>Read the Campaign Organizer Agreement</Text></Text></>}
+          {step === 3 && <><Text variant="titleLarge">{title}</Text><Text>{description}</Text><Text>Goal: GH₵{amount} · Ends {end}</Text><Text>Category: {category} · Urgency: {priority}</Text><Text>Beneficiaries: {beneficiaries}</Text><Text>Safety checks and financial approval apply separately. Goals above GH₵250,000 need staff financial approval unless you are currently verified and have a previous published campaign.</Text><PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} note={CAMPAIGN_SCREENING_NOTE} />{held && <PublicationHeldNotice retry="select Create campaign again without changes" reviews="below" />}{(!!error || held) && <PublicationReviews actions={['campaign.create']} />}<Text style={{ color: p.textSecondary }}>{ORGANIZER_AGREEMENT_NOTICE} <Text accessibilityRole="link" style={{ color: p.primary }} onPress={() => router.push('/organizer-agreement')}>Read the Campaign Organizer Agreement</Text></Text></>}
         </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>{step > 0 && <Button disabled={busy || uploading} onPress={() => setStep(s => s - 1)}>Back</Button>}<Button mode="contained" loading={busy} disabled={busy || uploading} onPress={step === 3 ? () => void submit() : () => { const issue = validate(step); if (issue) setError(issue); else { setError(''); setStep(s => s + 1) } }}>{step === 3 ? 'Create campaign' : 'Continue'}</Button></View>
       </>}

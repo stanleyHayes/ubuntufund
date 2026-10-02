@@ -49,6 +49,8 @@ export interface BeneficiaryConsentEvent {
   payoutArrangement?: string
   reason?: string
   consentVersion?: string
+  /** How a changed beneficiary's new details were admitted; absent on changes from before that was recorded. */
+  admission?: string
   createdAt: string
 }
 
@@ -82,13 +84,15 @@ const CONSENT_COLORS: Record<OnBehalfConsentStatus, string> = {
   expired: 'var(--text-error)',
   revoked: 'var(--text-error)',
 }
+/** For the newest invitation, so `superseded` here means none replaced it: it was withdrawn. */
 const INVITATION_LABELS: Record<BeneficiaryInvitationStatus, string> = {
+  held: 'Not sent: waits for the content check',
   pending: 'Waiting for a response',
   accepted: 'Accepted',
   declined: 'Declined',
   expired: 'Expired',
   revoked: 'Revoked',
-  superseded: 'Replaced by a newer invitation',
+  superseded: 'Withdrawn: no invitation is waiting',
 }
 const AUTHORITY_LABELS: Record<PayoutAuthority, string> = {
   beneficiary: 'The beneficiary',
@@ -114,6 +118,11 @@ const ACTOR_LABELS: Record<string, string> = {
   invitee: 'Invited person',
 }
 const PAYOUT_TARGET_LABELS: Record<string, string> = { beneficiary: 'Beneficiary', organization: 'Organizer', none: 'Nobody' }
+const ADMISSION_LABELS: Record<string, string> = {
+  screening: 'Cleared by automated screening',
+  prior_approval: 'Cleared by an earlier approval of this version',
+  staff_review: 'Checked by our team in the campaign review',
+}
 
 /** The raised panel with the glass skin's border and blur, like the user detail panels. */
 const panelSurface = {
@@ -192,13 +201,16 @@ function ReassignDialog({
   const reasonValid = reason.trim().length >= 10 && reason.trim().length <= 1000
   const staffReasonValid = staffReason.trim().length >= STAFF_REASON_MIN && staffReason.trim().length <= STAFF_REASON_MAX
   const ready = !busy && nameValid && emailValid && reasonValid && staffReasonValid
+  // The campaign's content check is still outstanding (with an invitation held
+  // for it, or none since the declined content's was withdrawn): the new one waits too.
+  const heldForCheck = details.invitationStatus === 'held' || details.nextStep === 'name_beneficiary'
 
   async function submit() {
     if (!ready) return
     setBusy(true)
     setError(null)
     try {
-      await api.post(`/admin/campaigns/${campaignId}/beneficiary/reassign`, {
+      const result = await api.post<{ invitationHeld?: boolean } | null>(`/admin/campaigns/${campaignId}/beneficiary/reassign`, {
         beneficiaryType: type,
         beneficiaryName: name.trim(),
         beneficiaryEmail: email.trim(),
@@ -207,7 +219,9 @@ function ReassignDialog({
         payoutArrangement: arrangement,
         staffReason: staffReason.trim(),
       })
-      onDone(`Beneficiary reassigned to ${name.trim()}. They have been invited to accept; payouts stay paused until they do.`)
+      onDone((result?.invitationHeld ?? heldForCheck)
+        ? `Beneficiary reassigned to ${name.trim()}. Their invitation is sent once the content check is cleared; payouts stay paused until they accept.`
+        : `Beneficiary reassigned to ${name.trim()}. They have been invited to accept; payouts stay paused until they do.`)
     } catch (cause) {
       setError(cause)
       setBusy(false)
@@ -221,8 +235,9 @@ function ReassignDialog({
         <Stack spacing={2} sx={{ pt: 1 }}>
           <Alert severity="warning">
             This replaces the beneficiary. Their consent and any payout authority are cleared, so nobody can request a
-            payout until the new beneficiary accepts. The new beneficiary is emailed an invitation, and the organizer
-            and any previously linked beneficiary are notified.
+            payout until the new beneficiary accepts. {heldForCheck
+              ? 'The new beneficiary’s invitation waits for the campaign’s content check, and the organizer is notified.'
+              : 'The new beneficiary is emailed an invitation, and the organizer and any previously linked beneficiary are notified.'}
           </Alert>
           <TextField optionContext="beneficiary" select label="Beneficiary type" value={type} disabled={busy} onChange={(e) => setType(e.target.value as BeneficiaryPartyType)}>
             <MenuItem value="individual">Person</MenuItem>
@@ -480,7 +495,7 @@ export default function OnBehalfPanel({ campaign, onChanged }: { campaign: Campa
         <Fact label="Consent">{CONSENT_LABELS[details.consentStatus] ?? details.consentStatus}{details.consentAt ? ` · ${when(details.consentAt)}` : ''}</Fact>
         <Fact label="Beneficiary account">{details.linked ? 'Linked to an Ujimora account' : 'Not linked yet'}</Fact>
         <Fact label="Invitation">{details.invitationStatus ? INVITATION_LABELS[details.invitationStatus] ?? details.invitationStatus : 'No invitation on file'}</Fact>
-        <Fact label="Invitation sent to">{details.invitationEmailHint || '—'}</Fact>
+        <Fact label={details.invitationStatus === 'held' ? 'Invitation to' : 'Invitation sent to'}>{details.invitationEmailHint || '—'}</Fact>
         <Fact label="Invitation sent">{when(details.invitationSentAt)}</Fact>
         <Fact label="Invitation expires">{when(details.invitationExpiresAt)}</Fact>
         <Fact label="Payout arrangement">{ARRANGEMENT_LABELS[details.payoutArrangement] ?? details.payoutArrangement}</Fact>
@@ -550,6 +565,9 @@ export default function OnBehalfPanel({ campaign, onChanged }: { campaign: Campa
                 <Typography variant="body2">Payout: {PAYOUT_TARGET_LABELS[item.payoutArrangement] ?? item.payoutArrangement}</Typography>
               )}
               {item.reason && <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>Reason: {item.reason}</Typography>}
+              {item.event === 'beneficiary_changed' && (
+                <Typography variant="body2">New details: {item.admission ? ADMISSION_LABELS[item.admission] ?? item.admission : 'Not checked (changed before changes were checked); approve only after reading them'}</Typography>
+              )}
               {item.consentVersion && (
                 <Typography variant="caption" color="text.secondary" component="p">Consent wording {item.consentVersion}</Typography>
               )}

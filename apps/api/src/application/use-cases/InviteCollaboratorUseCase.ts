@@ -14,6 +14,16 @@ import type { NotificationRepositoryPort } from '../../domain/ports/outbound/Not
 import { NotificationEntity } from '../../domain/entities/Notification.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 
+/**
+ * Invitations recorded while a campaign's content waits for a staff check.
+ * `settle` runs after one is saved: it serializes with a staff approval that
+ * may be clearing the check at the same moment, and announces the invitation
+ * itself if that approval has already gone through.
+ */
+export interface HeldCollaborationInvitations {
+  settle(campaignId: string): Promise<void>;
+}
+
 export interface InviteCollaboratorRequest {
   campaignId: string;
   userEmail: string;
@@ -28,7 +38,8 @@ export class InviteCollaboratorUseCase {
     private readonly userRepo: UserRepositoryPort,
     private readonly collaborationRepo: CollaborationRepositoryPort,
     private readonly planLimits: PlanLimitsService,
-    private readonly notifications?: Pick<NotificationRepositoryPort, 'save'>
+    private readonly notifications?: Pick<NotificationRepositoryPort, 'save'>,
+    private readonly heldInvitations?: HeldCollaborationInvitations
   ) {}
 
   /**
@@ -109,15 +120,23 @@ export class InviteCollaboratorUseCase {
       }
     }
 
+    // Content still waiting for a staff check stays with the organizer and
+    // staff: the invitation is recorded but the invitee is not told, and it is
+    // not listed for them, until staff clear the content (MongoCampaignReview
+    // then notifies them).
+    const queued = campaign.contentCheckOutstanding;
+
     if (existing) {
       existing.reinvite({
         invitedBy: inviterId,
         role: input.role,
         revenueSharePercent: input.revenueSharePercent,
         inviteMessage: input.inviteMessage,
+        heldForContentCheck: queued,
       });
       const updated = await this.collaborationRepo.update(existing);
-      await this.notifyInvitee(invitee.id, campaign.title);
+      if (queued) await this.heldInvitations?.settle(input.campaignId);
+      else await this.notifyInvitee(invitee.id, campaign.title);
       return toCollaboratorDto(updated);
     }
 
@@ -133,12 +152,16 @@ export class InviteCollaboratorUseCase {
       displayName: invitee.name,
       logoUrl: invitee.avatarUrl,
       inviteMessage: input.inviteMessage,
+      heldForContentCheck: queued,
       createdAt: now,
       updatedAt: now,
     });
 
     const saved = await this.collaborationRepo.save(collaboration);
-    await this.notifyInvitee(invitee.id, campaign.title);
+    // A staff approval may have cleared the check since it was read: settle
+    // announces the invitation then, so it is never left untold.
+    if (queued) await this.heldInvitations?.settle(input.campaignId);
+    else await this.notifyInvitee(invitee.id, campaign.title);
     return toCollaboratorDto(saved);
   }
 

@@ -132,11 +132,20 @@ interface CreateCampaignPayload {
 }
 
 interface UseCreateCampaignResult {
-  /** Reuse `idempotencyKey` when resubmitting the same version after a lost response. */
+  /**
+   * Reuse `idempotencyKey` when resubmitting the same version after a lost
+   * response. A campaign a person must check first (new photos or video, no
+   * automated screening, or a flag) is still created: it comes back with
+   * status `pending_review` and its `contentReviewReason`, never as an error.
+   */
   createCampaign: (payload: CreateCampaignPayload, idempotencyKey?: string) => Promise<Campaign>
   isSubmitting: boolean
   error: string | null
-  /** The last submission was saved privately for safety review (not an error). */
+  /**
+   * An API deployed before 30 September 2026 held the version privately
+   * (409 `held`) instead of creating it. Not an error: kept for one release so
+   * a web build that reaches users before the API does shows the neutral notice.
+   */
   held: boolean
   reset: () => void
 }

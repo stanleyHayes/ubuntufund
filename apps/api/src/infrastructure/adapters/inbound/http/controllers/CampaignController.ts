@@ -78,7 +78,9 @@ export class CampaignController {
       const userId = req.userId!;
       const [plan, user, activeCount, totalCount] = await Promise.all([
         this.planLimits.resolvePlan(userId), this.userRepo.findById(userId),
-        this.campaignRepo.countActiveByCreator(userId), this.campaignRepo.countByCreatorId(userId),
+        // The lifetime allowance counts what creation counts (a campaign whose content
+        // check never cleared and that can no longer go live gives its slot back).
+        this.campaignRepo.countActiveByCreator(userId), this.campaignRepo.countTowardCampaignAllowance(userId),
       ]);
       if (!user) throw new AppError('User not found', 404);
       const allowance = await this.createCampaignUseCase.campaignAllowance(user);

@@ -459,6 +459,7 @@ import { createRbacRoutes } from './infrastructure/adapters/inbound/http/routes/
 import { createTestimonialRoutes } from './infrastructure/adapters/inbound/http/routes/testimonialRoutes.js'
 import { createContactRoutes } from './infrastructure/adapters/inbound/http/routes/contactRoutes.js'
 import { MongoOnBehalfCampaigns } from './infrastructure/adapters/outbound/persistence/MongoOnBehalfCampaigns.js'
+import { MongoHeldCollaborations } from './infrastructure/adapters/outbound/persistence/MongoHeldCollaborations.js'
 import { campaignManagerRole } from './infrastructure/adapters/outbound/persistence/campaignManagers.js'
 import { createOnBehalfRoutes } from './infrastructure/adapters/inbound/http/routes/onBehalfRoutes.js'
 import type { ActivityEmailSender } from './infrastructure/adapters/outbound/persistence/MongoActivityAlerts.js'
@@ -651,8 +652,10 @@ export function createApp(options: {
   const accountEmails = new AccountEmails(activityEmail, options.accountEmailKey ?? (process.env.AUTH_EMAIL_ENCRYPTION_KEY_BASE64 ? Buffer.from(process.env.AUTH_EMAIL_ENCRYPTION_KEY_BASE64, 'base64') : null))
   // Campaigns run on someone else's behalf. The config lookup is a closure for
   // the same reason as createCampaignUseCase's: commercialConfigService is
-  // declared further down and only needed once a request arrives.
-  const onBehalfCampaigns = new MongoOnBehalfCampaigns(accountEmails, { resolveOnBehalfConfig: () => commercialConfigService.resolveOnBehalfConfig() })
+  // declared further down and only needed once a request arrives. A changed
+  // beneficiary is admitted like a new campaign's content, and staff are told
+  // whenever a campaign ends up waiting for them.
+  const onBehalfCampaigns = new MongoOnBehalfCampaigns(accountEmails, { resolveOnBehalfConfig: () => commercialConfigService.resolveOnBehalfConfig() }, { admission: publicationAdmission, alerts: staffAlerts })
   const donorThankYous = new MongoDonorThankYous({
     sender: activityEmail,
     accountEmailKey: options.accountEmailKey ?? (process.env.AUTH_EMAIL_ENCRYPTION_KEY_BASE64 ? Buffer.from(process.env.AUTH_EMAIL_ENCRYPTION_KEY_BASE64, 'base64') : null),
@@ -664,7 +667,12 @@ export function createApp(options: {
   const reconcileActivityAlerts = async () => {
     if (activityAlertsRunning) return
     activityAlertsRunning = true
-    try { await onBehalfCampaigns.expireDue(); await accountEmails.deliverPending(); await activityAlerts.capturePending(); await activityAlerts.deliverPending(); await donorThankYous.process() }
+    try {
+      await onBehalfCampaigns.expireDue()
+      // Held invitations of ended campaigns keep no address; a failure here never holds up email delivery.
+      await onBehalfCampaigns.dropUnsendableHeld().catch((err: unknown) => logger.warn({ err }, 'held invitation sweep failed'))
+      await accountEmails.deliverPending(); await activityAlerts.capturePending(); await activityAlerts.deliverPending(); await donorThankYous.process()
+    }
     finally { activityAlertsRunning = false }
   }
   if (config.nodeEnv !== 'test') {
@@ -1309,6 +1317,9 @@ export function createApp(options: {
     collaborationRepo,
     planLimitsService,
     notificationRepo,
+    // An invitation recorded while the content check waits is announced even
+    // when a staff approval clears the check at the same moment.
+    new MongoHeldCollaborations(),
   )
   const removeCollaboratorUseCase = new RemoveCollaboratorUseCase(campaignRepo, collaborationRepo)
   const listCampaignCollaboratorsUseCase = new ListCampaignCollaboratorsUseCase(
@@ -1437,7 +1448,9 @@ export function createApp(options: {
   const resolveDisputeUseCase = new ResolveDisputeUseCase(disputeRepo)
   const listReportsUseCase = new ListReportsUseCase(adminReportRepo, campaignRepo)
   const reviewReportUseCase = new ReviewReportUseCase(adminReportRepo, new MongoStaffDecisionNotifier())
-  const reviewCampaignUseCase = new ReviewCampaignUseCase(new MongoCampaignReview())
+  // Approving content that waited for staff sends the beneficiary invitation
+  // held for it; a campaign returned to review alerts the review team.
+  const reviewCampaignUseCase = new ReviewCampaignUseCase(new MongoCampaignReview(onBehalfCampaigns, staffAlerts))
   const listUsersUseCase = new ListUsersUseCase(adminUserRepo)
   const getAdminUserUseCase = new GetAdminUserUseCase(adminUserRepo)
   const setComplianceLimitUseCase = new SetComplianceLimitUseCase(userRepo, auditLogRepo)

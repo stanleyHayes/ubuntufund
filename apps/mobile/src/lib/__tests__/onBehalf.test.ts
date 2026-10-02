@@ -7,6 +7,8 @@ import {
   cashoutConfirmPrompt,
   consentLabel,
   hasPayoutAuthority,
+  invitationSummary,
+  nextStepLine,
   payoutNote,
 } from '../onBehalf'
 
@@ -94,5 +96,41 @@ describe('cashout confirmation on a campaign run for someone else', () => {
 
   it('names the wallet when funds go to the Ujimora Wallet', () => {
     expect(cashoutConfirmPrompt({ beneficiaryName: 'Kofi', destination: 'ujimora_wallet', recipient: null, amount: 10, receive: 10 }).message).toContain('Paid to: your Ujimora Wallet.')
+  })
+})
+
+describe('the invitation line on the Manage screen', () => {
+  const format = (iso?: string) => (iso ? iso.slice(0, 10) : '')
+  it('says an invitation held for the content check has not been sent', () => {
+    const line = invitationSummary({ invitationEmailHint: 'a•••@example.com', invitationStatus: 'held' }, format)
+    expect(line).toBe('Invitation to a•••@example.com is sent once our team has checked the campaign')
+    expect(line).not.toMatch(/sent to|expires/)
+  })
+  it('keeps the sent and expired wording, and says nothing without an address or for settled invitations', () => {
+    expect(invitationSummary({ invitationEmailHint: 'a•••@example.com', invitationStatus: 'pending', invitationExpiresAt: '2026-10-04T00:00:00.000Z' }, format)).toBe('Invitation sent to a•••@example.com · expires 2026-10-04')
+    expect(invitationSummary({ invitationEmailHint: 'a•••@example.com', invitationStatus: 'expired', invitationExpiresAt: '2026-10-04T00:00:00.000Z' }, format)).toBe('Invitation sent to a•••@example.com · expired 2026-10-04')
+    expect(invitationSummary({ invitationStatus: 'held' }, format)).toBe('')
+    expect(invitationSummary({ invitationEmailHint: 'a•••@example.com', invitationStatus: 'accepted' }, format)).toBe('')
+    expect(invitationSummary(null, format)).toBe('')
+  })
+  it('says nothing is waiting once the invitation was withdrawn unsent, never that one was sent', () => {
+    expect(invitationSummary({ invitationStatus: 'superseded', consentStatus: 'pending' }, format)).toBe('No invitation is waiting for the beneficiary.')
+    // An older API without the consent state keeps saying nothing.
+    expect(invitationSummary({ invitationStatus: 'superseded' }, format)).toBe('')
+  })
+})
+
+describe('what makes the campaign go live from here, on the Manage screen', () => {
+  it('follows the server and never promises that an acceptance publishes a campaign our team still checks', () => {
+    const details = (nextStep?: 'content_check' | 'name_beneficiary' | 'consent' | 'staff_after_consent' | 'staff') => ({ beneficiaryName: 'Kofi Boateng', nextStep })
+    expect(nextStepLine(details('consent'))).toBe('It goes live as soon as Kofi Boateng accepts.')
+    expect(nextStepLine(details('staff_after_consent'))).toBe('When Kofi Boateng accepts, our team checks it before it goes live.')
+    expect(nextStepLine(details('staff'))).toBe('Our team is checking it before it goes live. We will let you know when it has been reviewed.')
+    // The held invitation line covers a content check; an older API sends nothing.
+    expect(nextStepLine(details('content_check'))).toBe('')
+    // Declined, then back in review with its invitation withdrawn: the organizer acts first.
+    expect(nextStepLine(details('name_beneficiary'))).toBe('Name the beneficiary again so our team can finish checking the campaign.')
+    expect(nextStepLine(details())).toBe('')
+    expect(nextStepLine(null)).toBe('')
   })
 })

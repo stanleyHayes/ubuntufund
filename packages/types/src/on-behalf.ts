@@ -43,6 +43,36 @@ export interface OnBehalfCampaignInput {
   payoutArrangement: OnBehalfPayoutArrangement
 }
 
+/**
+ * `PUT /campaigns/:id/beneficiary`. The new name and reason are public text,
+ * admitted like a new campaign's: `automatedReviewConsent` (default off) is
+ * permission to send the campaign's public text to automated screening.
+ * Without it, or when screening does not clear it, our team checks it first.
+ */
+export interface ChangeBeneficiaryInput extends OnBehalfCampaignInput {
+  automatedReviewConsent?: boolean
+}
+
+/**
+ * What makes a campaign that is not public yet go live from here, for the
+ * people running it (server-computed from the campaign's own rules):
+ * - `content_check`: our team checks the content first; a held invitation is sent after;
+ * - `name_beneficiary`: the content check waits, but its invitation was withdrawn when our
+ *   team declined the campaign (it is back in review now): the organizer names the
+ *   beneficiary again, and then our team can finish the check;
+ * - `consent`: the beneficiary's acceptance publishes it;
+ * - `staff_after_consent`: once the beneficiary accepts, our team checks it before it goes live;
+ * - `staff`: it waits for our team now.
+ */
+export type OnBehalfNextStep = 'content_check' | 'name_beneficiary' | 'consent' | 'staff_after_consent' | 'staff'
+
+/** `PUT /campaigns/:id/beneficiary` result. */
+export interface ChangeBeneficiaryResult {
+  /** True when the new invitation waits for our team's content check. */
+  invitationHeld: boolean
+  nextStep?: OnBehalfNextStep
+}
+
 /** The public part of an on-behalf campaign: enough for donors to know who benefits. */
 export interface CampaignOnBehalfSummary {
   beneficiaryName: string
@@ -59,7 +89,12 @@ export interface CampaignViewerAccess {
   thankDonors: boolean
 }
 
-export type BeneficiaryInvitationStatus = 'pending' | 'accepted' | 'declined' | 'expired' | 'revoked' | 'superseded'
+/**
+ * `held`: written but not sent. A campaign whose content waits for a staff
+ * check keeps its invitation until staff clear the content, so nothing
+ * unreviewed reaches the invited address.
+ */
+export type BeneficiaryInvitationStatus = 'held' | 'pending' | 'accepted' | 'declined' | 'expired' | 'revoked' | 'superseded'
 
 /** `GET /campaigns/:id/beneficiary`: for the manager, the linked beneficiary and staff. */
 export interface CampaignBeneficiaryDetails {
@@ -77,14 +112,22 @@ export interface CampaignBeneficiaryDetails {
   /** Masked, e.g. "a•••@example.com". The full address is never returned. */
   invitationEmailHint?: string
   invitationStatus?: BeneficiaryInvitationStatus
+  /** Absent for an invitation never sent: `held`, or withdrawn (`superseded`) while it was held. */
   invitationSentAt?: string
   invitationExpiresAt?: string
   payoutAuthority: 'beneficiary' | 'organization' | 'none'
   publicationRequiresConsent: boolean
   donationsRequireConsent: boolean
   canResendInvitation: boolean
+  /** Before acceptance, before any money, while not blocked and before the end date. */
   canChangeBeneficiary: boolean
   canRevokeConsent: boolean
+  /**
+   * For managers and staff, while the campaign is pending review: what makes
+   * it go live from here. Absent once it is public, or when it cannot go live
+   * for this beneficiary (declined, withdrawn, ended).
+   */
+  nextStep?: OnBehalfNextStep
   /** Viewer's relationship to the campaign. */
   viewer: { manager: boolean; beneficiary: boolean; admin: boolean }
   organizerName?: string

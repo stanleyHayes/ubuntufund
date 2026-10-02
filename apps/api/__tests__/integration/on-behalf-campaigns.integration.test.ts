@@ -56,10 +56,14 @@ const campaignInput = (onBehalf?: object) => ({
 });
 const beneficiary = (email: string, overrides: object = {}) => ({ beneficiaryType: 'individual', beneficiaryName: 'Ama Mensah', beneficiaryEmail: email, relationship: 'patient', reason: 'Ama needs surgery that her family cannot afford.', payoutArrangement: 'beneficiary', ...overrides });
 
-/** Runs the app's real outbox and returns the invitation token from the delivered email. */
-async function deliveredToken(): Promise<string> {
+/**
+ * Runs the app's real outbox and returns the token from the latest invitation
+ * delivered to `address` (the outbox is shared, so an earlier test's email may
+ * be delivered in this one).
+ */
+async function deliveredToken(address: string): Promise<string> {
   await (app.locals.reconcileActivityAlerts as () => Promise<void>)();
-  const call = sender.send.mock.calls.find(([, payload]) => String(payload.text).includes('/beneficiary-invitation#token='));
+  const call = sender.send.mock.calls.filter(([, payload]) => (payload.to as string[] | undefined)?.includes(address) && String(payload.text).includes('/beneficiary-invitation#token=')).at(-1);
   expect(call).toBeTruthy();
   return /beneficiary-invitation#token=([a-f0-9]{64})/.exec(String(call![1].text))![1];
 }
@@ -86,7 +90,7 @@ it('offers the feature only to plans that include it and never returns the token
   const stored = await CampaignModel.findById(created.body.data.id).lean();
   expect(stored).toMatchObject({ creationMode: 'on_behalf', creatorId: owner.id, createdByActorId: owner.id, onBehalf: { consentStatus: 'pending', payoutArrangement: 'beneficiary', publicationRequiresConsent: true, donationsRequireConsent: true } });
   expect(stored!.onBehalf!.payoutAuthorityUserId).toBeUndefined();
-  const token = await deliveredToken();
+  const token = await deliveredToken(target);
   expect(JSON.stringify(await CampaignBeneficiaryInvitationModel.findOne({ campaignId: created.body.data.id }).lean())).not.toContain(token);
   const preview = await request(app).post('/api/v1/beneficiary-invitations/preview').send({ token }).expect(200);
   expect(preview.body.data).toMatchObject({ status: 'pending', organizerName: 'Tamale Care Foundation', beneficiaryName: 'Ama Mensah', payoutArrangement: 'beneficiary' });
@@ -102,7 +106,7 @@ it('keeps donations, staff approval and payouts closed until the invited person 
   const owner = await org(), staff = await admin();
   const beneficiaryEmail = `${randomUUID()}@example.test`;
   const campaign = await createOnBehalf(owner, beneficiaryEmail);
-  const token = await deliveredToken();
+  const token = await deliveredToken(beneficiaryEmail);
 
   // Even if a staff member activated it directly, the donation gate holds.
   await CampaignModel.findByIdAndUpdate(campaign.id, { status: 'active' });
@@ -158,7 +162,7 @@ it('publishes on consent when only consent was holding it, and lets the organiza
     const email = `${randomUUID()}@example.test`;
     const campaign = await createOnBehalf(owner, email, { payoutArrangement: 'organization' });
     expect(campaign.status).toBe('pending_review');
-    const token = await deliveredToken();
+    const token = await deliveredToken(email);
     const person = await account({ email });
     expect((await request(app).post('/api/v1/beneficiary-invitations/accept').set('Authorization', person.auth).send({ token }).expect(200)).body.data.status).toBe('active');
     expect((await CampaignModel.findById(campaign.id).lean())!.onBehalf!.payoutAuthorityUserId).toBe(owner.id);
@@ -173,7 +177,7 @@ it('lets the invitee decline without an account and blocks acceptance afterwards
   const owner = await org();
   const email = `${randomUUID()}@example.test`;
   const campaign = await createOnBehalf(owner, email);
-  const token = await deliveredToken();
+  const token = await deliveredToken(email);
   await request(app).post('/api/v1/beneficiary-invitations/decline').send({ token, reason: 'I do not know this organization.' }).expect(200);
   expect((await CampaignModel.findById(campaign.id).lean())!.onBehalf!.consentStatus).toBe('declined');
   const person = await account({ email });
@@ -186,7 +190,7 @@ it('expires unanswered invitations, lets the organizer resend once a minute, and
   const owner = await org();
   const email = `${randomUUID()}@example.test`;
   const campaign = await createOnBehalf(owner, email);
-  const oldToken = await deliveredToken();
+  const oldToken = await deliveredToken(email);
   // Raw write: Mongoose treats createdAt as immutable, and the resend cooldown reads it.
   await CampaignBeneficiaryInvitationModel.collection.updateOne({ campaignId: campaign.id, status: 'pending' }, { $set: { expiresAt: new Date(Date.now() - 1000), createdAt: new Date(Date.now() - 120_000) } });
   expect((await request(app).post('/api/v1/beneficiary-invitations/preview').send({ token: oldToken }).expect(200)).body.data.status).toBe('expired');
@@ -197,21 +201,22 @@ it('expires unanswered invitations, lets the organizer resend once a minute, and
   sender.send.mockClear();
   await request(app).post(`/api/v1/campaigns/${campaign.id}/beneficiary/invitation`).set('Authorization', owner.auth).expect(200);
   await request(app).post(`/api/v1/campaigns/${campaign.id}/beneficiary/invitation`).set('Authorization', owner.auth).expect(429);
-  const newToken = await deliveredToken();
+  const newToken = await deliveredToken(email);
   expect(newToken).not.toBe(oldToken);
   await request(app).post('/api/v1/beneficiary-invitations/accept').set('Authorization', person.auth).send({ token: newToken }).expect(200);
 });
 
 it('lets the organizer correct the beneficiary before acceptance and donations, superseding the old link', async () => {
   const owner = await org(), other = await org();
-  const campaign = await createOnBehalf(owner, `${randomUUID()}@example.test`);
-  const firstToken = await deliveredToken();
+  const firstEmail = `${randomUUID()}@example.test`;
+  const campaign = await createOnBehalf(owner, firstEmail);
+  const firstToken = await deliveredToken(firstEmail);
   await request(app).put(`/api/v1/campaigns/${campaign.id}/beneficiary`).set('Authorization', other.auth).send(beneficiary(`${randomUUID()}@example.test`)).expect(403);
   sender.send.mockClear();
   const newEmail = `${randomUUID()}@example.test`;
   await request(app).put(`/api/v1/campaigns/${campaign.id}/beneficiary`).set('Authorization', owner.auth).send(beneficiary(newEmail, { beneficiaryName: 'Kofi Asante' })).expect(200);
   expect((await request(app).post('/api/v1/beneficiary-invitations/preview').send({ token: firstToken }).expect(200)).body.data.status).toBe('superseded');
-  const secondToken = await deliveredToken();
+  const secondToken = await deliveredToken(newEmail);
   const details = await request(app).get(`/api/v1/campaigns/${campaign.id}/beneficiary`).set('Authorization', owner.auth).expect(200);
   expect(details.body.data).toMatchObject({ beneficiaryName: 'Kofi Asante', consentStatus: 'pending', canChangeBeneficiary: true, invitationEmailHint: `${newEmail[0]}•••@example.test` });
   expect(JSON.stringify(details.body)).not.toContain(newEmail);
@@ -225,7 +230,7 @@ it('requires an organization account for an organization beneficiary', async () 
   const owner = await org();
   const email = `${randomUUID()}@example.test`;
   await createOnBehalf(owner, email, { beneficiaryType: 'organization', beneficiaryName: 'Nkwanta School' });
-  const token = await deliveredToken();
+  const token = await deliveredToken(email);
   const person = await account({ email });
   await request(app).post('/api/v1/beneficiary-invitations/accept').set('Authorization', person.auth).send({ token }).expect(403);
   await UserModel.findByIdAndUpdate(person.id, { role: UserRole.ORGANIZATION, organizationName: 'Nkwanta School' });
@@ -266,7 +271,7 @@ it('gives staff audited, reasoned overrides and keeps them out of their own camp
   const owner = await org(), staff = await admin();
   const email = `${randomUUID()}@example.test`;
   const campaign = await createOnBehalf(owner, email);
-  const token = await deliveredToken();
+  const token = await deliveredToken(email);
   const person = await account({ email });
   await request(app).post('/api/v1/beneficiary-invitations/accept').set('Authorization', person.auth).send({ token }).expect(200);
 
@@ -291,7 +296,7 @@ it('gives staff audited, reasoned overrides and keeps them out of their own camp
   expect(stored!.onBehalf).toMatchObject({ beneficiaryName: 'Efua Boateng', consentStatus: 'pending' });
   expect(stored!.onBehalf!.beneficiaryUserId).toBeUndefined();
   expect(stored!.onBehalf!.payoutAuthorityUserId).toBeUndefined();
-  await deliveredToken();
+  await deliveredToken(newEmail);
   expect((await CampaignBeneficiaryConsentEventModel.find({ campaignId: campaign.id }).lean()).map(e => e.event)).toEqual(['invited', 'accepted', 'payout_authority_changed', 'reassigned']);
   // Staff read the consent history over HTTP; nobody else can, and it carries no addresses.
   const history = await request(app).get(`/api/v1/admin/campaigns/${campaign.id}/beneficiary/events`).set('Authorization', staff.auth).expect(200);
@@ -304,7 +309,7 @@ it('counts money the beneficiary controls when they close their account, and pau
   const owner = await org();
   const email = `${randomUUID()}@example.test`;
   const campaign = await createOnBehalf(owner, email);
-  const token = await deliveredToken();
+  const token = await deliveredToken(email);
   const person = await account({ email });
   await request(app).post('/api/v1/beneficiary-invitations/accept').set('Authorization', person.auth).send({ token }).expect(200);
   // Once accepted, the invitation no longer keeps the address.

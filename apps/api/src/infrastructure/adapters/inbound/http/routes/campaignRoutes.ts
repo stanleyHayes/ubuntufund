@@ -11,7 +11,9 @@ const createCampaignSchema = z.object({
   automatedReviewConsent: z.boolean().optional(),
   title: z.string().min(3).max(200),
   description: z.string().min(10).max(5000),
-  goalAmount: z.number().positive(),
+  // Whole pesewas, as stored: a goal with more decimals would be rounded on
+  // save, so the stored campaign would no longer match the version admitted.
+  goalAmount: z.number().positive().multipleOf(0.01),
   currency: z.string().min(2).max(5),
   category: z.nativeEnum(CampaignCategory),
   priority: z.nativeEnum(CampaignPriority),

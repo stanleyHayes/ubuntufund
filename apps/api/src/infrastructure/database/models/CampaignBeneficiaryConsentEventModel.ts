@@ -31,6 +31,13 @@ const schema = new Schema({
   /** What was agreed to: a hash of the campaign terms shown at decision time. */
   termsHash: { type: String },
   reason: { type: String },
+  /**
+   * `beneficiary_changed` only: how the new name and reason were admitted, like
+   * a new campaign's content (`screening`, `prior_approval`, or `staff_review`
+   * when our team's content check covers them). Absent on changes recorded
+   * before changes were admitted: those details were never checked.
+   */
+  admission: { type: String, enum: ['screening', 'prior_approval', 'staff_review'] },
   ip: { type: String },
   userAgent: { type: String },
 }, { timestamps: { createdAt: true, updatedAt: false }, collection: 'campaign_beneficiary_consent_events' });

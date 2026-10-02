@@ -158,3 +158,32 @@ it('explains a plan refusal at submit and points to the plans', async () => {
   expect(await screen.findByText(/allows 1 active campaign on behalf of others/)).toBeInTheDocument()
   expect(screen.getByRole('link', { name: 'See plans' })).toHaveAttribute('href', '/subscription')
 })
+
+it('says the beneficiary is emailed only once our team has checked a campaign waiting for its content check', async () => {
+  mockOptions({ canCreateOnBehalf: true, onBehalfBlockReason: null, onBehalf: { limit: -1, active: 0, feePercent: 0 } })
+  // The API keeps the invitation unsent until staff clear the content.
+  vi.mocked(api.post).mockResolvedValue({ id: 'campaign-10', status: 'pending_review', contentReviewReason: 'no_screening_consent' })
+  writePublicationDraft(publicationDraftKey('campaign', 'org-1'), {
+    title: 'Clinic roof repair', category: 'medical', description: 'The clinic roof leaks every rainy season and patients get wet.',
+    beneficiaries: 'Village clinic', coverImageUrl: '', goalAmount: '5000', currency: 'GHS', endDate: '2099-01-01', priority: 'normal',
+  })
+  renderForm()
+  await waitFor(() => expect(someoneElse()).toBeEnabled())
+  fireEvent.click(someoneElse())
+  fireEvent.change(screen.getByLabelText('Their public name'), { target: { value: 'Ama Mensah' } })
+  fireEvent.change(screen.getByLabelText('Their email address'), { target: { value: 'ama@example.test' } })
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Their relationship to you' }))
+  fireEvent.click(screen.getByRole('option', { name: 'Patient' }))
+  fireEvent.change(screen.getByLabelText('Why are you raising money for them?'), { target: { value: 'Ama needs surgery that her family cannot pay for.' } })
+  for (let step = 0; step < 3; step++) {
+    const next = await screen.findByRole('button', { name: 'Continue' })
+    await waitFor(() => expect(next).toBeEnabled())
+    fireEvent.click(next)
+  }
+  fireEvent.click(screen.getByRole('button', { name: 'Publish campaign' }))
+  expect(await screen.findByText('Waiting for Ama Mensah')).toBeInTheDocument()
+  expect(screen.getByText(/We will email Ama Mensah an invitation once our team has checked the campaign\./)).toBeInTheDocument()
+  expect(screen.queryByText(/We emailed Ama Mensah/)).not.toBeInTheDocument()
+  expect(screen.queryByText(/send the invitation again/)).not.toBeInTheDocument()
+  expect(screen.getByText('Saved · Pending review')).toBeInTheDocument()
+})

@@ -35,6 +35,7 @@ import { CampaignBeneficiaryConsentEventModel } from '../../../database/models/C
 import { BENEFICIARY_CONSENT_VERSION } from '@ubuntu-fund/types';
 import { createHash } from 'node:crypto';
 import { recordAccountNotice } from './campaignManagers.js';
+import { dropHeldInvitations } from './MongoOnBehalfCampaigns.js';
 
 /** Retryable erasure of operational profile data. Never deletes money or KYC evidence. */
 export class MongoAccountErasure implements AccountErasurePort {
@@ -116,7 +117,22 @@ export class MongoAccountErasure implements AccountErasurePort {
     await DonationModel.updateMany({ donorId: userId }, { $set: { isAnonymous: true, publicContentRevokedAt: new Date() }, $unset: { publicContentFingerprint: 1, publicReviewNotes: 1 } });
     await TipModel.updateMany({ supporterUserId: userId }, { $set: { isAnonymous: true, checkoutRevokedAt: new Date() }, $unset: { checkout: 1, requestFingerprint: 1, publicContentFingerprint: 1, publicReviewNotes: 1 } });
     const campaigns = await CampaignModel.find({ creatorId: userId }).select('_id');
-    await LiveSessionModel.updateMany({ campaignId: { $in: campaigns.map(c => String(c._id)) }, status: 'active' }, { $set: { status: 'ended', endedAt: new Date(), moderationStoppedAt: new Date(), providerStopPending: true, overlayToken: '', privacyMode: true } });
+    const campaignIds = campaigns.map(c => String(c._id));
+    await LiveSessionModel.updateMany({ campaignId: { $in: campaignIds }, status: 'active' }, { $set: { status: 'ended', endedAt: new Date(), moderationStoppedAt: new Date(), providerStopPending: true, overlayToken: '', privacyMode: true } });
+    // The closed account's campaigns can no longer invite anyone: invitations
+    // never sent (held) or still open are withdrawn, and no invited person's
+    // address is kept for a resend that cannot happen.
+    await dropHeldInvitations(campaignIds);
+    await CampaignBeneficiaryInvitationModel.updateMany({ campaignId: { $in: campaignIds }, status: 'pending' }, { $set: { status: 'superseded', decidedAt: new Date() } });
+    await CampaignBeneficiaryInvitationModel.updateMany({ campaignId: { $in: campaignIds }, email: { $exists: true } }, { $unset: { email: 1 } });
+    // How the content was admitted keeps only its non-personal outline (basis,
+    // reason, trigger, time), like the erased review snapshots. The
+    // campaign.content_admission audit entry stays as accountability evidence
+    // (see PUBLICATION_REVIEWS.md, "Retention").
+    await CampaignModel.updateMany({ creatorId: userId, contentAdmission: { $exists: true }, 'contentAdmission.erasedAt': { $exists: false } }, {
+      $unset: { 'contentAdmission.fingerprint': 1, 'contentAdmission.automatedConsentAt': 1, 'contentAdmission.screenedAt': 1, 'contentAdmission.screener': 1, 'contentAdmission.priorReviewId': 1, 'contentAdmission.priorReviewReason': 1 },
+      $set: { 'contentAdmission.erasedAt': new Date() },
+    });
     // A closed account cannot run a fundraiser: end open campaigns so they stop
     // accepting donation intents and crypto quotes (canReceiveDonation only
     // checks status and end date). EXPIRED is the ordinary end state, not a

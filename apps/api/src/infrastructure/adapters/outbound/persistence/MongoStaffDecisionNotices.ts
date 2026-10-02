@@ -38,17 +38,42 @@ export class MongoStaffDecisionNotifier implements StaffDecisionNotifierPort {
  * Campaign review outcome for the organizer. Staff decision notes are written
  * for the internal review record, so they are deliberately not copied here.
  */
-export function campaignDecisionNotice(input: { campaignId: string; title: string; ownerId: string; version: string; action: 'approve' | 'reject' | 'block' | 'reopen' }): StaffDecisionNotice {
+export function campaignDecisionNotice(input: {
+  campaignId: string; title: string; ownerId: string; version: string; action: 'approve' | 'reject' | 'block' | 'reopen';
+  /** Approval cleared content that was waiting for staff on a campaign still waiting for its beneficiary. */
+  contentCleared?: { beneficiaryName: string; publishesOnConsent: boolean };
+  /** Rejected or blocked while its content waited for staff: it was never public. */
+  contentDeclined?: boolean;
+  /**
+   * Returned to review with its content still to check, but its beneficiary
+   * invitation was withdrawn when it was declined: the organizer names the
+   * beneficiary again before staff can approve it.
+   */
+  beneficiaryNeeded?: boolean;
+}): StaffDecisionNotice {
   const name = `“${input.title}”`;
   const base = { key: `campaign-review:${input.campaignId}:${input.version}:${input.action}`, userId: input.ownerId };
   switch (input.action) {
     case 'approve':
+      if (input.contentCleared) {
+        const { beneficiaryName, publishesOnConsent } = input.contentCleared;
+        return { ...base, title: 'Your campaign passed review', path: `/campaigns/${input.campaignId}`,
+          body: `${name} passed review. We sent ${beneficiaryName} the invitation. ${publishesOnConsent ? 'The campaign goes live when they accept.' : 'When they accept, our team does a final check before it goes live.'}` };
+      }
       return { ...base, title: 'Your campaign is live', body: `${name} passed review and is now public.`, path: `/campaigns/${input.campaignId}` };
     case 'reject':
-      return { ...base, title: 'Your campaign was not approved', body: `${name} did not pass review and is not public. For details or to ask for another review, contact ${SUPPORT}.`, path: '/my-campaigns' };
+      return { ...base, title: 'Your campaign was not approved', path: '/my-campaigns', body: input.contentDeclined
+        ? `${name} did not pass review and is not public. This exact version cannot be submitted again, but you can create a revised campaign. For details or to ask for another review, contact ${SUPPORT}.`
+        : `${name} did not pass review and is not public. For details or to ask for another review, contact ${SUPPORT}.` };
     case 'block':
-      return { ...base, title: 'Your campaign has been blocked', body: `${name} was removed from public view after a review. For details or to appeal, contact ${SUPPORT}.`, path: '/my-campaigns' };
+      return { ...base, title: 'Your campaign has been blocked', path: '/my-campaigns', body: input.contentDeclined
+        ? `${name} did not pass review and is not public. This exact version cannot be submitted again. For details or to appeal, contact ${SUPPORT}.`
+        : `${name} was removed from public view after a review. For details or to appeal, contact ${SUPPORT}.` };
     case 'reopen':
+      if (input.beneficiaryNeeded) {
+        return { ...base, title: 'Your campaign is back in review', path: `/campaigns/${input.campaignId}`,
+          body: `${name} has returned to the review queue. Its beneficiary invitation was withdrawn when it was declined, so our team can finish the review only after you name the beneficiary again: open the campaign and choose Change beneficiary. We will let you know the outcome.` };
+      }
       return { ...base, title: 'Your campaign is back in review', body: `${name} has returned to the review queue. We will let you know the outcome.`, path: '/my-campaigns' };
   }
 }

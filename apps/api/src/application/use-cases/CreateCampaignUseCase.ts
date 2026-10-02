@@ -5,9 +5,11 @@ import {
   type CreateCampaignInput,
   type Campaign,
 } from '@ubuntu-fund/types';
-import type { PublicationAdmissionPort, PublicationSubmission } from '../../domain/ports/outbound/PublicationAdmissionPort.js';
+import type { PublicationAdmissionPort } from '../../domain/ports/outbound/PublicationAdmissionPort.js';
+import type { ReviewQueueAlertPort } from '../../domain/ports/outbound/ReviewQueueAlertPort.js';
+import { campaignCreationSubmission } from '../../domain/services/campaignCreationSubmission.js';
 import { CampaignEntity } from '../../domain/entities/Campaign.js';
-import { Money } from '../../domain/value-objects/Money.js';
+import { Money, roundToCurrency } from '../../domain/value-objects/Money.js';
 import type { CampaignRepositoryPort } from '../../domain/ports/outbound/CampaignRepositoryPort.js';
 import type { UserRepositoryPort } from '../../domain/ports/outbound/UserRepositoryPort.js';
 import type { PlanLimitsService } from '../services/PlanLimitsService.js';
@@ -32,8 +34,13 @@ export interface OnBehalfCreationPort {
     campaignId: string; campaignTitle: string; beneficiaryName: string; email: string;
     invitedBy: string; payoutArrangement: 'beneficiary' | 'organization'; publicationRequiresConsent: boolean;
     ttlHours: number; event: 'invited'; actorRole: 'organizer'; organizer?: string;
+    /** Keep it unsent until staff clear the content: nothing unreviewed reaches the invited address. */
+    held?: boolean;
   }): Promise<{ invitationId: string; expiresAt: Date }>;
 }
+
+// The exact public version a new campaign is admitted as (and a decline binds).
+export { campaignCreationSubmission };
 
 export class CreateCampaignUseCase {
   constructor(
@@ -51,15 +58,7 @@ export class CreateCampaignUseCase {
      */
     private readonly configService?: { resolveCampaignsConfig(): Promise<CampaignsConfig> },
     /** Tells the review team a campaign is waiting. Absent ⇒ no alert. */
-    private readonly reviewAlerts?: {
-      campaignPendingReview(input: {
-        campaignId: string
-        title: string
-        goalAmount: number
-        currency: string
-        tier: number
-      }): Promise<void>
-    },
+    private readonly reviewAlerts?: ReviewQueueAlertPort,
     private readonly kycRepo?: Pick<KYCRepositoryPort, 'findByUserId'>,
     private readonly admission?: PublicationAdmissionPort,
     private readonly creation?: { run<T>(userId: string, authVersion: string, work: () => Promise<T>): Promise<T> },
@@ -94,7 +93,7 @@ export class CreateCampaignUseCase {
       throw new AppError('User not found', 404);
     }
 
-    let campaignCount = await this.campaignRepo.countByCreatorId(creatorId);
+    let campaignCount = await this.campaignRepo.countTowardCampaignAllowance(creatorId);
     let allowance = await this.campaignAllowance(user);
     if (campaignCount >= allowance) {
       throw new AppError(
@@ -129,20 +128,18 @@ export class CreateCampaignUseCase {
       await this.planLimits.assertCanCreateOnBehalf(creatorId);
     }
 
-    if (!this.admission) throw new AppError('Campaign safety review is unavailable', 503);
-    const submission: PublicationSubmission = {
-      actorId: creatorId, action: 'campaign.create', resourceId: creatorId,
-      text: JSON.stringify({ title: input.title, description: input.description,
-        category: input.category, priority: input.priority, beneficiaries: input.beneficiaries,
-        goalAmount: input.goalAmount, currency: input.currency, endDate: new Date(input.endDate).toISOString(),
-        // Public on the campaign page; the beneficiary's email never is, so it is not screened.
-        ...(onBehalfInput ? { onBehalf: { beneficiaryName: onBehalfInput.beneficiaryName, beneficiaryType: onBehalfInput.beneficiaryType,
-          relationship: onBehalfInput.relationship, reason: onBehalfInput.reason, payoutArrangement: onBehalfInput.payoutArrangement } } : {}) }),
-      mediaUrls: input.imageUrls ?? [], automatedReviewConsent: input.automatedReviewConsent,
-    };
-    await this.admission.assertAllowed(submission);
-    if (!this.admission.assertCurrent) throw new AppError('Current campaign content verification is unavailable', 503);
+    if (!this.admission?.admitCampaign || !this.admission.commitCampaign) throw new AppError('Campaign safety review is unavailable', 503);
     if (!this.creation) throw new AppError('Campaign creation transaction is unavailable', 503);
+    // Fingerprinted exactly as it is stored (Money keeps the currency's
+    // precision), so a decline rebuilt from the stored campaign binds this
+    // same submission. The route already refuses more than two decimals.
+    const submission = campaignCreationSubmission({ ...input, goalAmount: roundToCurrency(input.goalAmount, input.currency) }, creatorId);
+    // Refuses an unavailable, restricted or not-yet-agreed account, oversized
+    // content and a version staff already declined, before anything is
+    // written. Otherwise it decides: screened text goes live under the usual
+    // rules, and content a person must check is saved as pending_review below.
+    const admission = await this.admission.admitCampaign(submission);
+    const contentReviewReason = admission.outcome === 'staff_review' ? admission.reason : undefined;
     const expectedAuthVersion = user.toPlain().authVersion ?? '';
     let outcome: { entity: CampaignEntity; replayed: boolean };
     try {
@@ -157,7 +154,7 @@ export class CreateCampaignUseCase {
         // evaluated again from current evidence; content approval cannot waive it.
         user = await this.userRepo.findById(creatorId);
         if (!user) throw new AppError('Account is no longer available', 401);
-        campaignCount = await this.campaignRepo.countByCreatorId(creatorId);
+        campaignCount = await this.campaignRepo.countTowardCampaignAllowance(creatorId);
         allowance = await this.campaignAllowance(user);
         if (campaignCount >= allowance) throw new AppError('Campaign creation eligibility changed. Review your verification and retry.', 403);
         await this.planLimits.assertCanCreateCampaign(creatorId, input.goalAmount, user.complianceApprovedCampaignLimit, input.imageUrls?.length ?? 0);
@@ -210,13 +207,23 @@ export class CreateCampaignUseCase {
           }
         }
 
+        // What tiering and the financial rule alone decide, before the content check.
+        const tieredStatus = status;
+        // Content a person must check waits in the campaign staff review, like
+        // a high-goal campaign: private and closed to donations until staff
+        // approve it. Applied before the on-behalf rules, so the beneficiary's
+        // consent can never publish content nobody has looked at.
+        if (contentReviewReason) status = CampaignStatus.PENDING_REVIEW;
+
         // On someone else's behalf: hold for the beneficiary's consent and/or
         // staff review. If tiering alone would have published it, consent may
-        // publish it later (unless staff review is also required).
+        // publish it later (unless staff review is also required). Content
+        // that waits for staff is never published by consent: staff clearing
+        // it restores that rule (autoPublishAfterContentCheck).
         let onBehalf: CampaignOnBehalfProps | undefined;
-        const tieredStatus = status;
         if (onBehalfInput && onBehalfSettings && entitlement) {
           if (onBehalfSettings.publicationRequiresConsent || onBehalfSettings.staffReviewRequired) status = CampaignStatus.PENDING_REVIEW;
+          const consentPublishes = tieredStatus === CampaignStatus.ACTIVE && onBehalfSettings.publicationRequiresConsent && !onBehalfSettings.staffReviewRequired;
           onBehalf = {
             beneficiaryType: onBehalfInput.beneficiaryType,
             beneficiaryName: onBehalfInput.beneficiaryName.trim(),
@@ -227,7 +234,8 @@ export class CreateCampaignUseCase {
             publicationRequiresConsent: onBehalfSettings.publicationRequiresConsent,
             donationsRequireConsent: onBehalfSettings.donationsRequireConsent,
             staffReviewRequired: onBehalfSettings.staffReviewRequired,
-            autoPublishOnConsent: tieredStatus === CampaignStatus.ACTIVE && onBehalfSettings.publicationRequiresConsent && !onBehalfSettings.staffReviewRequired,
+            autoPublishOnConsent: consentPublishes && !contentReviewReason,
+            ...(contentReviewReason ? { autoPublishAfterContentCheck: consentPublishes } : {}),
             entitlementPlanTier: entitlement.planTier,
             feePercentApplied: entitlement.feePercent,
             invitedAt: new Date(),
@@ -264,17 +272,30 @@ export class CreateCampaignUseCase {
           creatorType: user.role === 'organization' ? 'organization' : 'individual',
           createdByActorId: creatorId,
           onBehalf,
+          contentReviewReason,
+          // Private evidence of how the content was admitted (never on a read).
+          contentAdmission: {
+            basis: admission.outcome === 'approved' ? admission.basis : 'staff_review',
+            ...(contentReviewReason ? { reason: contentReviewReason } : {}),
+            ...admission.evidence,
+            admittedAt: now,
+          },
         });
 
-        await this.admission!.assertCurrent!(submission);
         const saved = await this.campaignRepo.save(campaign, { creationIdempotencyKey: idempotencyKey });
-        // Same transaction: no campaign without its invitation, and no email for a rolled-back campaign.
+        // Same transaction: a version declined meanwhile, or an earlier approval
+        // that lapsed, rolls the campaign back; the admission is audited.
+        await this.admission!.commitCampaign!(submission, admission, saved.id);
+        // Same transaction: no campaign without its invitation, and no email for a
+        // rolled-back campaign. Content waiting for staff keeps the invitation
+        // unsent until they clear it.
         if (onBehalf && onBehalfInput && onBehalfSettings) {
           await this.onBehalf!.issueInvitation({
             campaignId: saved.id, campaignTitle: saved.title, beneficiaryName: onBehalf.beneficiaryName,
             email: onBehalfInput.beneficiaryEmail, invitedBy: creatorId, payoutArrangement: onBehalf.payoutArrangement,
             publicationRequiresConsent: onBehalf.publicationRequiresConsent, ttlHours: onBehalfSettings.invitationTtlHours,
             event: 'invited', actorRole: 'organizer', organizer: user.organizationName || user.name,
+            ...(contentReviewReason ? { held: true } : {}),
           });
         }
         return { entity: saved, replayed: false };
@@ -304,6 +325,7 @@ export class CreateCampaignUseCase {
         goalAmount: plain.goalAmount.amount,
         currency: plain.goalAmount.currency,
         tier: plain.tier ?? 0,
+        contentReviewReason: plain.contentReviewReason,
       });
     }
 
@@ -343,6 +365,9 @@ function toCampaignDTO(entity: CampaignEntity): Campaign {
     updatedAt: plain.updatedAt,
     tier: plain.tier,
     creationMode: entity.creationMode,
+    // The organizer's own read: why their campaign waits for review.
+    contentReviewReason: plain.contentReviewReason,
+    contentReviewClearedAt: plain.contentReviewClearedAt,
     onBehalf: campaignOnBehalfSummary(entity),
   };
 }

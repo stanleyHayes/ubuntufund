@@ -12,6 +12,11 @@ export interface CollaborationDocument extends Document {
   logoUrl?: string;
   inviteMessage?: string;
   respondedAt?: Date;
+  /**
+   * Recorded while the campaign's content waited for a staff check: the
+   * invitee has not been told yet. Removed once the invitation is announced.
+   */
+  heldForContentCheck?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -37,6 +42,7 @@ const collaborationSchema = new Schema<CollaborationDocument>(
     logoUrl: { type: String },
     inviteMessage: { type: String },
     respondedAt: { type: Date },
+    heldForContentCheck: { type: Boolean },
   },
   {
     timestamps: true,
