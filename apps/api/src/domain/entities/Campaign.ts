@@ -4,12 +4,37 @@ import type {
   CampaignPriority,
   BeneficiaryPartyType,
   BeneficiaryRelationship,
+  CampaignContentReviewReason,
+  CampaignContentReviewTrigger,
   CampaignCreationMode,
   OnBehalfConsentStatus,
   OnBehalfPayoutArrangement,
 } from '@ubuntu-fund/types';
+import { isContentCheckOutstanding } from '@ubuntu-fund/types';
 import { Money } from '../value-objects/Money.js';
 import { payoutAuthorityOf } from '../services/campaignPayoutAuthority.js';
+
+/**
+ * Private record of how a campaign's current content was admitted, at
+ * creation or at a later beneficiary change (`trigger`): never on a public,
+ * beneficiary or donor read. `staff_review` content is cleared by the
+ * campaign staff review (`contentReviewClearedAt`). Erasing the organizer's
+ * account removes the personal and pseudonymous fields (`erasedAt`).
+ */
+export interface CampaignContentAdmission {
+  basis: 'screening' | 'prior_approval' | 'staff_review';
+  reason?: CampaignContentReviewReason;
+  trigger?: CampaignContentReviewTrigger;
+  /** `publicationFingerprint` of the admitted version; absent once erased. */
+  fingerprint?: string;
+  automatedConsentAt?: Date;
+  screenedAt?: Date;
+  screener?: string;
+  priorReviewId?: string;
+  priorReviewReason?: string;
+  admittedAt: Date;
+  erasedAt?: Date;
+}
 
 /** The beneficiary side of a campaign run on someone's behalf. */
 export interface CampaignOnBehalfProps {
@@ -28,6 +53,11 @@ export interface CampaignOnBehalfProps {
   donationsRequireConsent: boolean;
   staffReviewRequired: boolean;
   autoPublishOnConsent: boolean;
+  /**
+   * Set only while the content waits for staff: what `autoPublishOnConsent`
+   * becomes once staff clear the content (consent was not the only hold).
+   */
+  autoPublishAfterContentCheck?: boolean;
   entitlementPlanTier?: string;
   feePercentApplied?: number;
   invitedAt?: Date;
@@ -61,6 +91,14 @@ export interface CampaignProps {
   creatorType?: 'individual' | 'organization';
   createdByActorId?: string;
   onBehalf?: CampaignOnBehalfProps;
+  /** Why the content was sent to staff review; absent when it was cleared automatically. */
+  contentReviewReason?: CampaignContentReviewReason;
+  /** Set when a beneficiary change, not creation, opened the current content check. */
+  contentReviewTrigger?: CampaignContentReviewTrigger;
+  /** When, and by which staff member, the campaign review cleared that content check. */
+  contentReviewClearedAt?: Date;
+  contentReviewClearedBy?: string;
+  contentAdmission?: CampaignContentAdmission;
 }
 
 export class CampaignEntity {
@@ -129,6 +167,27 @@ export class CampaignEntity {
   }
   get onBehalf(): CampaignOnBehalfProps | undefined {
     return this.props.onBehalf ? { ...this.props.onBehalf } : undefined;
+  }
+  get contentReviewReason(): CampaignContentReviewReason | undefined {
+    return this.props.contentReviewReason;
+  }
+  get contentReviewTrigger(): CampaignContentReviewTrigger | undefined {
+    return this.props.contentReviewTrigger;
+  }
+  /** Private admission evidence (see CampaignContentAdmission); never on a read DTO. */
+  get contentAdmission(): CampaignContentAdmission | undefined {
+    return this.props.contentAdmission ? { ...this.props.contentAdmission } : undefined;
+  }
+  get contentReviewClearedAt(): Date | undefined {
+    return this.props.contentReviewClearedAt;
+  }
+  /**
+   * From creation until staff clear it, content that waits for a person stays
+   * with the organizer and staff: no beneficiary or collaborator invitation
+   * carries it, and nothing publishes it.
+   */
+  get contentCheckOutstanding(): boolean {
+    return isContentCheckOutstanding(this.props);
   }
   /** Whoever may request payouts now; null when nobody may (see payoutAuthorityOf). */
   get payoutAuthorityId(): string | null {

@@ -1,11 +1,10 @@
 import { test, expect } from '@playwright/test'
-test('keeps a campaign draft through private safety review and resubmits the exact version', async ({ page }) => {
+test('saves a campaign that needs a person’s check as Pending review, with nothing to resubmit', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.addInitScript(() => {
     localStorage.setItem('uf_user', JSON.stringify({ id: 'test', name: 'Organizer', role: 'user' }))
     localStorage.setItem('uf_tokens', JSON.stringify({ accessToken: 'test', refreshToken: 'test' }))
   })
-  let approved = false
   const submissions: Record<string, unknown>[] = []
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
@@ -14,11 +13,13 @@ test('keeps a campaign draft through private safety review and resubmits the exa
     let data: unknown = []
     if (path.endsWith('/notifications/unread-count')) data = { count: 0 }
     if (path.endsWith('/creation-options')) data = { plan: { name: 'Pro', campaignCollaboration: true, maxCollaboratorsPerCampaign: 2 }, maxGoal: 1000, canCreate: true, canSplit: false, splitEnabled: false }
-    if (path.endsWith('/publication-reviews')) data = { total: 1, items: [{ id: 'review-fixture', action: 'campaign.create', status: approved ? 'approved' : 'pending', text: JSON.stringify(Object.fromEntries(Object.entries(submissions[0] ?? {}).filter(([key]) => !['summary', 'automatedReviewConsent', 'imageUrls'].includes(key)))), reviewNotes: approved ? 'Complete campaign version reviewed.' : undefined }] }
+    // The success screen offers payout setup straight away.
+    if (path.endsWith('/payout-accounts')) data = { accounts: [] }
+    if (path.endsWith('/payout-options')) data = { eligible: 0, currency: 'GHS', fees: { earlyMaxWithdrawalPercent: 80, earlyFeePercent: 1, earlyMinFee: 20 } }
     if (path.endsWith('/campaigns') && route.request().method() === 'POST') {
       submissions.push(route.request().postDataJSON())
-      if (!approved) return route.fulfill({ status: 409, json: { message: 'Saved privately for safety review. Your content has not been published.' } })
-      data = { id: 'created', status: 'pending_review' }
+      // Without screening consent the API creates it for a person to check first.
+      return route.fulfill({ status: 201, json: { data: { id: 'created', status: 'pending_review', contentReviewReason: 'no_screening_consent' }, message: 'Campaign created successfully', status: 201 } })
     }
     return route.fulfill({ json: { data } })
   })
@@ -44,21 +45,20 @@ test('keeps a campaign draft through private safety review and resubmits the exa
   expect(submissions).toHaveLength(0)
   const consent = page.getByRole('checkbox', { name: /Use OpenAI to check/ })
   await expect(consent).not.toBeChecked()
+  await expect(page.getByText(/saved as Pending review: a person on our team checks them/)).toBeVisible()
   await page.getByRole('button', { name: 'Publish campaign', exact: true }).click()
-  await expect(page.getByText('campaign create · pending')).toBeVisible()
-  await expect(page.getByText(/Saved privately for safety review/)).toBeVisible()
-  // Being held for review is expected, not a failure: an info status notice, never a red alert.
-  await expect(page.getByRole('status').filter({ hasText: 'Waiting for safety review' })).toHaveClass(/MuiAlert-colorInfo/)
+  // Saved as Pending review: a status, never a red alert or a "held" notice.
+  await expect(page.getByText('Saved · Pending review', { exact: true })).toBeVisible()
+  await expect(page.getByText(/You chose not to use automated screening/)).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Go to my campaigns' })).toHaveAttribute('href', '/my-campaigns')
+  await expect(page.getByText(/Waiting for safety review|couldn.t publish/)).toHaveCount(0)
+  expect(submissions).toHaveLength(1)
   expect(submissions[0].automatedReviewConsent).toBe(false)
-  await consent.scrollIntoViewIfNeeded()
-  await page.screenshot({ path: '/tmp/ujimora-campaign-safety-phone.png', animations: 'disabled' })
+  // Still the success screen once the payout section has loaded, not an error page.
+  await expect(page.getByText('No payout requests yet')).toBeVisible()
+  await expect(page.getByText(/We couldn.t open this page/)).toHaveCount(0)
+  await expect(page.getByText('Saved · Pending review', { exact: true })).toBeVisible()
+  await page.screenshot({ path: '/tmp/ujimora-campaign-pending-review-phone.png', animations: 'disabled', fullPage: true })
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
-  approved = true
-  await page.getByRole('button', { name: 'Refresh publication reviews' }).click()
-  await expect(page.getByText('campaign create · approved')).toBeVisible()
-  await page.getByRole('button', { name: 'Publish campaign', exact: true }).click()
-  await expect(page.getByText('Campaign submitted', { exact: true })).toBeVisible()
-  expect(submissions).toHaveLength(2)
-  expect(submissions[1]).toEqual(submissions[0])
   expect(errors).toEqual([])
 })

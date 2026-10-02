@@ -1311,7 +1311,7 @@ Reports, blocking, the staff safety queue, publication reviews, restrictions and
 
 **Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoAccountProfileWrite.ts`, `apps/api/src/application/use-cases/SaveCreatorProfileUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/middleware/contentAcceptance.ts`, `apps/web/src/components/profile/ProfileImageEditor.tsx`, `apps/mobile/app/profile/edit.tsx`, `apps/web/src/pages/CreatorDashboardPage.tsx`
 
-## SAFETY-N006 · P1 · Web keeps held publication drafts per account (campaign form and profile image)
+## SAFETY-N006 · P1 · Web keeps unsent campaign drafts and held profile images per account
 
 *Surfaces:* admin, web  ·  *Type:* functional
 
@@ -1319,15 +1319,15 @@ Reports, blocking, the staff safety queue, publication reviews, restrictions and
 
 **Steps:**
 
-1. As Ama on /campaigns/new, fill in title, story, goal and cover. Leave consent unchecked and submit (held).
+1. As Ama on /campaigns/new, fill in title, story, goal and cover without submitting.
 2. Close the tab and reopen /campaigns/new.
-3. Click 'Start over'. Fill the form again, submit it (held), and have ADMIN-2 approve it.
-4. Reopen /campaigns/new and submit the restored draft without changes.
+3. Click 'Start over'. Fill the form again with the cover, leave consent unchecked and submit.
+4. Reopen /campaigns/new.
 5. In Profile, upload a new avatar and click 'Save image' (held). Close the dialog and reopen it.
 6. Sign out, sign in as Kofi on the same browser, and open /campaigns/new and the avatar editor.
 7. Repeat step 1 in the private window with storage blocked.
 
-**Expect:** The reopened form shows 'We restored your unsent draft from this browser. If it is waiting for safety review, submit this same version again once it is approved.' with a 'Start over' action that clears the form and the stored draft. After approval, submitting the restored draft creates the campaign with no re-upload (same cover URL). The reopened image editor shows the held image and 'This is the image you last submitted. If it is waiting for review, save it again after it is approved.' Drafts are per account and explicit sign-out removes all of them, so Kofi sees none of Ama's. Drafts older than 30 days are discarded. With storage blocked, the forms work normally with no restore and no errors.
+**Expect:** The reopened form shows 'We restored your unsent draft from this browser.' with a 'Start over' action that clears the form and the stored draft, and the same cover URL with no re-upload. Since 30 September 2026 a campaign is never held for resubmission: the submit in step 3 creates it as Pending review ('Saved · Pending review', checked by ADMIN-2 in the campaign review) and clears the draft, so step 4 shows an empty form. The reopened image editor shows the held image and 'This is the image you last submitted. If it is waiting for review, save it again after it is approved.' Drafts are per account and explicit sign-out removes all of them, so Kofi sees none of Ama's. Drafts older than 30 days are discarded. With storage blocked, the forms work normally with no restore and no errors.
 
 **Needs:** Cloudinary
 
@@ -1605,7 +1605,7 @@ Reports, blocking, the staff safety queue, publication reviews, restrictions and
 
 **Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/organizationTeamRoutes.ts`, `apps/web/src/pages/OrganizationTeamPage.tsx`
 
-## SAFETY-N007 · P2 · Native keeps held publication drafts per account (campaign create and profile edit)
+## SAFETY-N007 · P2 · Native keeps unsent campaign drafts and held profile edits per account
 
 *Surfaces:* admin, android, ios  ·  *Type:* cross-platform
 
@@ -1613,13 +1613,13 @@ Reports, blocking, the staff safety queue, publication reviews, restrictions and
 
 **Steps:**
 
-1. On campaign/create, fill all fields including the cover. Leave consent unchecked and submit (held).
+1. On campaign/create, fill all fields including the cover without submitting.
 2. Force-quit the app, reopen it and open campaign/create.
-3. Tap 'Start over'. Fill the form again, submit it (held), have it approved, and resubmit the restored draft unchanged.
+3. Tap 'Start over'. Fill the form again with the cover, leave consent unchecked and tap 'Create campaign'.
 4. On profile/edit, change the name and pick a new avatar, then tap 'Save profile' (held). Leave the screen and return.
 5. After ADMIN-2 approves, tap 'Save profile'. Then sign out and sign back in.
 
-**Expect:** campaign/create shows 'We restored your unsent draft from this device. If it is waiting for safety review, submit this same version again once it is approved.' with 'Start over', which clears the form and the saved draft. Resubmitting the restored draft after approval creates the campaign with the same cover URL. profile/edit shows 'We restored the changes you last submitted for review. Save them again once they are approved.' with the held values filled in. After a successful save the notice disappears. Signing out clears all drafts on the device.
+**Expect:** campaign/create shows 'We restored your unsent draft from this device.' with 'Start over', which clears the form and the saved draft. Step 3 creates the campaign as Pending review ('Saved · Pending review', with 'Go to my campaigns') for ADMIN-2 to check in the campaign review, and clears the draft; there is nothing to resubmit. profile/edit shows 'We restored the changes you last submitted for review. Save them again once they are approved.' with the held values filled in. After a successful save the notice disappears. Signing out clears all drafts on the device.
 
 **Needs:** Signed native builds; Cloudinary
 

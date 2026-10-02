@@ -16,6 +16,11 @@ const schema = new Schema({
   reviewedAt: Date,
   reviewNotes: String,
   approvalExpiresAt: Date,
+  /**
+   * campaign.create only: the campaign whose staff review declined this exact
+   * version while its content waited for a check (no proposal was stored).
+   */
+  campaignId: String,
   purgeAt: { type: Date, default: () => new Date(Date.now() + 30 * 86400000) },
 }, { timestamps: true });
 schema.index({ purgeAt: 1 }, { expireAfterSeconds: 0 });

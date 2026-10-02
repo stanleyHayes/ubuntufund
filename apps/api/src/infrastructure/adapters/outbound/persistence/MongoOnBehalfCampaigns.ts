@@ -3,22 +3,30 @@ import { isValidObjectId } from 'mongoose';
 import {
   BENEFICIARY_CONSENT_VERSION,
   CampaignStatus,
+  isContentCheckOutstanding,
   type BeneficiaryCampaignListItem,
   type BeneficiaryInvitationPreview,
   type BeneficiaryPartyType,
   type BeneficiaryRelationship,
   type CampaignBeneficiaryDetails,
+  type ChangeBeneficiaryResult,
   type OnBehalfPayoutArrangement,
 } from '@ubuntu-fund/types';
 import { CampaignModel, type CampaignDocument } from '../../../database/models/CampaignModel.js';
-import { CampaignBeneficiaryInvitationModel } from '../../../database/models/CampaignBeneficiaryInvitationModel.js';
+import { CampaignBeneficiaryInvitationModel, WITHDRAWN_UNSENT } from '../../../database/models/CampaignBeneficiaryInvitationModel.js';
 import { CampaignBeneficiaryConsentEventModel, type BeneficiaryConsentEventType } from '../../../database/models/CampaignBeneficiaryConsentEventModel.js';
 import { UserModel } from '../../../database/models/UserModel.js';
 import { AuditLogModel } from '../../../database/models/AuditLogModel.js';
+import { ContentRestrictionModel } from '../../../database/models/ContentRestrictionModel.js';
 import { AppError } from '../../inbound/middleware/errorHandler.js';
 import { MongoUnitOfWork } from './MongoUnitOfWork.js';
 import { campaignManagerRole, organizerName, recordAccountNotice } from './campaignManagers.js';
+import { awaitsBeneficiary, consentPublishes, nextStepOf, staffAreNext } from './onBehalfPublication.js';
 import { payoutAuthorityOf } from '../../../../domain/services/campaignPayoutAuthority.js';
+import { campaignCreationSubmission, storedCampaignVersion } from '../../../../domain/services/campaignCreationSubmission.js';
+import { publicationFingerprint } from '../../../../domain/services/publicationFingerprint.js';
+import type { CampaignAdmission, PublicationAdmissionPort, PublicationSubmission } from '../../../../domain/ports/outbound/PublicationAdmissionPort.js';
+import type { ReviewQueueAlertPort, ReviewQueueOccasion } from '../../../../domain/ports/outbound/ReviewQueueAlertPort.js';
 import { logger } from '../../../logging/logger.js';
 import type { OnBehalfSettings } from '../../../../application/services/CommercialConfigService.js';
 
@@ -26,6 +34,13 @@ const sha256 = (value: string) => createHash('sha256').update(value).digest('hex
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 const INVALID_LINK = 'This invitation link is not valid. Ask the organizer to send a new one.';
 const RESEND_COOLDOWN_MS = 60_000;
+const HELD_FOR_CONTENT_CHECK = 'The invitation is sent once our team has checked the campaign. There is nothing to send yet.';
+/** On a change or reassignment recorded while its invitation waits: why nothing was sent yet. */
+const HELD_NOTE = 'The invitation waits for our team to check the campaign.';
+const RELEASED_NOTE = 'Sent after the content check was cleared';
+
+/** How a beneficiary change was admitted, as its consent event records it. */
+type ChangeAdmission = 'screening' | 'prior_approval' | 'staff_review';
 
 export interface InvitationEmailPort {
   configured: boolean;
@@ -45,6 +60,36 @@ export interface BeneficiaryInput {
   relationship: BeneficiaryRelationship;
   reason: string;
   payoutArrangement: OnBehalfPayoutArrangement;
+}
+
+/** The organizer's change: the new beneficiary, and permission to screen the campaign's public text. */
+export interface BeneficiaryChangeInput extends BeneficiaryInput {
+  automatedReviewConsent?: boolean;
+}
+
+/** Optional collaborators: admitting a changed beneficiary, and telling staff a campaign waits for them. */
+export interface OnBehalfCampaignsDeps {
+  /** Required to change a beneficiary outside a content check (fails closed without it). */
+  admission?: Pick<PublicationAdmissionPort, 'admitCampaign' | 'commitCampaign'>;
+  alerts?: ReviewQueueAlertPort;
+}
+
+/**
+ * The campaign's public version with `beneficiary` in place of the current
+ * one, as a new campaign would submit it (stored values: names trimmed, the
+ * goal as saved), so its fingerprint is the one a decline of it binds.
+ */
+function changedVersion(campaign: CampaignDocument, beneficiary: BeneficiaryChangeInput): PublicationSubmission {
+  return campaignCreationSubmission({
+    ...storedCampaignVersion({
+      title: campaign.title, description: campaign.description, category: campaign.category, priority: campaign.priority,
+      beneficiaries: campaign.beneficiaries ?? [], goalAmount: campaign.goalAmount, currency: campaign.currency,
+      endDate: campaign.endDate, imageUrls: campaign.imageUrls ?? [],
+      onBehalf: { beneficiaryName: beneficiary.beneficiaryName.trim(), beneficiaryType: beneficiary.beneficiaryType,
+        relationship: beneficiary.relationship, reason: beneficiary.reason.trim(), payoutArrangement: beneficiary.payoutArrangement },
+    }),
+    automatedReviewConsent: beneficiary.automatedReviewConsent === true,
+  }, campaign.creatorId);
 }
 
 function maskEmail(email: string | undefined): string | undefined {
@@ -68,11 +113,12 @@ async function event(input: {
   campaignId: string; event: BeneficiaryConsentEventType; actorId?: string;
   actorRole: 'organizer' | 'beneficiary' | 'admin' | 'system' | 'invitee';
   invitationId?: string; payoutArrangement?: string; termsHash?: string; reason?: string; meta?: RequestMeta;
+  admission?: ChangeAdmission;
 }): Promise<void> {
   await CampaignBeneficiaryConsentEventModel.create({
     campaignId: input.campaignId, invitationId: input.invitationId, event: input.event, actorId: input.actorId,
     actorRole: input.actorRole, consentVersion: BENEFICIARY_CONSENT_VERSION, payoutArrangement: input.payoutArrangement,
-    termsHash: input.termsHash, reason: input.reason, ip: input.meta?.ip, userAgent: input.meta?.userAgent?.slice(0, 300),
+    termsHash: input.termsHash, reason: input.reason, admission: input.admission, ip: input.meta?.ip, userAgent: input.meta?.userAgent?.slice(0, 300),
   });
 }
 
@@ -85,6 +131,22 @@ async function audit(input: { actorId: string; actorRole: string; action: string
 }
 
 /**
+ * A held invitation that will never be sent keeps nothing: it is superseded,
+ * its address removed and its address hash replaced (`WITHDRAWN_UNSENT`), so
+ * nothing kept can confirm who the organizer named. The person was never
+ * contacted, so they could not ask for that themselves. Used when staff reject
+ * or block the content it waited for, when a newer invitation replaces it,
+ * when the organizer's account is erased, and by the sweep for ended
+ * campaigns. Runs inside the caller's transaction, if any.
+ */
+export async function dropHeldInvitations(campaignIds: string[]): Promise<number> {
+  if (!campaignIds.length) return 0;
+  const result = await CampaignBeneficiaryInvitationModel.updateMany({ campaignId: { $in: campaignIds }, status: 'held' },
+    { $set: { status: 'superseded', decidedAt: new Date(), emailHash: WITHDRAWN_UNSENT }, $unset: { email: 1 } });
+  return result.modifiedCount;
+}
+
+/**
  * Campaigns run on someone else's behalf: beneficiary invitations, consent,
  * and the controls around them. Every decision is recorded in the append-only
  * consent log and the audit log inside the same transaction as the change.
@@ -93,7 +155,23 @@ export class MongoOnBehalfCampaigns {
   constructor(
     private readonly emails: InvitationEmailPort,
     private readonly config: { resolveOnBehalfConfig(): Promise<OnBehalfSettings> },
+    private readonly deps: OnBehalfCampaignsDeps = {},
   ) {}
+
+  /** After the change committed: staff now have to act on the campaign. Never throws. */
+  private async alertStaff(campaign: CampaignDocument, occasion: ReviewQueueOccasion): Promise<void> {
+    if (!this.deps.alerts) return;
+    const campaignId = String(campaign._id);
+    try {
+      await this.deps.alerts.campaignPendingReview({
+        campaignId, title: campaign.title, goalAmount: campaign.goalAmount, currency: campaign.currency, tier: campaign.tier ?? 0,
+        ...(isContentCheckOutstanding(campaign) ? { contentReviewReason: campaign.contentReviewReason, contentReviewTrigger: campaign.contentReviewTrigger } : {}),
+        occasion,
+      });
+    } catch (error) {
+      logger.warn({ err: error, campaignId }, 'campaign review alert failed');
+    }
+  }
 
   get invitationsAvailable(): boolean {
     return this.emails.configured;
@@ -104,29 +182,47 @@ export class MongoOnBehalfCampaigns {
   }
 
   /**
-   * Creates a new invitation (superseding any pending one) and queues its
-   * email. Must run inside the transaction that creates or changes the
+   * Creates a new invitation (superseding any pending or held one) and queues
+   * its email. Must run inside the transaction that creates or changes the
    * campaign, so a rollback leaves neither a dangling invitation nor an email.
+   *
+   * `held`: the campaign's content waits for a staff check, so nothing about
+   * it may reach the invited address yet. The invitation is stored with its
+   * address but no usable token and no email; `releaseHeldInvitation` sends it
+   * when staff clear the content. A change or reassignment is still recorded
+   * in the consent history now, with who made it; the release adds the send.
+   *
+   * `admission`: how a beneficiary change's new details were admitted.
    */
   async issueInvitation(input: {
     campaignId: string; campaignTitle: string; beneficiaryName: string; email: string;
     invitedBy: string; payoutArrangement: OnBehalfPayoutArrangement; publicationRequiresConsent: boolean;
     ttlHours: number; event: 'invited' | 'resent' | 'beneficiary_changed' | 'reassigned';
-    actorRole: 'organizer' | 'admin'; reason?: string; organizer?: string;
+    actorRole: 'organizer' | 'admin'; reason?: string; organizer?: string; held?: boolean; admission?: ChangeAdmission;
   }): Promise<{ invitationId: string; expiresAt: Date }> {
     if (!this.emails.configured) throw new AppError('Beneficiary invitations are temporarily unavailable. Please try again later.', 503);
     const now = new Date();
+    // One never sent keeps nothing about the person; one sent keeps its record.
+    await dropHeldInvitations([input.campaignId]);
     await CampaignBeneficiaryInvitationModel.updateMany({ campaignId: input.campaignId, status: 'pending' }, { $set: { status: 'superseded', decidedAt: now } });
     // Only the newest invitation needs an address (to resend it); older ones drop theirs.
     await CampaignBeneficiaryInvitationModel.updateMany({ campaignId: input.campaignId, email: { $exists: true } }, { $unset: { email: 1 } });
+    // A held invitation's token is discarded unseen: no link to it exists anywhere.
     const token = randomBytes(32).toString('hex');
     const email = normalizeEmail(input.email);
     const expiresAt = new Date(now.getTime() + input.ttlHours * 3600_000);
     const [invitation] = await CampaignBeneficiaryInvitationModel.create([{
       campaignId: input.campaignId, tokenHash: sha256(token), emailHash: sha256(email), email,
-      status: 'pending', invitedBy: input.invitedBy, expiresAt, consentVersion: BENEFICIARY_CONSENT_VERSION,
+      status: input.held ? 'held' : 'pending', invitedBy: input.invitedBy, invitedByRole: input.actorRole, expiresAt, consentVersion: BENEFICIARY_CONSENT_VERSION,
     }]);
-    await event({ campaignId: input.campaignId, event: input.event, actorId: input.invitedBy, actorRole: input.actorRole, invitationId: invitation._id.toString(), payoutArrangement: input.payoutArrangement, reason: input.reason });
+    if (input.held) {
+      // The change itself happened now, by this person; only the email waits.
+      if (input.event !== 'invited') await event({ campaignId: input.campaignId, event: input.event, actorId: input.invitedBy, actorRole: input.actorRole,
+        invitationId: invitation._id.toString(), payoutArrangement: input.payoutArrangement, reason: input.reason ?? HELD_NOTE, admission: input.admission });
+      logger.info({ event: 'on_behalf.invitation_held', campaignId: input.campaignId, kind: input.event }, 'beneficiary invitation held for the content check');
+      return { invitationId: invitation._id.toString(), expiresAt };
+    }
+    await event({ campaignId: input.campaignId, event: input.event, actorId: input.invitedBy, actorRole: input.actorRole, invitationId: invitation._id.toString(), payoutArrangement: input.payoutArrangement, reason: input.reason, admission: input.admission });
     await this.emails.enqueueBeneficiaryInvitation({
       invitationId: invitation._id.toString(), email, token, expiresAt,
       organizerName: input.organizer ?? 'The organizer', campaignTitle: input.campaignTitle, beneficiaryName: input.beneficiaryName,
@@ -134,6 +230,51 @@ export class MongoOnBehalfCampaigns {
     });
     logger.info({ event: 'on_behalf.invitation_issued', campaignId: input.campaignId, kind: input.event }, 'beneficiary invitation issued');
     return { invitationId: invitation._id.toString(), expiresAt };
+  }
+
+  /**
+   * Staff cleared the campaign's content: send the invitation that was held
+   * for that check, to the address given, with a fresh expiry. The consent
+   * history names whoever named this beneficiary (the organizer's side or
+   * staff), as when it is sent straight away. Runs inside the staff
+   * decision's transaction, so a rolled-back decision sends nothing. Returns
+   * false when no invitation is held (for instance, its address was removed
+   * when the content was declined).
+   */
+  async releaseHeldInvitation(campaignId: string): Promise<boolean> {
+    const held = await CampaignBeneficiaryInvitationModel.findOne({ campaignId, status: 'held' }).select('+email');
+    if (!held) return false;
+    const campaign = await CampaignModel.findOne({ _id: campaignId, deletedAt: { $exists: false } });
+    if (!campaign?.onBehalf || campaign.creationMode !== 'on_behalf') return false;
+    if (!held.email) throw new AppError('The beneficiary\'s address is no longer on file. Ask the organizer to change the beneficiary, then review again.', 409);
+    const settings = await this.config.resolveOnBehalfConfig();
+    // Recorded since held invitations exist; the fallback reads who the inviter is to this campaign now.
+    const actorRole = held.invitedByRole ?? ((await campaignManagerRole(campaign, held.invitedBy)) ? 'organizer' : 'admin');
+    await CampaignModel.updateOne({ _id: campaign._id }, { $set: { 'onBehalf.invitedAt': new Date() } });
+    await this.issueInvitation({
+      campaignId, campaignTitle: campaign.title, beneficiaryName: campaign.onBehalf.beneficiaryName, email: held.email,
+      invitedBy: held.invitedBy, payoutArrangement: campaign.onBehalf.payoutArrangement, publicationRequiresConsent: campaign.onBehalf.publicationRequiresConsent,
+      ttlHours: settings.invitationTtlHours, event: 'invited', actorRole, reason: RELEASED_NOTE,
+      organizer: await organizerName(campaign.creatorId),
+    });
+    return true;
+  }
+
+  /**
+   * Background sweep: held invitations of campaigns that ended, were deleted
+   * or no longer exist can never be sent (review refuses an ended campaign),
+   * so their addresses go.
+   */
+  async dropUnsendableHeld(): Promise<number> {
+    const campaignIds = (await CampaignBeneficiaryInvitationModel.distinct('campaignId', { status: 'held' })).map(String).filter(id => isValidObjectId(id));
+    if (!campaignIds.length) return 0;
+    const open = await CampaignModel.find({ _id: { $in: campaignIds }, deletedAt: { $exists: false }, endDate: { $gt: new Date() } }).select('_id').lean();
+    const openIds = new Set(open.map(campaign => String(campaign._id)));
+    const stale = campaignIds.filter(id => !openIds.has(id));
+    if (!stale.length) return 0;
+    const dropped = await dropHeldInvitations(stale);
+    if (dropped) logger.info({ event: 'on_behalf.held_invitations_dropped', count: dropped }, 'held beneficiary invitations of ended campaigns dropped');
+    return dropped;
   }
 
   private async findInvitation(token: string) {
@@ -152,9 +293,11 @@ export class MongoOnBehalfCampaigns {
 
   async preview(token: string): Promise<BeneficiaryInvitationPreview> {
     const invitation = await this.findInvitation(token);
+    // Never sent: nothing about the campaign is shown before staff check it.
+    if (invitation.status === 'held') throw new AppError(INVALID_LINK, 404);
     if (await this.expireIfDue(invitation)) invitation.status = 'expired';
     const campaign = await CampaignModel.findOne({ _id: invitation.campaignId, deletedAt: { $exists: false } });
-    if (!campaign?.onBehalf) throw new AppError(INVALID_LINK, 404);
+    if (!campaign?.onBehalf || isContentCheckOutstanding(campaign)) throw new AppError(INVALID_LINK, 404);
     return {
       status: invitation.status, expiresAt: invitation.expiresAt.toISOString(),
       campaignTitle: campaign.title, campaignSummary: campaign.description.slice(0, 600),
@@ -170,7 +313,7 @@ export class MongoOnBehalfCampaigns {
   async accept(token: string, actor: { userId: string; authVersion?: string }, meta: RequestMeta): Promise<{ campaignId: string; status: string }> {
     const found = await this.findInvitation(token);
     if (await this.expireIfDue(found)) throw new AppError('This invitation has expired. Ask the organizer to send a new one.', 410);
-    return new MongoUnitOfWork().run(async () => {
+    const accepted = await new MongoUnitOfWork().run(async () => {
       const invitation = await CampaignBeneficiaryInvitationModel.findOne({ _id: found._id });
       if (!invitation || invitation.status !== 'pending') throw new AppError(invitation?.status === 'accepted' ? 'This invitation has already been accepted.' : 'This invitation is no longer active. Ask the organizer to send a new one.', 409);
       const user = await UserModel.findOneAndUpdate({ _id: actor.userId, deletedAt: null,
@@ -181,7 +324,7 @@ export class MongoOnBehalfCampaigns {
       if (sha256(normalizeEmail(user.email)) !== invitation.emailHash)
         throw new AppError('This invitation was sent to a different email address. Sign in with that address, or ask the organizer to invite the address you use.', 403);
       const campaign = await CampaignModel.findOne({ _id: invitation.campaignId, deletedAt: { $exists: false } });
-      if (!campaign?.onBehalf || campaign.creationMode !== 'on_behalf') throw new AppError(INVALID_LINK, 404);
+      if (!campaign?.onBehalf || campaign.creationMode !== 'on_behalf' || isContentCheckOutstanding(campaign)) throw new AppError(INVALID_LINK, 404);
       if (campaign.creatorId === user.id) throw new AppError('The organizer cannot accept an invitation meant for the beneficiary.', 403);
       const wantsOrg = campaign.onBehalf.beneficiaryType === 'organization';
       if (wantsOrg !== (user.role === 'organization'))
@@ -191,8 +334,8 @@ export class MongoOnBehalfCampaigns {
       const now = new Date();
       const payoutAuthorityUserId = campaign.onBehalf.payoutArrangement === 'beneficiary' ? user.id : campaign.creatorId;
       // Tiering alone would have published it; consent was the only thing holding it.
-      const publish = campaign.status === CampaignStatus.PENDING_REVIEW && campaign.onBehalf.autoPublishOnConsent &&
-        !campaign.onBehalf.staffReviewRequired && campaign.endDate > now;
+      const publish = campaign.status === CampaignStatus.PENDING_REVIEW && !isContentCheckOutstanding(campaign) && campaign.endDate > now &&
+        await consentPublishes(campaign);
       const nextStatus = publish ? (campaign.raisedAmount >= campaign.goalAmount ? CampaignStatus.FUNDED : CampaignStatus.ACTIVE) : campaign.status;
       const updated = await CampaignModel.updateOne({ _id: campaign._id, 'onBehalf.consentStatus': 'pending' }, {
         $set: {
@@ -210,10 +353,18 @@ export class MongoOnBehalfCampaigns {
         changes: [{ field: 'onBehalf.consentStatus', before: 'pending', after: 'accepted' }, ...(publish ? [{ field: 'status', before: campaign.status, after: nextStatus }] : [])] });
       await recordAccountNotice({ key: `on-behalf:accepted:${invitation._id}`, userId: campaign.creatorId, type: 'on_behalf',
         title: 'The beneficiary accepted your campaign', path: `/campaigns/${campaignId}`,
-        body: `${campaign.onBehalf.beneficiaryName} accepted “${campaign.title}”.${publish ? ' It is now live.' : campaign.status === CampaignStatus.PENDING_REVIEW ? ' It is waiting for staff review before it goes live.' : ''}` });
+        body: `${campaign.onBehalf.beneficiaryName} accepted “${campaign.title}”.${publish ? ' It is now live.' : campaign.status === CampaignStatus.PENDING_REVIEW ? ' Our team now checks it before it goes live. We will let you know when it is reviewed.' : ''}` });
       logger.info({ event: 'on_behalf.consent_accepted', campaignId, arrangement: campaign.onBehalf.payoutArrangement }, 'beneficiary accepted');
-      return { campaignId, status: nextStatus };
+      return { campaignId, status: nextStatus, invitationId: invitation._id.toString() };
     });
+    // Still in review after the acceptance: staff are next, and are told so
+    // (they could not approve it before the beneficiary accepted), unless it
+    // has ended and can no longer be approved.
+    if (accepted.status === CampaignStatus.PENDING_REVIEW) {
+      const campaign = await CampaignModel.findById(accepted.campaignId);
+      if (campaign && await staffAreNext(campaign)) await this.alertStaff(campaign, { kind: 'beneficiary_accepted', ref: accepted.invitationId });
+    }
+    return { campaignId: accepted.campaignId, status: accepted.status };
   }
 
   async decline(token: string, meta: RequestMeta, actorId?: string, reason?: string): Promise<void> {
@@ -253,18 +404,24 @@ export class MongoOnBehalfCampaigns {
     const authority = payoutAuthorityOf(campaign);
     const noMoney = campaign.raisedAmount === 0;
     const canManage = roles.managerRole === 'owner' || roles.managerRole === 'admin';
+    // Held for the content check, or withdrawn while it was: written, never
+    // sent, so no sent date or expiry.
+    const unsent = latest?.status === 'held' || latest?.emailHash === WITHDRAWN_UNSENT;
     return {
       campaignId, creationMode: 'on_behalf', beneficiaryType: onBehalf.beneficiaryType, beneficiaryName: onBehalf.beneficiaryName,
       relationship: onBehalf.relationship, reason: onBehalf.reason, payoutArrangement: onBehalf.payoutArrangement,
       consentStatus: onBehalf.consentStatus, consentAt: onBehalf.consentAt?.toISOString(), linked: !!onBehalf.beneficiaryUserId,
       // The address itself is never returned: the manager may already know it, but the API should not confirm it.
       invitationEmailHint: canManage || roles.admin ? maskEmail(latest?.email) : undefined,
-      invitationStatus: latest?.status, invitationSentAt: latest?.createdAt?.toISOString(), invitationExpiresAt: latest?.expiresAt?.toISOString(),
+      invitationStatus: latest?.status, invitationSentAt: unsent ? undefined : latest?.createdAt?.toISOString(), invitationExpiresAt: unsent ? undefined : latest?.expiresAt?.toISOString(),
       payoutAuthority: !authority ? 'none' : authority === onBehalf.beneficiaryUserId ? 'beneficiary' : 'organization',
       publicationRequiresConsent: onBehalf.publicationRequiresConsent, donationsRequireConsent: onBehalf.donationsRequireConsent,
-      canResendInvitation: canManage && ['pending', 'expired'].includes(onBehalf.consentStatus),
-      canChangeBeneficiary: canManage && noMoney && onBehalf.consentStatus !== 'accepted',
+      // Only an invitation that still has its address can be sent again.
+      canResendInvitation: canManage && ['pending', 'expired'].includes(onBehalf.consentStatus) && !isContentCheckOutstanding(campaign) && !!latest?.email,
+      canChangeBeneficiary: canManage && noMoney && onBehalf.consentStatus !== 'accepted' && campaign.status !== CampaignStatus.BLOCKED && campaign.endDate > new Date(),
       canRevokeConsent: roles.beneficiary && noMoney && onBehalf.consentStatus === 'accepted',
+      // What happens next, for the people running it: never a promise the rules do not keep.
+      ...(roles.managerRole || roles.admin ? { nextStep: await nextStepOf(campaign) } : {}),
       viewer: { manager: !!roles.managerRole, beneficiary: roles.beneficiary, admin: roles.admin },
       organizerName: await organizerName(campaign.creatorId),
     };
@@ -284,6 +441,7 @@ export class MongoOnBehalfCampaigns {
     return new MongoUnitOfWork().run(async () => {
       const campaign = await this.requireManager(campaignId, actorId);
       const onBehalf = campaign.onBehalf!;
+      if (isContentCheckOutstanding(campaign)) throw new AppError(HELD_FOR_CONTENT_CHECK, 409);
       if (!['pending', 'expired'].includes(onBehalf.consentStatus)) throw new AppError('Only a pending or expired invitation can be sent again.', 409);
       const latest = await CampaignBeneficiaryInvitationModel.findOne({ campaignId }).sort({ createdAt: -1 }).select('+email');
       if (!latest?.email) throw new AppError('No invitation address is on file. Change the beneficiary to send a new invitation.', 409);
@@ -300,35 +458,117 @@ export class MongoOnBehalfCampaigns {
     });
   }
 
-  /** Before any money and before consent, the organizer may correct who the campaign is for. */
-  async changeBeneficiary(campaignId: string, actorId: string, input: BeneficiaryInput): Promise<void> {
+  private static assertChangeable(campaign: CampaignDocument): void {
+    if (campaign.raisedAmount !== 0 || campaign.onBehalf!.consentStatus === 'accepted')
+      throw new AppError('The beneficiary cannot be changed after they accept or after donations arrive. Contact support to request a change.', 409);
+    if (campaign.status === CampaignStatus.BLOCKED) throw new AppError('This campaign is under review.', 409);
+    // Review refuses an ended campaign, so a new invitation could never go out.
+    if (campaign.endDate <= new Date()) throw new AppError('This campaign has ended, so its beneficiary can no longer be changed.', 409);
+  }
+
+  /**
+   * Before any money, before consent and before the end date, the organizer
+   * may correct who the campaign is for. The new name and reason are public
+   * text nobody has checked, so they are admitted like a new campaign's
+   * content: screened when the organizer allows it, and otherwise (or when
+   * screening does not clear them) the campaign's content check reopens, the
+   * new invitation is held, and staff are alerted. While a content check is
+   * already outstanding, that check covers the change (staff are alerted only
+   * if it had nobody to invite before). Only an admitted change keeps the
+   * campaign's own rule for what its acceptance publishes.
+   */
+  async changeBeneficiary(campaignId: string, actorId: string, input: BeneficiaryChangeInput): Promise<ChangeBeneficiaryResult> {
     const settings = await this.config.resolveOnBehalfConfig();
-    await new MongoUnitOfWork().run(async () => {
+    // Refused before anything is screened.
+    const before = await this.requireManager(campaignId, actorId);
+    MongoOnBehalfCampaigns.assertChangeable(before);
+    // A manager writing public text for the organization must be free to publish, as for campaign updates.
+    if (actorId !== before.creatorId && await ContentRestrictionModel.exists({ userId: actorId })) throw new AppError('Publishing is restricted. Contact support@ujimora.com to appeal.', 403);
+    const admitted = isContentCheckOutstanding(before) ? undefined : await this.admitChange(before, input);
+
+    const outcome = await new MongoUnitOfWork().run(async () => {
       const campaign = await this.requireManager(campaignId, actorId);
       const onBehalf = campaign.onBehalf!;
-      if (campaign.raisedAmount !== 0 || onBehalf.consentStatus === 'accepted')
-        throw new AppError('The beneficiary cannot be changed after they accept or after donations arrive. Contact support to request a change.', 409);
-      if (campaign.status === CampaignStatus.BLOCKED) throw new AppError('This campaign is under review.', 409);
+      MongoOnBehalfCampaigns.assertChangeable(campaign);
+      const outstanding = isContentCheckOutstanding(campaign);
+      // Staff cleared the check while this change was being screened: admit it again.
+      if (!outstanding && !admitted) throw new AppError('Our team finished checking the campaign while you were editing. Save the change again.', 409);
+      if (admitted && !outstanding && publicationFingerprint(changedVersion(campaign, input)) !== publicationFingerprint(admitted.submission))
+        throw new AppError('The campaign changed while the new details were checked. Save the change again.', 409);
+      // Admitted only when no check covers it already (one reopened meanwhile does).
+      const admission: CampaignAdmission | undefined = outstanding ? undefined : admitted!.admission;
+      // Not cleared by screening: the content check reopens for the new details.
+      const reopenReason = admission?.outcome === 'staff_review' ? admission.reason : undefined;
+      const reopen = !!reopenReason;
+      const held = outstanding || reopen;
+      // The outstanding check had nobody to invite (its invitation was
+      // withdrawn when the content was declined): from now on staff can act.
+      const named = await awaitsBeneficiary(campaign);
+      const now = new Date();
       // A public campaign goes back to review: donors must see the reviewed beneficiary.
       const status = [CampaignStatus.ACTIVE, CampaignStatus.FUNDED].includes(campaign.status) ? CampaignStatus.PENDING_REVIEW : campaign.status;
       await CampaignModel.updateOne({ _id: campaign._id }, {
         $set: {
           'onBehalf.beneficiaryType': input.beneficiaryType, 'onBehalf.beneficiaryName': input.beneficiaryName.trim(),
           'onBehalf.relationship': input.relationship, 'onBehalf.reason': input.reason.trim(),
-          'onBehalf.payoutArrangement': input.payoutArrangement, 'onBehalf.consentStatus': 'pending', 'onBehalf.invitedAt': new Date(), status,
+          'onBehalf.payoutArrangement': input.payoutArrangement, 'onBehalf.consentStatus': 'pending', 'onBehalf.invitedAt': now, status,
+          ...(admission ? { contentAdmission: {
+            basis: admission.outcome === 'approved' ? admission.basis : 'staff_review',
+            ...(admission.outcome === 'staff_review' ? { reason: admission.reason } : {}),
+            ...admission.evidence, admittedAt: now, trigger: 'beneficiary_change',
+          } } : {}),
+          // Consent cannot publish details nobody checked: once staff clear
+          // them, the campaign's own rule applies again.
+          ...(reopenReason ? {
+            contentReviewReason: reopenReason, contentReviewTrigger: 'beneficiary_change',
+            'onBehalf.autoPublishAfterContentCheck': onBehalf.autoPublishOnConsent, 'onBehalf.autoPublishOnConsent': false,
+          } : {}),
         },
-        $unset: { 'onBehalf.beneficiaryUserId': 1, 'onBehalf.payoutAuthorityUserId': 1, 'onBehalf.consentAt': 1, 'onBehalf.consentBy': 1 },
+        $unset: {
+          'onBehalf.beneficiaryUserId': 1, 'onBehalf.payoutAuthorityUserId': 1, 'onBehalf.consentAt': 1, 'onBehalf.consentBy': 1,
+          ...(reopen ? { contentReviewClearedAt: 1, contentReviewClearedBy: 1 } : {}),
+          // Covered by the outstanding check, not admitted on its own: the
+          // admission's fingerprint described the version this replaces, so
+          // a staff decision binds only the version staff see.
+          ...(admission ? {} : { 'contentAdmission.fingerprint': 1 }),
+        },
         $inc: { reviewRevision: 1 },
       });
-      await this.issueInvitation({
+      // Same transaction: refuses a version declined meanwhile, and audits how it was admitted.
+      if (admission) await this.deps.admission!.commitCampaign!(admitted!.submission, admission, campaign.id, { change: 'beneficiary', actorId });
+      const issued = await this.issueInvitation({
         campaignId, campaignTitle: campaign.title, beneficiaryName: input.beneficiaryName.trim(), email: input.beneficiaryEmail,
         invitedBy: actorId, payoutArrangement: input.payoutArrangement, publicationRequiresConsent: onBehalf.publicationRequiresConsent,
         ttlHours: settings.invitationTtlHours, event: 'beneficiary_changed', actorRole: 'organizer', organizer: await organizerName(campaign.creatorId),
+        held, admission: !admission || admission.outcome === 'staff_review' ? 'staff_review' : admission.basis,
       });
       await audit({ actorId, actorRole: 'organizer', action: 'campaign.beneficiary_changed', campaignId, details: 'Beneficiary changed before acceptance and before donations', method: 'PUT', path: '/campaigns/:id/beneficiary',
-        changes: [{ field: 'onBehalf.beneficiaryName', before: onBehalf.beneficiaryName, after: input.beneficiaryName.trim() }, { field: 'onBehalf.payoutArrangement', before: onBehalf.payoutArrangement, after: input.payoutArrangement }, ...(status !== campaign.status ? [{ field: 'status', before: campaign.status, after: status }] : [])] });
-      logger.info({ event: 'on_behalf.beneficiary_changed', campaignId }, 'beneficiary changed before acceptance');
+        changes: [
+          { field: 'onBehalf.beneficiaryName', before: onBehalf.beneficiaryName, after: input.beneficiaryName.trim() },
+          { field: 'onBehalf.payoutArrangement', before: onBehalf.payoutArrangement, after: input.payoutArrangement },
+          ...(status !== campaign.status ? [{ field: 'status', before: campaign.status, after: status }] : []),
+          ...(reopenReason ? [{ field: 'contentReviewReason', before: campaign.contentReviewReason ?? null, after: reopenReason }] : []),
+        ] });
+      logger.info({ event: 'on_behalf.beneficiary_changed', campaignId, held, reopened: reopen }, 'beneficiary changed before acceptance');
+      return { held, reopen, named, invitationId: issued.invitationId };
     });
+
+    const after = await CampaignModel.findById(campaignId);
+    // Staff are told whenever the change leaves them the next to act: the
+    // content check reopened, a check that had nobody to invite now has a
+    // beneficiary, or no consent is needed before they approve. (A check
+    // already outstanding with an invitation held was announced when it opened.)
+    if (after && (outcome.reopen || outcome.named || !outcome.held) && await staffAreNext(after)) await this.alertStaff(after, { kind: 'beneficiary_changed', ref: outcome.invitationId });
+    return { invitationHeld: outcome.held, ...(after ? { nextStep: await nextStepOf(after) } : {}) };
+  }
+
+  /** Admits a changed beneficiary like new content, before the change is stored (screening can take seconds). */
+  private async admitChange(campaign: CampaignDocument, input: BeneficiaryChangeInput): Promise<{ submission: PublicationSubmission; admission: CampaignAdmission }> {
+    const admission = this.deps.admission;
+    if (!admission?.admitCampaign || !admission.commitCampaign) throw new AppError('Campaign safety review is unavailable', 503);
+    const submission = changedVersion(campaign, input);
+    // The campaign's photos and video were checked already (or it has none): only the text is new.
+    return { submission, admission: await admission.admitCampaign(submission, { mediaReviewed: true }) };
   }
 
   /** The beneficiary may withdraw consent while no money has been raised; after that, staff decide. */
@@ -366,47 +606,67 @@ export class MongoOnBehalfCampaigns {
   }
 
   /** Staff: the consent history, oldest first. No addresses are stored in it. */
-  async consentEvents(campaignId: string): Promise<{ event: string; actorRole?: string; actorId?: string; payoutArrangement?: string; reason?: string; consentVersion?: string; createdAt: string }[]> {
+  async consentEvents(campaignId: string): Promise<{ event: string; actorRole?: string; actorId?: string; payoutArrangement?: string; reason?: string; consentVersion?: string; admission?: string; createdAt: string }[]> {
     if (!isValidObjectId(campaignId)) throw new AppError('Campaign not found', 404);
-    const events = await CampaignBeneficiaryConsentEventModel.find({ campaignId }).sort({ createdAt: 1 }).limit(500).lean();
+    const events = await CampaignBeneficiaryConsentEventModel.find({ campaignId }).sort({ createdAt: 1, _id: 1 }).limit(500).lean();
     return events.map(e => ({ event: e.event, actorRole: e.actorRole ?? undefined, actorId: e.actorId ?? undefined, payoutArrangement: e.payoutArrangement ?? undefined,
-      reason: e.reason ?? undefined, consentVersion: e.consentVersion ?? undefined, createdAt: (e.createdAt as Date).toISOString() }));
+      reason: e.reason ?? undefined, consentVersion: e.consentVersion ?? undefined, admission: e.admission ?? undefined, createdAt: (e.createdAt as Date).toISOString() }));
   }
 
-  /** Staff: point a campaign at a different beneficiary. Consent and payout authority start over. */
-  async reassign(campaignId: string, adminId: string, input: BeneficiaryInput, reason: string): Promise<void> {
+  /**
+   * Staff: point a campaign at a different beneficiary. Consent and payout
+   * authority start over. The invitation waits while the content check does.
+   */
+  async reassign(campaignId: string, adminId: string, input: BeneficiaryInput, reason: string): Promise<{ invitationHeld: boolean }> {
     if (!isValidObjectId(campaignId)) throw new AppError('Campaign not found', 404);
     const settings = await this.config.resolveOnBehalfConfig();
-    await new MongoUnitOfWork().run(async () => {
+    const outcome = await new MongoUnitOfWork().run(async () => {
       const staff = await UserModel.findOneAndUpdate({ _id: adminId, role: 'admin', deletedAt: null }, { $inc: { staffActionVersion: 1 } });
       if (!staff) throw new AppError('Current administrator access is required.', 403);
       const campaign = await CampaignModel.findOne({ _id: campaignId, deletedAt: { $exists: false } });
       if (!campaign?.onBehalf || campaign.creationMode !== 'on_behalf') throw new AppError('This campaign is not run on someone\'s behalf.', 404);
-      if (campaign.creatorId === adminId || campaign.onBehalf.beneficiaryUserId === adminId) throw new AppError('Another administrator must change the beneficiary of a campaign you are part of.', 403);
+      // Staff cannot steer a campaign they run, benefit from or are invited to benefit from, nor name themselves.
+      const ownHash = sha256(normalizeEmail(staff.email));
+      if (campaign.creatorId === adminId || campaign.onBehalf.beneficiaryUserId === adminId ||
+        await CampaignBeneficiaryInvitationModel.exists({ campaignId, status: { $in: ['held', 'pending'] }, emailHash: ownHash }))
+        throw new AppError('Another administrator must change the beneficiary of a campaign you are part of.', 403);
+      if (sha256(normalizeEmail(input.beneficiaryEmail)) === ownHash) throw new AppError('You cannot name yourself as the beneficiary. Ask another administrator.', 403);
       const before = campaign.onBehalf;
+      // The outstanding check had nobody to invite: from now on staff can act on it.
+      const named = await awaitsBeneficiary(campaign);
       await CampaignModel.updateOne({ _id: campaign._id }, {
         $set: {
           'onBehalf.beneficiaryType': input.beneficiaryType, 'onBehalf.beneficiaryName': input.beneficiaryName.trim(),
           'onBehalf.relationship': input.relationship, 'onBehalf.reason': input.reason.trim(),
           'onBehalf.payoutArrangement': input.payoutArrangement, 'onBehalf.consentStatus': 'pending', 'onBehalf.invitedAt': new Date(),
         },
-        $unset: { 'onBehalf.beneficiaryUserId': 1, 'onBehalf.payoutAuthorityUserId': 1, 'onBehalf.consentAt': 1, 'onBehalf.consentBy': 1 },
+        // The admission's fingerprint described the version this replaces: a
+        // later staff decision binds only the version staff see.
+        $unset: { 'onBehalf.beneficiaryUserId': 1, 'onBehalf.payoutAuthorityUserId': 1, 'onBehalf.consentAt': 1, 'onBehalf.consentBy': 1, 'contentAdmission.fingerprint': 1 },
         $inc: { reviewRevision: 1, payoutWriteVersion: 1 },
       });
-      await this.issueInvitation({
+      const issued = await this.issueInvitation({
         campaignId, campaignTitle: campaign.title, beneficiaryName: input.beneficiaryName.trim(), email: input.beneficiaryEmail,
         invitedBy: adminId, payoutArrangement: input.payoutArrangement, publicationRequiresConsent: before.publicationRequiresConsent,
         ttlHours: settings.invitationTtlHours, event: 'reassigned', actorRole: 'admin', reason, organizer: await organizerName(campaign.creatorId),
+        held: isContentCheckOutstanding(campaign),
       });
       await audit({ actorId: adminId, actorRole: 'admin', action: 'campaign.beneficiary_reassigned', campaignId, details: 'Staff reassigned the beneficiary; consent and payout authority reset', reason, severity: 'warning', path: '/admin/campaigns/:id/beneficiary/reassign',
         changes: [{ field: 'onBehalf.beneficiaryName', before: before.beneficiaryName, after: input.beneficiaryName.trim() }, { field: 'onBehalf.consentStatus', before: before.consentStatus, after: 'pending' }, { field: 'onBehalf.payoutAuthorityUserId', before: before.payoutAuthorityUserId ?? null, after: null }] });
       await recordAccountNotice({ key: `on-behalf:reassigned:${campaignId}:${Date.now()}`, userId: campaign.creatorId, type: 'on_behalf',
         title: 'Support changed your campaign\'s beneficiary', path: `/campaigns/${campaignId}`,
-        body: `The beneficiary of “${campaign.title}” is now ${input.beneficiaryName.trim()}. They have been invited to accept it; payouts are paused until they do.` });
+        body: `The beneficiary of “${campaign.title}” is now ${input.beneficiaryName.trim()}. ${isContentCheckOutstanding(campaign) ? 'They will be invited to accept it once our team has checked the campaign' : 'They have been invited to accept it'}; payouts are paused until they do.` });
       if (before.beneficiaryUserId) await recordAccountNotice({ key: `on-behalf:unlinked:${campaignId}:${before.beneficiaryUserId}:${Date.now()}`, userId: before.beneficiaryUserId, type: 'on_behalf',
         title: 'A campaign is no longer linked to you', path: '/my-campaigns', body: `Support changed the beneficiary of “${campaign.title}”. Contact support@ujimora.com if you have questions.` });
       logger.info({ event: 'on_behalf.reassigned', campaignId }, 'staff reassigned the beneficiary');
+      return { invitationHeld: isContentCheckOutstanding(campaign), named, invitationId: issued.invitationId };
     });
+    // A check that had nobody to invite is the team's to decide again.
+    if (outcome.named) {
+      const after = await CampaignModel.findById(campaignId);
+      if (after && await staffAreNext(after)) await this.alertStaff(after, { kind: 'beneficiary_reassigned', ref: outcome.invitationId });
+    }
+    return { invitationHeld: outcome.invitationHeld };
   }
 
   /** Staff: a controlled override of who may request payouts. */

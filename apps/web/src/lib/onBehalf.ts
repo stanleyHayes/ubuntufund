@@ -1,10 +1,13 @@
 import {
   BENEFICIARY_RELATIONSHIPS,
+  type BeneficiaryInvitationStatus,
   type BeneficiaryPartyType,
   type BeneficiaryRelationship,
   type CampaignBeneficiaryDetails,
+  type ChangeBeneficiaryResult,
   type OnBehalfCampaignInput,
   type OnBehalfConsentStatus,
+  type OnBehalfNextStep,
   type OnBehalfPayoutArrangement,
 } from '@ubuntu-fund/types'
 
@@ -101,9 +104,15 @@ export const CONSENT_STATUS: Record<OnBehalfConsentStatus, { label: string; tone
   not_required: { label: 'Not required', tone: 'default' },
 }
 
-export function consentExplanation(status: OnBehalfConsentStatus, name: string): string {
+export function consentExplanation(status: OnBehalfConsentStatus, name: string, invitationStatus?: BeneficiaryInvitationStatus, canChangeBeneficiary = true): string {
   switch (status) {
-    case 'pending': return `We emailed ${name} an invitation. They have not answered yet.`
+    // Held while our team checks the campaign's content: nothing has been sent yet.
+    case 'pending':
+      if (invitationStatus === 'held') return `We will email ${name} an invitation once our team has checked the campaign.`
+      // Withdrawn unsent (the campaign was declined, ended or closed): nothing is
+      // waiting for them. Only a campaign that can still change says how to invite again.
+      if (invitationStatus === 'superseded') return canChangeBeneficiary ? `No invitation is waiting for ${name}. Change the beneficiary to send a new one.` : `No invitation is waiting for ${name}.`
+      return `We emailed ${name} an invitation. They have not answered yet.`
     case 'accepted': return `${name} confirmed that this campaign is run for them.`
     case 'declined': return `${name} declined this campaign.`
     case 'expired': return `The invitation expired before ${name} answered. Send it again to give them more time.`
@@ -121,6 +130,33 @@ export function consentGateText(details: Pick<CampaignBeneficiaryDetails, 'conse
   if (details.publicationRequiresConsent) return `The campaign cannot go live until ${name} accepts.`
   if (details.donationsRequireConsent) return `Donations stay closed until ${name} accepts.`
   return `Payouts wait until ${name} accepts.`
+}
+
+/**
+ * What makes a campaign that is not live yet go live from here, from the
+ * server's `nextStep`. Never promises more than the campaign's rules do: when
+ * our team still has to check it, it says so. A content check in progress is
+ * already explained by the invitation line, so it adds nothing here.
+ */
+export function nextStepText(nextStep: OnBehalfNextStep | undefined, name: string): string | null {
+  switch (nextStep) {
+    // Its invitation was withdrawn when the campaign was declined; the invitation line says so.
+    case 'name_beneficiary': return 'Our team can finish checking the campaign once you name the beneficiary again.'
+    case 'consent': return `The campaign goes live as soon as ${name} accepts.`
+    case 'staff_after_consent': return `When ${name} accepts, our team checks the campaign before it goes live.`
+    case 'staff': return 'Our team is checking the campaign before it goes live. We will let you know when it has been reviewed.'
+    default: return null
+  }
+}
+
+/** The confirmation after the beneficiary was changed, from the server's answer. */
+export function changeConfirmation(result: Partial<ChangeBeneficiaryResult> | null | undefined, name: string): string {
+  if (result?.invitationHeld) return `Beneficiary updated. We will email ${name} an invitation once our team has checked the campaign.`
+  const next = result?.nextStep === 'consent' ? ' The campaign goes live when they accept.'
+    : result?.nextStep === 'staff_after_consent' ? ' When they accept, our team checks the campaign before it goes live.'
+    : result?.nextStep === 'staff' ? ' Our team checks the campaign before it goes live.'
+    : ''
+  return `Beneficiary updated. We emailed ${name} an invitation.${next}`
 }
 
 export function payoutAuthorityText(details: Pick<CampaignBeneficiaryDetails, 'payoutAuthority' | 'consentStatus' | 'beneficiaryName' | 'organizerName'>): string {

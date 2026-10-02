@@ -11,14 +11,16 @@ import DialogTitle from '@mui/material/DialogTitle'
 import Skeleton from '@mui/material/Skeleton'
 import Typography from '@mui/material/Typography'
 import { LoadingDots, SHAPE } from '@ubuntu-fund/ui'
-import type { CampaignBeneficiaryDetails } from '@ubuntu-fund/types'
+import type { CampaignBeneficiaryDetails, ChangeBeneficiaryResult } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
 import {
   CONSENT_STATUS,
   RELATIONSHIP_LABELS,
   beneficiaryInput,
+  changeConfirmation,
   consentExplanation,
   consentGateText,
+  nextStepText,
   partyLabel,
   payoutArrangementText,
   payoutAuthorityText,
@@ -26,6 +28,8 @@ import {
   type BeneficiaryDraft,
   type BeneficiaryField,
 } from '@/lib/onBehalf'
+import { PublicationConsent } from '@/components/safety/PublicationConsent'
+import { BENEFICIARY_SCREENING_NOTE } from '@/lib/campaignReview'
 import { BeneficiaryFields } from './BeneficiaryFields'
 
 const formatDate = (value?: string) =>
@@ -62,12 +66,18 @@ export function CampaignBeneficiaryPanel({ campaignId, details, loading, error, 
   const name = details.beneficiaryName
   const status = CONSENT_STATUS[details.consentStatus]
   const gate = consentGateText(details)
+  // What makes it go live from here, as the server's rules say (never more).
+  const next = nextStepText(details.nextStep, name)
+  // Held while our team checks the campaign's content: written, not sent.
+  const held = details.invitationStatus === 'held'
   const invitation = details.invitationEmailHint
-    ? [
-        `Sent to ${details.invitationEmailHint}${details.invitationSentAt ? ` on ${formatDate(details.invitationSentAt)}` : ''}.`,
-        details.invitationStatus === 'pending' && details.invitationExpiresAt ? `It expires on ${formatDate(details.invitationExpiresAt)}.` : '',
-        details.invitationStatus === 'expired' ? 'It has expired.' : '',
-      ].filter(Boolean).join(' ')
+    ? held
+      ? `Not sent yet. It goes to ${details.invitationEmailHint} once our team has checked the campaign.`
+      : [
+          `Sent to ${details.invitationEmailHint}${details.invitationSentAt ? ` on ${formatDate(details.invitationSentAt)}` : ''}.`,
+          details.invitationStatus === 'pending' && details.invitationExpiresAt ? `It expires on ${formatDate(details.invitationExpiresAt)}.` : '',
+          details.invitationStatus === 'expired' ? 'It has expired.' : '',
+        ].filter(Boolean).join(' ')
     : ''
 
   async function resend() {
@@ -113,10 +123,10 @@ export function CampaignBeneficiaryPanel({ campaignId, details, loading, error, 
         </Typography>
         <Chip size="small" label={status.label} color={status.tone} sx={{ fontWeight: 700 }} />
       </Box>
-      <Typography variant="body2" color="text.secondary">{consentExplanation(details.consentStatus, name)}</Typography>
-      {gate && (
+      <Typography variant="body2" color="text.secondary">{consentExplanation(details.consentStatus, name, details.invitationStatus, details.canChangeBeneficiary)}</Typography>
+      {(gate || next) && (
         <Alert severity={details.consentStatus === 'declined' || details.consentStatus === 'revoked' ? 'warning' : 'info'} sx={{ mt: 2 }}>
-          {gate}
+          {[gate, next].filter(Boolean).join(' ')}
         </Alert>
       )}
       <Box
@@ -217,8 +227,15 @@ function ChangeBeneficiaryDialog({ campaignId, details, ownEmail, ownAccountLabe
   const [touched, setTouched] = useState<Partial<Record<BeneficiaryField, boolean>>>({})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  // Optional, unticked by default: the new name and reason are public text,
+  // checked like a new campaign's before anyone is invited.
+  const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)
   const errors = validateBeneficiary(value, ownEmail)
   const valid = Object.keys(errors).length === 0
+
+  // While our team checks the campaign's content, the new invitation waits too:
+  // also when that check is waiting for a beneficiary to be named again.
+  const held = details.invitationStatus === 'held' || details.nextStep === 'name_beneficiary'
 
   async function save() {
     setTouched({ beneficiaryName: true, beneficiaryEmail: true, relationship: true, reason: true })
@@ -226,8 +243,12 @@ function ChangeBeneficiaryDialog({ campaignId, details, ownEmail, ownAccountLabe
     setSaving(true)
     setError('')
     try {
-      await api.put(`/campaigns/${campaignId}/beneficiary`, beneficiaryInput(value))
-      onChanged(`Beneficiary updated. We emailed ${value.beneficiaryName.trim()} an invitation.`)
+      const result = await api.put<ChangeBeneficiaryResult | null>(`/campaigns/${campaignId}/beneficiary`, {
+        ...beneficiaryInput(value),
+        ...(held ? {} : { automatedReviewConsent }),
+      })
+      const name = value.beneficiaryName.trim()
+      onChanged(changeConfirmation(held ? { invitationHeld: true } : result, name))
     } catch (err) {
       setError(message(err, 'Could not change the beneficiary. Please try again.'))
       setSaving(false)
@@ -239,8 +260,9 @@ function ChangeBeneficiaryDialog({ campaignId, details, ownEmail, ownAccountLabe
       <DialogTitle id="change-beneficiary-title">Change beneficiary</DialogTitle>
       <DialogContent>
         <DialogContentText sx={{ mb: 2.5 }}>
-          We send a new invitation, and the earlier one stops working. A live campaign goes back to review until the
-          new beneficiary accepts.
+          {held
+            ? 'The invitation goes to the new beneficiary once our team has checked the campaign.'
+            : 'The new name and reason are checked before anyone is invited: by automated screening if you allow it below, otherwise by our team, and then we send the invitation. The earlier invitation stops working, and a live campaign goes back to review.'}
         </DialogContentText>
         <BeneficiaryFields
           value={value}
@@ -251,12 +273,17 @@ function ChangeBeneficiaryDialog({ campaignId, details, ownEmail, ownAccountLabe
           organizationLabel={ownAccountLabel}
           disabled={saving}
         />
+        {!held && (
+          <Box sx={{ mt: 2 }}>
+            <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} note={BENEFICIARY_SCREENING_NOTE} />
+          </Box>
+        )}
         {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button disabled={saving} onClick={onClose}>Cancel</Button>
         <Button variant="contained" disabled={saving} onClick={() => void save()}>
-          {saving ? 'Saving…' : 'Save and invite'}
+          {saving ? 'Saving…' : 'Save'}
         </Button>
       </DialogActions>
     </Dialog>

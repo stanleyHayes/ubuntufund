@@ -33,6 +33,9 @@ export class ListMyCollaborationInvitationsUseCase {
       const campaign = await this.campaignRepo.findById(
         collaboration.campaignId
       );
+      // Recorded while the campaign's content waited for a staff check: not
+      // shown until that check is cleared (and the invitation announced).
+      if (collaboration.heldForContentCheck && campaign?.contentCheckOutstanding) continue;
       results.push({
         ...toCollaboratorDto(collaboration),
         campaignName: campaign?.title,

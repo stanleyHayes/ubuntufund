@@ -1,4 +1,4 @@
-# Campaigns (90 cases)
+# Campaigns (96 cases)
 
 Creation, review and publication, visibility states, updates and comments, sharing, QR and short links, explore/search, collaboration, split proceeds, expiry.
 
@@ -122,55 +122,55 @@ Creation, review and publication, visibility states, updates and comments, shari
 2. On Review tick 'Use OpenAI to check this public text for safety (optional)'.
 3. Click 'Publish campaign'.
 4. Check the success screen copy.
-5. In admin open Publication reviews → status 'approved' and find the campaign.create item.
+5. In admin open Campaigns and find the campaign. Check Publication reviews for a new campaign.create item.
 6. Open /explore as a guest.
 
-**Expect:** Success screen says 'Your campaign is live. Share it with your community.' The status is active and the campaign is visible publicly. The admin approved item shows it was reviewed by 'automated:openai'. Repeat on mobile with the same result.
+**Expect:** Success screen says 'Your campaign is live. Share it with your community.' The status is active and the campaign is visible publicly, with no content-check reason. Since 30 September 2026 an automated approval stores no Publication reviews item. Repeat on mobile ('Your campaign is live') with the same result.
 
 **Needs:** OpenAI
 
 **Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`, `apps/api/src/infrastructure/adapters/outbound/ai/OpenAiPublicationScreener.ts`, `apps/web/src/components/safety/PublicationConsent.tsx`, `apps/web/src/components/campaigns/CampaignForm.tsx`
 
-## CAMPAIGN-016 · P0 · Without consent the content is held privately and no campaign is created
+## CAMPAIGN-016 · P0 · Without consent the campaign is saved privately as Pending review for staff
 
-*Surfaces:* admin, android, api, ios, web  ·  *Type:* compliance
+*Surfaces:* admin, android, api, email, ios, web  ·  *Type:* compliance
 
-**Before:** U1 is eligible. Admin A2.
+**Before:** U1 is eligible. Admin A2. Review alert address set (Admin → Settings).
 
 **Steps:**
 
 1. Complete the wizard (text only) without ticking consent. Click 'Publish campaign'.
-2. Read the error shown under Review, and the Publication reviews list that appears.
-3. Call GET /campaigns/mine and GET /campaigns/creation-options.
-4. As A2 open admin /publication-reviews → queue 'Publication proposals' → status pending.
+2. Read the success screen.
+3. Call GET /campaigns/mine and GET /campaigns/creation-options. As a guest open /campaigns/:id and /c/:slug, and search /explore for the title.
+4. As A2 open Admin → Campaigns → Pending review and open the campaign. Check the reviewer inbox and Publication reviews.
 
-**Expect:** Error: 'Saved privately for safety review. Your content has not been published…'. No campaign exists, and allowance and slots are unchanged. The admin sees 'campaign create · staff requested' with title, description, category, priority, beneficiaries, goal, currency and endDate. The author sees the item as pending in Settings → Publication reviews.
+**Expect:** 201 with status pending_review and contentReviewReason 'no_screening_consent'. The success screen shows 'Saved · Pending review', '<title> is saved' and 'You chose not to use automated screening, so a person on our team reads it first.', with 'View campaign' and 'Go to my campaigns' and no Share button (mobile: the 'Saved · Pending review' card). The campaign is in My campaigns as Pending review and uses an allowance slot. Guests get not found, it is not in search, and donations are closed. A2's Staff decision panel shows 'Why it is waiting' with 'Content check · Not screened: no consent'. The alert email includes 'Content check: The organizer did not opt in to automated screening'. No Publication reviews item is created.
 
-**Needs:** None
+**Needs:** Email provider (Resend) for the alert
 
-**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/publicationReviewRoutes.ts`, `apps/admin/src/pages/PublicationReviewsPage.tsx`, `apps/web/src/components/account/PublicationReviews.tsx`
+**Source:** `apps/api/src/application/use-cases/CreateCampaignUseCase.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`, `apps/api/src/infrastructure/adapters/outbound/ResendReviewAlerts.ts`, `apps/web/src/components/campaigns/CampaignForm.tsx`, `apps/web/src/lib/campaignReview.ts`, `apps/mobile/app/campaign/create.tsx`, `apps/admin/src/components/CampaignReviewPanel.tsx`
 
-## CAMPAIGN-017 · P0 · Staff-approved version creates the campaign only when resubmitted byte-identical
+## CAMPAIGN-017 · P0 · Staff approval in the campaign review makes a held campaign live, with no resubmission
 
 *Surfaces:* admin, api, web  ·  *Type:* compliance
 
-**Before:** The pending item from CAMPAIGN-016. U1 keeps the wizard tab open (or reopens it; the draft is restored). Admin A2. Devtools to copy the POST body and Idempotency-Key.
+**Before:** The Pending review campaign from CAMPAIGN-016. Admin A2 (not the organizer). For the legacy variant: a campaign.create proposal stored before 30 September 2026, with its draft still in U1's browser. Devtools to copy the POST body and Idempotency-Key.
 
 **Steps:**
 
-1. A2 enters notes of at least 20 characters and clicks 'Approve this version'.
-2. U1 (unchanged form) clicks 'Publish campaign' again.
-3. Confirm the campaign is created and see Settings → Publication reviews 'Approval expires …'.
-4. Variant: after approval, change a single character in the story and publish.
-5. Variant: after a successful creation, replay the same POST body through the API within 7 days, first with the same Idempotency-Key the browser sent, then with a new key, then with no key.
+1. A2 opens the campaign's Staff decision panel, enters notes of at least 20 characters and tries 'Approve campaign' before ticking both attestations.
+2. A2 ticks both attestations and clicks 'Approve campaign'.
+3. U1 checks notifications and /campaigns/:id. A guest opens /campaigns/:id, /c/:slug and /explore.
+4. Replay the original POST body with the Idempotency-Key the browser sent.
+5. Legacy variant: A2 approves the stored proposal in Publication reviews; U1 publishes the exact same version from the restored draft, then replays the POST with a new key within 7 days.
 
-**Expect:** An identical resubmission creates the campaign with a status set by tier. Any change creates a new pending review (409 again). A replay with the same Idempotency-Key returns 200 'Campaign already created' with the original id and creates nothing. A replay with a new key or no key within 7 days creates a second campaign, which uses another allowance slot. Requirement: an approved version publishes at most once. Known open issue I153: single-use approvals were not implemented (owner decision). Only hidden comments and updates lose their approval.
+**Expect:** Approve stays disabled until both boxes are ticked (the API refuses with 400 without them). Approval makes the campaign active with no resubmission, U1 is notified 'Your campaign is live', and it becomes public. contentReviewReason stays on organizer and staff reads only. The replay returns 200 'Campaign already created' with the same id. Legacy: the approved version is created under the usual rules (active unless the high-goal or on-behalf rules hold it) without a new content check. Known open issue I153 (unchanged): a legacy approval can be reused with a new key within its 7 days, which creates a second campaign and uses another allowance slot.
 
 **Needs:** None
 
-**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`, `apps/api/src/application/use-cases/CreateCampaignUseCase.ts`, `apps/api/src/infrastructure/adapters/inbound/http/controllers/CampaignController.ts`, `apps/admin/src/pages/PublicationReviewsPage.tsx`
+**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoCampaignReview.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`, `apps/api/src/application/use-cases/CreateCampaignUseCase.ts`, `apps/admin/src/components/CampaignReviewPanel.tsx`
 
-## CAMPAIGN-018 · P0 · A campaign with a cover image always needs staff review; the held draft survives closing the tab or app
+## CAMPAIGN-018 · P0 · A campaign with a cover image is always checked by a person; an unsent draft survives closing the tab or app
 
 *Surfaces:* admin, android, ios, web  ·  *Type:* recovery/idempotency
 
@@ -178,17 +178,15 @@ Creation, review and publication, visibility states, updates and comments, shari
 
 **Steps:**
 
-1. Complete the wizard with a cover image and consent ticked, then publish.
-2. Confirm 409 'Saved privately for safety review…' and that the admin queue item has reason 'media'.
-3. Close the tab. Reopen /campaigns/new as U1 in the same browser.
-4. Confirm the info alert 'We restored your unsent draft from this browser. If it is waiting for safety review, submit this same version again once it is approved.' with 'Start over', and that every field, including the same cover image, is restored. Do not re-upload.
-5. A2 approves the original item. U1 goes to Review and clicks 'Publish campaign' without changes.
-6. Reload /campaigns/new and confirm the form is empty with no restore alert.
-7. Variant: after the restore, re-upload the same file and publish.
-8. Repeat on mobile: after the 409, background the app and kill it before approval. Reopen Create, confirm 'We restored your unsent draft from this device…', and after approval tap 'Create campaign'.
-9. Variant: open /campaigns/new as U1 on a second browser or device.
+1. Fill the wizard with a cover image, then close the tab before publishing. Reopen /campaigns/new as U1 in the same browser.
+2. Confirm the info alert 'We restored your unsent draft from this browser.' with 'Start over', and that every field, including the same cover image, is restored.
+3. Tick consent and publish.
+4. Check the response, the success screen, the alert email and A2's Staff decision panel.
+5. Reload /campaigns/new and confirm the form is empty with no restore alert.
+6. Repeat on mobile: kill the app before creating, reopen Create, confirm 'We restored your unsent draft from this device.', then tap 'Create campaign'.
+7. Variant: open /campaigns/new as U1 on a second browser or device.
 
-**Expect:** Consent never bypasses staff review when media is attached. The exact held version, cover URL included, is restored after a tab close or app kill. Publishing it unchanged after approval creates the campaign and clears the draft. A re-upload produces a new Cloudinary URL, so it is held again as a new version. Known open issue I073 (mitigated): drafts are kept only in that browser or device, for 30 days, and are removed on explicit sign-out, so a second device starts empty. There is no server-side 'publish approved version' and no staff alert for new publication reviews, so organizers must check back themselves.
+**Expect:** 201 pending_review with contentReviewReason 'new_media' even though consent was given; consent never bypasses a person's check of media, and the text is not sent to the screener. The success screen says 'A person on our team checks new photos and videos before they go public.' (mobile: the 'Saved · Pending review' card with 'Go to my campaigns'). The alert email names 'Content check: New photos or video to look at'. A2 sees 'Content check · New photos or video' and 'Open attachment 1'. The draft is restored after a tab close or app kill and is cleared once the campaign is created. Known open issue I073 (mitigated): drafts are kept only in that browser or device, for 30 days, and are removed on explicit sign-out, so a second device starts empty.
 
 **Needs:** Cloudinary, OpenAI
 
@@ -622,7 +620,7 @@ Creation, review and publication, visibility states, updates and comments, shari
 5. Post a comment, report a comment, and report the campaign from the native 'Report Campaign' dialog with a reason (see CAMPAIGN-060).
 6. Record a cleanup procedure after each review round (block or let reviewer campaigns end so they free the slot).
 
-**Expect:** The reviewer can create a live campaign without staff delay, sees store-compliant donation behaviour, and every UGC report path works: the campaign report is accepted and shows 'Thank you. Our team will review this campaign.'. Any 'verification_limit' or 'plan_limit' block, or a held-for-review response during review, is a store-rejection risk.
+**Expect:** The reviewer can create a live campaign without staff delay, sees store-compliant donation behaviour, and every UGC report path works: the campaign report is accepted and shows 'Thank you. Our team will review this campaign.'. Any 'verification_limit' or 'plan_limit' block is a store-rejection risk, and so is a reviewer campaign saved as Pending review (a cover photo, or consent left unticked) that nobody approves during the review window.
 
 **Needs:** OpenAI, Paystack test/live keys, store sandbox, physical devices
 
@@ -676,6 +674,140 @@ Creation, review and publication, visibility states, updates and comments, shari
 **Needs:** OpenAI (screening)
 
 **Source:** `apps/api/src/infrastructure/adapters/inbound/http/controllers/CampaignController.ts`, `apps/api/src/application/use-cases/CreateCampaignUseCase.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoCampaignRepository.ts`, `apps/api/src/infrastructure/database/models/CampaignModel.ts`
+
+## CAMPAIGN-N010 · P0 · On-behalf content waiting for staff: nothing reaches the beneficiary until it is cleared
+
+*Surfaces:* admin, android, api, email, ios, web  ·  *Type:* compliance
+
+**Before:** O1: organization account on the Organization plan, with campaigns on behalf of others enabled. Admin A2 (not O1). Two beneficiary addresses without Ujimora accounts, B1 and B2, whose inboxes you can read. Default settings (on-behalf staff review on).
+
+**Steps:**
+
+1. As O1 create a campaign on behalf of someone, inviting B1, with a cover photo (or with screening consent unticked), and publish it.
+2. Check B1's inbox. As O1 open the campaign and read the Beneficiary panel.
+3. As O1 call POST /campaigns/:id/beneficiary/invitation, then change the beneficiary's address to B2 in the panel.
+4. As A2 open Admin → Campaigns → the campaign: the Staff decision and On behalf panels.
+5. A2 approves with notes and both attestations.
+6. Check B2's and B1's inboxes. Open B2's invitation link, register as B2 and accept. Check the reviewer inbox, O1's notifications and the Beneficiary panel.
+7. A2 approves the campaign again.
+8. Variant: set onBehalf.staffReviewRequired to 0 and repeat steps 1–6 with a low goal.
+9. On mobile, open the campaign's Manage screen as O1 before and after B2 accepts.
+
+**Expect:** Step 1: 201 pending_review with contentReviewReason 'new_media' (or 'no_screening_consent'); the success screen says 'We will email <name> an invitation once our team has checked the campaign.' Step 2: nothing arrives; the panel says 'We will email <name> an invitation once our team has checked the campaign.' and 'Not sent yet. It goes to b•••@… once our team has checked the campaign.', with no 'Send invitation again'. Step 3: 409 'The invitation is sent once our team has checked the campaign…'; the change is confirmed with 'Beneficiary updated. We will email <name> an invitation once our team has checked the campaign.' and still nothing is emailed. Step 4: 'Why it is waiting' shows the content check and 'Nothing has been sent to the beneficiary yet…'; the On behalf panel shows 'Not sent: waits for the content check'. Step 5: the campaign stays Pending review, the content chip disappears, and O1 is notified 'Your campaign passed review': '… We sent <name> the invitation. When they accept, our team does a final check before it goes live.' Step 6: B2 receives exactly one invitation, naming the campaign; B1 never received anything. The preview opens and acceptance leaves the campaign Pending review; the reviewer gets a second alert, 'The beneficiary accepted this campaign. It now needs your approval before it can go live.'; O1's notice says '… accepted "<title>". Our team now checks it before it goes live…'; the panel says 'Our team is checking the campaign before it goes live.' Before the acceptance the panel said 'When <name> accepts, our team checks the campaign before it goes live.' Step 7: it goes live. Variant: the notice says 'The campaign goes live when they accept.', the panel says 'The campaign goes live as soon as <name> accepts.', and B2's acceptance publishes it with no staff alert. Step 9: the Beneficiary card shows 'When <name> accepts, our team checks it before it goes live.', then 'Our team is checking it before it goes live…' (with the variant: 'It goes live as soon as <name> accepts.').
+
+**Needs:** Email provider (Resend); Organization plan with campaigns on behalf of others enabled
+
+**Source:** `apps/api/src/application/use-cases/CreateCampaignUseCase.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoOnBehalfCampaigns.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoCampaignReview.ts`, `apps/web/src/components/campaigns/CampaignBeneficiaryPanel.tsx`, `apps/web/src/components/campaigns/CampaignForm.tsx`, `apps/admin/src/components/CampaignReviewPanel.tsx`, `apps/admin/src/components/OnBehalfPanel.tsx`
+
+## CAMPAIGN-N011 · P0 · Collaborator invitations to a campaign waiting for its check are queued until approval
+
+*Surfaces:* admin, android, api, ios, web  ·  *Type:* compliance
+
+**Before:** U-Pro (a plan with campaign collaboration) and an existing user C1. Admin A2.
+
+**Steps:**
+
+1. As U-Pro create a campaign with screening consent unticked and C1's email under collaborator invitations.
+2. As C1 check notifications and /invitations, and call PUT /collaborations/:id/respond with the invitation id.
+3. A2 approves the campaign in the Staff decision panel.
+4. As C1 check notifications and /invitations again, and accept.
+5. Repeat step 1 on mobile.
+6. Variant (two browsers): as U-Pro send another collaborator invitation on a second waiting campaign at the same moment A2 clicks 'Approve campaign' on it.
+
+**Expect:** Step 1: 'Saved · Pending review' and 'Your collaborator invitation is saved and will be sent once our team has checked the campaign.' Step 2: no notice, an empty Invitations list, and 404 'Invitation not found'. Step 3: C1 gets 'Campaign invitation: You were invited to be listed as a collaborator on "<title>". Review it in Invitations.' Step 4: the invitation is listed with the campaign name and accepting works. Step 5: the mobile card shows 'Your collaborator invitations are saved and will be sent once our team has checked the campaign.' Step 6: whichever lands first, the invitee gets exactly one 'Campaign invitation' notice and sees the invitation.
+
+**Needs:** None
+
+**Source:** `apps/api/src/application/use-cases/InviteCollaboratorUseCase.ts`, `apps/api/src/application/use-cases/ListMyCollaborationInvitationsUseCase.ts`, `apps/api/src/application/use-cases/RespondToCollaborationUseCase.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoCampaignReview.ts`, `apps/web/src/components/campaigns/CampaignForm.tsx`, `apps/mobile/app/campaign/create.tsx`
+
+## CAMPAIGN-N012 · P0 · A version rejected while it waits stays declined, and the organizer gets the slot back
+
+*Surfaces:* admin, api, web  ·  *Type:* compliance
+
+**Before:** U1 verified by email or phone only (lifetime allowance 1) with no campaigns. Admin A2. OpenAI screening configured.
+
+**Steps:**
+
+1. U1 creates a text-only campaign with screening consent unticked. Call GET /campaigns/creation-options.
+2. A2 rejects it in the Staff decision panel with notes.
+3. U1 checks notifications, Settings → Publication reviews and creation-options.
+4. U1 submits the identical version again, this time with screening consent.
+5. U1 submits a revised version.
+6. Variant: A2 blocks a waiting campaign with a cover photo, then selects 'Return to review' and approves it; U1 submits the identical version again.
+7. Variant: a waiting campaign nobody reviews before its end date (set endDate in the past in the DB); check creation-options.
+8. Variant (API): POST /campaigns with goalAmount 500.555. Then create a waiting campaign without the beneficiaries field, have A2 reject it, and POST the identical body again with automatedReviewConsent true.
+
+**Expect:** Step 1: canCreate false, totalCount 1. Step 3: 'Your campaign was not approved': '… This exact version cannot be submitted again, but you can create a revised campaign…'. Publication reviews lists a declined campaign.create with 'Declined in the campaign review…' and none of A2's notes. creation-options shows canCreate true and totalCount 0. Step 4: 422 'This version was declined in safety review…', and the text is not sent to OpenAI. Step 5: the revised campaign is created. Step 6: the identical version is refused (422) while blocked; after the approval the decline is gone and the identical version is created as a new campaign waiting for its check. Step 7: canCreate true, totalCount 0. Step 8: 400 with errors.goalAmount (the web form says 'Use at most two decimal places'; mobile 'Enter the goal with at most two decimal places.'); the resubmission is refused with 422 even though the stored campaign has an empty beneficiaries list.
+
+**Needs:** OpenAI
+
+**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoCampaignReview.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoCampaignRepository.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoStaffDecisionNotices.ts`
+
+## CAMPAIGN-N013 · P0 · A beneficiary change after the check is admitted like new content
+
+*Surfaces:* admin, api, email, web  ·  *Type:* compliance
+
+**Before:** O1: organization account on the Organization plan, verified for at least three campaigns. Admin A2 (not O1). Beneficiary inboxes B1–B4 you can read. Set onBehalf.staffReviewRequired to 0. OpenAI screening configured.
+
+**Steps:**
+
+1. As O1 create a low-goal text-only campaign on behalf of B1 with screening consent ticked. Check B1's inbox.
+2. Open the Beneficiary panel and click 'Change beneficiary'. Read the dialog, tick 'Use OpenAI to check this public text for safety (optional)', name B2 with a new name and reason, and click 'Save'.
+3. Check B2's inbox and the reviewer inbox. Accept as B2.
+4. Create a second campaign the same way for B3, then change the beneficiary to B4 without ticking screening.
+5. Check B4's inbox, the reviewer inbox, the Beneficiary panel, B3's old invitation link, and A2's Staff decision panel.
+6. A2 approves. Check B4's inbox and O1's notifications, and accept as B4.
+7. Variant: change the beneficiary with screening ticked to a reason that screening flags.
+8. Variant: as A2 reject a campaign whose reopened check is waiting, return it to review, then create a campaign with the same title, story, goal and end date and try to change its beneficiary to the rejected name and reason.
+9. Variant: create a waiting campaign (screening unticked) for B1, have A2 reject it and return it to review, change the beneficiary to B2 and have A2 approve. Then create a campaign with the rejected version (same title, story, goal, end date and B1's name and reason) with screening ticked.
+10. Variant: create a waiting campaign for B3, change the beneficiary to B4 before A2 looks at it, have A2 reject it, then create the B3 version again.
+11. Variant: set a screened campaign's endDate (still waiting for its beneficiary) in the past in the DB. Open its Beneficiary panel, call PUT /campaigns/:id/beneficiary, then accept as its beneficiary.
+
+**Expect:** Step 2: the dialog says the new name and reason are checked before anyone is invited, by automated screening if allowed, otherwise by our team; the box starts unticked; the confirmation is 'Beneficiary updated. We emailed <name> an invitation. The campaign goes live when they accept.' Step 3: B2 gets one invitation, the reviewer gets nothing, and the acceptance makes the campaign live. Step 4: 'Beneficiary updated. We will email <name> an invitation once our team has checked the campaign.' Step 5: nothing reaches B4; the reviewer gets 'The organizer changed who this campaign is for…' with 'Content check: The organizer did not opt in to automated screening' and 'What changed: The beneficiary's name and reason'; the panel shows 'Not sent yet…' and no 'Send invitation again'; B3's link says the invitation is not valid; A2 sees 'Content check · Not screened: no consent' and 'The organizer changed the beneficiary after the campaign was checked…'. Step 6: B4 gets one invitation, the notice says 'The campaign goes live when they accept.', and the acceptance publishes it. Step 7: held the same way with 'Flagged by automated screening'. Step 8: the change is refused with 422 'This version was declined in safety review…'. Step 9: 422, and nothing is sent to OpenAI: approving B2 does not clear the decline of the B1 version. Step 10: the B3 version, which A2 never saw, is created as Pending review (it is not declined); the B4 version answers 422. Step 11: no 'Change beneficiary' button; the API answers 409 'This campaign has ended, so its beneficiary can no longer be changed.'; the acceptance leaves it Pending review and the reviewer gets no alert (review refuses an ended campaign). The consent history shows each change with 'New details: Cleared by automated screening' or 'Checked by our team in the campaign review'. Restore staffReviewRequired to 1 afterwards.
+
+**Needs:** OpenAI; Email provider (Resend); Organization plan with campaigns on behalf of others enabled
+
+**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoOnBehalfCampaigns.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/onBehalfPublication.ts`, `apps/api/src/infrastructure/adapters/outbound/ResendReviewAlerts.ts`, `apps/web/src/components/campaigns/CampaignBeneficiaryPanel.tsx`, `apps/admin/src/components/CampaignReviewPanel.tsx`, `apps/admin/src/components/OnBehalfPanel.tsx`
+
+## CAMPAIGN-N014 · P0 · Staff review: no self-review through the invitation, and blocked campaigns need staff again
+
+*Surfaces:* admin, api, email  ·  *Type:* compliance
+
+**Before:** O1 as in CAMPAIGN-N013 (staff review setting 0). Admins A2 and A3; A3's account email is used as a beneficiary address. Review alert address set.
+
+**Steps:**
+
+1. As O1 create a campaign with a cover photo on behalf of A3's email address.
+2. As A3 open it in Admin → Campaigns and try to approve and to reject it, then try to reassign its beneficiary. As A2 try to reassign the beneficiary to A2's own address.
+3. As A2 approve it. As A3 try to reject it again.
+4. As O1 create a screened campaign on behalf of B1 (consent publishes it). A2 blocks it, then selects 'Return to review'. Check the reviewer inbox. B1 accepts.
+5. Variant: A2 rejects a waiting campaign with a cover photo that O1 created for itself (not on someone's behalf), then returns it to review. Check the reviewer inbox.
+
+**Expect:** Step 2: each decision and the reassignment answer 403 'Another administrator must review your campaign' (or '…must change the beneficiary…'); naming oneself answers 403 'You cannot name yourself as the beneficiary…'. Step 3: the approval sends the invitation to A3's address; A3 still gets 403. Step 4: blocking switches consent publication off; the return to review sends no alert while the campaign waits for B1; B1's acceptance leaves it Pending review and the reviewer gets 'The beneficiary accepted this campaign…'. Step 5: the reviewer gets 'This campaign was returned to review…' with its content check (an on-behalf campaign waits for its beneficiary to be named again first; see CAMPAIGN-N015).
+
+**Needs:** Email provider (Resend); Organization plan with campaigns on behalf of others enabled
+
+**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoCampaignReview.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoOnBehalfCampaigns.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/onBehalfPublication.ts`
+
+## CAMPAIGN-N015 · P0 · Unsendable held invitations keep no address; admission evidence is reduced on account erasure
+
+*Surfaces:* admin, android, api, ios, web  ·  *Type:* compliance
+
+**Before:** O1 and a second organization O2, each verified for at least two campaigns. Admin A2. DB read access (addresses are never shown in the app).
+
+**Steps:**
+
+1. As O1 create a campaign with a cover photo on behalf of B1. A2 rejects it. Check its invitation in campaign_beneficiary_invitations.
+2. A2 returns it to review. Check the reviewer inbox and O1's notifications. A2 reads the Staff decision panel and tries to approve it. O1 reads the Beneficiary panel (web, and the Manage screen on mobile), then changes the beneficiary to B2. Check the reviewer inbox. A2 approves.
+3. As O1 create another waiting on-behalf campaign and set its endDate in the past in the DB. Wait 30 seconds (the account-email sweep).
+4. As O2 create one waiting on-behalf campaign (cover photo) and one screened on-behalf campaign whose invitation was emailed to B3. Close O2's account (Settings → Delete account, or the staff closure flow).
+5. Open B3's invitation link and accept as B3. Inspect both campaigns' contentAdmission and the campaign.content_admission audit entries.
+
+**Expect:** Step 1: status superseded, no email field, and emailHash 'withdrawn-unsent' (not the hash of B1's address). Step 2: the return to review sends no reviewer alert; O1's notice 'Your campaign is back in review' says the invitation was withdrawn and asks O1 to name the beneficiary again; the Staff decision panel says 'No beneficiary invitation is waiting: it was withdrawn when the campaign was declined…' and the On behalf panel 'Withdrawn: no invitation is waiting'; the approval answers 409 '…Ask the organizer to change the beneficiary, then review again.'; the web panel says 'No invitation is waiting for <name>. Change the beneficiary to send a new one.' and 'Our team can finish checking the campaign once you name the beneficiary again.' with no 'Send invitation again' and no screening box in the change dialog; mobile says 'No invitation is waiting for the beneficiary.' and 'Name the beneficiary again so our team can finish checking the campaign.'; after the change the reviewer gets 'The organizer changed who this campaign is for…'; after the approval B2 gets one invitation. Step 3: the held invitation becomes superseded and loses its address and its address hash. Step 4: both invitations become superseded and lose their addresses (the held one its address hash too). Step 5: the link answers that the invitation is no longer active; contentAdmission keeps only basis, reason (if any), admittedAt and erasedAt; the audit entries remain.
+
+**Needs:** DB read access; Email provider (Resend)
+
+**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoCampaignReview.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoOnBehalfCampaigns.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/onBehalfPublication.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoStaffDecisionNotices.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoAccountErasure.ts`, `apps/web/src/lib/onBehalf.ts`, `apps/web/src/components/campaigns/CampaignBeneficiaryPanel.tsx`, `apps/admin/src/components/CampaignReviewPanel.tsx`, `apps/admin/src/components/OnBehalfPanel.tsx`, `apps/mobile/src/lib/onBehalf.ts`
 
 ## CAMPAIGN-001 · P1 · Start-a-campaign entry points require sign-in and return to the wizard
 
@@ -800,11 +932,11 @@ Creation, review and publication, visibility states, updates and comments, shari
 3. Story and media: enter the story, beneficiaries and a 'Campaign cover' (crop 16:9). Try the AI writing assistant.
 4. Goal and timeline: confirm the 250k copy and 'Current goal limit: GH₵…'. Enter a goal above the limit and confirm the error. Use the date field and Urgency picker. Enter invite emails and toggle split if the plan allows.
 5. Review: confirm the title, story, goal and end date, category and urgency, beneficiaries (no summary line) and PublicationConsent are shown, then tap 'Create campaign'.
-6. Confirm the success card 'Campaign created' with 'Status: active' or 'pending_review' and a 'View campaign' button.
+6. Confirm the success card: 'Your campaign is live' when active; 'Saved · Pending review' with the reason (for example 'A person on our team checks new photos and videos before they go public.') and 'Go to my campaigns' when a person must check it; otherwise 'Campaign created' with 'Your campaign is awaiting review…'. Each has a 'View campaign' button.
 7. Rotate the device, open and close the keyboard (on Android confirm the focused field stays above the keyboard with edge-to-edge), and background the app mid-form.
 8. Start a new form, kill the app mid-form, reopen it and open Create again.
 
-**Expect:** Validation and eligibility match web. The success card shows the true status. The cover image uploads. The keyboard never hides inputs. The cover picker is hidden when the plan's maxMediaPerCampaign is 0. After a kill and reopen the unsent form is restored with 'We restored your unsent draft from this device. If it is waiting for safety review, submit this same version again once it is approved.' and a 'Start over' button.
+**Expect:** Validation and eligibility match web. The success card shows the true status. The cover image uploads. The keyboard never hides inputs. The cover picker is hidden when the plan's maxMediaPerCampaign is 0. After a kill and reopen the unsent form is restored with 'We restored your unsent draft from this device.' and a 'Start over' button.
 
 **Needs:** Cloudinary; OpenAI (assistant, optional)
 
@@ -861,13 +993,13 @@ Creation, review and publication, visibility states, updates and comments, shari
 **Steps:**
 
 1. With consent, submit a story containing clearly violent or hateful text.
-2. In the admin queue confirm the item's reason is 'flagged'.
+2. Confirm the campaign is created Pending review with contentReviewReason 'screening_flagged', and that the admin Staff decision panel shows 'Flagged by automated screening'.
 3. Set OPENAI_API_KEY to an invalid value and restart.
 4. Submit clean text with consent.
-5. Confirm the reason is 'unavailable', with no 500 and no hang longer than about 15 seconds, and read the API log entry for that submission.
+5. Confirm it is Pending review with contentReviewReason 'screening_unavailable' ('Automated screening unavailable' in admin), with no 500 and no hang longer than about 15 seconds, and read the API log entry for that submission.
 6. Restart the API with NODE_ENV=production and OPENAI_API_KEY unset, and read the startup log.
 
-**Expect:** Flagged and unavailable submissions are held privately for staff with the 409 message. The request never crashes or hangs. Every screener failure is logged as a warning, 'Publication screener unavailable; routed to staff review', with the fingerprint and action (campaign.create). A production boot without the key logs the error 'OPENAI_API_KEY missing: publication screening disabled; opted-in submissions go to staff review' and the API still starts. Launch check: confirm the key is set in Render and that there are no unexpected reason 'unavailable' items in the queue.
+**Expect:** Flagged and unscreened submissions are created (201) as private Pending review campaigns for the campaign staff review, with a staff alert; neither is ever published automatically. The request never crashes or hangs. Every screener failure is logged as a warning, 'Publication screener unavailable; routed to staff review', with the fingerprint and action (campaign.create). A production boot without the key logs the error 'OPENAI_API_KEY missing: publication screening disabled; opted-in submissions go to staff review' and the API still starts. Launch check: confirm the key is set in Render and that there are no unexpected Pending review campaigns with reason 'screening_unavailable'.
 
 **Needs:** OpenAI
 
@@ -877,19 +1009,18 @@ Creation, review and publication, visibility states, updates and comments, shari
 
 *Surfaces:* admin, api, web  ·  *Type:* functional
 
-**Before:** Pending campaign.create item from U1. Two approved text-only campaign.create items from U1 that were not yet used. Admin A2. DB access.
+**Before:** Campaign creation stopped storing proposals on 30 September 2026, so this case covers campaign.create items stored before then (vanity URLs still use proposals). A pending campaign.create item from U1, a second pending one, and an approved text-only one that was not yet used. Admin A2. DB access.
 
 **Steps:**
 
-1. A2 enters notes and clicks 'Decline this version'.
+1. A2 enters notes and clicks 'Decline this version' on the first pending item.
 2. U1 resubmits the same version.
 3. U1 opens Settings → Publication reviews.
 4. U1 edits the story and submits again.
-5. For the first approved item, set approvalExpiresAt to the past in the DB, then resubmit the identical version without consent.
-6. Check admin /publication-reviews and U1's Publication reviews list for that item.
-7. For the second approved item, set approvalExpiresAt to the past, then resubmit the identical version with consent ticked.
+5. U1 submits the exact version of the second pending item without consent, then checks admin /publication-reviews.
+6. For the approved item, set approvalExpiresAt to the past in the DB, then resubmit the identical version with consent ticked.
 
-**Expect:** A declined resubmission returns 422 'This version was declined in safety review. Check Publication reviews, revise your draft, or contact support@ujimora.com to appeal.' The author sees 'Review response: <notes>'. The edited version creates a new pending review. An expired approval no longer returns 'This safety approval expired…'. Without consent, the same item goes back to pending with the earlier decision and notes cleared (reason staff_requested, or media when an image is attached), and the resubmission gets 409 'Saved privately for safety review…'. With consent, the item is screened again; if the text is clean it is approved by 'automated:openai' and the campaign is created in the same request.
+**Expect:** A declined resubmission returns 422 'This version was declined in safety review. Check Publication reviews, revise your draft, or contact support@ujimora.com to appeal.' and creates nothing. The author sees 'Review response: <notes>'. The edited version is a new version: it is created as Pending review ('no_screening_consent' without consent). The second pending item's exact version is created as Pending review and its proposal leaves the Publication reviews queue: staff review it once, in the campaign review. An expired approval is ignored: the version is routed like a new campaign (screened with consent, so a clean text is created live). Nothing returns 409 'Saved privately for safety review…'.
 
 **Needs:** OpenAI (consent variant)
 
@@ -919,7 +1050,7 @@ Creation, review and publication, visibility states, updates and comments, shari
 
 *Surfaces:* api, web  ·  *Type:* recovery/idempotency
 
-**Before:** U1-Plus has a staff-approved campaign.create version (form still open). Admin access to the subscription or KYC records.
+**Before:** U1-Plus has a staff-approved campaign.create proposal stored before 30 September 2026 (form still open). Admin access to the subscription or KYC records. New campaigns get the same recheck inside the creation transaction, after screening (API test 'rechecks restrictions and verification after screening').
 
 **Steps:**
 
@@ -1674,7 +1805,7 @@ Creation, review and publication, visibility states, updates and comments, shari
 7. Publish a campaign successfully and reopen /campaigns/new.
 8. Native: repeat steps 1–3 and 7 on the Create screen, killing and reopening the app instead of reloading.
 
-**Expect:** After a reload the form comes back with 'We restored your unsent draft from this browser. If it is waiting for safety review, submit this same version again once it is approved.' (native: '…from this device…'). 'Start over' empties the form and removes the draft. Explicit sign-out removes every draft from that browser or device. Drafts are per account: U2 never sees U1's draft. Drafts older than 30 days are discarded. With storage blocked the wizard works normally, with no restore and no errors. A successful creation clears the draft.
+**Expect:** After a reload the form comes back with 'We restored your unsent draft from this browser.' (native: '…from this device.'). 'Start over' empties the form and removes the draft. Explicit sign-out removes every draft from that browser or device. Drafts are per account: U2 never sees U1's draft. Drafts older than 30 days are discarded. With storage blocked the wizard works normally, with no restore and no errors. A successful creation clears the draft.
 
 **Needs:** None
 

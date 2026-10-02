@@ -2014,11 +2014,11 @@ The demo account is not staff and never hits an MFA or biometric gate.
 
 1. Start a campaign: fill the title, story, beneficiaries, cover, goal and end date. Kill the app, relaunch and open Start.
 2. Tap 'Start over'.
-3. Refill and submit without automated-review consent so it is held for review. Reopen Start, and after staff approval submit the same version again.
+3. Refill and submit without automated-review consent. Reopen Start.
 4. Edit profile: pick a new profile photo and tap Save profile so it is held. Leave the screen and reopen Edit profile.
 5. Sign in as the second account on the same device and open Start.
 
-**Expect:** After relaunch, the form restores with 'We restored your unsent draft from this device. If it is waiting for safety review, submit this same version again once it is approved.' 'Start over' clears it. The held draft is kept, and resubmitting the unchanged version after approval creates the campaign and clears the draft. Edit profile restores the held photo with 'We restored the changes you last submitted for review. Save them again once they are approved.' Drafts belong to one account and are never shown to another, and drafts older than 30 days are discarded. Known open issue I073: server-side auto-publish of approved versions is not built.
+**Expect:** After relaunch, the form restores with 'We restored your unsent draft from this device.' 'Start over' clears it. The submit without consent creates the campaign as Pending review ('Saved · Pending review') for staff to check in the campaign review and clears the draft, so Start opens empty; nothing is resubmitted. Edit profile restores the held photo with 'We restored the changes you last submitted for review. Save them again once they are approved.' Drafts belong to one account and are never shown to another, and drafts older than 30 days are discarded. Known open issue I073: server-side auto-publish of approved versions is not built.
 
 **Needs:** Publication review workflow
 

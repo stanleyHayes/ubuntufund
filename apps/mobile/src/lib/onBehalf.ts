@@ -108,3 +108,34 @@ export function cashoutConfirmPrompt(input: {
     confirmLabel: 'Request cashout',
   }
 }
+
+/**
+ * The invitation line on the Manage screen. A `held` invitation waits for our
+ * team to check the campaign's content, so it was never sent. The newest one
+ * `superseded` while consent is still pending was withdrawn (the campaign was
+ * declined, ended or closed): nothing is waiting for the beneficiary.
+ */
+export function invitationSummary(details: (Pick<CampaignBeneficiaryDetails, 'invitationEmailHint' | 'invitationStatus' | 'invitationExpiresAt'> & Partial<Pick<CampaignBeneficiaryDetails, 'consentStatus'>>) | null | undefined, formatDate: (iso?: string) => string): string {
+  if (details?.invitationStatus === 'superseded' && details.consentStatus === 'pending') return 'No invitation is waiting for the beneficiary.'
+  if (!details?.invitationEmailHint) return ''
+  if (details.invitationStatus === 'held') return `Invitation to ${details.invitationEmailHint} is sent once our team has checked the campaign`
+  if (details.invitationStatus !== 'pending' && details.invitationStatus !== 'expired') return ''
+  return `Invitation sent to ${details.invitationEmailHint}${details.invitationExpiresAt ? ` · ${details.invitationStatus === 'expired' ? 'expired' : 'expires'} ${formatDate(details.invitationExpiresAt)}` : ''}`
+}
+
+/**
+ * What makes the campaign go live from here, on the Manage screen (the
+ * server's `nextStep`). Never promises more than the campaign's rules do. A
+ * content check in progress is told by the invitation line instead.
+ */
+export function nextStepLine(details: Pick<CampaignBeneficiaryDetails, 'nextStep' | 'beneficiaryName'> | null | undefined): string {
+  if (!details) return ''
+  switch (details.nextStep) {
+    // Its invitation was withdrawn when the campaign was declined, so our team cannot finish the check yet.
+    case 'name_beneficiary': return 'Name the beneficiary again so our team can finish checking the campaign.'
+    case 'consent': return `It goes live as soon as ${details.beneficiaryName} accepts.`
+    case 'staff_after_consent': return `When ${details.beneficiaryName} accepts, our team checks it before it goes live.`
+    case 'staff': return 'Our team is checking it before it goes live. We will let you know when it has been reviewed.'
+    default: return ''
+  }
+}

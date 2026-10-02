@@ -30,6 +30,9 @@ function toDTO(entity: CampaignEntity): Campaign {
     updatedAt: plain.updatedAt,
     tier: plain.tier,
     creationMode: entity.creationMode,
+    contentReviewReason: plain.contentReviewReason,
+    contentReviewTrigger: plain.contentReviewTrigger,
+    contentReviewClearedAt: plain.contentReviewClearedAt,
     onBehalf: campaignOnBehalfSummary(entity),
   };
 }

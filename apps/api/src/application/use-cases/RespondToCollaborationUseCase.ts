@@ -33,10 +33,13 @@ export class RespondToCollaborationUseCase {
         409
       );
     }
+    const campaign = this.campaignRepo ? await this.campaignRepo.findById(collaboration.campaignId) : null;
+    // Recorded while the campaign's content waits for a staff check: the
+    // invitee has not been told about it, so it cannot be answered yet.
+    if (collaboration.heldForContentCheck && campaign?.contentCheckOutstanding) throw new AppError('Invitation not found', 404);
 
     if (input.accept) {
       if (this.campaignRepo && this.planLimits) {
-        const campaign = await this.campaignRepo.findById(collaboration.campaignId);
         if (!campaign) throw new AppError('Campaign not found', 404);
         await this.planLimits.assertFeature(campaign.creatorId, 'campaignCollaboration', 'campaign collaboration');
         const plan = await this.planLimits.resolvePlan(campaign.creatorId);

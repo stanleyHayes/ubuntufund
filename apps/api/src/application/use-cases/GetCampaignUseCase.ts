@@ -32,6 +32,18 @@ function toDTO(entity: CampaignEntity): Campaign {
   };
 }
 
+/**
+ * Why the content was sent to staff (and whether a beneficiary change sent
+ * it), and when staff cleared it: for staff and the people running the
+ * campaign, never the public or the beneficiary.
+ */
+function withContentReviewReason(dto: Campaign, entity: CampaignEntity): Campaign {
+  if (!entity.contentReviewReason) return dto;
+  return { ...dto, contentReviewReason: entity.contentReviewReason,
+    ...(entity.contentReviewTrigger ? { contentReviewTrigger: entity.contentReviewTrigger } : {}),
+    ...(entity.contentReviewClearedAt ? { contentReviewClearedAt: entity.contentReviewClearedAt } : {}) };
+}
+
 export class GetCampaignUseCase {
   constructor(
     private readonly campaignRepo: CampaignRepositoryPort,
@@ -45,11 +57,9 @@ export class GetCampaignUseCase {
     // The linked beneficiary may see a campaign run for them before it is public.
     const isBeneficiary = !!viewerId && entity?.onBehalf?.beneficiaryUserId === viewerId;
     if (!entity || (!isPublicCampaign(entity.status) && entity.creatorId !== viewerId && !isBeneficiary && !isAdmin)) return null;
-    const dto = toDTO(entity);
-    if (viewerId) {
-      const isManager = entity.creatorId === viewerId || (!!this.access && !!(await this.access.managerRole(entity, viewerId)));
-      dto.viewerAccess = campaignViewerAccess(entity, viewerId, isManager);
-    }
+    const isManager = !!viewerId && (entity.creatorId === viewerId || (!!this.access && !!(await this.access.managerRole(entity, viewerId))));
+    const dto = isManager || isAdmin ? withContentReviewReason(toDTO(entity), entity) : toDTO(entity);
+    if (viewerId) dto.viewerAccess = campaignViewerAccess(entity, viewerId, isManager);
     if (isAdmin) { dto.reviewVersion = campaignReviewVersion(entity); dto.lockedPlatformFeePercent = entity.lockedPlatformFeePercent; }
     if (this.donationRepo) {
       const counts = await this.donationRepo.countDistinctDonorsByCampaignIds([dto.id]);
@@ -69,7 +79,8 @@ export class GetCampaignUseCase {
       pageSize,
     });
 
-    const dtos = items.map(toDTO);
+    // Staff (Admin → Campaigns) see why a campaign waits; public listings never do.
+    const dtos = items.map(entity => isAdmin ? withContentReviewReason(toDTO(entity), entity) : toDTO(entity));
     if (this.donationRepo && dtos.length > 0) {
       const counts = await this.donationRepo.countDistinctDonorsByCampaignIds(dtos.map((d) => d.id));
       for (const dto of dtos) dto.donorCount = counts[dto.id] ?? 0;
@@ -86,7 +97,8 @@ export class GetCampaignUseCase {
 
   async listByCreator(creatorId: string): Promise<Campaign[]> {
     const items = await this.campaignRepo.findByCreatorId(creatorId);
-    const dtos = items.map(toDTO);
+    // The organizer's own list (My campaigns).
+    const dtos = items.map(entity => withContentReviewReason(toDTO(entity), entity));
     if (this.donationRepo && dtos.length > 0) {
       const counts = await this.donationRepo.countDistinctDonorsByCampaignIds(
         dtos.map((campaign) => campaign.id)

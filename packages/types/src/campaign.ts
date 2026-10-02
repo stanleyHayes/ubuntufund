@@ -25,6 +25,35 @@ export enum CampaignPriority {
   CRITICAL = 'critical',
 }
 
+/**
+ * Why a new campaign's content was sent to a person instead of going live:
+ * new photos/video, no consent to automated screening, or a screener that
+ * flagged the text or could not answer. Such a campaign is created as
+ * `pending_review` and goes live when staff approve it in the campaign review.
+ */
+export const CAMPAIGN_CONTENT_REVIEW_REASONS = ['new_media', 'no_screening_consent', 'screening_flagged', 'screening_unavailable'] as const
+
+export type CampaignContentReviewReason = (typeof CAMPAIGN_CONTENT_REVIEW_REASONS)[number]
+
+/**
+ * What sent the content to a person after creation: `beneficiary_change` when
+ * the organizer named a different beneficiary on a campaign whose content had
+ * already been checked, and the new name and reason were not cleared by
+ * automated screening. Absent when creation itself sent it.
+ */
+export type CampaignContentReviewTrigger = 'beneficiary_change'
+
+/**
+ * A campaign's content check is outstanding from creation (or from a
+ * beneficiary change that reopened it) until staff approve it in the campaign
+ * review. Until then nothing about the campaign leaves the organizer and
+ * staff: the beneficiary invitation and new collaborator invitations wait for
+ * the check.
+ */
+export function isContentCheckOutstanding(campaign: Pick<Campaign, 'contentReviewReason' | 'contentReviewClearedAt'>): boolean {
+  return !!campaign.contentReviewReason && !campaign.contentReviewClearedAt
+}
+
 export interface Campaign {
   id: string
   /**
@@ -71,6 +100,25 @@ export interface Campaign {
   lockedPlatformFeePercent?: number
   /** Absent on campaigns created before on-behalf campaigns existed: read as 'self'. */
   creationMode?: CampaignCreationMode
+  /**
+   * Set when creation sent the content to staff review (the campaign was
+   * created `pending_review`). Kept after the decision as a record of why.
+   * Only on reads by the organizer (and, once the campaign is public, its
+   * managers) and staff; never on public reads. Absent when automated
+   * screening, or an earlier staff approval of this exact version, cleared the
+   * content.
+   */
+  contentReviewReason?: CampaignContentReviewReason
+  /**
+   * When staff cleared that content check in the campaign review; absent while
+   * it is outstanding. Same readers as `contentReviewReason`.
+   */
+  contentReviewClearedAt?: Date
+  /**
+   * Set when a later beneficiary change reopened the content check (see
+   * `CampaignContentReviewTrigger`). Same readers as `contentReviewReason`.
+   */
+  contentReviewTrigger?: CampaignContentReviewTrigger
   /** Present when the campaign is run on someone else's behalf. */
   onBehalf?: CampaignOnBehalfSummary
   /** Present on reads by a signed-in viewer. */

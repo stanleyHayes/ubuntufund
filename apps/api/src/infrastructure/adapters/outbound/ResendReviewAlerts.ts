@@ -1,11 +1,30 @@
+import type { CampaignContentReviewReason } from '@ubuntu-fund/types';
+import type { CampaignReviewQueueAlert, ReviewQueueAlertPort, ReviewQueueOccasion } from '../../../domain/ports/outbound/ReviewQueueAlertPort.js';
 import { logger } from '../../logging/logger.js';
 import { renderEmail } from './emailTemplate.js';
+
+/** Why the content itself waits for a person, in the reviewer's words. */
+const CONTENT_CHECK: Record<CampaignContentReviewReason, string> = {
+  new_media: 'New photos or video to look at',
+  no_screening_consent: 'The organizer did not opt in to automated screening',
+  screening_flagged: 'Automated screening flagged the text',
+  screening_unavailable: 'Automated screening was unavailable',
+};
+
+/** Why a campaign that already existed is back in the queue, for the email's opening line. */
+const OCCASION_INTRO: Record<ReviewQueueOccasion['kind'], string> = {
+  beneficiary_accepted: 'The beneficiary accepted this campaign. It now needs your approval before it can go live.',
+  beneficiary_changed: 'The organizer changed who this campaign is for. It needs your approval before it can go live.',
+  beneficiary_reassigned: 'Staff reassigned who this campaign is for. It needs your approval before it can go live.',
+  returned_to_review: 'This campaign was returned to review. It needs a new decision before it can go live.',
+};
 
 /**
  * Tells the review team a campaign is waiting on them.
  *
- * A campaign above the auto-approve tier sits in PENDING_REVIEW indefinitely,
- * and until now nothing said so — the organizer saw "Donations closed" and the
+ * A campaign above the auto-approve tier, or one whose new media or unscreened
+ * text a person must check, sits in PENDING_REVIEW indefinitely, and until
+ * now nothing said so — the organizer saw "Donations closed" and the
  * reviewer had to think to go and look. That is the failure mode worth email:
  * money that cannot be raised because nobody knew there was a queue.
  *
@@ -18,7 +37,7 @@ import { renderEmail } from './emailTemplate.js';
  * and failing the request because an alert could not be sent would be strictly
  * worse than a missing email.
  */
-export class ResendReviewAlerts {
+export class ResendReviewAlerts implements ReviewQueueAlertPort {
   constructor(
     private readonly apiKey: string,
     private readonly from: string,
@@ -97,20 +116,18 @@ export class ResendReviewAlerts {
     }
   }
 
-  async campaignPendingReview(input: {
-    campaignId: string;
-    title: string;
-    goalAmount: number;
-    currency: string;
-    tier: number;
-  }): Promise<void> {
+  async campaignPendingReview(input: CampaignReviewQueueAlert): Promise<void> {
     // Deliberately silent when empty: an empty address is how an admin turns these off.
     const reviewerEmail = await this.recipient();
     if (!reviewerEmail) return;
 
     const goal = `${input.currency} ${input.goalAmount.toLocaleString('en-US')}`;
-    // One alert per campaign, however many times this is retried.
-    await this.send(`campaign-review/${input.campaignId}`, {
+    // One alert per campaign and occasion, however many times this is retried.
+    // A campaign that comes back to the queue later (its beneficiary accepted,
+    // was changed or reassigned, or staff returned it to review) is a new
+    // occasion with its own key, so the provider does not drop it as a duplicate.
+    const key = input.occasion ? `campaign-review/${input.campaignId}/${input.occasion.kind}/${input.occasion.ref}` : `campaign-review/${input.campaignId}`;
+    await this.send(key, {
       from: this.from,
       to: [reviewerEmail],
       subject: `Campaign awaiting review — ${input.title} (${goal})`,
@@ -118,8 +135,13 @@ export class ResendReviewAlerts {
         preheader: `“${input.title}” needs approval before it can accept donations.`,
         eyebrow: 'Review queue',
         heading: 'A campaign is waiting for review',
-        intro: [`A tier ${input.tier} campaign needs approval before it can accept donations. It is not visible to donors until it is approved.`],
-        details: [{ label: 'Title', value: input.title }, { label: 'Goal', value: goal }],
+        intro: [input.occasion ? OCCASION_INTRO[input.occasion.kind] : `A tier ${input.tier} campaign needs approval before it can accept donations. It is not visible to donors until it is approved.`],
+        details: [
+          { label: 'Title', value: input.title },
+          { label: 'Goal', value: goal },
+          ...(input.contentReviewReason ? [{ label: 'Content check', value: CONTENT_CHECK[input.contentReviewReason] }] : []),
+          ...(input.contentReviewTrigger === 'beneficiary_change' ? [{ label: 'What changed', value: 'The beneficiary’s name and reason' }] : []),
+        ],
         button: { label: 'Review it', url: `${this.adminUrl}/campaigns/${input.campaignId}` },
         footer: ['Sent to the team address set in Admin → Settings.'],
       }, { webUrl: this.webUrl }),

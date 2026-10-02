@@ -14,6 +14,12 @@ export interface CollaborationProps {
   logoUrl?: string;
   inviteMessage?: string;
   respondedAt?: Date;
+  /**
+   * Recorded while the campaign's content waited for a staff check, so the
+   * invitee has not been told about it yet: it is not listed for them and
+   * cannot be answered until it is announced.
+   */
+  heldForContentCheck?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,6 +29,7 @@ export interface ReinviteParams {
   role: CollaboratorRole;
   revenueSharePercent: number;
   inviteMessage?: string;
+  heldForContentCheck?: boolean;
 }
 
 export class CollaborationEntity {
@@ -68,6 +75,9 @@ export class CollaborationEntity {
   get respondedAt(): Date | undefined {
     return this.props.respondedAt;
   }
+  get heldForContentCheck(): boolean {
+    return !!this.props.heldForContentCheck;
+  }
   get createdAt(): Date {
     return this.props.createdAt;
   }
@@ -84,6 +94,7 @@ export class CollaborationEntity {
       throw new Error('Only pending invitations can be accepted');
     }
     this.props.status = CollaborationStatus.ACCEPTED;
+    this.props.heldForContentCheck = undefined;
     this.props.respondedAt = new Date();
     this.props.updatedAt = new Date();
   }
@@ -93,6 +104,7 @@ export class CollaborationEntity {
       throw new Error('Only pending invitations can be declined');
     }
     this.props.status = CollaborationStatus.DECLINED;
+    this.props.heldForContentCheck = undefined;
     this.props.respondedAt = new Date();
     this.props.updatedAt = new Date();
   }
@@ -102,6 +114,7 @@ export class CollaborationEntity {
       throw new Error('Collaborator has already been removed');
     }
     this.props.status = CollaborationStatus.REMOVED;
+    this.props.heldForContentCheck = undefined;
     this.props.updatedAt = new Date();
   }
 
@@ -117,6 +130,7 @@ export class CollaborationEntity {
     this.props.role = params.role;
     this.props.revenueSharePercent = params.revenueSharePercent;
     this.props.inviteMessage = params.inviteMessage;
+    this.props.heldForContentCheck = params.heldForContentCheck;
     this.props.status = CollaborationStatus.PENDING;
     this.props.respondedAt = undefined;
     this.props.updatedAt = new Date();

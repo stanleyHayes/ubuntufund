@@ -49,3 +49,67 @@ it('forbids self-review and prevents an old account response refreshing the new 
   expect(screen.getByRole('button', { name: 'Approve campaign' })).toBeDisabled()
   expect(onChanged).not.toHaveBeenCalled()
 })
+it('says why a campaign is waiting for a content check, only while it waits', () => {
+  const held = { ...campaign, goalAmount: 500, contentReviewReason: 'new_media' as const }
+  const view = render(<CampaignReviewPanel campaign={held} onChanged={vi.fn()} />)
+  expect(screen.getByText('Why it is waiting')).toBeInTheDocument()
+  expect(screen.getByText('Content check · New photos or video')).toBeInTheDocument()
+  expect(screen.getByText('Open and inspect every attachment before approving.')).toBeInTheDocument()
+  // The same attestations are still required to approve it.
+  expect(screen.getByRole('checkbox', { name: /complete public content and every media attachment/ })).not.toBeChecked()
+  view.rerender(<CampaignReviewPanel campaign={{ ...held, status: CampaignStatus.ACTIVE, reviewVersion: 'c'.repeat(64) }} onChanged={vi.fn()} />)
+  expect(screen.queryByText('Why it is waiting')).not.toBeInTheDocument()
+})
+it.each([
+  ['no_screening_consent', 'Content check · Not screened: no consent'],
+  ['screening_flagged', 'Content check · Flagged by automated screening'],
+  ['screening_unavailable', 'Content check · Automated screening unavailable'],
+] as const)('names the %s content check', (contentReviewReason, label) => {
+  render(<CampaignReviewPanel campaign={{ ...campaign, contentReviewReason }} onChanged={vi.fn()} />)
+  expect(screen.getByText(label)).toBeInTheDocument()
+})
+it('adds no content reason to a campaign waiting only for its financial review', () => {
+  render(<CampaignReviewPanel campaign={campaign} onChanged={vi.fn()} />)
+  expect(screen.queryByText('Why it is waiting')).not.toBeInTheDocument()
+})
+it('drops the content check once staff cleared it, when the campaign returns to review for something else', () => {
+  // Cleared, then back in review (a reopen, or the beneficiary's acceptance): the media were already approved.
+  render(<CampaignReviewPanel campaign={{ ...campaign, contentReviewReason: 'new_media', contentReviewClearedAt: new Date('2026-09-30T10:00:00Z') }} onChanged={vi.fn()} />)
+  expect(screen.queryByText('Why it is waiting')).not.toBeInTheDocument()
+  expect(screen.queryByText(/Content check ·/)).not.toBeInTheDocument()
+  // The decision itself still needs both attestations.
+  expect(screen.getByRole('checkbox', { name: /complete public content/ })).not.toBeChecked()
+})
+it('tells staff that approving held on-behalf content sends the beneficiary invitation', async () => {
+  const onBehalf = { ...campaign, creationMode: 'on_behalf' as const, contentReviewReason: 'screening_flagged' as const, onBehalf: { beneficiaryName: 'Ama Mensah', beneficiaryType: 'individual' as const, beneficiaryConfirmed: false } }
+  state.get.mockImplementation(async (path: string) => (path.endsWith('/beneficiary') ? { consentStatus: 'pending', invitationStatus: 'held', nextStep: 'content_check' } : { items: [], total: 0 }))
+  const view = render(<CampaignReviewPanel campaign={onBehalf} onChanged={vi.fn()} />)
+  await waitFor(() => expect(state.get).toHaveBeenCalledWith('/campaigns/campaign/beneficiary'))
+  expect(screen.getByText(/Nothing has been sent to the beneficiary yet\. Approving clears the content and sends their invitation/)).toBeInTheDocument()
+  view.rerender(<CampaignReviewPanel campaign={{ ...onBehalf, reviewVersion: 'd'.repeat(64), contentReviewClearedAt: new Date() }} onChanged={vi.fn()} />)
+  expect(screen.queryByText(/Nothing has been sent to the beneficiary yet/)).not.toBeInTheDocument()
+})
+it('points staff at the new beneficiary details when a change reopened the check', () => {
+  const reopened = { ...campaign, creationMode: 'on_behalf' as const, contentReviewReason: 'no_screening_consent' as const, contentReviewTrigger: 'beneficiary_change' as const,
+    onBehalf: { beneficiaryName: 'Kofi Asante', beneficiaryType: 'individual' as const, beneficiaryConfirmed: false } }
+  const view = render(<CampaignReviewPanel campaign={reopened} onChanged={vi.fn()} />)
+  expect(screen.getByText('Content check · Not screened: no consent')).toBeInTheDocument()
+  expect(screen.getByText(/The organizer changed the beneficiary after the campaign was checked\. Read the new beneficiary name and reason closely/)).toBeInTheDocument()
+  // Held like any content check: approving sends the new invitation.
+  expect(screen.getByText(/Nothing has been sent to the beneficiary yet/)).toBeInTheDocument()
+  view.rerender(<CampaignReviewPanel campaign={{ ...reopened, reviewVersion: 'e'.repeat(64), contentReviewClearedAt: new Date() }} onChanged={vi.fn()} />)
+  expect(screen.queryByText(/The organizer changed the beneficiary/)).not.toBeInTheDocument()
+})
+it('says an invitation withdrawn when the campaign was declined must be named again, instead of promising a send', async () => {
+  const returned = { ...campaign, creationMode: 'on_behalf' as const, contentReviewReason: 'new_media' as const, onBehalf: { beneficiaryName: 'Ama Mensah', beneficiaryType: 'individual' as const, beneficiaryConfirmed: false } }
+  state.get.mockImplementation(async (path: string) => (path.endsWith('/beneficiary') ? { consentStatus: 'pending', invitationStatus: 'superseded', nextStep: 'name_beneficiary' } : { items: [], total: 0 }))
+  render(<CampaignReviewPanel campaign={returned} onChanged={vi.fn()} />)
+  expect(await screen.findByText(/No beneficiary invitation is waiting: it was withdrawn when the campaign was declined/)).toBeInTheDocument()
+  expect(screen.getByText(/The organizer has to name the beneficiary again before it can be approved/)).toBeInTheDocument()
+  expect(screen.queryByText(/Approving clears the content and sends their invitation/)).not.toBeInTheDocument()
+})
+it('reads the beneficiary only for on-behalf content that still waits for its check', async () => {
+  render(<CampaignReviewPanel campaign={{ ...campaign, contentReviewReason: 'new_media' }} onChanged={vi.fn()} />)
+  await waitFor(() => expect(state.get).toHaveBeenCalled())
+  expect(state.get).not.toHaveBeenCalledWith('/campaigns/campaign/beneficiary')
+})

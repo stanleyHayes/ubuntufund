@@ -18,6 +18,8 @@ const beneficiarySchema = z.object({
   reason: z.string().trim().min(10).max(1000),
   payoutArrangement: z.enum(['beneficiary', 'organization']),
 }).strict();
+// The organizer's change is new public text: permission to screen it, as for a new campaign (default off).
+const changeSchema = beneficiarySchema.extend({ automatedReviewConsent: z.boolean().optional() }).strict();
 const staffReason = z.string().trim().min(20, 'Explain the decision in at least 20 characters').max(2000);
 const reassignSchema = beneficiarySchema.extend({ staffReason }).strict();
 const authoritySchema = z.object({ target: z.enum(['beneficiary', 'organization', 'none']), staffReason }).strict();
@@ -63,9 +65,9 @@ export function createOnBehalfRoutes(deps: {
   campaigns.post('/:id/beneficiary/invitation', deps.authMiddleware, beneficiaryManageRateLimiter, wrap(async (req, res) => {
     res.json({ data: await deps.service.resend(String(req.params.id), req.userId!), message: 'Invitation sent again.', status: 200 });
   }));
-  campaigns.put('/:id/beneficiary', deps.authMiddleware, beneficiaryManageRateLimiter, validate(beneficiarySchema), wrap(async (req, res) => {
-    await deps.service.changeBeneficiary(String(req.params.id), req.userId!, req.body);
-    res.json({ data: null, message: 'Beneficiary updated and invited.', status: 200 });
+  campaigns.put('/:id/beneficiary', deps.authMiddleware, beneficiaryManageRateLimiter, validate(changeSchema), wrap(async (req, res) => {
+    const result = await deps.service.changeBeneficiary(String(req.params.id), req.userId!, req.body);
+    res.json({ data: result, message: result.invitationHeld ? 'Beneficiary updated. The invitation is sent once our team has checked the campaign.' : 'Beneficiary updated and invited.', status: 200 });
   }));
   campaigns.post('/:id/beneficiary/consent/revoke', deps.authMiddleware, beneficiaryManageRateLimiter, wrap(async (req, res) => {
     await deps.service.revokeConsent(String(req.params.id), req.userId!, meta(req));
@@ -85,8 +87,8 @@ export function createOnBehalfRoutes(deps: {
   }));
   admin.post('/:id/beneficiary/reassign', deps.authMiddleware, deps.requireAdmin, validate(reassignSchema), wrap(async (req, res) => {
     const { staffReason: reason, ...input } = req.body;
-    await deps.service.reassign(String(req.params.id), req.userId!, input, reason);
-    res.json({ data: null, message: 'Beneficiary reassigned and invited.', status: 200 });
+    const result = await deps.service.reassign(String(req.params.id), req.userId!, input, reason);
+    res.json({ data: result, message: result.invitationHeld ? 'Beneficiary reassigned. The invitation is held until the content check is cleared.' : 'Beneficiary reassigned and invited.', status: 200 });
   }));
   admin.put('/:id/payout-authority', deps.authMiddleware, deps.requireAdmin, validate(authoritySchema), wrap(async (req, res) => {
     await deps.service.setPayoutAuthority(String(req.params.id), req.userId!, req.body.target, req.body.staffReason);
