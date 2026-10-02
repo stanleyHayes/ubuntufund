@@ -26,11 +26,17 @@ describe('publication notices', () => {
     expect(publicationNotice({ ...base, state: 'published', path: '/campaigns/c1' })).toMatchObject({
       key: `publication-review:review-1:${reviewedAt.getTime()}:published`, title: 'Your comment is live', path: '/campaigns/c1',
     });
-    // The deadline only while it lasts.
+    // The deadline only while it lasts; after it, the same version only goes back for a new review.
+    const profile = { ...base, action: 'account.profile' };
+    expect(publicationNotice({ ...profile, state: 'not_published', reason: 'credentials_changed', approvalExpiresAt: expires }).body)
+      .toBe('Your sign-in details changed since you submitted it (a password or two-step verification change). Save it again before 9 Oct 2026, 14:05 GMT to publish it straight away.');
+    expect(publicationNotice({ ...profile, state: 'not_published', reason: 'credentials_changed', approvalExpiresAt: new Date(now.getTime() - 1) }).body)
+      .toBe('Your sign-in details changed since you submitted it (a password or two-step verification change). Save it again to request a new review.');
+    // A held comment's form was cleared, so posting again is never promised to publish it straight away.
     expect(publicationNotice({ ...base, state: 'not_published', reason: 'credentials_changed', approvalExpiresAt: expires }).body)
-      .toBe('Your sign-in details changed since you submitted it (a password or two-step verification change). Post it again before 9 Oct 2026, 14:05 GMT to publish it straight away.');
+      .toBe('Your sign-in details changed since you submitted it (a password or two-step verification change). Post it again if you still want it published.');
     expect(publicationNotice({ ...base, state: 'not_published', reason: 'credentials_changed', approvalExpiresAt: new Date(now.getTime() - 1) }).body)
-      .toBe('Your sign-in details changed since you submitted it (a password or two-step verification change). Post it again to publish it.');
+      .toBe('Your sign-in details changed since you submitted it (a password or two-step verification change). Post it again to request a new review.');
     expect(publicationNotice({ ...base, state: 'superseded', reason: 'edited_since_submitted' })).toMatchObject({
       key: `publication-review:review-1:${reviewedAt.getTime()}:superseded`, title: "Your earlier comment wasn't published",
     });

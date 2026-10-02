@@ -102,7 +102,7 @@ describe('render.yaml blueprint', () => {
   });
 
   it('keeps publishing on approval off until every part ships', () => {
-    // Flip it together with the updated Privacy and Cookie notices (docs/compliance/PUBLICATION_REVIEWS.md).
+    // Turn it on once every part is deployed; the Privacy and Cookie notices ship with the releases, not on that day (docs/compliance/PUBLICATION_REVIEWS.md).
     expect(declared.get('PUBLISH_ON_APPROVAL_ENABLED')).toBe('value');
     expect(readFileSync(join(repoRoot, 'render.yaml'), 'utf8')).toMatch(/- key: PUBLISH_ON_APPROVAL_ENABLED\n(?:\s*#.*\n)*\s*value: "false"\n/);
   });

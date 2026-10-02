@@ -12,6 +12,28 @@ Engineering implementation covers edits to the organization name and website thr
 - Web provides separate identity screening consent and review responses while retaining a held draft. Workspace changes clear consent and draft context, and workspace selection is disabled during a write. Account-keyed forms ignore late saves from the previous account. A redundant initial detail load that could reset newly typed fields was removed.
 - Native organization owners have a separate identity editor within profile settings, with unchecked consent, preserved held drafts, inline review history, load retry and account-keyed state. Delegated-team administration remains the existing web workflow; this change does not claim new native team-management parity.
 
+## Publishing on approval (2 October 2026)
+
+With `PUBLISH_ON_APPROVAL_ENABLED` on, a staff approval publishes a held name and website by itself (see `PUBLICATION_REVIEWS.md`, "Publishing on approval"). Nobody saves them again.
+
+- **One shared writer.** The route and the approval both write through `MongoOrganizationIdentityWrite.commit`, so they run the same checks in one transaction:
+  - the actor's credentials, closure and agreement;
+  - a restriction on the actor, or on the organization;
+  - a teammate's current admin role, as a fenced membership write;
+  - the exact version the change was proposed against;
+  - the organization's own agreement.
+
+  The audit `organization.profile.updated` notes "via approved review {id}" on an approval.
+- **Outcomes when it is not published.**
+  - a restricted organization: `organizer_restricted` when a teammate submitted the change (`restricted` when the organization did);
+  - an organization that has not accepted the current agreement: `organization_terms_not_accepted` when a teammate submitted the change (`terms_not_accepted` when the organization did);
+  - a teammate demoted or removed: `permission_changed`;
+  - a closed organization: `item_unavailable`;
+  - details changed since submission: `superseded`.
+- **Saving the live details.** Saving the details exactly as they are publishes nothing, writes nothing and bumps no revision. It still takes back every held or approved-but-unpublished rename, and tells a teammate whose version it closed. A save of the live details that an approval publishes over in the meantime answers 409 instead of reporting success.
+- **Older apps.** If the exact details the request sends are already published, the route answers `{ updated: true }` without writing.
+- **Conflict of interest.** Staff who belong to the organization cannot decide its versions.
+
 ## Account closure
 
 Organization erasure removes `organization.profile` review records by resource ID as well as all review records authored by the closing account. This covers organization drafts submitted by teammates. Review insertion now performs short transactional account writes before saving any new private review record; organization identity drafts fence both author and organization. A request authorized before closure cannot enqueue a new record after the closed-account check. External screening runs after that short transaction, never while holding its database locks. Existing review TTL and separate minimal audit retention still apply.

@@ -1666,7 +1666,7 @@ The demo account is not staff and never hits an MFA or biometric gate.
 
 *Surfaces:* admin, android, api, ios, web  ·  *Type:* functional
 
-**Before:** The owner of an active campaign, signed in. A supporter account. OpenAI screening configured and staff available for publication reviews.
+**Before:** Publishing on approval is on. The owner of an active campaign, signed in. A supporter account. OpenAI screening configured and staff available for publication reviews.
 
 **Steps:**
 
@@ -1676,7 +1676,7 @@ The demo account is not staff and never hits an MFA or biometric gate.
 4. On a posted update, tap Pin/Unpin, then Delete and Cancel, then Delete and Delete.
 5. As the supporter, open the same campaign. Check the web page too.
 
-**Expect:** Types are General update, Milestone, Thank you and Urgent. 'Post update' stays disabled for titles under 3 characters or an empty body. A held post keeps the dialog open with the API message inline, e.g. 'Saved privately for safety review. Your content has not been published. Keep your draft and check Publication reviews before submitting this same version again.' A published post closes the dialog, shows 'Update posted.' and refreshes the list, with the 'Pinned' badge when pinned. Pin/Unpin toggles the badge. Delete asks 'Delete update?' / 'This removes the update for everyone.' and removes it only after 'Delete'. Supporters see no owner tools, but still have Report on updates. The web shows the same updates.
+**Expect:** Types are General update, Milestone, Thank you and Urgent. 'Post update' stays disabled for titles under 3 characters or an empty body. A held post clears the dialog and shows the app's 'Waiting for safety review' notice: 'Saved privately for safety review. It isn't public yet. Once a reviewer approves it, it's published automatically, so you don't need to submit it again. Check Settings → Publication reviews for the decision; you can withdraw it there.' The app never shows the API's own 409 message. Staff approval posts it by itself, pinned if it was pinned, and the owner gets 'Your campaign update is live'. A published post closes the dialog, shows 'Update posted.' and refreshes the list, with the 'Pinned' badge when pinned. Pin/Unpin toggles the badge. Delete asks 'Delete update?' / 'This removes the update for everyone.' and removes it only after 'Delete'. Supporters see no owner tools, but still have Report on updates. The web shows the same updates.
 
 **Needs:** OpenAI moderation, admin publication reviews
 
@@ -1791,7 +1791,7 @@ The demo account is not staff and never hits an MFA or biometric gate.
 2. In the app, tap the bell, open a notification and tap 'View details'.
 3. Repeat for each notification path listed in the preconditions.
 
-**Expect:** https links open in the browser. 'View details' opens the matching native screen through resolveNativePath: /campaigns/<id> → the campaign, /my-campaigns → My Campaigns, /kyc → Identity verification, /donations/refund/<id> → Refund Request, /subscription → Subscription. Unknown paths go to 'Lost in the journey?', never a blank screen. /organization-team has no native route, so organization-invitation notices land on 'Lost in the journey?'. Log that as a defect; it should open Invitations. Known open issue I152: Universal Links / App Links are not configured, so https links always open the browser. That needs an owner decision and signing data.
+**Expect:** https links open in the browser. 'View details' opens the matching native screen through resolveNativePath: /campaigns/<id> → the campaign, /my-campaigns → My Campaigns, /kyc → Identity verification, /donations/refund/<id> → Refund Request, /subscription → Subscription. /campaigns/<id>/thank-you → the thank-you composer, /organization-team → Invitations (Edit profile for an organization account, where its name and website are edited). Unknown paths go to 'Lost in the journey?', never a blank screen. Known open issue I152: Universal Links / App Links are not configured, so https links always open the browser. That needs an owner decision and signing data.
 
 **Needs:** Staging notifications data
 
@@ -1912,7 +1912,7 @@ The demo account is not staff and never hits an MFA or biometric gate.
 
 *Surfaces:* android, api, email, ios, web  ·  *Type:* functional
 
-**Before:** A signed-in account with an unverified email, with donations on the leaderboard. A second account to view this user's profile. Staff access to publication reviews.
+**Before:** Publishing on approval is on. A signed-in account with an unverified email, with donations on the leaderboard. A second account to view this user's profile. Staff access to publication reviews.
 
 **Steps:**
 
@@ -1922,9 +1922,9 @@ The demo account is not staff and never hits an MFA or biometric gate.
 4. Turn 'Anonymous Donations' on. Open the Android Donate form, donate, and check the campaign's recent donations.
 5. Look for a Language setting under Account.
 6. Turn 'Public profile' off, then open this user's profile from the second account (for example through a comment author link).
-7. Turn 'Public profile' on without ticking 'Use OpenAI to check this public text for safety (optional)'. Then tick it and try again, or have staff approve the review, and retry.
+7. Turn 'Public profile' on without ticking 'Use OpenAI to check this public text for safety (optional)'. Then tick it and try again, or have staff approve the review and refresh Settings.
 
-**Expect:** Alerts and emails are off by default and need a verified email. Each confirmation email arrives once (the newsletter uses double opt-in). With 'Show on Leaderboard' off, the user is hidden from the leaderboard. With 'Anonymous Donations' on, the Android donate form pre-ticks 'Donate anonymously' and clears the pre-filled account name, and the donation shows 'Anonymous'. There is no Language picker; it was removed and the app is English-only. Account shows only 'Currency GHS'. With the public profile off, the second account sees 'This profile is not available.' with report and block still offered. Turning it on is a publication. Without approval the toggle reverts and the error banner shows 'Saved privately for safety review. Your content has not been published. Keep your draft and check Publication reviews before submitting this same version again.' With consent that passes screening, or after approval, it stays on. Any failed save reverts and shows the error banner.
+**Expect:** Alerts and emails are off by default and need a verified email. Each confirmation email arrives once (the newsletter uses double opt-in). With 'Show on Leaderboard' off, the user is hidden from the leaderboard. With 'Anonymous Donations' on, the Android donate form pre-ticks 'Donate anonymously' and clears the pre-filled account name, and the donation shows 'Anonymous'. There is no Language picker; it was removed and the app is English-only. Account shows only 'Currency GHS'. With the public profile off, the second account sees 'This profile is not available.' with report and block still offered. Turning it on is a publication. Without approval the toggle reverts and the 'Waiting for safety review' notice (not the error banner) shows: 'Saved privately for safety review. It isn't public yet. Once a reviewer approves it, it's published automatically, so you don't need to submit it again. Check Publication reviews below for the decision; you can withdraw it there.' With consent that passes screening it stays on; staff approval turns the profile public by itself, with no second tap. Any failed save reverts and shows the error banner.
 
 **Needs:** Email provider
 
@@ -2018,7 +2018,7 @@ The demo account is not staff and never hits an MFA or biometric gate.
 4. Edit profile: pick a new profile photo and tap Save profile so it is held. Leave the screen and reopen Edit profile.
 5. Sign in as the second account on the same device and open Start.
 
-**Expect:** After relaunch, the form restores with 'We restored your unsent draft from this device.' 'Start over' clears it. The submit without consent creates the campaign as Pending review ('Saved · Pending review') for staff to check in the campaign review and clears the draft, so Start opens empty; nothing is resubmitted. Edit profile restores the held photo with 'We restored the changes you last submitted for review. Save them again once they are approved.' Drafts belong to one account and are never shown to another, and drafts older than 30 days are discarded. Known open issue I073: server-side auto-publish of approved versions is not built.
+**Expect:** After relaunch, the form restores with 'We restored your unsent draft from this device.' 'Start over' clears it. The submit without consent creates the campaign as Pending review ('Saved · Pending review') for staff to check in the campaign review and clears the draft, so Start opens empty; nothing is resubmitted. Edit profile restores the held photo with a note that it was last submitted for review. Drafts belong to one account and are never shown to another, and drafts older than 30 days are discarded. Known open issue I073 (mitigated): since 2 October 2026 an approval publishes the held version on the server, so the device draft is needed only when an approval could not publish it.
 
 **Needs:** Publication review workflow
 
@@ -2057,7 +2057,7 @@ The demo account is not staff and never hits an MFA or biometric gate.
 4. Tap 'Accept invitation', once with an unverified email and once verified.
 5. As an organization owner or admin, open Invitations.
 
-**Expect:** Each decision creates one inbox notice, never duplicated on retries: 'Your campaign is live' (opens the campaign); 'Your campaign was not approved' / 'Your campaign has been blocked' / 'Your campaign is back in review' (open My Campaigns); 'Your identity verification is approved' / 'Your identity verification was not approved' (with 'Reason: …') / 'More information needed for your verification' (open Identity verification); 'We reviewed your report' for the reporter; 'Your comment was removed' for the author. The invitee gets 'Organization invitation'. Invitations shows 'Organization teams' with the organization, 'Invited as <role>. Invitations expire after seven days.' and 'Accept invitation'. Accepting shows 'Accepted' / 'You joined the organization team.'; with an unverified email it shows 'Could not accept' with the API reason. Owners and admins see 'Manage your organization team on the website'. The organization-invitation notice's View details (/organization-team) has no native route and lands on 'Lost in the journey?'; log that as a defect. Known open issue I181: no email is sent for organization invitations.
+**Expect:** Each decision creates one inbox notice, never duplicated on retries: 'Your campaign is live' (opens the campaign); 'Your campaign was not approved' / 'Your campaign has been blocked' / 'Your campaign is back in review' (open My Campaigns); 'Your identity verification is approved' / 'Your identity verification was not approved' (with 'Reason: …') / 'More information needed for your verification' (open Identity verification); 'We reviewed your report' for the reporter; 'Your comment was removed' for the author. The invitee gets 'Organization invitation'. Invitations shows 'Organization teams' with the organization, 'Invited as <role>. Invitations expire after seven days.' and 'Accept invitation'. Accepting shows 'Accepted' / 'You joined the organization team.'; with an unverified email it shows 'Could not accept' with the API reason. Owners and admins see 'Manage your organization team on the website'. The organization-invitation notice's View details (/organization-team) opens Invitations. Known open issue I181: no email is sent for organization invitations.
 
 **Needs:** Admin console, web organization team
 

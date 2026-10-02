@@ -66,6 +66,25 @@ it('keeps a held identity draft and private contact fields while allowing review
   expect(updateName).not.toHaveBeenCalled()
 })
 
+it('says the other changes are saved when the name waits for an approval that publishes it', async () => {
+  updateName.mockClear()
+  vi.mocked(api.get).mockImplementation(async path => path.startsWith('/publication-reviews') ? { items: [], total: 0 } : { name: 'Current name', phone: '0551234567', bio: 'Private biography' })
+  vi.mocked(api.put).mockRejectedValue(Object.assign(new Error('Saved privately for safety review. Your content has not been published yet.'), {
+    status: 409, errors: { publication: ['held', 'publishes_on_approval'], saved: ['private'] },
+  }))
+  mount()
+  const name = await screen.findByLabelText('Full Name')
+  fireEvent.change(name, { target: { value: 'Held proposed name' } })
+  fireEvent.change(screen.getByLabelText('Bio'), { target: { value: 'A new private biography' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
+  const notice = (await screen.findByText('Waiting for safety review')).closest('[role="status"]')
+  expect(notice).toHaveClass('MuiAlert-colorInfo')
+  expect(notice?.textContent).toBe("Waiting for safety reviewYour other changes are saved. Saved privately for safety review. It isn't public yet. Once a reviewer approves it, it's published automatically, so you don't need to submit it again. Check Publication reviews below for the decision; you can withdraw it there.")
+  expect(screen.getByRole('button', { name: 'Refresh publication reviews' })).toBeInTheDocument()
+  expect(name).toHaveValue('Held proposed name')
+  expect(updateName).not.toHaveBeenCalled()
+})
+
 it('saves private contact changes without resubmitting unchanged public identity', async () => {
   vi.mocked(api.get).mockResolvedValue({ name: 'Current name', phone: '0551234567', bio: 'Private biography' })
   vi.mocked(api.put).mockResolvedValue({ name: 'Current name', phone: '0551111111', bio: 'Private biography' })

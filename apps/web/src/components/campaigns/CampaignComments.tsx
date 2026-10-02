@@ -10,7 +10,7 @@ import { Alert, Avatar, Box, Button, IconButton, Skeleton, Stack, Typography } f
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
 import type { CampaignComment } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
-import { isPublicationHeld } from '@/lib/publicationDrafts'
+import { publicationHold, type PublicationHold } from '@/lib/publicationDrafts'
 import { useAuth } from '@/context/AuthContext'
 import { SHAPE } from '@ubuntu-fund/ui'
 
@@ -31,7 +31,7 @@ function CampaignCommentsForViewer({ campaignId, creatorId }: { campaignId: stri
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // The last comment was held for safety review: a notice, not an error.
-  const [held, setHeld] = useState(false)
+  const [held, setHeld] = useState<PublicationHold | null>(null)
 
   const requestVersion = useRef(0)
   const load = useCallback(async () => {
@@ -59,16 +59,23 @@ function CampaignCommentsForViewer({ campaignId, creatorId }: { campaignId: stri
   async function submit() {
     if (!content.trim()) return
     setSubmitting(true)
-    setHeld(false)
+    setHeld(null)
     try {
       const comment = await api.post<CampaignComment>(`/campaigns/${campaignId}/comments`, { content, automatedReviewConsent })
       requestVersion.current++
-      setComments((current) => [comment, ...current])
+      // Posting the same comment again after its approval published it returns that comment, which may be listed already.
+      setComments((current) => [comment, ...current.filter((item) => item.id !== comment.id)])
       setContent('')
       setAutomatedReviewConsent(false)
       setError(null)
     } catch (err) {
-      if (isPublicationHeld(err)) { setHeld(true); setError(null) }
+      const hold = publicationHold(err)
+      if (hold) {
+        setHeld(hold)
+        setError(null)
+        // Its approval posts it, so there is nothing to post again: the composer starts afresh.
+        if (hold.publishesOnApproval) { setContent(''); setAutomatedReviewConsent(false) }
+      }
       else setError(err instanceof Error ? err.message : 'Could not post comment')
     } finally {
       setSubmitting(false)
@@ -104,7 +111,7 @@ function CampaignCommentsForViewer({ campaignId, creatorId }: { campaignId: stri
             <Typography variant="caption" color="text.secondary">{content.length}/1000</Typography>
             <Button variant="contained" disabled={submitting || !content.trim()} onClick={() => void submit()}>{submitting ? <><LoadingDots size={6} /> <span>Posting…</span></> : 'Post comment'}</Button>
           </Box>
-          {held && <PublicationHeldNotice retry="post it again unchanged" sx={{ mt: 1.5 }} />}
+          {held && <PublicationHeldNotice {...held} retry="post it again unchanged" sx={{ mt: 1.5 }} />}
         </Box>
       ) : (
         <Alert severity="info">Sign in to join the conversation.</Alert>

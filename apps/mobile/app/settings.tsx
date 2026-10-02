@@ -2,7 +2,7 @@ import { BiometricSettings } from '@/components/BiometricSettings'
 import { MfaSettings } from '@/components/MfaSettings'
 import { PublicationReviews } from '@/components/PublicationReviews'
 import { PublicationHeldNotice } from '@/components/PublicationHeldNotice'
-import { isPublicationHeld } from '@/lib/publicationDrafts'
+import { isPublicationHeld, publishesOnApproval } from '@/lib/publicationDrafts'
 import { DataRightsRequests } from '@/components/DataRightsRequests'
 import { ActivityAlertSettings } from '@/components/ActivityAlertSettings'
 import { NewsletterSettings } from '@/components/NewsletterSettings'
@@ -235,7 +235,10 @@ export default function SettingsScreen() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   // Going public was held for safety review: a notice, not an error.
-  const [held, setHeld] = useState(false)
+  // `automatic`: the approval makes the profile public.
+  const [held, setHeld] = useState<'' | 'manual' | 'automatic'>('')
+  // Bumped by a hold, so Publication reviews lists the held version (and offers to withdraw it).
+  const [reviewsRevision, setReviewsRevision] = useState(0)
 
   const fetchSettings = useCallback(async () => {
     setLoading(true)
@@ -259,13 +262,13 @@ export default function SettingsScreen() {
     const previousValue = settings[key]
     setSettings((prev) => ({ ...prev, [key]: value }))
     setError(null)
-    if (key === 'publicProfile') setHeld(false)
+    if (key === 'publicProfile') setHeld('')
     try {
       await api.put('/profile', privacySettingPatch(key, value, automatedReviewConsent))
     } catch (err) {
       setSettings((prev) => ({ ...prev, [key]: previousValue }))
       // Going public can be held for safety review: an expected step, not an error.
-      if (key === 'publicProfile' && isPublicationHeld(err)) setHeld(true)
+      if (key === 'publicProfile' && isPublicationHeld(err)) { setHeld(publishesOnApproval(err) ? 'automatic' : 'manual'); setReviewsRevision(value => value + 1) }
       else setError(err instanceof Error ? err.message : 'Could not save that setting')
     }
   }, [settings, automatedReviewConsent])
@@ -351,12 +354,12 @@ export default function SettingsScreen() {
               <ToggleRow icon="account-eye-outline" label="Public profile" value={settings.publicProfile} onToggle={(v) => updateSetting('publicProfile', v)} color={p.primary} />
               <View style={{ paddingHorizontal: 14, paddingBottom: 12, gap: 8 }}>
                 <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />
-                {held && <PublicationHeldNotice retry="turn on Public profile again" reviews="below" />}
+                {held ? <PublicationHeldNotice retry="turn on Public profile again" reviews="below" publishesOnApproval={held === 'automatic'} /> : null}
               </View>
             </View>
 
             <BlockedUsers />
-              <PublicationReviews />
+              <PublicationReviews key={reviewsRevision} />
               <DataRightsRequests />
             {/* Danger Zone */}
             <Text style={[styles.sectionTitle, { color: p.error }]}>Danger Zone</Text>

@@ -10,7 +10,7 @@ import { Stack } from 'expo-router'
 import { Country } from 'country-state-city'
 import { api } from '@/lib/api'
 import { changePassword as submitPasswordChange } from '@/lib/accountSecurity'
-import { clearIdentityDraft, isPublicationHeld, loadIdentityDraft, saveIdentityDraft } from '@/lib/publicationDrafts'
+import { clearIdentityDraft, isPublicationHeld, loadIdentityDraft, publishesOnApproval, saveIdentityDraft, savedPrivateChanges } from '@/lib/publicationDrafts'
 import { sessionSnapshot, establishSession } from '@/lib/session'
 import { usePalette, useNeu } from '@/context/ColorModeContext'
 import { GlassSurface } from '@/components/GlassSurface'
@@ -27,7 +27,8 @@ export default function EditProfile() {
 }
 function EditProfileForViewer() {
   const { user, replaceTokens } = useAuth()
-  const [heldRestored, setHeldRestored] = useState(false)
+  // Held identity changes restored from this device; `automatic`: their approval publishes them.
+  const [heldRestored, setHeldRestored] = useState<'' | 'manual' | 'automatic'>('')
   const live = useRef(true)
   useEffect(() => { live.current = true; return () => { live.current = false } }, [])
   const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)
@@ -36,7 +37,8 @@ function EditProfileForViewer() {
   const originalIdentity = useRef<Pick<Profile, 'name' | 'country' | 'avatarUrl' | 'coverUrl'> | null>(null)
   const [error, setError] = useState('')
   // Identity changes held for safety review: a notice, not an error.
-  const [held, setHeld] = useState(false)
+  // `automatic`: the approval publishes them; `otherChangesSaved`: the private fields saved anyway.
+  const [held, setHeld] = useState<{ automatic: boolean; otherChangesSaved: boolean } | null>(null)
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
   const [uploads, setUploads] = useState(0)
@@ -49,35 +51,38 @@ function EditProfileForViewer() {
     const next = { name: v.name || '', phone: v.phone || '', bio: v.bio || '', country: v.country || '', avatarUrl: v.avatarUrl || '', coverUrl: v.coverUrl || '' }
     originalIdentity.current = next
     // A held identity change (a new photo, say) is kept on this device so the
-    // exact version can be saved again after approval instead of re-uploaded.
+    // exact version can be saved again (after a manual approval, or when an
+    // approval could not publish it) instead of re-uploaded.
     const held = user ? await loadIdentityDraft(user.id) : null
     if (!active) return
-    const pending = held ? Object.fromEntries(Object.entries(held).filter(([key, value]) => next[key as keyof Profile] !== value)) : {}
-    setHeldRestored(Object.keys(pending).length > 0)
+    const pending = held ? Object.fromEntries(Object.entries(held.fields).filter(([key, value]) => next[key as keyof Profile] !== value)) : {}
+    // Public as held now (its approval published it, say): nothing is left to restore.
+    if (held && user && !Object.keys(pending).length) void clearIdentityDraft(user.id)
+    setHeldRestored(!held || !Object.keys(pending).length ? '' : held.publishesOnApproval ? 'automatic' : 'manual')
     setProfile({ ...next, ...pending })
   }).catch(e => { if (active) setError(e.message) }); return () => { active = false } }, [retry, user])
   const update = (key: keyof Profile, value: string) => setProfile(v => v ? { ...v, [key]: value } : v)
   async function save() {
     if (!profile || !profile.name.trim()) return
-    setBusy(true); setError(''); setHeld(false)
+    setBusy(true); setError(''); setHeld(null)
     try {
       const changedIdentity = Object.fromEntries((['name', 'country', 'avatarUrl', 'coverUrl'] as const).filter(key => profile[key] !== originalIdentity.current?.[key]).map(key => [key, profile[key]]))
       let saved: Profile
       try {
         saved = await api.put<Profile>('/profile', { ...changedIdentity, phone: profile.phone, bio: profile.bio, automatedReviewConsent })
       } catch (e) {
-        if (user && Object.keys(changedIdentity).length) await saveIdentityDraft(user.id, changedIdentity)
+        if (user && Object.keys(changedIdentity).length) await saveIdentityDraft(user.id, changedIdentity, publishesOnApproval(e))
         throw e
       }
       if (user) await clearIdentityDraft(user.id)
-      setHeldRestored(false)
+      setHeldRestored('')
       if (!live.current) return
       originalIdentity.current = { name: saved.name, country: saved.country ?? '', avatarUrl: saved.avatarUrl ?? '', coverUrl: saved.coverUrl ?? '' }
       const session = sessionSnapshot()
       if (session) await establishSession({ ...session.user, name: saved.name }, session.tokens)
       setNotice('Your profile has been updated')
     } catch (e) {
-      if (isPublicationHeld(e)) setHeld(true)
+      if (isPublicationHeld(e)) setHeld({ automatic: publishesOnApproval(e), otherChangesSaved: savedPrivateChanges(e) })
       else setError(e instanceof Error ? e.message : 'Could not save profile.')
     } finally { setBusy(false) }
   }
@@ -118,7 +123,9 @@ function EditProfileForViewer() {
           <View style={{ height: 1, backgroundColor: p.border }} />
           <MediaUploadField compact label="Profile photo" folder="profiles" value={profile.avatarUrl} onChange={v => update('avatarUrl', v)} crop onBusyChange={v => setUploads(n => n + (v ? 1 : -1))} />
           <Text style={{ color: p.textSecondary, fontSize: 12, paddingVertical: 8 }}>Images up to 4 MB. Tap Save profile below to apply your changes. New images need staff review; removing an image takes effect right away.</Text>
-          {heldRestored ? <Text style={{ color: p.text, fontSize: 12, paddingBottom: 8 }}>We restored the changes you last submitted for review. Save them again once they are approved.</Text> : null}
+          {heldRestored ? <Text style={{ color: p.text, fontFamily: 'Outfit_400Regular', fontSize: 12, paddingBottom: 8 }}>{heldRestored === 'automatic'
+            ? "We restored the changes you last submitted for review. If they're still waiting for review, they go live automatically once approved. If they couldn't be published, save them again."
+            : 'We restored the changes you last submitted for review. Save them again once they are approved.'}</Text> : null}
         </View>
       </GlassSurface>
       <View style={{ ...neu.raised, backgroundColor: p.surface, borderRadius: 24, padding: 20, gap: 16 }}>
@@ -128,7 +135,7 @@ function EditProfileForViewer() {
         <Text>Names and images can appear with public contributions. Phone numbers and this biography are excluded from screening.</Text>
         <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />
         {error ? <><Text accessibilityRole="alert">{error}</Text><PublicationReviews actions={['account.profile']} /></> : null}
-        {held ? <><PublicationHeldNotice retry="save it again unchanged" reviews="below" /><PublicationReviews actions={['account.profile']} /></> : null}
+        {held ? <><PublicationHeldNotice retry="save it again unchanged" reviews="below" publishesOnApproval={held.automatic} otherChangesSaved={held.otherChangesSaved} /><PublicationReviews actions={['account.profile']} /></> : null}
         <Button loading={busy} disabled={busy || uploads > 0 || !profile.name.trim()} mode="contained" onPress={() => void save()}>Save profile</Button>
       </View>
       <View style={{ ...neu.raised, backgroundColor: p.surface, borderRadius: 24, padding: 20, gap: 16 }}><Text variant="titleLarge">Change password</Text>

@@ -52,3 +52,48 @@ test('holds organization identity changes and resubmits the same approved versio
   await expect(page.getByRole('checkbox', { name: /Use OpenAI/ })).not.toBeChecked()
   expect(errors).toEqual([])
 })
+
+test('publishes held organization details once approved, without saving them again, at phone width', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.addInitScript(() => {
+    localStorage.setItem('uf_user', JSON.stringify({ id: 'aaaaaaaaaaaaaaaaaaaaaaaa', name: 'Team administrator', role: 'user', legalAcceptance: { version: '2026-09-12', acceptedTerms: true, ageConfirmed: true, acceptedAt: '2026-09-12T00:00:00Z' } }))
+    localStorage.setItem('uf_tokens', JSON.stringify({ accessToken: 'test', refreshToken: 'test' }))
+  })
+  const org = 'bbbbbbbbbbbbbbbbbbbbbbbb'
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  await page.route('**/api/v1/**', route => route.fulfill({ json: { data: route.request().url().endsWith('/auth/refresh') ? { accessToken: 'test', refreshToken: 'test' } : [] } }))
+  await page.route('**/api/v1/notifications/unread-count', route => route.fulfill({ json: { data: { count: 0 } } }))
+  let name = 'Original foundation', website = 'https://original.example.test', published = false
+  const submissions: unknown[] = []
+  await page.route('**/api/v1/organization-team/mine', route => route.fulfill({ json: { data: [{ organizationId: org, name, role: 'admin', status: 'active' }] } }))
+  await page.route(`**/api/v1/organization-team/${org}`, route => route.fulfill({ json: { data: { organizationId: org, name, website, role: 'admin', members: [], campaigns: [] } } }))
+  await page.route(`**/api/v1/organization-team/${org}/profile`, route => {
+    submissions.push(route.request().postDataJSON())
+    return route.fulfill({ status: 409, json: { message: 'Saved privately for safety review. Your content has not been published yet. It will be published automatically once a reviewer approves it; check Publication reviews for the decision.', errors: { publication: ['held', 'publishes_on_approval'] } } })
+  })
+  await page.route('**/api/v1/publication-reviews?*', route => route.fulfill({ json: { data: { total: 1, items: [{
+    id: 'org-review', action: 'organization.profile', text: JSON.stringify({ organizationName: 'Reviewed foundation', website: 'https://reviewed.example.test' }), mediaUrls: [], createdAt: new Date().toISOString(), publishOnApproval: true,
+    ...(published
+      ? { status: 'approved', reviewNotes: 'Organization name and website reviewed.', approvalExpiresAt: new Date(Date.now() + 7 * 86_400_000).toISOString(), publication: { state: 'published', at: new Date().toISOString() }, canWithdraw: false }
+      : { status: 'pending', canWithdraw: true }),
+  }] } } }))
+  await page.goto('/organization-team')
+  await expect(page.getByLabel('Organization name')).toHaveValue('Original foundation')
+  await page.getByLabel('Organization name').fill('Reviewed foundation')
+  await page.getByLabel('Website', { exact: true }).fill('https://reviewed.example.test')
+  await page.getByRole('button', { name: 'Save organization details' }).click()
+  const notice = page.getByRole('status').filter({ hasText: 'Waiting for safety review' })
+  await expect(notice).toContainText("Once a reviewer approves it, it's published automatically, so you don't need to submit it again. Check Publication reviews below for the decision; you can withdraw it there.")
+  await expect(page.getByRole('list', { name: 'Review status: In review' }).getByRole('listitem')).toHaveCount(4)
+  await expect(page.getByLabel('Organization name')).toHaveValue('Reviewed foundation')
+  published = true
+  name = 'Reviewed foundation'; website = 'https://reviewed.example.test'
+  await page.getByRole('button', { name: 'Refresh publication reviews' }).click()
+  await expect(page.getByRole('list', { name: 'Review status: Published' })).toBeVisible()
+  await expect(page.getByText("Approved and now on the organization's public page.")).toBeVisible()
+  await page.screenshot({ path: '/tmp/ujimora-org-identity-published-phone.png', animations: 'disabled' })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  expect(submissions).toEqual([{ organizationName: 'Reviewed foundation', website: 'https://reviewed.example.test', automatedReviewConsent: false }])
+  expect(errors).toEqual([])
+})

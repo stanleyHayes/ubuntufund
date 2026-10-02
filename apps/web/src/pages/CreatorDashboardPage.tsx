@@ -2,7 +2,7 @@ import { useAuth } from '@/context/AuthContext'
 import { PublicationConsent } from '@/components/safety/PublicationConsent'
 import { PublicationReviews } from '@/components/account/PublicationReviews'
 import { PublicationHeldNotice } from '@/components/safety/PublicationHeldNotice'
-import { isPublicationHeld } from '@/lib/publicationDrafts'
+import { publicationHold, type PublicationHold } from '@/lib/publicationDrafts'
 import { useSeo } from '@/lib/seo'
 import { payoutInstitutionName } from '@ubuntu-fund/types'
 import { BankPicker } from '@/components/account/BankPicker'
@@ -94,7 +94,7 @@ function CreatorDashboardForViewer() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // The page changes were held for safety review: a notice, not an error.
-  const [held, setHeld] = useState(false)
+  const [held, setHeld] = useState<PublicationHold | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [snack, setSnack] = useState('')
 
@@ -187,7 +187,7 @@ function CreatorDashboardForViewer() {
 
   async function saveProfile() {
     setError(null)
-    setHeld(false)
+    setHeld(null)
     setSaving(true)
     try {
       await api.post('/creators/profile', { handle, displayName, tagline, bio, avatarUrl, coverUrl, tipsEnabled, automatedReviewConsent })
@@ -196,7 +196,8 @@ function CreatorDashboardForViewer() {
       await load()
     } catch (err) {
       if (!live.current) return
-      if (isPublicationHeld(err)) setHeld(true)
+      const hold = publicationHold(err)
+      if (hold) setHeld(hold)
       else setError(err instanceof Error ? err.message : 'Could not save your page.')
     } finally {
       if (live.current) setSaving(false)
@@ -204,10 +205,15 @@ function CreatorDashboardForViewer() {
   }
 
   async function pauseTips() {
-    setSaving(true); setError(null); setHeld(false)
+    // Pausing changes the page, so a version waiting for its approval to publish it no longer can be.
+    const waiting = !!held?.publishesOnApproval
+    setSaving(true); setError(null); setHeld(null)
     try {
       await api.post('/creators/profile', { tipsEnabled: false })
-      if (live.current) { setTipsEnabled(false); setProfile(previous => previous ? { ...previous, tipsEnabled: false } : previous); setSnack('Tips paused. Your other draft changes are retained.') }
+      if (live.current) {
+        setTipsEnabled(false); setProfile(previous => previous ? { ...previous, tipsEnabled: false } : previous)
+        setSnack(waiting ? "Tips paused. Your changes waiting for review won't be published; save them again to resubmit." : 'Tips paused. Your other draft changes are retained.')
+      }
     } catch (cause) { if (live.current) setError(cause instanceof Error ? cause.message : 'Could not pause tips.') }
     finally { if (live.current) setSaving(false) }
   }
@@ -491,7 +497,7 @@ function CreatorDashboardForViewer() {
               {error}
             </Alert>
           )}
-          {held && <PublicationHeldNotice retry="save it again unchanged" reviews="above" sx={{ mb: 2 }} />}
+          {held && <PublicationHeldNotice {...held} retry="save it again unchanged" reviews="above" sx={{ mb: 2 }} />}
           <Button
             onClick={saveProfile}
             disabled={saving || !policy?.eligible}

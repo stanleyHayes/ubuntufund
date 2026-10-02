@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { ThemeProvider } from '@mui/material/styles'
@@ -141,6 +141,99 @@ it('shows the safety-review notice when the message is held', async () => {
   expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
   // The draft stays for sending again after approval.
   expect(screen.getByLabelText('Subject')).toHaveValue('Thank you')
+})
+
+describe('a message its approval sends', () => {
+  const heldAutomatically = () => Object.assign(new Error('Saved privately for safety review. Your content has not been published yet.'), { status: 409, errors: { publication: ['held', 'publishes_on_approval'] } })
+  async function sendHeld() {
+    vi.mocked(api.get).mockResolvedValue(state({ draft: view() }))
+    vi.mocked(api.post).mockRejectedValue(heldAutomatically())
+    renderPage()
+    fireEvent.click(await screen.findByRole('button', { name: 'Send to donors' }))
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Send now' }))
+    const notice = (await screen.findByText('Waiting for safety review')).closest('[role="status"]')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    return notice
+  }
+  const WARNING = "The version waiting for review is sent only if your saved draft still matches it when it's approved."
+
+  it('says it is emailed once approved, keeps it, and warns that changing it drops the waiting version', async () => {
+    const notice = await sendHeld()
+    expect(notice).toHaveTextContent("Once a reviewer approves it, we email it to your donors automatically, so you don't need to send it again.")
+    expect(notice).toHaveTextContent('You can withdraw it there.')
+    expect(screen.getByLabelText('Subject')).toHaveValue('Thank you')
+    expect(screen.getByText(WARNING)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
+  })
+
+  it('says the waiting version is not sent while a changed draft differs from it, and keeps the warning', async () => {
+    await sendHeld()
+    vi.mocked(api.put).mockImplementation(async (_path, body) => view(body as Partial<DonorThankYouView>))
+    fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'Your gifts fixed the clinic roof and the gate. Thank you all.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save draft' }))
+    expect(await screen.findByText("Draft saved. While it differs from the version waiting for review, that version won't be sent.")).toBeInTheDocument()
+    expect(screen.queryByText('Waiting for safety review')).not.toBeInTheDocument()
+    // The review is still open: changing it back before the approval still sends it.
+    expect(screen.getByText(WARNING)).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Message'), { target: { value: draftContent.body } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save draft' }))
+    expect(await screen.findByText('Draft saved.')).toBeInTheDocument()
+  })
+
+  it('says so when the draft is discarded too', async () => {
+    await sendHeld()
+    vi.mocked(api.delete).mockResolvedValue(null)
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }))
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Discard this draft?' })).getByRole('button', { name: 'Discard draft' }))
+    expect(await screen.findByText("Draft discarded. Without a matching draft, the version waiting for review won't be sent.")).toBeInTheDocument()
+    expect(screen.queryByText('Waiting for safety review')).not.toBeInTheDocument()
+    expect(screen.getByText(WARNING)).toBeInTheDocument()
+  })
+
+  /** The page's own state, and the author's publication reviews, answered by path. */
+  function serveWithReviews(items: unknown[]) {
+    vi.mocked(api.get).mockImplementation(async (path: string) => (path.startsWith('/publication-reviews') ? { items, total: items.length } : state({ draft: view() })))
+  }
+  const waitingReview = { id: 'r1', action: 'thank_you.send', resourceId: 'c1', status: 'pending', publishOnApproval: true, canWithdraw: true, text: JSON.stringify(draftContent) }
+
+  it('still warns about a message waiting for review after the page was left and opened again', async () => {
+    serveWithReviews([{ ...waitingReview, id: 'r0', resourceId: 'c2' }, waitingReview])
+    vi.mocked(api.put).mockImplementation(async (_path, body) => view(body as Partial<DonorThankYouView>))
+    renderPage()
+    expect(await screen.findByText(WARNING)).toBeInTheDocument()
+    expect(api.get).toHaveBeenCalledWith('/publication-reviews?page=1&pageSize=100')
+    fireEvent.change(await screen.findByLabelText('Message'), { target: { value: 'Your gifts fixed the clinic roof. Thank you, all of you.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save draft' }))
+    expect(await screen.findByText("Draft saved. While it differs from the version waiting for review, that version won't be sent.")).toBeInTheDocument()
+  })
+
+  it('warns about nothing when no message waits to be sent by its approval', async () => {
+    // Switched off an approval sends nothing by itself; a published one, or another campaign's, is not waiting.
+    serveWithReviews([
+      { ...waitingReview, publishOnApproval: false, canWithdraw: false },
+      { ...waitingReview, id: 'r2', status: 'approved', publication: { state: 'published' }, canWithdraw: false },
+      { ...waitingReview, id: 'r3', resourceId: 'c2' },
+    ])
+    vi.mocked(api.put).mockImplementation(async (_path, body) => view(body as Partial<DonorThankYouView>))
+    renderPage()
+    await screen.findByLabelText('Subject')
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith('/publication-reviews?page=1&pageSize=100'))
+    fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'Your gifts fixed the clinic roof. Thank you, all of you.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save draft' }))
+    expect(await screen.findByText('Draft saved.')).toBeInTheDocument()
+    expect(screen.queryByText(WARNING)).not.toBeInTheDocument()
+  })
+
+  it('keeps today\'s words while its author sends it after approval', async () => {
+    vi.mocked(api.get).mockResolvedValue(state({ draft: view() }))
+    vi.mocked(api.post).mockRejectedValue(Object.assign(new Error('Saved privately for safety review.'), { status: 409, errors: { publication: ['held'] } }))
+    renderPage()
+    fireEvent.click(await screen.findByRole('button', { name: 'Send to donors' }))
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Send now' }))
+    const notice = (await screen.findByText('Waiting for safety review')).closest('[role="status"]')
+    expect(notice).toHaveTextContent('After a reviewer approves it, select Send to donors again with the same message to publish it.')
+    expect(screen.queryByText(WARNING)).not.toBeInTheDocument()
+  })
 })
 
 it('discards the draft only after confirming', async () => {

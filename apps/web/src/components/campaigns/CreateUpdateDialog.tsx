@@ -1,6 +1,6 @@
 import { PublicationConsent } from '@/components/safety/PublicationConsent'
 import { PublicationHeldNotice } from '@/components/safety/PublicationHeldNotice'
-import { isPublicationHeld } from '@/lib/publicationDrafts'
+import { publicationHold, type PublicationHold } from '@/lib/publicationDrafts'
 import { LoadingDots } from '@ubuntu-fund/ui'
 import { useState } from 'react'
 import Dialog from '@mui/material/Dialog'
@@ -35,18 +35,25 @@ export function CreateUpdateDialog({
   const [type, setType] = useState<CampaignUpdateType>('general')
   const [isPinned, setIsPinned] = useState(false)
   const [error, setError] = useState('')
-  // Held for safety review: shown as a notice, and the fields are kept.
-  const [held, setHeld] = useState(false)
+  // Held for safety review: shown as a notice. The fields are kept for posting it
+  // again after approval, unless its approval posts it by itself.
+  const [held, setHeld] = useState<PublicationHold | null>(null)
   const [success, setSuccess] = useState(false)
+  // Nothing more to post: it was posted, or its approval will post it.
+  const done = success || !!held?.publishesOnApproval
 
-  function handleClose() {
+  function clearFields() {
     setTitle('')
     setAutomatedReviewConsent(false)
     setContent('')
     setType('general')
     setIsPinned(false)
+  }
+
+  function handleClose() {
+    clearFields()
     setError('')
-    setHeld(false)
+    setHeld(null)
     setSuccess(false)
     onClose()
   }
@@ -63,7 +70,7 @@ export function CreateUpdateDialog({
     }
 
     setError('')
-    setHeld(false)
+    setHeld(null)
 
     try {
       await onSubmit({
@@ -76,8 +83,12 @@ export function CreateUpdateDialog({
       setSuccess(true)
       setTimeout(handleClose, 1000)
     } catch (err) {
-      if (isPublicationHeld(err)) setHeld(true)
-      else setError(err instanceof Error ? err.message : 'Failed to create update. Please try again.')
+      const hold = publicationHold(err)
+      if (!hold) setError(err instanceof Error ? err.message : 'Failed to create update. Please try again.')
+      else {
+        setHeld(hold)
+        if (hold.publishesOnApproval) clearFields()
+      }
     }
   }
 
@@ -92,6 +103,8 @@ export function CreateUpdateDialog({
           <Alert severity="success">
             Update posted successfully!
           </Alert>
+        ) : held?.publishesOnApproval ? (
+          <PublicationHeldNotice {...held} />
         ) : (
           <>
             <Box>
@@ -165,16 +178,16 @@ export function CreateUpdateDialog({
             />
 
             {error && <Alert severity="error">{error}</Alert>}
-            {held && <PublicationHeldNotice retry="post it again unchanged" />}
+            {held && <PublicationHeldNotice {...held} retry="post it again unchanged" />}
           </>
         )}
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={handleClose} disabled={isLoading}>
-          {success ? 'Close' : 'Cancel'}
+          {done ? 'Close' : 'Cancel'}
         </Button>
-        {!success && (
+        {!done && (
           <Button
             variant="contained"
             onClick={handleSubmit}

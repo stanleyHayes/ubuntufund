@@ -1,9 +1,12 @@
+import { PUBLICATION_HELD, PUBLISHES_ON_APPROVAL } from '@ubuntu-fund/types'
+
 /**
  * Unsent public-content drafts kept in this browser, per account, so an exact
- * version held for safety review can be resubmitted after staff approve it,
- * even after the tab or dialog was closed. A review record is purged after 30
- * days, so older drafts are discarded. Storage can be unavailable (private
- * windows, blocked site data): every access is best-effort.
+ * version held for safety review can be resubmitted after staff approve it (or
+ * after its approval couldn't publish it), even after the tab or dialog was
+ * closed. A review record is purged after 30 days, so older drafts are
+ * discarded. Storage can be unavailable (private windows, blocked site data):
+ * every access is best-effort.
  */
 const PREFIX = 'ujimora:publication-draft:'
 const MAX_AGE_MS = 30 * 86_400_000
@@ -34,6 +37,35 @@ export function writePublicationDraft(key: string, value: unknown): void {
 
 export function clearPublicationDraft(key: string): void {
   try { localStorage.removeItem(key) } catch { /* storage unavailable */ }
+}
+
+/** A profile image held for safety review, as the image editor keeps it (ProfileImageEditor). */
+export interface HeldProfileImage {
+  url: string
+  /** Its approval publishes it by itself. */
+  publishesOnApproval: boolean
+}
+
+/** The image editor's draft key for one kind of image. */
+export const profileImageDraftKey = (kind: 'avatarUrl' | 'coverUrl', userId: string) => publicationDraftKey(`profile-${kind}`, userId)
+
+/** A held profile image draft; drafts saved before publishing on approval are the bare URL. */
+export function heldProfileImage(value: unknown): HeldProfileImage | null {
+  const fields = value && typeof value === 'object' ? (value as Record<string, unknown>) : { url: value }
+  return typeof fields.url === 'string' && fields.url.startsWith('https://') ? { url: fields.url, publishesOnApproval: fields.publishesOnApproval === true } : null
+}
+
+/**
+ * Forgets the held profile images a withdrawn version proposed (its
+ * `mediaUrls`, the newly proposed images), so the image editor no longer
+ * offers them as waiting for review. Any other draft stays.
+ */
+export function clearWithdrawnProfileImages(userId: string, mediaUrls: readonly string[]): void {
+  for (const kind of ['avatarUrl', 'coverUrl'] as const) {
+    const key = profileImageDraftKey(kind, userId)
+    const held = readPublicationDraft(key, heldProfileImage)
+    if (held && mediaUrls.includes(held.url)) clearPublicationDraft(key)
+  }
 }
 
 /** Explicit sign-out removes every account's drafts from a possibly shared browser. */
@@ -85,18 +117,47 @@ export function clearDraftSubmission(draftKey: string): void {
   clearPublicationDraft(submissionKey(draftKey))
 }
 
+/** Whether the API error's `errors[field]` lists `marker`. */
+function hasMarker(err: unknown, field: string, marker: string): boolean {
+  const values = (err as { errors?: Record<string, unknown> } | null)?.errors?.[field]
+  return Array.isArray(values) && values.includes(marker)
+}
+
 /**
  * The API saved this public change privately for staff safety review (HTTP 409
  * with `errors.publication: ['held']`). That is an expected state, not a
- * failure: show a neutral notice, keep the draft, and submit the same version
- * again after approval. A declined version (422) is still an error. The
- * message check covers an API deployed before the `errors` marker existed.
- * Duck-typed so it works with any `ApiError`-shaped error.
+ * failure: show a neutral notice and keep the draft. A declined version (422)
+ * is still an error. The message check covers an API deployed before the
+ * `errors` marker existed. Duck-typed so it works with any `ApiError`-shaped
+ * error.
  */
 export function isPublicationHeld(err: unknown): boolean {
   if (!(err instanceof Error)) return false
-  const { status, errors } = err as Error & { status?: unknown; errors?: Record<string, unknown> }
-  if (status !== 409) return false
-  const publication = errors?.publication
-  return (Array.isArray(publication) && publication.includes('held')) || err.message.startsWith('Saved privately for safety review')
+  if ((err as Error & { status?: unknown }).status !== 409) return false
+  return hasMarker(err, 'publication', PUBLICATION_HELD) || err.message.startsWith('Saved privately for safety review')
+}
+
+/**
+ * The held version is published by itself once a reviewer approves it
+ * (`errors.publication` also lists `publishes_on_approval`), so its author
+ * doesn't submit it again. Without the marker (live sessions, versions held
+ * before publishing on approval, or with it switched off), the author submits
+ * the same version again after approval.
+ */
+export function publishesOnApproval(err: unknown): boolean {
+  return isPublicationHeld(err) && hasMarker(err, 'publication', PUBLISHES_ON_APPROVAL)
+}
+
+/** What a hold means for its author: how it gets published, and whether the rest of the save went through. */
+export interface PublicationHold {
+  /** Published by itself once approved (see `publishesOnApproval`). */
+  publishesOnApproval: boolean
+  /** The private settings sent with it were saved anyway (`errors.saved` lists `private`); only the public part waits. */
+  savedOtherChanges: boolean
+}
+
+/** The hold an error reports, or null when it is not a hold. */
+export function publicationHold(err: unknown): PublicationHold | null {
+  if (!isPublicationHeld(err)) return null
+  return { publishesOnApproval: publishesOnApproval(err), savedOtherChanges: hasMarker(err, 'saved', 'private') }
 }

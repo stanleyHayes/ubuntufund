@@ -80,6 +80,9 @@ type PublicationFields = {
  * withdraw it. While publishing on approval is switched off, an approval
  * still waiting to publish reads as a plain approval (the author publishes it
  * by submitting it again), and nothing promises to publish by itself.
+ * Withdrawing is offered while it is on; while it is off, only for a version
+ * submitted while it was on (its approval may still publish it once it is
+ * back on), so lists read as before the switch for everything else.
  */
 function authorPublication(item: PublicationFields, switchedOn: boolean) {
   const progress = publicationProgressOf(item);
@@ -87,7 +90,7 @@ function authorPublication(item: PublicationFields, switchedOn: boolean) {
   return {
     publishOnApproval: switchedOn && item.publishOnApproval === true,
     ...(shown ? { publication: shown } : {}),
-    canWithdraw: canWithdrawPublication(item),
+    canWithdraw: canWithdrawPublication(item) && (switchedOn || item.publishOnApproval === true),
   };
 }
 

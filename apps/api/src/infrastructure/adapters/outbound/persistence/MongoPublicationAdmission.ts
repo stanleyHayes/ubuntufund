@@ -559,6 +559,18 @@ export class MongoPublicationAdmission implements PublicationAdmissionPort {
 const OBJECT_ID = /^[a-f0-9]{24}$/i;
 
 /**
+ * Why a published version can't be withdrawn, and what its author can do
+ * instead: a comment or an update can be deleted or changed; a thank-you
+ * message can't be recalled once it is queued for the donors; anything else
+ * is changed by saving a new version.
+ */
+export function alreadyPublishedMessage(action: string): string {
+  if (action === 'thank_you.send') return "Already approved: we're emailing your donors, so it can't be withdrawn.";
+  if (action === 'comment.create' || action === 'update.create') return 'Already published. Delete or change it instead.';
+  return 'Already published. Change it instead.';
+}
+
+/**
  * `POST /publication-reviews/:id/withdraw`: the author takes back a version
  * that is waiting for a decision, or approved and not yet published, so its
  * approval never publishes it. Only the author's own versions of the
@@ -574,7 +586,7 @@ export async function withdrawPublicationReview(reviewId: string, actorId: strin
     if (review.status === 'withdrawn' || (review.status === 'approved' && review.publishState === 'withdrawn')) return { withdrawn: true as const };
     if (review.status === 'rejected') throw new AppError("Declined versions can't be withdrawn.", 409, { publication: ['declined'] });
     if (review.status === 'superseded' || review.publishState === 'superseded') throw new AppError('You already replaced this version.', 409, { publication: ['superseded'] });
-    if (review.publishState === 'published') throw new AppError('Already published. Delete or change it instead.', 409, { publication: ['published'] });
+    if (review.publishState === 'published') throw new AppError(alreadyPublishedMessage(review.action), 409, { publication: ['published'] });
     if (!canWithdrawPublication(review)) throw new AppError("This version can't be withdrawn.", 409);
     const now = new Date();
     const changed = review.status === 'pending'

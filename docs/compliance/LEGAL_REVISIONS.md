@@ -7,9 +7,9 @@ The legal pack is defined in `packages/types/src/legal.ts` and rendered on the m
 | Policy | Effective | Earlier text |
 | --- | --- | --- |
 | Terms of Use | 25 September 2026 | 8 September 2026 text: `git show 01ccfaa4:packages/types/src/legal.ts` |
-| Privacy Notice | 29 September 2026 | 25 September 2026 text: `git show 208dfc56:packages/types/src/legal.ts`. 8 September 2026 text: `git show 01ccfaa4:packages/types/src/legal.ts` |
+| Privacy Notice | 2 October 2026 | 29 September 2026 text: `git show d618c97b:packages/types/src/legal.ts`. 25 September 2026 text: `git show 208dfc56:packages/types/src/legal.ts`. 8 September 2026 text: `git show 01ccfaa4:packages/types/src/legal.ts` |
 | Campaign Organizer Agreement | 29 September 2026 | 25 September 2026 text: `git show 208dfc56:packages/types/src/legal.ts`. 8 September 2026 text: `git show 01ccfaa4:packages/types/src/legal.ts` |
-| Cookie Notice | 29 September 2026 | 25 September 2026 text: `git show 208dfc56:packages/types/src/legal.ts`. 8 September 2026 text: `git show 01ccfaa4:packages/types/src/legal.ts` |
+| Cookie Notice | 2 October 2026 | 29 September 2026 text: `git show d618c97b:packages/types/src/legal.ts`. 25 September 2026 text: `git show 208dfc56:packages/types/src/legal.ts`. 8 September 2026 text: `git show 01ccfaa4:packages/types/src/legal.ts` |
 | Subscription & Billing Terms | 25 September 2026 | 8 September 2026 text: `git show 01ccfaa4:packages/types/src/legal.ts` |
 | Contributor & Donor Terms | 29 September 2026 | 8 September 2026 text: `git show 208dfc56:packages/types/src/legal.ts` |
 | Payout, Refund & Failed Campaign Policy | 8 September 2026 | None. Unchanged since first published. |
@@ -17,6 +17,26 @@ The legal pack is defined in `packages/types/src/legal.ts` and rendered on the m
 | Delete your Ujimora account | 12 September 2026 | None. Unchanged since first published. |
 
 Commit `01ccfaa4` is `main` as it stood before the launch fixes were merged. Its policy text is the text dated 8 September 2026. `apps/marketing/__tests__/legalClaims.test.ts` stores a fingerprint of each policy's text. The test fails when a policy's text changes but its date stays the same, and when this table does not list a policy's current date.
+
+## 2 October 2026 revision
+
+This comes with publishing on approval (see `PUBLICATION_REVIEWS.md`, "Publishing on approval"). While `PUBLISH_ON_APPROVAL_ENABLED` is switched on, a staff approval publishes a held version without its author submitting it again. The switch is still off when this text is deployed, and the native app bundles the legal pack, so an installed build keeps this text whatever the switch does later (including a kill-switch pause). Both notices are therefore worded to be true with the switch on or off. Commit `d618c97b` holds the 29 September 2026 text these notices replace.
+
+- **Privacy Notice**, *AI writing and safety screening*: the sentence "An approved version must be submitted again within seven days" is replaced. It now says:
+  - when automatic publishing applies to a held version, staff approval publishes it, after the same checks as the author's own request, and the author is told the outcome in their notification inbox;
+  - it is not published if a newer version was submitted or the item changed after submission, if the author withdrew it, or if their password or two-step verification settings changed since then;
+  - for that check, a one-way fingerprint of the sign-in settings is stored with such a version and deleted with its review record;
+  - otherwise, and always for live-session titles (published only when the host starts the session), an approved version must be submitted again within seven days of approval, and Publication reviews and the notification inbox show which applies.
+
+  Live-session titles are also added to the list of texts that can be screened, as they already were in practice.
+- **Cookie Notice:** held profile images are kept in the browser "so the same image can be saved again if approval does not publish it". Before: "so the exact version held for review can be submitted again once approved".
+
+`LEGAL_ACCEPTANCE_VERSION` does not change. Bumping it would make every approved version end as "terms not accepted" until its author accepted again.
+
+The effective date is the day this text is first deployed to production, not the switch-on day: the text is true before the switch is turned on, while it is on and after it is turned off. If the deploy day moves, change `REVISED_2_OCTOBER_2026` in `legal.ts`, this record and the fingerprints in `legalClaims.test.ts`. Turning the switch on or off needs no revision.
+
+- Deployed to production: _not yet recorded_
+- Switched on (`PUBLISH_ON_APPROVAL_ENABLED=true` on Render): _not yet recorded_
 
 ## 29 September 2026 revision
 

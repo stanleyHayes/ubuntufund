@@ -279,6 +279,11 @@ interface ActionWords {
    * "{lead} before {deadline}{tail}."
    */
   approved?: { lead: string; tail: string }
+  /**
+   * Its form clears once a version is held, so the author can't easily send
+   * that exact version again: only a word-for-word repost uses its approval.
+   */
+  clearedOnHold?: boolean
 }
 
 const WORDS_BY_ACTION: Readonly<Record<string, ActionWords>> = {
@@ -290,8 +295,8 @@ const WORDS_BY_ACTION: Readonly<Record<string, ActionWords>> = {
     verb: 'save',
     published: "Approved and now on the organization's public page.",
   },
-  'comment.create': { noun: 'comment', verb: 'post', published: 'Approved and posted on the campaign.' },
-  'update.create': { noun: 'campaign update', verb: 'post', published: 'Approved and posted on the campaign.' },
+  'comment.create': { noun: 'comment', verb: 'post', published: 'Approved and posted on the campaign.', clearedOnHold: true },
+  'update.create': { noun: 'campaign update', verb: 'post', published: 'Approved and posted on the campaign.', clearedOnHold: true },
   'update.edit': { noun: 'edited campaign update', verb: 'save', published: 'Approved; the campaign update now shows your changes.' },
   'thank_you.send': {
     noun: 'thank-you message',
@@ -323,12 +328,18 @@ const capitalize = (value: string) => (value ? value[0].toUpperCase() + value.sl
 /**
  * The author's next step for a resubmit kind, in the form's own words.
  * `deadline`: the formatted end of the approval window, while it lasts.
+ * Without one the approval has run out, and submitting the same version
+ * again only reopens it for a new review. A comment or new update can't be
+ * sent again exactly as it was (its form clears once it is held), so its
+ * author is not promised that posting again publishes it straight away.
  */
 export function publicationNextStep(action: unknown, resubmit: PublicationResubmitKind, deadline?: string): string {
-  const verb = capitalize(wordsFor(action).verb)
+  const words = wordsFor(action)
+  const verb = capitalize(words.verb)
   switch (resubmit) {
     case 'same_version':
-      return deadline ? `${verb} it again before ${deadline} to publish it straight away.` : `${verb} it again to publish it.`
+      if (!deadline) return `${verb} it again to request a new review.`
+      return words.clearedOnHold ? `${verb} it again if you still want it published.` : `${verb} it again before ${deadline} to publish it straight away.`
     case 'new_version':
       return 'Submit your latest version if it still needs review.'
     default:

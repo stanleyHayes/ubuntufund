@@ -647,7 +647,8 @@ it('backs off after each failure, gives up after eight attempts, and logs codes 
   for (const value of [secret, text, digest, author.email]) expect(logged).not.toContain(value);
   expect(await AuditLogModel.findOne({ action: 'publication.not_published', resource: id }).lean()).toMatchObject({ severity: 'warning', actorId: 'system:publication-applier' });
   expect(await NotificationModel.findOne({ userId: author.id, title: "Your comment wasn't published" }).lean()).toMatchObject({
-    body: expect.stringMatching(new RegExp(`^Something went wrong on our side while publishing it\\. Post it again before ${DEADLINE.source} to publish it straight away\\.$`)),
+    // A held comment's form was cleared, so posting again is never promised to publish it straight away.
+    body: 'Something went wrong on our side while publishing it. Post it again if you still want it published.',
   });
 });
 
@@ -709,7 +710,7 @@ it('tells a credential change after the checks from a closed account by the writ
   const rotated = await held(author.id, campaignId);
   expect((await decide(rotated.id).expect(200)).body.data.publication).toMatchObject({ state: 'not_published', reason: 'credentials_changed' });
   expect(await NotificationModel.findOne({ userId: author.id, title: "Your comment wasn't published" }).lean()).toMatchObject({
-    body: expect.stringMatching(new RegExp(`^Your sign-in details changed since you submitted it \\(a password or two-step verification change\\)\\. Post it again before ${DEADLINE.source} to publish it straight away\\.$`)),
+    body: 'Your sign-in details changed since you submitted it (a password or two-step verification change). Post it again if you still want it published.',
   });
   const closing = await member();
   hooks.precheck = async context => { await UserModel.updateOne({ _id: context.author.id }, { $set: { deletedAt: new Date() } }); };
@@ -1002,6 +1003,10 @@ it('shows authors and staff where each version stands', async () => {
   expect(mine('pending')).toMatchObject({ publishOnApproval: false });
   for (const name of ['queued', 'applying']) expect(mine(name)).not.toHaveProperty('publication');
   expect(mine('published')).toMatchObject({ publication: { state: 'published' } });
+  // Withdraw is offered only for versions submitted while it was on (their approval may still publish them
+  // once it is back on); a version held while it is off reads exactly as before the switch.
+  for (const name of ['pending', 'queued', 'applying', 'notPublished', 'pinned']) expect(mine(name), name).toMatchObject({ canWithdraw: true });
+  for (const name of ['earlier', 'approvedEarlier', 'published', 'declined', 'withdrawn']) expect(mine(name), name).toMatchObject({ canWithdraw: false });
   publishOnApproval = true;
 
   // Staff see the raw state and its attempts, filtered by where it stands.

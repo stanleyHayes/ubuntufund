@@ -63,6 +63,20 @@ describe('publicationOutcomeCopy', () => {
     expect(publicationOutcomeCopy({ action: 'comment.create', state: 'approved', deadline: '7 Oct' }).body).toBe('Approved. Post it again unchanged before 7 Oct to publish it.');
   });
 
+  it('words the next step for the same version by whether the approval still lasts and the form kept it', () => {
+    // While the approval lasts, the same version again publishes straight away.
+    expect(publicationNextStep('account.profile', 'same_version', '7 Oct')).toBe('Save it again before 7 Oct to publish it straight away.');
+    expect(publicationNextStep('thank_you.send', 'same_version', '7 Oct')).toBe('Send it again before 7 Oct to publish it straight away.');
+    // A comment or new update form clears once it is held: only a word-for-word repost would use the approval.
+    expect(publicationNextStep('comment.create', 'same_version', '7 Oct')).toBe('Post it again if you still want it published.');
+    expect(publicationNextStep('update.create', 'same_version', '7 Oct')).toBe('Post it again if you still want it published.');
+    // Once it has run out, the same version is reopened for a fresh decision, never published.
+    for (const [action, verb] of [['account.profile', 'Save'], ['comment.create', 'Post'], ['thank_you.send', 'Send'], ['future.action', 'Submit']]) {
+      expect(publicationNextStep(action, 'same_version')).toBe(`${verb} it again to request a new review.`);
+    }
+    expect(publicationNextStep('comment.create', 'new_version', '7 Oct')).toBe('Submit your latest version if it still needs review.');
+  });
+
   it('never throws on an action or state it does not know', () => {
     expect(publicationOutcomeCopy({ action: 'future.action', state: 'published' }).title).toBe('Your change is live');
     expect(publicationOutcomeCopy({ action: 'toString', state: 'something_new' }).title).toBe("Your change wasn't published");

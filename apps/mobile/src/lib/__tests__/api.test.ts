@@ -7,7 +7,7 @@ vi.unmock('@/lib/api')
 vi.mock('../session', () => ({ accessToken: m.token, configureRefresh: vi.fn() }))
 import { AI_WRITING_TIMEOUT_MS, api, ApiError, loginApi, REQUEST_TIMEOUT_MS, UPLOAD_TIMEOUT_MS } from '../api'
 import { requestAiWriting } from '../aiWriting'
-import { isPublicationHeld } from '../publicationDrafts'
+import { isPublicationHeld, publishesOnApproval, savedPrivateChanges } from '../publicationDrafts'
 import { AiWritingAction } from '@ubuntu-fund/types'
 
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -58,6 +58,18 @@ describe('publication review answers', () => {
     // An API deployed before the marker existed is recognised by its message.
     fetchMock.mockResolvedValueOnce(json(409, { message: HELD }))
     expect(isPublicationHeld(await api.put('/profile', { name: 'Ama' }).catch(e => e))).toBe(true)
+  })
+  it('keeps the publish-on-approval and saved-settings markers of a held profile save', async () => {
+    const AUTOMATIC = 'Saved privately for safety review. Your content has not been published yet. It will be published automatically once a reviewer approves it; check Publication reviews for the decision.'
+    fetchMock.mockResolvedValueOnce(json(409, { message: AUTOMATIC, errors: { publication: ['held', 'publishes_on_approval'], saved: ['private'] } }))
+    const held = await api.put('/profile', { name: 'Ama', bio: 'Nurse' }).catch(e => e)
+    expect(isPublicationHeld(held)).toBe(true)
+    expect(publishesOnApproval(held)).toBe(true)
+    expect(savedPrivateChanges(held)).toBe(true)
+    fetchMock.mockResolvedValueOnce(json(409, { message: HELD, errors: { publication: ['held'] } }))
+    const manual = await api.put('/profile', { name: 'Ama' }).catch(e => e)
+    expect(publishesOnApproval(manual)).toBe(false)
+    expect(savedPrivateChanges(manual)).toBe(false)
   })
   it('leaves a declined version and other conflicts as errors', async () => {
     fetchMock.mockResolvedValueOnce(json(422, { message: 'This version was declined in safety review.' }))

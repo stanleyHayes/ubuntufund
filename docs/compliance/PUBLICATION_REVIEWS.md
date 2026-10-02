@@ -1,6 +1,6 @@
 # Preventive publication review — 12 September 2026
 
-Engineering implemented for account identity edits/private-to-public changes (see `ACCOUNT_PUBLICATION.md`), organization name/website edits (see `ORGANIZATION_IDENTITY.md`), creator-page creation/effective edits (see `CREATOR_PUBLICATION.md`), vanity URL changes, comments, campaign-update creation and effective edits, including the organization-team update route. Campaign creation runs the same admission checks, but since 30 September 2026 a new campaign that needs a person is saved as Pending review for the campaign staff review instead of being held as a private proposal (see "Campaign creation" below). This does not yet cover all UGC or establish store approval.
+Engineering implemented for account identity edits/private-to-public changes (see `ACCOUNT_PUBLICATION.md`), organization name/website edits (see `ORGANIZATION_IDENTITY.md`), creator-page creation/effective edits (see `CREATOR_PUBLICATION.md`), vanity URL changes, comments, campaign-update creation and effective edits, including the organization-team update route. Campaign creation runs the same admission checks, but since 30 September 2026 a new campaign that needs a person is saved as Pending review for the campaign staff review instead of being held as a private proposal (see "Campaign creation" below). Built on 2 October 2026 behind `PUBLISH_ON_APPROVAL_ENABLED`, which stays off until it is switched on in production (`LEGAL_REVISIONS.md` records when), a staff approval publishes the held version of eight of these actions without the author submitting it again (see "Publishing on approval" below). This does not yet cover all UGC or establish store approval.
 
 ## Admission and privacy
 
@@ -13,13 +13,240 @@ Engineering implemented for account identity edits/private-to-public changes (se
 
 ## Author and staff workflow
 
-Settings → Publication reviews lists only the current author's proposed versions, statuses and author-visible review notes. Account changes remount viewer state. Responses are private/no-store. Authors keep the draft, check the decision, then resubmit the same version within seven days of approval. Web and native keep the held profile image and held identity change on the author's browser/device (per account, up to 30 days, cleared on sign-out) so the exact version survives closing the tab or dialog. The unsent campaign draft is kept the same way so nothing typed is lost and a resubmit after a lost response reuses its creation key; a new campaign itself is never held for resubmission (see "Campaign creation"). Changed versions cannot reuse approval. An expired approval never authorizes publication again: resubmitting that exact version re-queues it for a fresh decision (screening when consented, otherwise staff) instead of being refused until the record is purged. Screener failures are logged (`Publication screener unavailable; routed to staff review`) and routed to staff. Declined versions remain declined; the interface provides the support address and reference for appeal. There is no automatic publishing or payment replay from a staff decision.
+Settings → Publication reviews lists only the current author's proposed versions, statuses and author-visible review notes. Account changes remount viewer state. Responses are private/no-store. Authors keep the draft, check the decision, then resubmit the same version within seven days of approval, unless publishing on approval applies: with the switch on, an approval publishes a version of the eight publish-on-approval actions by itself, and authors can withdraw a waiting version. Live-session titles, campaign proposals and anything held while the switch was off keep the resubmission rule. Some of this work applies from the deploy, with the switch on or off (see "What the switch does not control"). Web and native keep the held profile image and held identity change on the author's browser/device (per account, up to 30 days, cleared on sign-out, and cleared when the author withdraws that version) so the exact version survives closing the tab or dialog. The unsent campaign draft is kept the same way so nothing typed is lost and a resubmit after a lost response reuses its creation key; a new campaign itself is never held for resubmission (see "Campaign creation"). Changed versions cannot reuse approval. An expired approval never authorizes publication again: resubmitting that exact version re-queues it for a fresh decision (screening when consented, otherwise staff) instead of being refused until the record is purged. Screener failures are logged (`Publication screener unavailable; routed to staff review`) and routed to staff. Declined versions remain declined; the interface provides the support address and reference for appeal. A staff decision never replays a payment. While the switch is off there is no automatic publishing from a staff decision either; with it on, that principle is replaced for eight actions (see "Publishing on approval").
 
-Admin → Publication reviews shows pending text/media evidence, pagination and final decisions. The action center counts pending work. An administrator must inspect the complete version and all media, provide at least 20 characters of author-visible notes, and cannot review their own submission. Decision and audit record commit atomically. Matching retries preserve the original decision; conflicting retries receive 409. Actual media inspection, staff response times and escalation/appeal procedures require operational verification.
+Admin → Publication reviews shows pending text/media evidence, pagination and final decisions. The action center counts pending work. An administrator must inspect the complete version and all media, provide at least 20 characters of author-visible notes, and cannot review their own submission. From the publishing-on-approval deploy (2 October 2026), with the switch on or off, they also cannot decide content for a campaign or organization they manage, and the decision re-checks their current administrator access (see "Publishing on approval"). Decision and audit record commit atomically. Matching retries preserve the original decision; conflicting retries receive 409. Actual media inspection, staff response times and escalation/appeal procedures require operational verification.
 
-Staff review context (1 October 2026): the staff list (`GET /admin/publication-reviews`) also returns, per item, `baseVersion`, `reviewedAt`, `purgeAt`, `author` (the submitting account: name, email, account type, organization name, verification level, email-verified and closed flags), `profileAccount` when a team member proposes an organization profile change, `campaign` (title, slug, status, owner and deleted flag) for comment, update, update-edit (resolved through the update), live, web-address and thank-you actions, and `reviewer` (name, or automated screening) once decided. A key is absent when it does not apply and `null` when the id is not a stored record (fixtures, deleted records). The response also carries `campaignReviewGoalGhs`, the GHS goal above which a created campaign waits for a separate staff campaign review. Lookups are batched: at most three queries per page whatever its size. An optional `action` query (for example `campaign.create`) narrows the staff list; an invalid value is ignored like an invalid status. The author mount (`/publication-reviews`) is unchanged. The decision endpoint's 409 responses now also carry `errors.review: ['decided']`, so the admin card can title the refusal; the message and status are unchanged. The admin card lays out every submitted field (unrecognised or wrongly typed values appear under "Other submitted fields"), renders author text as plain text only, keeps the exact stored text, ids, versions and media list behind "Show submitted text", and shows an approval as valid until its expiry or the record's `purgeAt`, whichever comes first: the approval is deleted with the record even though `approvalExpiresAt` itself is still set seven days after the decision. Reviewer guidance (what approval does, the post-decision confirmation) lives in one admin module, `apps/admin/src/lib/reviewGuidance.ts`, so it can follow behaviour changes.
+Staff review context (1 October 2026): the staff list (`GET /admin/publication-reviews`) also returns, per item, `baseVersion`, `reviewedAt`, `purgeAt`, `author` (the submitting account: name, email, account type, organization name, verification level, email-verified and closed flags), `profileAccount` when a team member proposes an organization profile change, `campaign` (title, slug, status, owner and deleted flag) for comment, update, update-edit (resolved through the update), live, web-address and thank-you actions, and `reviewer` (name, or automated screening) once decided. A key is absent when it does not apply and `null` when the id is not a stored record (fixtures, deleted records). The response also carries `campaignReviewGoalGhs`, the GHS goal above which a created campaign waits for a separate staff campaign review. Lookups are batched: at most three queries per page whatever its size. An optional `action` query (for example `campaign.create`) narrows the staff list; an invalid value is ignored like an invalid status. The author mount (`/publication-reviews`) was unchanged by that work; on 2 October 2026 it gained the publishing fields and withdrawal (see "Publishing on approval"). The decision endpoint's 409 responses now also carry `errors.review: ['decided']`, so the admin card can title the refusal; the message and status are unchanged. The admin card lays out every submitted field (unrecognised or wrongly typed values appear under "Other submitted fields"), renders author text as plain text only, keeps the exact stored text, ids, versions and media list behind "Show submitted text", and shows an approval as valid until its expiry or the record's `purgeAt`, whichever comes first: the approval is deleted with the record even though `approvalExpiresAt` itself is still set seven days after the decision. Reviewer guidance (what approval does, the post-decision confirmation) lives in one admin module, `apps/admin/src/lib/reviewGuidance.ts`, so it can follow behaviour changes.
 
 Proposed-version records have a 30-day `purgeAt` TTL index; MongoDB deletion is scheduled, not instantaneous. Operational proposal records are also removed by account-erasure cleanup, preserving the user tombstone and separate audit record. Before deletion, the media URLs of held, declined or approved review versions are added to the account-deletion request so the uploaded assets can still be found and removed. The Privacy Notice describes this lifecycle. Deployment must verify the TTL index, backup handling, processor retention, staff/audit retention and any lawful hold procedure; an application TTL does not establish deletion from every processor or backup.
+
+## Publishing on approval (2 October 2026)
+
+### Owner decisions
+
+- **30 September 2026**, choosing "Publish automatically (Recommended)": "It goes live the moment staff approve it, with no resubmitting. The same checks run at that moment (account still allowed, terms accepted). If the author has edited that item since submitting, they're asked to submit the new version instead. Live-session titles are excluded, because you start a live yourself."
+- **1 October 2026**, "take all the recommended actions for me", which settled the six open questions:
+  1. approvals for these actions are single-use;
+  2. versions submitted before the switch keep the old rule;
+  3. versions sent by older app builds also publish on approval;
+  4. staff may not decide content for a campaign or organization they manage;
+  5. the author's own thank-you Send gets the restriction and agreement checks;
+  6. author notices are in-app only.
+
+### The principle changed
+
+- **Before:** "There is no automatic publishing or payment replay from a staff decision." Authors resubmitted the same version within seven days of approval.
+- **Now:** for eight actions, a staff approval publishes the exact approved version as if the author had resubmitted it at that moment. Every check of the author's own request runs again in the publishing transaction, plus an unchanged-credentials check. If any check fails, nothing is published and the author is told why. Live-session titles and campaign proposals are never published by approval, and an approval never moves money. Authors control an unpublished version by withdrawing it or by submitting a newer version, which supersedes the older one. Approvals for these actions are single-use.
+
+The eight actions (`AUTO_PUBLISH_ACTIONS`, `packages/types/src/publication-publishing.ts`) are: account identity (`account.profile`), organization name and website (`organization.profile`), creator page (`creator.profile`), comment (`comment.create`), campaign update (`update.create`), update edit (`update.edit`), donor thank-you message (`thank_you.send`) and campaign web address (`campaign.slug`). A live session (`live.start`) keeps "approve, then the host starts it". A campaign proposal stored before 30 September 2026 (`campaign.create`) keeps "approve, then the creator submits it again".
+
+### Switch, cut-over and backlog
+
+- **The switch.** `PUBLISH_ON_APPROVAL_ENABLED` (config `publishOnApprovalEnabled`) is off by default, and `render.yaml` sets it to `"false"`. Turn it on only once the API, web, native and admin releases are all deployed. The Privacy and Cookie notices dated 2 October 2026 are true with the switch on or off, so they ship with those releases, not on the switch-on day. Record the deploy and switch-on times in `LEGAL_REVISIONS.md`.
+- **Which versions publish on approval.** Only a version submitted with the switch on, and with the request's verified credential version. A version is also covered if its author submits it again with the switch on while it still waits for a decision. Such a version's record carries `publishOnApproval: true` and the credential digest.
+- **The backlog.** Everything held while the switch was off keeps "approve, then submit again" for good. Approving it sends the author the "approved" notice with the deadline. Nothing is published in bulk when the switch goes on.
+- **Screening approvals.** An approval by automated screening is published by the author's own request, as before, and never carries `publishOnApproval`.
+
+### The decision
+
+`PUT /admin/publication-reviews/:id/review` (`MongoPublicationReviewDecision`) runs in one transaction:
+
+1. **Staff fence.** The reviewer must still be an open administrator account using the session's credential version. The check is a real write, so a concurrent demotion, closure or password change conflicts with the decision. Otherwise: 403 'Current administrator access is required'.
+2. **Self-review.** 403 'Another administrator must review your content' (the reviewer wrote this version).
+3. **Conflict of interest.** 403 'Another administrator must review content for a campaign or organization you manage', with `errors.review: ['conflict']`. It applies to approving and declining alike. The reviewer may not decide a version:
+   - written by, or changing, an organization they belong to as an active member (in any role);
+   - for a campaign they own, benefit from, or help run as an active admin or editor of its organization (an update edit reaches its campaign through the update).
+
+   A single-admin deployment needs a second administrator for these items.
+4. **Closed versions.** A version closed before any decision answers 409 'The author withdrew this version.' (`errors.review: ['withdrawn']`) or 409 'The author replaced this version with a newer one.' (`['superseded']`). A decided version answers 409 'A final decision already exists for this version'. A lost race answers 409 'Another reviewer already decided this submission' (both `['decided']`). An identical retry (same decision, reviewer and notes) answers with where the version stands, and runs a publication attempt only if one is due.
+5. **The decision.** A compare-and-set on the waiting version. An approval lasts until the earlier of seven days and the record's purge time. An approval that publishes by itself is queued (`publishState: queued`). Any other decision removes `publishOnApproval` and the credential digest.
+6. **Audit and notice.** The audit is `publication.approved` or `publication.rejected`, with "publishes on approval: yes" or "no". The author is notified of a decline, or of an approval that does not publish by itself.
+
+After the commit the response waits up to 8 seconds for the first attempt. It answers `{ reviewed: true, publishOnApproval, publication?: { state, reason?, at? } }`. The state is `publishing`, `published`, `not_published`, `superseded` or `withdrawn`. A committed decision is never answered with an error.
+
+### Publishing
+
+`PublicationApplier`, `MongoPublicationApplyStore` and one handler per action (`publication-apply/`). An attempt claims the approved version under a 120-second lease, then:
+
+1. **Window guard.** If the approval ends within 60 seconds, or the record within 5 minutes, the attempt ends as `not_published` / `approval_expired`.
+2. **Read.** A stored version that cannot be read ends as `unreadable`.
+3. **Author checks.**
+   - account open (else `account_unavailable`);
+   - credential digest unchanged (else `credentials_changed`);
+   - no publishing restriction (else `restricted`);
+   - the current agreement accepted, unless the author is staff (else `terms_not_accepted`).
+4. **The action's own writer.** This is the transactional code of the author's own request. It repeats the author checks as fences and adds the action's own:
+   - comments: campaign status, blocks and the reviewed name and photo;
+   - team updates and organization details: the organization, the membership and the role;
+   - edits: the update's or page's revision, the identity version, or the previous web address. If it moved, the version ends as `superseded` / `edited_since_submitted`;
+   - creator pages: the plan and the handle;
+   - thank-you messages: the author's role and the beneficiary's consent, a restriction on the organizer, eligibility, the draft and the send limit;
+   - web addresses: the address is still free, and the author is still the owner or an administrator.
+5. **Publication.** Inside that same transaction, a compare-and-set on the lease token records the version as published (`publishedVia: approval`, `publishedResourceId`). It is audited as `publication.published` by `system:publication-applier`, and the author is notified.
+
+Exactly once: the content and the move to `published` commit together. Another attempt, the author's own request, a withdrawal or a newer version can each write the record first. Whichever does wins, and the others fail.
+
+### Outcomes
+
+The author's and staff's wording comes from `publicationOutcomeCopy` in `@ubuntu-fund/types`. Each reason also says whether the author can submit the same version again, should submit a new one, or can do nothing here.
+
+| State | Reasons |
+| --- | --- |
+| `published` | via the approval or the author's own request |
+| `not_published` | `account_unavailable`, `credentials_changed`, `restricted`, `organizer_restricted`, `terms_not_accepted`, `organization_terms_not_accepted`, `permission_changed`, `item_unavailable`, `identity_changed`, `blocked`, `plan_ineligible`, `handle_taken`, `address_taken`, `thank_you_disabled`, `thank_you_limit_reached`, `thank_you_no_donors`, `thank_you_not_eligible`, `campaign_unavailable`, `approval_expired`, `unreadable`, `unavailable` |
+| `superseded` | `edited_since_submitted` (the item changed after submission), `newer_version_submitted` |
+| `withdrawn` | `withdrawn_by_author` |
+
+While the approval lasts, the author can also publish the version themselves by submitting the same version again (`publishedVia: author`), if it is still queued, still publishing, or could not be published. Once the approval has run out, submitting it again reopens it for a new review instead (see "Reopening"), and the author's wording says so.
+
+### Retries and the sweeper
+
+- **Retries.** A failure that is not an expected refusal (a write conflict, a duplicate key, a timeout, the network) is retried after 15 s, 1 min, 5 min, 15 min, 1 h, 3 h and 6 h, each ±20%. The eighth failed attempt ends as `not_published` / `unavailable` and is logged as an error. So does a retry that would fall outside the approval or record window.
+- **The sweeper.** Every API instance sweeps due versions every 30 seconds and once at boot: up to 20 per sweep, the longest waiting first, one at a time. Claims are atomic, so several instances can sweep at once. An attempt whose lease expired (a crashed instance) is taken over, and the stalled attempt can then neither publish nor end it.
+
+### The kill switch is sticky
+
+Switching `PUBLISH_ON_APPROVAL_ENABLED` off:
+
+- decisions stop queueing publications, and new submissions are held the old way (approve, then submit again). What the switch does not control carries on (below);
+- no attempt runs;
+- each sweep returns approved versions still waiting to publish to their authors as plain approvals. Each is audited `publication.returned_to_author`, and its author gets the "approved" notice with the deadline. A waiting version whose approval has already ended ends as `not_published` / `approval_expired`.
+
+A returned version stays a plain approval even if the switch is turned on again. While the switch is off, the author's list shows a waiting approval as approved, with the "submit it again" hint, and no response claims `publishOnApproval`.
+
+### What the switch does not control
+
+These apply from the deploy, with the switch on or off:
+
+- **Single-use approvals** and the in-app decision notices (below).
+- **The staff fence, self-review and conflict of interest** on every decision.
+- **Newer versions replace older ones**, at submission and when the live item is saved unchanged. So with the switch off, staff can still get 409 'The author replaced this version with a newer one.' on an older version.
+- **Private settings** sent with a held identity change are saved at once (`errors.saved: ['private']`).
+- **Withdrawal.** `POST /publication-reviews/:id/withdraw` works on the author's open versions either way. The lists offer it (`canWithdraw`) while the switch is on; while it is off, only on a version submitted while it was on, which its approval might still publish once the switch is back on. Everything held while it is off lists exactly as before.
+
+### What authors control
+
+- **Withdraw.** `POST /publication-reviews/:id/withdraw` works on the author's own version of the eight actions while it waits or is approved but unpublished. It answers `{ withdrawn: true }` and is idempotent. The refusals are:
+  - 409 once published (`errors.publication: ['published']`), saying what to do instead: 'Already published. Delete or change it instead.' (comments and new updates), "Already approved: we're emailing your donors, so it can't be withdrawn." (thank-you messages) or 'Already published. Change it instead.' (everything else);
+  - 409 "Declined versions can't be withdrawn.";
+  - 409 'You already replaced this version.';
+  - 409 "This version can't be withdrawn." (a version that never publishes by itself: a live-session title, a campaign proposal, or a plain approval its author publishes by submitting it again);
+  - 409 'This version changed. Refresh Publication reviews and try again.';
+  - 404 for anyone else's version.
+
+  A withdrawal is audited `publication.withdrawn`. It has no restriction or agreement gate, because it publishes nothing. It wins over an attempt that has not committed.
+- **Newer versions replace older ones.** This covers the six single-item actions: account identity, organization details, creator page, web address, update edit and thank-you message (one per campaign). A newer submission closes every earlier version of the same item, whoever submitted it, if that version is still waiting (`status: superseded`) or approved but unpublished (`publishState: superseded`, `newer_version_submitted`). When the earlier version is another author's, or already approved, the change is audited `publication.superseded`. Another author is also told in the app.
+- **Saving the live version.** Saving a creator page, organization details, web address or update exactly as it is live closes those earlier versions too, without writing anything. That is how an author takes back a held change, and it makes an older app's repeat save after an approval a no-op. For account identity, an unchanged save keeps a held change current, but hiding the profile or removing a photo takes back a held "make it public" or a held photo.
+- **Reopening.** Submitting a closed version again reopens it for a fresh decision: one superseded or withdrawn, or an approval that expired unpublished. So does a web address that returns after it was published (A→X→A→X). No other published version is ever reopened.
+- **Private settings.** A held identity change no longer holds back the account's private settings sent with it. They are saved at once, and the 409 adds `errors.saved: ['private']`.
+
+### Single-use approvals (I153 closed for these actions)
+
+This applies from the deploy, with the switch on or off. The author's own request consumes an approval of these actions: the version is recorded as `publishedVia: author` and audited `publication.published`. The same version is never published twice while its record exists (30 days):
+
+- **Comments and updates.** The identical post again returns the existing post (201). Once it was deleted, the API answers 409 'You already posted this exact comment; change it to post again.' or 'You already posted this exact update; change it to post again.'
+- **Profiles, organization details, creator page, web address.** An identical save changes nothing.
+- **Thank-you messages.** Once a message is queued there is no draft left to send, so sending again answers the send limit or 'Save your message before sending it.'
+- **Anywhere the item cannot be returned.** The API answers 409 'This version is already published.' (`errors.publication: ['published']`).
+
+Approvals of live-session titles and of campaign proposals from before 30 September 2026 stay reusable within their window, so I153 still applies to those.
+
+### Held message
+
+The held 409 now has two forms:
+
+- **Publishes on approval.** It carries `errors.publication: ['held', 'publishes_on_approval']` and says: 'Saved privately for safety review. Your content has not been published yet. It will be published automatically once a reviewer approves it; check Publication reviews for the decision.'
+- **Manual.** It carries `['held']` and keeps: 'Saved privately for safety review. Your content has not been published. Keep your draft and check Publication reviews before submitting this same version again.'
+
+The shared first sentence keeps older apps showing their neutral "waiting for review" notice. Their versions also publish on approval (owner decision). Their screen still says to save again, which is harmless: the author is notified when it is live, and saving again repeats the same post or changes nothing.
+
+### Notices
+
+Authors are told in their notification inbox only, with no email or push:
+
+- the notices are service notices (`type: staff_decision`), keyed per decision so none is sent twice, and skipped for closed accounts;
+- they never carry the content, the reviewer's notes or the credential digest;
+- the wording is `publicationOutcomeCopy`'s, and the deadline is shown in Ghana time, for example "9 Oct 2026, 14:05 GMT".
+
+| Outcome | Title | Body |
+| --- | --- | --- |
+| Published | "Your {item} is live" ("…are live" for organization details); thank-you: "Your thank-you message was approved" | Per action, e.g. "Approved and posted on the campaign."; thank-you: "Approved; we're emailing your donors and will send you a delivery summary." |
+| Not published | "Your {item} wasn't published" | The reason and the next step, e.g. "Your sign-in details changed since you submitted it (a password or two-step verification change). Save it again before {deadline} to publish it straight away." Once the approval has run out: "Save it again to request a new review." A comment or new update form clears once it is held, so those say "Post it again if you still want it published." |
+| Changed since submitted | "Your earlier {item} wasn't published" | "It changed after you submitted it, so this version wasn't published. Submit your latest version if it still needs review." |
+| Replaced by another author's version | "Your earlier {item} wasn't published" | "You (or your team) submitted a newer version." |
+| Declined | "Your {item} wasn't approved" | "Read the reviewer's note in Publication reviews." |
+| Approved, not published by the approval | "Your {item} was approved" | "Approved. Save it again unchanged before {deadline} to publish it." (the form's own verb: post, send or save); a live session: "Approved. Start the session again with the same title and goal before {deadline}." |
+
+- **Where a notice links.**
+  - "Live" notices open the item: `/campaigns/<id>` (comment, update, update edit, web address), `/campaigns/<id>/thank-you`, `/profile`, `/organization-team` or `/creator`. In the app, the thank-you link opens the thank-you composer, and `/organization-team` opens Edit profile for an organization account (where its name and website are edited) and Invitations for anyone else.
+  - An approved live session opens `/campaigns/<id>/live`.
+  - Every other notice opens `/settings#privacy` (Settings in the app).
+- **When notices are sent.** Decision notices go out for every decision from this deploy, with the switch on or off. The thank-you worker's delivery notice still follows separately.
+
+### Audit actions
+
+None of these carries the content.
+
+| Action | Recorded by |
+| --- | --- |
+| `publication.approved`, `publication.rejected` | The deciding administrator, with "publishes on approval: yes" or "no" and the notes as the reason |
+| `publication.published` | `system:publication-applier` (role `system`, path `internal:publication.published`), naming the published resource and the approving reviewer; or the author, when their own request publishes the version |
+| `publication.not_published`, `publication.superseded` | The applier, with the reason in `changes`. `publication.superseded` is also written by the submitting author when their newer version, or a save of the live item, replaces an approved version or another author's version |
+| `publication.withdrawn` | The author |
+| `publication.returned_to_author` | The applier, while the switch is off |
+
+Each action's own audit is written in the same transaction and names the review:
+
+- `organization.profile.updated` adds "via approved review {id}";
+- `donor_thank_you.submitted` adds "on the approval of publication review {id}";
+- `campaign.slug_changed` adds "on the approval of publication review {id}". The owner's own address change is now audited too.
+
+### The stored credential digest
+
+- **What it is.** `credentialDigest` is a SHA-256 of `['publication-credential', 1, userId, authVersion]` (`apps/api/src/domain/services/publicationCredential.ts`). The raw credential version is never stored on the review.
+- **When it changes.** The credential version changes on a password change or reset, and when two-step verification is turned on or off or its recovery codes are regenerated. It never changes on sign-in or token refresh.
+- **When it is kept.** It is stored with a version that publishes on approval, and refreshed when the author submits it again.
+- **Who can see it.** No one. It is never selected by default (`select: false`), and never appears in author or staff responses, exports, audits, notices or logs.
+- **When it is removed.** It is removed when a decision does not queue a publication, when screening approves the version, and when the switch returns an approval. It is deleted with the record (30-day TTL, or account erasure).
+
+A mismatch ends the attempt as `credentials_changed`. While the approval lasts, the author's new session can publish the same version straight away. The Privacy Notice discloses the digest.
+
+### Projections
+
+- **Author (`GET /publication-reviews`).**
+  - `publishOnApproval` is always false while the switch is off;
+  - `publication { state, reason?, at? }`: `queued` and `applying` read as `publishing`, which is hidden while the switch is off; a version closed before a decision shows as `superseded` or `withdrawn`;
+  - `canWithdraw`: while the switch is off, only for a version submitted while it was on (see "What the switch does not control").
+- **Staff.**
+  - `publishOnApproval`;
+  - `publication { state, reason, at, via, attempts, nextAttemptAt, resourceId }`;
+  - `applyOptions` (an update's pin) and `supersededBy`;
+  - an optional `publishState` filter, where `publishing` means queued or applying.
+
+Neither projection ever includes the digest or the lease.
+
+### Verification (2 October 2026)
+
+Run against a local test MongoDB with a controlled screener and a capturing email sender. No live provider, email, production content or money was used.
+
+- **API.** The 17 publication-related files pass (309 tests). They are:
+  - the publication-admission, lifecycle, apply-core, apply-campaign-content and apply-profiles suites;
+  - the donor thank-you publication and donor thank-you suites;
+  - the account, creator, organization and campaign admission suites;
+  - the admin view, safety moderation and update-transaction suites;
+  - the shared-wording, credential-digest and notice unit tests.
+
+  They cover:
+  - publishing exactly once, including two sweeping instances, a lease takeover, the author racing the approval, and screening racing staff;
+  - every refusal reason, and the staff fence and conflict-of-interest rule;
+  - withdrawal and supersession against a running attempt, and the window guard;
+  - backoff and giving up, logged with codes only;
+  - the sticky kill switch and the backlog rule;
+  - older apps repeating a published version, and private settings saved on a hold;
+  - thank-you messages queued once and emailed once, skipping unsubscribed and refunded donors;
+  - the digest kept out of every response, notice and audit, and erased with the account.
+- **Legal text.** `apps/marketing/__tests__/legalClaims.test.ts` passes (22 tests), including the new wording checks. The shared types package type-checks.
 
 ## Verification
 
@@ -280,7 +507,9 @@ Admin → Publication reviews until decided or purged. An approved, unexpired
 proposal for the exact same version is honoured: the campaign is created under
 the usual rules without another content review, and the approval is checked and
 consumed in the creation transaction like every other approved publication. It
-can still be used again within its seven days (open issue I153, unchanged). If
+can still be used again within its seven days (issue I153, which still applies
+to campaign proposals and live-session titles; it was closed for the eight
+publish-on-approval actions, whose approvals are single-use). If
 the exact version is still pending, creating the campaign removes the proposal
 and the campaign takes it to the campaign review, so staff check it once; the
 campaign's admission record keeps the proposal id and reason. A pending proposal
@@ -323,14 +552,20 @@ determines whether goals above GHS 250,000 need financial review. A content
 approval is not financial approval. Legacy campaign financial-review endpoints now record immutable content/version
 evidence with explicit staff attestations; see `CAMPAIGN_STAFF_REVIEW.md`.
 
-The vanity URL endpoint still uses the proposal flow: it screens the proposed
-slug and binds the approval to actor, campaign and previous slug. It compares and
-updates only the slug field; concurrent donation totals or a moderation block
-cannot be replaced by a stale campaign entity. A different concurrent URL
-produces a conflict. No general title/story/goal editing endpoint exists in the
-inspected current router; campaign-news edits retain their separate full-version
-review. Comments, updates, profiles, creator pages, live titles and thank-you
-messages are unchanged by the 30 September 2026 decision.
+The vanity URL endpoint still holds a changed address in Publication reviews: it
+screens the proposed slug and binds the approval to actor, campaign and previous
+slug. It compares and updates only the slug field; concurrent donation totals or
+a moderation block cannot be replaced by a stale campaign entity. A different
+concurrent URL produces a conflict. Since 2 October 2026 the change is written by
+`MongoCampaignSlugWrite` in one transaction with the account fence, the
+author's current owner or administrator role, the single-use consumption of the
+approval and a `campaign.slug_changed` audit; with the switch on, the approval
+itself changes the address (see "Publishing on approval"). No general
+title/story/goal editing endpoint exists in the inspected current router;
+campaign-news edits retain their separate full-version review. Comments,
+updates, profiles, creator pages, live titles and thank-you messages were
+unchanged by the 30 September 2026 decision; see "Publishing on approval" for
+the 2 October 2026 change.
 
 ### Verification of the 30 September 2026 change
 

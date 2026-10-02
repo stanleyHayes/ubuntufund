@@ -27,7 +27,7 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 
 *Surfaces:* api, web  ·  *Type:* compliance
 
-**Before:** creatorA on an active Starter plan with current legal acceptance. Handle 'ama-sings' unused.
+**Before:** Publishing on approval is on. creatorA on an active Starter plan with current legal acceptance. Handle 'ama-sings' unused.
 
 **Steps:**
 
@@ -38,13 +38,13 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 5. In a private window, open /creators/ama-sings.
 6. GET /api/v1/creators/me as creatorA.
 
-**Expect:** Error: 'Saved privately for safety review. Your content has not been published...' (HTTP 409). The typed draft stays in the form. A pending creator.profile review is listed. The public URL shows 'Page not found / We couldn't find a creator at @ama-sings'. /creators/me still returns profile null. No creator_balances row exists yet.
+**Expect:** HTTP 409 'Saved privately for safety review. Your content has not been published yet. It will be published automatically once a reviewer approves it; check Publication reviews for the decision.' The typed draft stays in the form. A pending Creator page review is listed with the steps Submitted, In review, Approved and Published, and a Withdraw button. The public URL shows 'Page not found / We couldn't find a creator at @ama-sings'. /creators/me still returns profile null. No creator_balances row exists yet.
 
 **Needs:** None
 
 **Source:** `apps/api/src/application/use-cases/SaveCreatorProfileUseCase.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`, `apps/web/src/pages/CreatorDashboardPage.tsx`, `docs/compliance/CREATOR_PUBLICATION.md`
 
-## CREATOR-004 · P0 · Staff approval plus exact resubmission publishes the creator page
+## CREATOR-004 · P0 · Staff approval publishes the creator page by itself; nothing is resubmitted
 
 *Surfaces:* admin, api, web  ·  *Type:* functional
 
@@ -55,15 +55,15 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 1. Admin: Publication reviews. Content queue 'Publication proposals', Review status 'pending'.
 2. Open creatorA's creator.profile item. Check that the evidence shows handle, displayName, tagline, bio, tipsEnabled, presetAmounts [10,25,50,100], currency GHS and thankYouMessage.
 3. Type fewer than 20 characters of notes: 'Approve this version' stays disabled. Type 20 or more characters and click 'Approve this version'.
-4. As creatorA, return to /creator without changing any field and click 'Create my page' again.
+4. As creatorA, open the notifications and then /creator, without saving anything.
 5. Open /creators/ama-sings as a guest.
-6. As a counter-test, change the tagline before resubmitting on another account.
+6. Counter-test on another account: while its held page waits for review, save a different tagline, then try to approve the first version.
 
-**Expect:** Approval succeeds and the audit log records publication.approved. Resubmission shows the 'Your creator page is saved' snackbar. The dashboard shows 'Available to withdraw GH₵0', link {origin}/creators/ama-sings with Copy and 'Preview public page'. The public page renders Display name as h1, tagline, 'About Ama', preset buttons GH₵10/25/50/100 plus Custom, and Supporters 0 / Received GH₵0. A creator_balances row now exists in GHS. The changed-tagline counter-test creates a new pending review instead of publishing.
+**Expect:** The approval publishes the page with no resubmission; the audit log records publication.approved and publication.published. creatorA gets the in-app notice 'Your creator page is live' ('Approved and now on your creator page.'), which opens /creator. The dashboard shows 'Available to withdraw GH₵0', link {origin}/creators/ama-sings with Copy and 'Preview public page'. The public page renders Display name as h1, tagline, 'About Ama', preset buttons GH₵10/25/50/100 plus Custom, and Supporters 0 / Received GH₵0. A creator_balances row now exists in GHS. In the counter-test the changed tagline is held as a newer version and replaces the first: approving the first returns 409 'The author replaced this version with a newer one.'
 
 **Needs:** None
 
-**Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/publicationReviewRoutes.ts`, `apps/admin/src/pages/PublicationReviewsPage.tsx`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoCreatorProfileRepository.ts`
+**Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/publicationReviewRoutes.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/publication-apply/creatorProfile.ts`, `apps/admin/src/pages/PublicationReviewsPage.tsx`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoCreatorProfileRepository.ts`
 
 ## CREATOR-011 · P0 · 'Pause tips now' works without review, plan or unrestricted status
 
@@ -79,8 +79,9 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 4. As a guest, open /creators/ama-sings.
 5. As a guest, POST /api/v1/creators/ama-sings/tips with a valid body.
 6. Via the API, POST /creators/profile {"tipsEnabled":false,"tagline":"x"}.
+7. Active run only, with publishing on approval on: save a tagline change without consent (held), click 'Pause tips now', then adminB approves the held change.
 
-**Expect:** Snackbar 'Tips paused. Your other draft changes are retained.' The tagline draft is kept and the Pause button disappears. The public form is replaced by 'This creator isn’t accepting tips right now.' The API tip call returns 409 'This creator is not accepting tips right now.' (or 403 if the plan is ineligible). Pause succeeds even when expired or restricted. The combined pause-plus-edit call is treated as a public change and needs a plan and review.
+**Expect:** Snackbar 'Tips paused. Your other draft changes are retained.' The tagline draft is kept and the Pause button disappears. The public form is replaced by 'This creator isn’t accepting tips right now.' The API tip call returns 409 'This creator is not accepting tips right now.' (or 403 if the plan is ineligible). Pause succeeds even when expired or restricted. The combined pause-plus-edit call is treated as a public change and needs a plan and review. In step 7 the approval does not switch tips back on: pausing saved a newer page, so creatorA gets 'Your earlier creator page wasn't published' ('It changed after you submitted it, so this version wasn't published. Submit your latest version if it still needs review.') and tips stay paused.
 
 **Needs:** None
 
@@ -982,7 +983,7 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 
 *Surfaces:* admin, api, web  ·  *Type:* security/permission
 
-**Before:** adminA also has a paid plan and submits their own creator page. adminB is available. Staging DB access for steps 7 and 10.
+**Before:** Publishing on approval is on. adminA also has a paid plan and submits their own creator page. adminB is available. Staging DB access for steps 7 and 10.
 
 **Steps:**
 
@@ -992,12 +993,12 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 4. adminA resubmits the identical version.
 5. adminA edits the tagline and resubmits.
 6. adminB tries to decide the already-declined item again with different notes.
-7. On staging, take an approved creator.profile item whose owner left 'Use OpenAI to check this public text for safety (optional)' unchecked, set its approvalExpiresAt to the past, then resubmit that exact version from /creator.
+7. On staging, take an approved creator.profile item that was held while publishing on approval was off and never published, whose owner left 'Use OpenAI to check this public text for safety (optional)' unchecked. Set its approvalExpiresAt to the past, then resubmit that exact version from /creator.
 8. Open admin Publication reviews (pending) and find the same item.
-9. adminB approves it again with 20+ characters of notes; the creator resubmits the same version.
+9. adminB approves it again with 20+ characters of notes.
 10. Repeat step 7 on another account with clean text and the OpenAI consent box ticked.
 
-**Expect:** Step 2: 403 'Another administrator must review your content'. Step 4: 422 'This version was declined in safety review. Check Publication reviews, revise your draft, or contact support@ujimora.com to appeal.' Step 5: a new pending review. Step 6: 409 'A final decision already exists for this version'. Step 7: the expired approval no longer returns 'This safety approval expired'. The same review record is re-queued and the save returns 409 'Saved privately for safety review. Your content has not been published. Keep your draft and check Publication reviews before submitting this same version again.' Nothing is published. Step 8: the item is back in the pending queue and its earlier decision (reviewer, notes, expiry) is cleared. Step 9: the resubmission publishes the page. Step 10: the re-queued version is screened by OpenAI again and, if clean, publishes in the same request (reviewedBy 'automated:openai'). An expired approval never publishes without a fresh decision.
+**Expect:** Step 2: 403 'Another administrator must review your content'. Step 3 sends adminA the in-app notice 'Your creator page wasn't approved' ('Read the reviewer's note in Publication reviews.'). Step 4: 422 'This version was declined in safety review. Check Publication reviews, revise your draft, or contact support@ujimora.com to appeal.' Step 5: a new pending review. Step 6: 409 'A final decision already exists for this version'. Step 7: the expired approval no longer returns 'This safety approval expired'. The same review record is re-queued and the save returns 409 'Saved privately for safety review. Your content has not been published yet. It will be published automatically once a reviewer approves it; check Publication reviews for the decision.' Nothing is published. Step 8: the item is back in the pending queue and its earlier decision (reviewer, notes, expiry) is cleared. Step 9: the approval publishes the page by itself. Step 10: the re-queued version is screened by OpenAI again and, if clean, publishes in the same request (reviewedBy 'automated:openai'). An expired approval never publishes without a fresh decision.
 
 **Needs:** OpenAI (step 10)
 
@@ -1028,20 +1029,20 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 
 *Surfaces:* admin, android, api, ios, web  ·  *Type:* compliance
 
-**Before:** creatorA's page is live and has no creator images. The account avatar and cover were uploaded at /profile through Ujimora (Cloudinary, the configured cloud) and approved. adminB is available.
+**Before:** Publishing on approval is on. creatorA's page is live and has no creator images. The account avatar and cover were uploaded at /profile through Ujimora (Cloudinary, the configured cloud) and approved. adminB is available.
 
 **Steps:**
 
 1. /creator: click 'Use account photo and cover'. Expect the snackbar 'Account images selected. Save your creator page to submit them for review.'
 2. Tick OpenAI consent and click 'Save changes'.
 3. adminB approves the creator.profile item. The media URLs should be visible.
-4. creatorA resubmits unchanged.
+4. creatorA reloads /creator and the public page without saving.
 5. Later, change the account avatar at /profile and reload /creators/ama-sings.
 6. Via the API, POST /creators/profile with avatarUrl 'javascript:alert(1)', 'ftp://x/y.png', 'https://example.com/a.png', 'http://res.cloudinary.com/<cloud>/image/upload/a.png', and a res.cloudinary.com URL under a different cloud name.
 7. Click 'Clear images', then 'Save changes'.
 8. Repeat steps 1 to 4 and step 7 on the native creator screen.
 
-**Expect:** Step 2 is held even with consent (reason media). The public page keeps its old images until approval, then shows the new avatar and cover after the resubmission. Step 5 does not change the creator page. Step 6: every URL returns 400 'Validation failed' with the field message 'Upload the image through Ujimora'. Only https://res.cloudinary.com/<configured cloud>/image/upload/... is accepted, and '' clears the image. An account image hosted anywhere else is also refused. Step 7 saves at once: the snackbar reads 'Your creator page is saved', no publication review is created, and the public page shows the default images immediately. Native behaves the same as the web.
+**Expect:** Step 2 is held even with consent (reason media). The public page keeps its old images until adminB approves; the approval publishes the new avatar and cover with no resubmission. Step 5 does not change the creator page. Step 6: every URL returns 400 'Validation failed' with the field message 'Upload the image through Ujimora'. Only https://res.cloudinary.com/<configured cloud>/image/upload/... is accepted, and '' clears the image. An account image hosted anywhere else is also refused. Step 7 saves at once: the snackbar reads 'Your creator page is saved', no publication review is created, and the public page shows the default images immediately. Native behaves the same as the web.
 
 **Needs:** Cloudinary
 
@@ -1051,16 +1052,17 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 
 *Surfaces:* api, web  ·  *Type:* negative/edge
 
-**Before:** creatorA owns 'ama-sings'. creatorB and creatorC are paid and pre-approved for the versions under test.
+**Before:** Publishing on approval is on. creatorA owns 'ama-sings'. creatorB and creatorC are paid and have no pages yet. adminB is available.
 
 **Steps:**
 
 1. As creatorC, submit handles 'ab', '-bad', 'has space', a 31-character handle, and display name 'A'.
 2. Submit 'UPPER_Case'.
 3. Submit '@ama-sings'.
-4. In two browsers, creatorB and creatorC submit the same new handle 'duo-test' at the same moment (both with approved versions).
+4. creatorB and creatorC each submit a page with the new handle 'duo-test' without consent. adminB approves both.
+5. Repeat step 4 with another new handle, 'duo-test-2', but submit both pages with consent and clean text, in two browsers at the same moment.
 
-**Expect:** Invalid inputs return 400 'A valid handle and display name are required.' 'UPPER_Case' is stored as 'upper_case'. '@ama-sings' returns 409 'That handle is already taken.' In the race, exactly one save succeeds and the other returns 409 ('That handle is already taken.' or 'That handle was claimed or your page changed. Reload and review the current page.').
+**Expect:** Invalid inputs return 400 'A valid handle and display name are required.' 'UPPER_Case' is stored as 'upper_case'. '@ama-sings' returns 409 'That handle is already taken.' In step 4 exactly one page gets 'duo-test'. The other approval publishes nothing, and its creator gets 'Your creator page wasn't published' ('Someone else has that handle now. Submit your latest version if it still needs review.'). In step 5 exactly one save succeeds and the other returns 409 ('That handle is already taken.' or 'That handle was claimed or your page changed. Reload and review the current page.').
 
 **Needs:** None
 
@@ -1090,37 +1092,40 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 
 *Surfaces:* admin, api, web  ·  *Type:* functional
 
-**Before:** creatorA paused (CREATOR-011).
+**Before:** Publishing on approval is on. creatorA paused (CREATOR-011).
 
 **Steps:**
 
 1. Turn 'Accept tips' on and click 'Save changes' without consent.
-2. adminB approves. Resubmit.
+2. adminB approves.
 3. Expire creatorA's plan and try to re-enable again.
+4. Renew the plan and pause tips again. Turn 'Accept tips' on and save without consent (held). Expire the plan, then adminB approves.
+5. Renew the plan and save the same page again.
 
-**Expect:** The first save is held for review. After approval and resubmission, the public tip form returns. With an expired plan the switch is disabled in the UI and the API returns 403.
+**Expect:** The first save is held for review. adminB's approval brings the public tip form back with no resubmission. With an expired plan the switch is disabled in the UI and the API returns 403. In step 4 the approval publishes nothing: creatorA gets 'Your creator page wasn't published' ('Your plan no longer includes a creator page. Save it again before <deadline> to publish it straight away.'). In step 5, within the approval's 7 days, the same save publishes it at once without a new review.
 
 **Needs:** None
 
-**Source:** `apps/api/src/application/use-cases/SaveCreatorProfileUseCase.ts`
+**Source:** `apps/api/src/application/use-cases/SaveCreatorProfileUseCase.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/publication-apply/creatorProfile.ts`
 
 ## CREATOR-014 · P1 · Legal agreement gate on creator publication
 
 *Surfaces:* api, web  ·  *Type:* compliance
 
-**Before:** Paid creator whose legalAcceptance version is older than the current one.
+**Before:** Publishing on approval is on. Paid creator with a current legal acceptance and a held public creator change (pending). Staging DB access.
 
 **Steps:**
 
-1. Submit a public creator change (approved version).
-2. Accept the current agreement at /account-agreement.
-3. Resubmit.
+1. On staging, set the creator's legalAcceptance version to an older one. adminB approves the held change.
+2. Save the same page again.
+3. Accept the current agreement at /account-agreement.
+4. Save the same page again.
 
-**Expect:** The first attempt returns 428 'Accept the current account agreement before publishing'. After acceptance the save succeeds.
+**Expect:** The approval publishes nothing: the creator gets 'Your creator page wasn't published' ('You need to accept the current account agreement before it can be published. Save it again before <deadline> to publish it straight away.'). Step 2 returns 428 'Accept the current account agreement before publishing'. After acceptance the same save publishes at once, with no new review.
 
-**Needs:** None
+**Needs:** Staging MongoDB access
 
-**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoCreatorProfileRepository.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`
+**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoCreatorProfileRepository.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`, `apps/api/src/application/services/PublicationApplier.ts`
 
 ## CREATOR-016 · P1 · Native creator dashboard with IAP-based eligibility
 
@@ -1132,11 +1137,11 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 
 1. Profile tab, then Creator page (app/creator.tsx).
 2. Free user: 'Unlock creator donations', then 'View plans'.
-3. Paid (IAP) user: fill the fields and tap 'Create my page'. Expect a review hold. adminB approves. Resubmit.
+3. Paid (IAP) user: fill the fields and tap 'Create my page'. Expect a review hold. adminB approves; the approval publishes the page without tapping 'Create my page' again.
 4. Tap the Share button next to the link.
 5. Tap the preview button, which opens the in-app creator screen.
 
-**Expect:** 'View plans' opens the in-app Subscription tab with store products only, with no web pricing link. The IAP subscription makes policy.eligible true. The hold, approval and resubmit flow matches the web. The handle cannot be edited after creation. The share sheet contains https://app.ujimora.com/creators/<handle>.
+**Expect:** 'View plans' opens the in-app Subscription tab with store products only, with no web pricing link. The IAP subscription makes policy.eligible true. The hold and approval flow matches the web. The handle cannot be edited after creation. The share sheet contains https://app.ujimora.com/creators/<handle>.
 
 **Needs:** App Store sandbox, Google Play test track
 
@@ -1506,17 +1511,17 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 
 *Surfaces:* android, ios, web  ·  *Type:* compliance
 
-**Before:** orgOwner signed in. admin1 member. Cloudinary configured.
+**Before:** Publishing on approval is on. orgOwner signed in. admin1 member. Cloudinary configured.
 
 **Steps:**
 
 1. On /organizations/<ownId> click 'Change cover', upload and save. Repeat with 'Change logo'.
 2. View as a guest.
-3. adminB approves the account.profile media review. Retry the save.
+3. adminB approves the account.profile media review. Do not save again.
 4. Sign in as admin1 or editor1 and open the org profile.
 5. Native: 'Edit organization profile and images'.
 
-**Expect:** The images go to staff media review before appearing publicly. After approval, 'Image updated.' and the new images show. Team members and other users do not see the 'Change cover'/'Change logo' buttons. Native routes the owner to profile/edit.
+**Expect:** The images go to staff media review before appearing publicly. adminB's approval publishes the images without another save: the new images show, and orgOwner gets 'Your profile is live'. Team members and other users do not see the 'Change cover'/'Change logo' buttons. Native routes the owner to profile/edit.
 
 **Needs:** Cloudinary
 
@@ -1589,17 +1594,18 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 
 *Surfaces:* admin, api, web  ·  *Type:* functional
 
-**Before:** editor1 active. adminB available.
+**Before:** Publishing on approval is on. editor1 active. adminB available.
 
 **Steps:**
 
 1. 'Publish a campaign update': choose Campaign, Update title 'Week 2 progress', 'Message to supporters'. Leave consent unchecked. Click 'Publish update'.
 2. adminB approves the update.create review.
-3. editor1 resubmits the identical content.
+3. editor1 publishes the identical content again (as an older app would).
 4. Open the campaign page.
 5. API: POST with a campaignId that does not belong to the org, and with title 'ab'.
+6. editor1 submits another update without consent; the owner removes editor1 from the team; adminB approves it.
 
-**Expect:** The first attempt is held with the 'Saved privately for safety review...' message. After approval: 'Campaign update published under your name.' The update appears on the campaign with author editor1. A foreign campaign returns 404 'Campaign not found'. A short title returns 400 'Please check the entered details'.
+**Expect:** The first attempt is held: 409 'Saved privately for safety review. Your content has not been published yet. It will be published automatically once a reviewer approves it; check Publication reviews for the decision.' adminB's approval posts the update by itself under editor1's name, after re-checking editor1's role and the organization, and editor1 gets 'Your campaign update is live' ('Approved and posted on the campaign.'). The update appears on the campaign with author editor1. Step 3 returns the same update instead of a copy. In step 6 nothing is posted: editor1 gets 'Your campaign update wasn't published' ('You no longer have permission to make this change. Ask the account's owner if it's still needed.'). A foreign campaign returns 404 'Campaign not found'. A short title returns 400 'Please check the entered details'.
 
 **Needs:** OpenAI (optional consent path)
 
@@ -1609,23 +1615,24 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 
 *Surfaces:* admin, api, web  ·  *Type:* compliance
 
-**Before:** orgOwner and admin1. adminB. The org has current legal acceptance.
+**Before:** Publishing on approval is on. orgOwner and admin1. adminB. The org has current legal acceptance.
 
 **Steps:**
 
 1. The owner edits 'Organization name' and 'Website' to https://ngo.example with consent unchecked. Click 'Save organization details'.
-2. adminB approves the organization.profile item. The owner resubmits.
+2. adminB approves the organization.profile item. Do not save again.
 3. Check /organizations/<id>, the directory and the audit log.
 4. Website 'ftp://x' or 'javascript:alert(1)'. Name 'A'.
 5. Restrict the org (ContentRestriction), then save.
-6. Set the org's legalAcceptance to outdated, then save.
-7. admin1 and the owner save different approved edits at the same time.
+6. Set the org's legalAcceptance to outdated, then save a clean rename with consent. Then admin1 holds a rename without consent and adminB approves it.
+7. admin1 submits a rename (held). Before staff decide, the owner submits a different one.
+8. admin1 submits another rename (held). Demote admin1 to editor, then adminB approves it.
 
-**Expect:** Held, then approved, then saved. The public name and website update and the audit log records organization.profile.updated. Invalid input returns 400 'Please check the entered details'. Restricted returns 403 'Publishing for this organization is restricted'. Outdated agreement returns 428. In the race one wins and the other gets 409 'The organization changed during review. Reload its current details before retrying.'
+**Expect:** Held, then approved: the approval publishes the name and website with no second save, and the owner gets 'Your organization details are live' ("Approved and now on the organization's public page."). The audit log records organization.profile.updated ('…via approved review <id>…') and publication.published. Invalid input returns 400 'Please check the entered details'. Restricted returns 403 'Publishing for this organization is restricted'. With the outdated agreement the consented save returns 428, and admin1's approved rename is not published: admin1 gets 'Your organization details weren't published' ('The organization needs to accept the current account agreement before it can be published. Save it again before <deadline> to publish it straight away.'). In step 7 the owner's version replaces admin1's: admin1 gets 'Your earlier organization details weren't published' ('You (or your team) submitted a newer version.'), and approving admin1's returns 409 'The author replaced this version with a newer one.' In step 8 nothing is published: admin1 gets 'Your organization details weren't published' ('You no longer have permission to make this change. Ask the account's owner if it's still needed.'). For renames held before the switch, two saves of different approved versions at the same moment still give one success and one 409 'The organization changed during review. Reload its current details before retrying.'
 
 **Needs:** None
 
-**Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/organizationTeamRoutes.ts`, `docs/compliance/ORGANIZATION_IDENTITY.md`
+**Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/organizationTeamRoutes.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoOrganizationIdentityWrite.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/publication-apply/organizationProfile.ts`, `docs/compliance/ORGANIZATION_IDENTITY.md`
 
 ## CREATOR-074 · P1 · Enroll in the affiliate program (web and native)
 
@@ -1915,8 +1922,9 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 2. API: POST /creators/profile {"avatarUrl":""} alone, then {"avatarUrl":"","tagline":"new text"}.
 3. With an active plan and images present: change only the tagline, tick the OpenAI consent box and save.
 4. Select a new avatar and save with consent.
+5. Select another new avatar and save without consent (held). Before staff decide, click 'Clear images' and 'Save changes'. adminB then approves the held avatar.
 
-**Expect:** Step 1: in every variant the change saves at once ('Your creator page is saved') with no plan, restriction, agreement or review check. No publication review is created and the images disappear from the public page immediately. Step 2: removing only the avatar is immediate; removing it together with a text change counts as a public change, so review, plan and agreement checks apply (for example 403 when the plan has expired). Step 3: the existing approved images are not re-sent as media, so the text is screened and publishes in the same request. Step 4 is held for staff review (reason media) even with consent.
+**Expect:** Step 1: in every variant the change saves at once ('Your creator page is saved') with no plan, restriction, agreement or review check. No publication review is created and the images disappear from the public page immediately. Step 2: removing only the avatar is immediate; removing it together with a text change counts as a public change, so review, plan and agreement checks apply (for example 403 when the plan has expired). Step 3: the existing approved images are not re-sent as media, so the text is screened and publishes in the same request. Step 4 is held for staff review (reason media) even with consent. In step 5 the removal applies at once, and the approval then publishes nothing, because the page changed after the avatar was submitted: creatorA gets 'Your earlier creator page wasn't published' ('It changed after you submitted it, so this version wasn't published. Submit your latest version if it still needs review.').
 
 **Needs:** OpenAI
 
@@ -1951,10 +1959,10 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 **Steps:**
 
 1. Web /creator: try to edit the Handle field. Native: the same.
-2. Via the API, POST /creators/profile {"handle":"ama-new"}. Take it through review and approval, then resubmit.
+2. Via the API, POST /creators/profile {"handle":"ama-new"}. Take it through review; the approval publishes it.
 3. Open /creators/ama-sings and /creators/ama-new.
 4. Scan the creator QR code, or open its /r/<code> short link.
-5. Via the API, POST presetAmounts [5,15] and thankYouMessage 'Medaase!' through review and resubmission.
+5. Via the API, POST presetAmounts [5,15] and thankYouMessage 'Medaase!' and take them through review and approval.
 6. Tip and view /tip/callback.
 
 **Expect:** The UI does not allow editing the handle. After the approved API change, /creators/ama-sings shows 'Page not found' (404) and /creators/ama-new works. The creator QR code is resolved at scan time and now redirects to /creators/ama-new. Balance and tips stay intact. The public page shows GH₵5/GH₵15 presets and the callback shows 'Medaase!'. No web or native UI edits presets or the thank-you message. Decide before launch whether to block handle changes server-side or redirect old /creators/<handle> URLs: directly shared links (anything other than Ujimora QR short links) still break.
@@ -1967,15 +1975,16 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 
 *Surfaces:* api, web  ·  *Type:* recovery/idempotency
 
-**Before:** creatorA's page is live. Two browser tabs open on /creator.
+**Before:** Publishing on approval is on. creatorA's page is live. Two browser tabs open on /creator. adminB is available.
 
 **Steps:**
 
-1. Tab 1: save an approved change.
-2. Tab 2, still on the old revision: save a different approved change.
-3. In another browser, change creatorA's password (this rotates authVersion), then click Save in the original tab.
+1. Tab 1: save a change without consent (held).
+2. Tab 2, still on the old revision: save a different change without consent (held). adminB tries to approve tab 1's version, then approves tab 2's.
+3. Reload both tabs. Save a change with consent and clean text in tab 1 (it publishes), then, without reloading tab 2, save a different change there the same way.
+4. In another browser, change creatorA's password (this rotates authVersion), then click Save in the original tab.
 
-**Expect:** Tab 2 never silently overwrites tab 1. It gets either a fresh review hold (the base version changed) or 409 'Your creator page changed during review. Reload and retry.' The password-change case returns 401 'Your session ended. Sign in again before saving.'
+**Expect:** In step 2 tab 2's version replaces tab 1's held one: approving tab 1's returns 409 'The author replaced this version with a newer one.', and approving tab 2's publishes it. In step 3 tab 2's save also publishes, and it puts back what tab 1 changed: the form sends every field, and the server compares the page as it is when the request arrives, so a stale tab is last-write-wins (known gap: the creator form sends no base revision). A 409 'Your creator page changed during review. Reload and retry.' comes only when the page changes while a save is still being checked, for example two saves at almost the same moment. The password-change case returns 401 'Your session ended. Sign in again before saving.'
 
 **Needs:** None
 
@@ -2033,7 +2042,7 @@ Creator pages and tips, withdrawals, organization profiles and teams, invitation
 5. orgOwner (or an active admin) opens the Invitations screen and taps 'Manage your organization team on the website'.
 6. Check that the expired invitation is not listed.
 
-**Expect:** The identity editor follows the same review flow as the web. The Invitations screen shows an 'Organization teams' section with a card '<Org name>', 'Invited as editor. Invitations expire after seven days.' and 'Accept invitation'. Accepting shows the alert 'Accepted' / 'You joined the organization team.' and the card disappears; web /organization-team shows the member as active. The unverified invitee gets 'Could not accept' with 'Verify your email before accepting an organization invitation'. The owner/admin button opens <EXPO_PUBLIC_WEB_URL>/organization-team in the browser. Inviting, roles and removal are not available natively. Expired invitations are not listed. Nothing steers users to a purchase.
+**Expect:** The identity editor follows the same review flow as the web: with publishing on approval on, the approval publishes a held change without saving again. The Invitations screen shows an 'Organization teams' section with a card '<Org name>', 'Invited as editor. Invitations expire after seven days.' and 'Accept invitation'. Accepting shows the alert 'Accepted' / 'You joined the organization team.' and the card disappears; web /organization-team shows the member as active. The unverified invitee gets 'Could not accept' with 'Verify your email before accepting an organization invitation'. The owner/admin button opens <EXPO_PUBLIC_WEB_URL>/organization-team in the browser. Inviting, roles and removal are not available natively. Expired invitations are not listed. Nothing steers users to a purchase.
 
 **Needs:** TestFlight / Play internal track
 

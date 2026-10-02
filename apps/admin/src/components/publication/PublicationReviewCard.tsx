@@ -88,6 +88,8 @@ interface Props {
   onDecide: (decision: 'approved' | 'rejected') => void
   onRefresh: () => void
   campaignReviewGoalGhs?: number
+  /** Publishing on approval is on (some version in the list publishes by itself). */
+  autoPublishing?: boolean
 }
 
 interface AccountLine {
@@ -194,11 +196,11 @@ function hiddenCharacterWarning(item: PublicationReviewItem): string | null {
 const PAYMENT_DATE_LABELS: Record<string, string> = { 'tip.public_content': 'Tip sent', 'donation.public_content': 'Donation made' }
 
 /** One submission in the review queue, laid out so the reviewer can check every field before deciding. */
-export default function PublicationReviewCard({ item, queue, now, currentUserId, links, notes, onNotesChange, earlierVersionNotes = false, busy, error, onDecide, onRefresh, campaignReviewGoalGhs }: Props) {
+export default function PublicationReviewCard({ item, queue, now, currentUserId, links, notes, onNotesChange, earlierVersionNotes = false, busy, error, onDecide, onRefresh, campaignReviewGoalGhs, autoPublishing = false }: Props) {
   const titleId = useId()
   const parsed = useMemo(() => parseSubmission(item.action, item.text, item.mediaUrls), [item.action, item.text, item.mediaUrls])
   const hiddenWarning = useMemo(() => hiddenCharacterWarning(item), [item])
-  const guidance = guidanceFor(item, parsed, { queue, now, campaignReviewGoalGhs })
+  const guidance = guidanceFor(item, parsed, { queue, now, campaignReviewGoalGhs, autoPublishing })
   const status = statusView(item, now)
   const reason = reasonView(item.reason)
 
@@ -215,6 +217,8 @@ export default function PublicationReviewCard({ item, queue, now, currentUserId,
   const purgeSoon = item.status === 'pending' && Number.isFinite(purgeAt) && purgeAt > now && purgeAt - now <= 7 * DAY_MS
   const own = item.status === 'pending' && !!currentUserId && item.actorId === currentUserId
   const ownRecipient = item.status === 'pending' && !!currentUserId && item.ownerId === currentUserId
+  // Staff may not decide content for a campaign they manage; the card can see when they created it.
+  const ownCampaign = item.status === 'pending' && !!currentUserId && CAMPAIGN_SCOPED_ACTIONS.has(item.action) && item.campaign?.creatorId === currentUserId
 
   const author = item.actorId === 'Guest' ? { primary: 'Guest (no account)' } : accountLine(item.author, item.actorId, currentUserId, links)
   const profile = item.profileAccount === undefined ? null : accountLine(item.profileAccount, item.resourceId ?? '', currentUserId, links)
@@ -272,6 +276,7 @@ export default function PublicationReviewCard({ item, queue, now, currentUserId,
         now={now}
         own={own}
         ownRecipient={ownRecipient}
+        ownCampaign={ownCampaign}
         notes={notes}
         onNotesChange={onNotesChange}
         earlierVersionNotes={earlierVersionNotes}

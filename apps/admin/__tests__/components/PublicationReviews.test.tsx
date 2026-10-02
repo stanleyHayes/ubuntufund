@@ -1,11 +1,12 @@
-// Export authorization/download behavior is covered by exports/ExportMenu.test.tsx.
-vi.mock('@/components/ExportMenu', () => ({ default: () => null }))
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, it, expect, vi } from 'vitest'
 import PublicationReviewsPage from '@/pages/PublicationReviewsPage'
 import { ApiError } from '@/lib/apiError'
-const { get, put, auth, permissions } = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), auth: { user: { id: 'reviewer' } }, permissions: { granted: [] as string[] } }))
+import type { ExportReport } from '@/lib/exports/report'
+const { get, put, auth, permissions, exportMenu } = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), auth: { user: { id: 'reviewer' } }, permissions: { granted: [] as string[] }, exportMenu: { getReport: null as null | ((progress: object) => Promise<ExportReport>) } }))
+// Export authorization/download behavior is covered by exports/ExportMenu.test.tsx; this keeps the report the page would export.
+vi.mock('@/components/ExportMenu', () => ({ default: ({ getReport }: { getReport: (progress: object) => Promise<ExportReport> }) => { exportMenu.getReport = getReport; return null } }))
 vi.mock('@/lib/api', () => ({ api: { get, put } }))
 vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ user: auth.user }) }))
 vi.mock('@/context/AdminPermissionContext', () => ({ useAdminPermissions: () => ({ can: (resource: string, action: string) => permissions.granted.includes(`${resource}:${action}`) }) }))
@@ -461,4 +462,177 @@ it('returns keyboard focus to the queue when the confirmation is closed or the t
   fireEvent.click(refresh)
   await waitFor(() => expect(refresh).toBeEnabled())
   await waitFor(() => expect(refresh).toHaveFocus())
+})
+
+// ─── Publishing on approval ──────────────────────────────────────────────────
+
+const inDays = (days: number) => new Date(Date.now() + days * 86400000).toISOString()
+const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60000).toISOString()
+const thanks = (fields: Record<string, unknown>) => ({ id: 'thanks', actorId: 'author', action: 'thank_you.send', text: JSON.stringify({ subject: 'Thank you', body: 'The water point is open.', signature: 'Ama' }), mediaUrls: [], status: 'pending', reason: 'staff_requested', ...fields })
+const decided = (id: string, fields: Record<string, unknown>) => comment({ id, status: 'approved', reviewedBy: 'admin', reviewer: { id: 'admin', name: 'Abena Owusu', automated: false }, reviewedAt: minutesAgo(60), approvalExpiresAt: inDays(6), reviewNotes: 'Reviewed the complete comment text.', ...fields })
+const cardOf = (id: string) => screen.getAllByRole('article').find(article => article.dataset.reviewId === id)!
+const approveFirst = async () => {
+  fireEvent.change(await screen.findByLabelText('Review notes (at least 20 characters)'), { target: { value: 'Reviewed the complete comment text.' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Approve this version' }))
+}
+
+it('says approving publishes straight away, and warns before a thank-you is emailed to donors', async () => {
+  vi.clearAllMocks()
+  get.mockResolvedValue({ items: [
+    comment({ id: 'auto', publishOnApproval: true }),
+    thanks({ publishOnApproval: true }),
+    comment({ id: 'earlier', text: 'An older comment', publishOnApproval: false }),
+    { id: 'live', actorId: 'host', action: 'live.start', text: '["Weekly broadcast",null]', mediaUrls: [], status: 'pending', reason: 'staff_requested', publishOnApproval: false },
+  ], total: 4 })
+  renderPage()
+  expect(await screen.findByText(/^Check every field and every image, then approve or decline this exact version\. Approving publishes it straight away, after the author’s account, sign-in, restrictions, agreement and permissions are checked again;/)).toBeInTheDocument()
+  expect(within(cardOf('auto')).getByText('Approving posts this comment on the campaign now. If the author changed it since submitting, it won’t be published and they’ll be asked to submit the new version.')).toBeInTheDocument()
+  // An email can't be recalled: a warning, but a note, not an alert.
+  const warning = within(cardOf('thanks')).getByText(/^Approving emails this message to the campaign’s eligible donors now\. It can’t be recalled; unsubscribed and refunded donors are skipped\./)
+  expect(warning.closest('[role="note"]')).toHaveClass('MuiAlert-colorWarning')
+  expect(within(cardOf('earlier')).getByText('Submitted before automatic publishing: the comment appears only when the author posts it again within 7 days. Any change needs a new review.')).toBeInTheDocument()
+  expect(within(cardOf('live')).getByText(/^The live session starts only when the host starts it again with this title and target within 7 days\./)).toBeInTheDocument()
+  // The decisions keep their names.
+  expect(screen.getAllByRole('button', { name: 'Approve this version' })).toHaveLength(4)
+  expect(screen.getAllByRole('button', { name: 'Decline this version' })).toHaveLength(4)
+  expect(screen.queryAllByRole('alert')).toHaveLength(0)
+})
+
+it('keeps today’s intro and guidance while publishing on approval is switched off', async () => {
+  vi.clearAllMocks()
+  get.mockResolvedValue({ items: [comment({ publishOnApproval: false }), thanks({ publishOnApproval: false })], total: 2 })
+  renderPage()
+  expect(await screen.findByText(/^Check every field and every image, then approve or decline this exact version\. Approval publishes nothing by itself:/)).toBeInTheDocument()
+  expect(screen.getByText('The comment appears only when the author posts it again within 7 days. Any change needs a new review.')).toBeInTheDocument()
+  expect(screen.getByText('Donors are emailed only when the sender sends this message again within 7 days. Any change needs a new review.')).toBeInTheDocument()
+  expect(screen.queryByText(/automatic publishing|straight away|Approving (posts|emails)/)).toBeNull()
+  expect(screen.queryAllByRole('note').filter(note => note.classList.contains('MuiAlert-colorWarning'))).toHaveLength(0)
+})
+
+it.each([
+  [{ state: 'published', at: '2026-10-02T10:00:00.000Z' }, 'Approved and published.', 'Success'],
+  [{ state: 'publishing' }, 'Approved. Publishing is in progress; the result will show under Approved.', 'Info'],
+  [{ state: 'not_published', reason: 'restricted' }, 'Approved, but not published: publishing is restricted for the author. The author has been told.', 'Warning'],
+  [{ state: 'superseded', reason: 'edited_since_submitted' }, 'Approved, but not published: the author changed it after submitting.', 'Info'],
+  [{ state: 'withdrawn', reason: 'withdrawn_by_author' }, 'Approved, but not published: the author withdrew it.', 'Info'],
+])('confirms an approval by how publishing went (%j)', async (publication, message, severity) => {
+  vi.clearAllMocks()
+  get.mockResolvedValueOnce({ items: [comment({ publishOnApproval: true })], total: 1 })
+  get.mockResolvedValue({ items: [], total: 0 })
+  put.mockResolvedValue({ reviewed: true, publishOnApproval: true, publication })
+  renderPage()
+  await approveFirst()
+  const alert = (await screen.findByText(message)).closest('.MuiAlert-root')
+  expect(alert).toHaveClass(`MuiAlert-color${severity}`)
+  expect(alert).toHaveAttribute('role', 'status')
+  await waitFor(() => expect(alert).toHaveFocus())
+  // The emptied queue tells nothing new: the intro still says approving publishes straight away.
+  expect(await screen.findByText('No submissions in this queue.')).toBeInTheDocument()
+  expect(screen.getByText(/Approving publishes it straight away/)).toBeInTheDocument()
+})
+
+it('confirms a plain approval as before when the answer says it does not publish by itself', async () => {
+  vi.clearAllMocks()
+  // Switched off after the list loaded: the answer wins over the mark on the card.
+  get.mockResolvedValueOnce({ items: [comment({ publishOnApproval: true })], total: 1 })
+  get.mockResolvedValue({ items: [], total: 0 })
+  put.mockResolvedValue({ reviewed: true, publishOnApproval: false })
+  renderPage()
+  await approveFirst()
+  const alert = (await screen.findByText(/^Approved\. The author can publish this exact version /)).closest('.MuiAlert-root')
+  expect(alert).toHaveClass('MuiAlert-colorSuccess')
+})
+
+it('shows where each approved version stands, and the approval’s expiry only while it can still be used', async () => {
+  vi.clearAllMocks()
+  get.mockResolvedValue({ items: [
+    decided('published', { publishOnApproval: true, publication: { state: 'published', at: minutesAgo(30), via: 'approval', attempts: 1, resourceId: objectId('c') } }),
+    decided('by-author', { publication: { state: 'published', at: minutesAgo(30), via: 'author' } }),
+    decided('publishing', { publishOnApproval: true, publication: { state: 'queued', attempts: 2, nextAttemptAt: new Date(Date.now() + 10 * 60000).toISOString() } }),
+    decided('refused', { publishOnApproval: true, publication: { state: 'not_published', reason: 'credentials_changed', at: minutesAgo(50) } }),
+    decided('replaced', { publishOnApproval: true, publication: { state: 'superseded', reason: 'newer_version_submitted' }, supersededBy: objectId('e') }),
+    decided('withdrawn', { publishOnApproval: true, publication: { state: 'withdrawn', reason: 'withdrawn_by_author' } }),
+    decided('earlier', {}),
+    decided('returned', { publishOnApproval: false, publication: { state: 'queued', attempts: 0 } }),
+    decided('expired', { approvalExpiresAt: minutesAgo(1) }),
+  ], total: 9 })
+  renderPage()
+  await screen.findAllByRole('article')
+  const lines: Record<string, RegExp | string> = {
+    published: /^Published \d{1,2} \w+ \d{4}, \d{2}:\d{2} \(30 minutes ago\) · by approval$/,
+    'by-author': /^Published .+ · by the author$/,
+    publishing: /^Publishing… attempt 2, next try .+ \(in (9|10) minutes\)$/,
+    refused: "Not published: the author's password or two-step verification changed after they submitted it",
+    replaced: 'Replaced by a newer version',
+    withdrawn: 'Withdrawn by the author',
+    earlier: 'Not published by its approval: the author publishes it by submitting it again.',
+    returned: 'Returned to the author: publishing on approval is switched off, so they publish it by submitting it again.',
+  }
+  for (const [id, line] of Object.entries(lines)) {
+    expect(within(cardOf(id)).getByText(line), id).toBeInTheDocument()
+    expect(within(cardOf(id)).getByText(/^Approved by Abena Owusu/), id).toBeInTheDocument()
+  }
+  // A used or closed approval has no expiry to show; one that may still publish does.
+  for (const id of ['published', 'by-author', 'replaced', 'withdrawn']) expect(within(cardOf(id)).queryByText(/^Approval (valid until|expired)/), id).toBeNull()
+  for (const id of ['publishing', 'refused', 'earlier', 'returned']) expect(within(cardOf(id)).getByText(/^Approval valid until/), id).toBeInTheDocument()
+  // An unused plain approval that ran out says so, and nothing more.
+  expect(within(cardOf('expired')).getByText(/^Approval expired \d/)).toBeInTheDocument()
+  expect(within(cardOf('expired')).queryByText(/^Not published/)).toBeNull()
+  expect(screen.queryByText(/undefined|NaN|Invalid Date/)).toBeNull()
+})
+
+it.each([
+  [403, 'conflict', 'Another administrator must review content for a campaign or organization you manage', 'Conflict of interest'],
+  [409, 'withdrawn', 'The author withdrew this version.', 'Withdrawn by the author'],
+  [409, 'superseded', 'The author replaced this version with a newer one.', 'Replaced by a newer version'],
+])('explains a refused decision on its card (%s %s)', async (status, code, message, title) => {
+  vi.clearAllMocks()
+  get.mockResolvedValue({ items: [comment({ publishOnApproval: true })], total: 1 })
+  put.mockRejectedValue(new ApiError(message, status, { review: [code] }))
+  renderPage()
+  await approveFirst()
+  const alert = await screen.findByRole('alert')
+  expect(screen.getByRole('article')).toContainElement(alert)
+  expect(within(alert).getByText(title)).toBeInTheDocument()
+  expect(within(alert).getByText(message)).toBeInTheDocument()
+  // Closed before any decision: nobody decided it.
+  expect(within(alert).queryByText('Already decided')).toBeNull()
+  expect(within(alert).getByRole('button', { name: 'Refresh' })).toBeInTheDocument()
+})
+
+it('blocks a decision on content for a campaign the reviewer created', async () => {
+  vi.clearAllMocks()
+  const campaign = { id: objectId('c'), title: 'My campaign', status: 'active', creatorId: 'reviewer', deleted: false }
+  const other = { ...campaign, id: objectId('d'), title: 'Another campaign', creatorId: 'someone-else' }
+  get.mockResolvedValue({ items: [
+    comment({ id: 'mine', resourceId: campaign.id, campaign, publishOnApproval: true }),
+    comment({ id: 'theirs', resourceId: other.id, campaign: other, publishOnApproval: true }),
+    decided('decided', { resourceId: campaign.id, campaign }),
+  ], total: 3 })
+  put.mockResolvedValue({ reviewed: true, publishOnApproval: true, publication: { state: 'published' } })
+  renderPage()
+  expect(await within(await waitFor(() => cardOf('mine'))).findByText('This is for a campaign you created. Another administrator must review it.')).toBeInTheDocument()
+  expect(screen.getAllByText('This is for a campaign you created. Another administrator must review it.')).toHaveLength(1)
+  for (const id of ['mine', 'theirs']) fireEvent.change(within(cardOf(id)).getByLabelText('Review notes (at least 20 characters)'), { target: { value: 'Reviewed the complete comment text.' } })
+  expect(within(cardOf('mine')).getByRole('button', { name: 'Approve this version' })).toBeDisabled()
+  expect(within(cardOf('mine')).getByRole('button', { name: 'Decline this version' })).toBeDisabled()
+  expect(within(cardOf('theirs')).getByRole('button', { name: 'Approve this version' })).toBeEnabled()
+})
+
+it('exports where each version stands on its way to publication', async () => {
+  vi.clearAllMocks()
+  get.mockResolvedValue({ items: [
+    comment({ id: 'auto', publishOnApproval: true }),
+    decided('published', { publishOnApproval: true, publication: { state: 'published', at: '2026-09-30T10:00:00.000Z', via: 'approval' } }),
+    decided('refused', { publishOnApproval: true, publication: { state: 'not_published', reason: 'item_unavailable' } }),
+  ], total: 3 })
+  renderPage()
+  await screen.findAllByRole('article')
+  const [table] = (await exportMenu.getReport!({})).tables
+  expect(table.columns.map(column => column.label)).toEqual(['ID', 'Action', 'Author', 'Status', 'Reason', 'Text', 'Notes', 'Publication'])
+  expect(table.rows.map(row => [row[0], row[7]])).toEqual([
+    ['auto', 'Publishes on approval'],
+    ['published', 'Published 30 Sept 2026, 10:00 UTC · by approval'],
+    ['refused', 'Not published: the campaign or item it was for is no longer available'],
+  ])
 })

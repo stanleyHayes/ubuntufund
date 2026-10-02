@@ -45,7 +45,7 @@ Profile edits and publication review, privacy switches, alerts and newsletter co
 
 *Surfaces:* admin, api, web  ·  *Type:* compliance
 
-**Before:** U1 has no avatar or cover and a current legal acceptance. A2 is an admin. OpenAI checkbox unchecked.
+**Before:** Publishing on approval is on. U1 has no avatar or cover and a current legal acceptance. A2 is an admin. OpenAI checkbox unchecked.
 
 **Steps:**
 
@@ -54,31 +54,31 @@ Profile edits and publication review, privacy switches, alerts and newsletter co
 3. As a guest, GET /api/v1/users/<U1 id>/public and check U1's header name.
 4. A2: admin.ujimora.com/publication-reviews, queue 'Publication proposals', status 'pending'.
 
-**Expect:** The message reads 'Saved privately for safety review. Your content has not been published…'. The list shows 'account profile · pending' with a Reference id and 'name: Ama Test Two'. The public and header names are unchanged. Admin shows the item with reason 'staff requested' and the author id. The admin action-center pending count increases.
+**Expect:** The 409 reads 'Saved privately for safety review. Your content has not been published yet. It will be published automatically once a reviewer approves it; check Publication reviews for the decision.' (errors.publication ['held', 'publishes_on_approval']). Publication reviews lists the Profile change 'Ama Test Two' in review, with the steps Submitted, In review, Approved and Published, its Reference id and a Withdraw button. The public and header names are unchanged. Admin shows the item with reason 'staff requested' and the author, and says that approving publishes it. The admin action-center pending count increases. With publishing on approval off, the 409 reads 'Saved privately for safety review. Your content has not been published. Keep your draft and check Publication reviews before submitting this same version again.' and the list shows three steps and no Withdraw button.
 
 **Needs:** None
 
 **Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoAccountProfileWrite.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`, `apps/web/src/components/account/PublicationReviews.tsx`, `apps/admin/src/pages/PublicationReviewsPage.tsx`, `apps/api/src/infrastructure/adapters/inbound/http/routes/adminActionRoutes.ts`
 
-## PROFILE-012 · P0 · An approved identity version publishes only when resubmitted exactly, within 7 days
+## PROFILE-012 · P0 · Staff approval publishes the held identity version by itself; nothing is resubmitted
 
 *Surfaces:* admin, android, ios, web  ·  *Type:* functional
 
-**Before:** PROFILE-011 pending item exists.
+**Before:** PROFILE-011 pending item exists (held with publishing on approval on).
 
 **Steps:**
 
 1. A2: enter review notes of >= 20 chars and click 'Approve this version'.
-2. U1 Settings > Publication reviews > Refresh: the status is approved, with 'Review response: …' and 'Approval expires <date>'.
-3. U1 re-saves exactly 'Ama Test Two' on Profile.
-4. Check the header, account menu, mobile Profile tab name and GET /users/<U1>/public.
+2. Without U1 saving anything, check the header, account menu, mobile Profile tab name and GET /users/<U1>/public.
+3. U1: open the notifications, then Settings > Publication reviews > Refresh.
+4. U1 re-saves exactly 'Ama Test Two' on Profile (as an older app would).
 5. Save a different name, 'Ama Test Three'.
 
-**Expect:** The approval expiry is about now + 7 days. The exact resubmission saves ('Profile updated!') and the name updates on every surface. An audit log entry 'publication.approved' exists. A different name creates a new pending review.
+**Expect:** A2's decision confirms that the version was approved and published. The name updates on every surface without U1 saving again. U1 gets the in-app notice 'Your profile is live' ('Approved and now on your public profile.'), which opens /profile, and Publication reviews shows Submitted, In review, Approved and Published (with the date). The audit log has 'publication.approved' (with 'publishes on approval: yes') and 'publication.published' by system:publication-applier. Step 4 succeeds without a new review and changes nothing. Step 5 creates a new pending review. Variant: an item held while publishing on approval was off is not published by its approval. U1 gets 'Your profile was approved' ('Approved. Save it again unchanged before <deadline> to publish it.'), the expiry is about now + 7 days, and the exact re-save before then publishes it ('Profile updated!').
 
 **Needs:** None
 
-**Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/publicationReviewRoutes.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`, `apps/web/src/pages/ProfilePage.tsx`
+**Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationReviewDecision.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/publication-apply/accountProfile.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoAccountProfileWrite.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`, `apps/web/src/pages/ProfilePage.tsx`
 
 ## PROFILE-017 · P0 · Publishing restrictions and a missing legal acceptance block identity publishing, not private settings or photo removal
 
@@ -113,7 +113,7 @@ Profile edits and publication review, privacy switches, alerts and newsletter co
 3. A2 approves the same item.
 4. A1 re-saves the same name.
 
-**Expect:** Step 1 shows the held message and the queue link. Step 2 returns 403 'Another administrator must review your content'. Step 4 succeeds. Admins skip the legal-acceptance gate but not review.
+**Expect:** Step 1 shows the held message and the queue link. Step 2 returns 403 'Another administrator must review your content'. Step 3 publishes the name without A1 saving again. Step 4 succeeds and changes nothing. Admins skip the legal-acceptance gate but not review.
 
 **Needs:** None
 
@@ -710,7 +710,7 @@ Profile edits and publication review, privacy switches, alerts and newsletter co
 3. U1 checks Settings > Publication reviews.
 4. U1 saves a different name.
 
-**Expect:** Step 2 returns 422: 'This version was declined in safety review. Check Publication reviews, revise your draft, or contact support@ujimora.com to appeal.' The decline notes are visible to U1. A new name creates a new pending item.
+**Expect:** Step 2 returns 422: 'This version was declined in safety review. Check Publication reviews, revise your draft, or contact support@ujimora.com to appeal.' The decline notes are visible to U1, who also gets the in-app notice 'Your profile wasn't approved' ('Read the reviewer's note in Publication reviews.'). A new name creates a new pending item.
 
 **Needs:** None
 
@@ -720,18 +720,19 @@ Profile edits and publication review, privacy switches, alerts and newsletter co
 
 *Surfaces:* admin, android, api, ios, web  ·  *Type:* negative/edge
 
-**Before:** U1 has an approved but unapplied name version. Staging DB access for steps 3-4. OPENAI_API_KEY is configured for step 4.
+**Before:** Publishing on approval is on. U1 has a pending name version. Staging DB access for steps 4-5. OPENAI_API_KEY is configured for step 5.
 
 **Steps:**
 
-1. Before resubmitting, change another identity input: turn 'Allow profile to be public' off and on again (web), or change Country on mobile.
-2. Resubmit the approved name.
-3. Staging: set approvalExpiresAt in the past on another approved review that was submitted without OpenAI consent. Resubmit that exact version and refresh Settings > Publication reviews and the admin queue.
-4. Repeat step 3 for a clean-text review, resubmitting with the OpenAI consent box checked.
+1. While the name version is pending, change Country on mobile (or turn 'Allow profile to be public' off and on again on web) without consent. A2 then tries to approve the name version.
+2. Submit another name version. While it is pending, turn 'Allow profile to be public' off only. A2 then approves the name version.
+3. U1 refreshes Settings > Publication reviews.
+4. Staging: on another approved review that was held while publishing on approval was off, submitted without OpenAI consent and never published, set approvalExpiresAt in the past. Resubmit that exact version and refresh Settings > Publication reviews and the admin queue.
+5. Repeat step 4 for a clean-text review, resubmitting with the OpenAI consent box checked.
 
-**Expect:** Step 2 does not publish. It either creates a new pending review (409 'Saved privately for safety review. Your content has not been published. Keep your draft and check Publication reviews before submitting this same version again.') or returns 409 'Your account identity changed during review. Reload and retry.' Step 3 returns the same 409 'Saved privately for safety review…', not 'This safety approval expired…'. The same Reference id goes back to 'pending' (reason staff requested) with the old decision, notes and expiry cleared, and the name stays unchanged until staff approve again. The exact resubmission then publishes. In step 4 the version is re-screened automatically: clean text is approved by automated:openai with a new 7-day expiry and the save succeeds ('Profile updated!'). Nothing publishes on an expired approval without a fresh decision.
+**Expect:** Step 1: the country (or "make it public") change is held as a newer version and replaces the pending name version. A2 gets 409 'The author replaced this version with a newer one.', and U1's list shows the name version as Replaced. Step 2: the approval does not publish the name, because hiding the profile changed the identity after it was submitted. U1 gets 'Your earlier profile wasn't published' ('It changed after you submitted it, so this version wasn't published. Submit your latest version if it still needs review.'), and the tracker shows Approved, then Replaced. Step 4 returns 409 'Saved privately for safety review…', not 'This safety approval expired…'. The same Reference id goes back to 'pending' (reason staff requested) with the old decision, notes and expiry cleared, and staff approval now publishes it. In step 5 the version is re-screened automatically: clean text is approved by automated:openai with a new 7-day expiry and the save succeeds ('Profile updated!'). Nothing publishes on an expired approval without a fresh decision.
 
-**Needs:** Staging DB write access for expiry; OpenAI for step 4
+**Needs:** Staging DB write access for expiry; OpenAI for step 5
 
 **Source:** `apps/api/src/infrastructure/adapters/outbound/persistence/MongoAccountProfileWrite.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`
 
@@ -793,25 +794,26 @@ Profile edits and publication review, privacy switches, alerts and newsletter co
 
 **Source:** `apps/api/src/infrastructure/adapters/inbound/http/routes/publicationReviewRoutes.ts`, `apps/admin/src/pages/PublicationReviewsPage.tsx`
 
-## PROFILE-022 · P1 · A held web avatar upload can be saved after approval, even after closing the dialog
+## PROFILE-022 · P1 · A held web avatar publishes on approval; the kept image can be saved again if the approval couldn't publish it
 
 *Surfaces:* admin, api, web  ·  *Type:* functional
 
-**Before:** Cloudinary is configured. U1 has accepted the agreement. A2 is an admin.
+**Before:** Publishing on approval is on. Cloudinary is configured. U1 has accepted the agreement. A2 is an admin.
 
 **Steps:**
 
 1. Profile > 'Change profile image'. Upload a 1 MB square JPG and watch the progress bar.
 2. Click 'Save image'.
 3. Keep the dialog open. A2 opens the media URL in admin Publication reviews and approves it.
-4. Click 'Save image' again.
-5. Repeat with a different image, but close the dialog after the held save and reload the page. After A2 approves, reopen 'Change profile image' and click 'Save image' without uploading again.
+4. Reload Profile and check the header and the mobile Profile tab.
+5. Repeat with a different image, but close the dialog after the held save and reload the page. Then change U1's password on Profile (this browser stays signed in). A2 approves.
+6. Reopen 'Change profile image' and click 'Save image' without uploading again.
 
-**Expect:** The upload goes to POST https://api.ujimora.com/api/v1/uploads/image?folder=profiles and returns an https://res.cloudinary.com/<cloud>/image/upload/… URL. The first save is held: the error 'Saved privately for safety review…' appears with the Publication reviews list (reason media). After approval, the save succeeds ('Profile updated!') and the avatar appears in the header and on the mobile Profile tab. In step 5 the reopened dialog pre-selects the held image with the note 'This is the image you last submitted. If it is waiting for review, save it again after it is approved.' Saving publishes it without a new review and clears the stored draft. Known open issue I073 (mitigated): the held image is kept only in this browser for 30 days and is cleared on sign-out. From another browser or device the user must re-upload, which creates a new URL and a new review.
+**Expect:** The upload goes to POST https://api.ujimora.com/api/v1/uploads/image?folder=profiles and returns an https://res.cloudinary.com/<cloud>/image/upload/… URL. The first save is held: 'Saved privately for safety review…' appears with the Publication reviews list (reason media). A2's approval publishes the avatar with no second save: it appears in the header and on the mobile Profile tab, and U1 gets 'Your profile is live'. In step 5 the approval does not publish the image: U1 gets 'Your profile wasn't published' ('Your sign-in details changed since you submitted it (a password or two-step verification change). Save it again before <deadline> to publish it straight away.'). In step 6 the reopened dialog pre-selects the held image, and saving it publishes it straight away without a new review ('Profile updated!'). Known open issue I073 (mitigated): the held image is kept only in this browser for 30 days and is cleared on sign-out. From another browser or device the user must re-upload, which creates a new URL and a new review.
 
 **Needs:** Cloudinary
 
-**Source:** `apps/web/src/components/profile/ProfileImageEditor.tsx`, `apps/web/src/lib/publicationDrafts.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/uploadRoutes.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`
+**Source:** `apps/web/src/components/profile/ProfileImageEditor.tsx`, `apps/web/src/lib/publicationDrafts.ts`, `apps/api/src/infrastructure/adapters/inbound/http/routes/uploadRoutes.ts`, `apps/api/src/infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.ts`, `apps/api/src/application/services/PublicationApplier.ts`
 
 ## PROFILE-023 · P1 · Image upload validation, outages and off-platform URLs
 
@@ -1535,7 +1537,7 @@ Profile edits and publication review, privacy switches, alerts and newsletter co
 2. Mobile Edit profile: find the Organization identity editor section.
 3. Change the contact person's name and save.
 
-**Expect:** The header shows the organization name and 'Managed by <contact>'. The name field is labelled 'Contact person'. Org identity edits go through organization publication review. The contact name follows the account identity review.
+**Expect:** The header shows the organization name and 'Managed by <contact>'. The name field is labelled 'Contact person'. Org identity edits go through organization publication review. The contact name follows the account identity review. With publishing on approval on, an approval publishes either change without saving again.
 
 **Needs:** None
 
@@ -1553,7 +1555,7 @@ Profile edits and publication review, privacy switches, alerts and newsletter co
 2. Uncheck the consent box, change the name again, and save.
 3. Upload a new avatar and click 'Save image'.
 4. Admin Publication reviews: check each item's reason and media list.
-5. After A2 approves the new avatar and U1 re-saves it, U1 posts a comment with consent.
+5. After A2 approves the new avatar (the approval publishes it), U1 posts a comment with consent.
 
 **Expect:** Step 1 is auto-approved by automated:openai and saves at once with 'Profile updated!', with no media hold. Step 2 is held with reason 'staff requested' and an empty media list: the unchanged avatar is not sent as media, and the full identity, including the avatar URL, stays in the review text. Step 3 is held with reason 'media' and lists only the new avatar URL. Once published, the new avatar is recorded as reviewed, so U1's later comments are screened as text and not held for the avatar. Avatars set before this release are still media-held on comments.
 
@@ -1583,18 +1585,18 @@ Profile edits and publication review, privacy switches, alerts and newsletter co
 
 *Surfaces:* admin, android, ios, web  ·  *Type:* cross-platform
 
-**Before:** U1 is on the mobile builds with a public profile. A2 is an admin. OPENAI_API_KEY is configured for step 5.
+**Before:** Publishing on approval is on. U1 is on the mobile builds with a public profile. A2 is an admin. OPENAI_API_KEY is configured for step 5.
 
 **Steps:**
 
 1. Open Settings > Privacy and find the 'Public profile' switch and the 'Use OpenAI to check this public text for safety (optional)' box.
 2. Turn 'Public profile' off. As a guest, GET /users/<U1>/public. As U2, open ujimora://profile/<U1>.
 3. Turn it on with the consent box unchecked.
-4. A2 approves the pending account-profile review; U1 turns the switch on again.
+4. A2 approves the pending account-profile review. U1 refreshes Settings, then turns the switch on again.
 5. Turn it off, check the consent box, and turn it on (clean identity text).
 6. Reload web Settings.
 
-**Expect:** Turning it off saves immediately: the public profile returns 404 and mobile shows 'This profile is not available.' In step 3 the switch reverts to off and the red banner shows 'Saved privately for safety review. Your content has not been published…'. Settings > Publication reviews lists the pending item. Step 4 saves. Step 5 is auto-approved and saves. Web 'Allow profile to be public' matches the native state.
+**Expect:** Turning it off saves immediately: the public profile returns 404 and mobile shows 'This profile is not available.' In step 3 the switch reverts to off and the app's 'Waiting for safety review' notice shows ('Saved privately for safety review. It isn't public yet. Once a reviewer approves it, it's published automatically…'); the app never shows the API's own 409 message. Settings > Publication reviews lists the pending item. A2's approval makes the profile public with no second tap: after the refresh the switch is on, the guest read returns the profile, and U1 gets 'Your profile is live'. Turning it on again changes nothing. Step 5 is auto-approved and saves. Web 'Allow profile to be public' matches the native state.
 
 **Needs:** OpenAI for step 5
 
@@ -1770,18 +1772,18 @@ Profile edits and publication review, privacy switches, alerts and newsletter co
 
 *Surfaces:* android, ios, web  ·  *Type:* recovery/idempotency
 
-**Before:** U1 and U2 share one browser and one phone. Cloudinary is configured. A2 is an admin.
+**Before:** Publishing on approval is on. U1 and U2 share one browser and one phone. Cloudinary is configured. A2 is an admin.
 
 **Steps:**
 
 1. Web as U1: upload a new avatar and click 'Save image' (held). Close the dialog, reload, and reopen 'Change profile image'.
 2. Sign out explicitly, sign in as U2, and open 'Change profile image'.
-3. Sign back in as U1 and repeat step 1. A2 approves; reopen the dialog and click 'Save image'.
+3. Sign back in as U1 and repeat step 1. A2 approves; reload Profile, then reopen the dialog.
 4. Mobile as U1: change the name and the photo (consent unchecked) and tap 'Save profile' (held). Kill and relaunch the app, then open Edit profile.
 5. Mobile: sign out, sign in as U2, and open Edit profile.
 6. In a private window with site data blocked, repeat step 1.
 
-**Expect:** Step 1 reopens with the held image and the note 'This is the image you last submitted. If it is waiting for review, save it again after it is approved.' In step 2 U2 sees only their own image, because U1's draft was deleted on sign-out. Step 3 publishes without a new review and clears the draft. Step 4 restores the held name and photo with 'We restored the changes you last submitted for review. Save them again once they are approved.' Step 5 shows no U1 values. In step 6 the editor still works but nothing is remembered. Drafts older than 30 days are discarded. Known open issue I073 (mitigated): drafts exist only on that device or browser, and there is no server-side 'apply approved version'.
+**Expect:** Step 1 reopens with the held image and a note that it is the image last submitted for review. In step 2 U2 sees only their own image, because U1's draft was deleted on sign-out. In step 3 A2's approval publishes the image without U1 saving again, and after the reload the reopened dialog no longer offers it as a held image, because it is now the live one (Profile reads the live image when it loads, so without the reload the dialog still offers it). Withdrawing a held image in Publication reviews also stops the dialog offering it. Step 4 restores the held name and photo with a note that they were last submitted for review. Step 5 shows no U1 values. In step 6 the editor still works but nothing is remembered. Drafts older than 30 days are discarded. Known open issue I073 (mitigated): drafts exist only on that device or browser. Since 2 October 2026 the approval publishes the held version on the server, so a draft is needed only when an approval could not publish it.
 
 **Needs:** Cloudinary
 

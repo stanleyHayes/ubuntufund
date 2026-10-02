@@ -440,6 +440,18 @@ it('lets only the author withdraw a version that is waiting or approved but unpu
     const row = await PublicationReviewModel.create({ actorId: owner.id, action: 'comment.create', resourceId: campaign.id, fingerprint: randomUUID(), text: '{}', reason: 'staff_requested', ...state });
     expect((await withdraw(owner, String(row._id)).expect(409)).body.message).toBe(message);
   }
+  // Once published, each refusal says what its author can do instead: a thank-you message can't be recalled.
+  const published: Array<[string, string]> = [
+    ['update.create', 'Already published. Delete or change it instead.'],
+    ['update.edit', 'Already published. Change it instead.'],
+    ['account.profile', 'Already published. Change it instead.'],
+    ['campaign.slug', 'Already published. Change it instead.'],
+    ['thank_you.send', "Already approved: we're emailing your donors, so it can't be withdrawn."],
+  ];
+  for (const [action, message] of published) {
+    const row = await PublicationReviewModel.create({ actorId: owner.id, action, resourceId: campaign.id, fingerprint: randomUUID(), text: '{}', reason: 'staff_requested', ...approval({ publishState: 'published', publishedVia: 'approval' }) });
+    expect((await withdraw(owner, String(row._id)).expect(409)).body, action).toMatchObject({ message, errors: { publication: ['published'] } });
+  }
   // Live-session titles are started by the host, never published by approval.
   const live = await PublicationReviewModel.create({ actorId: owner.id, action: 'live.start', resourceId: campaign.id, fingerprint: randomUUID(), text: '["Broadcast",null]', reason: 'staff_requested' });
   expect((await withdraw(owner, String(live._id)).expect(409)).body.message).toBe("This version can't be withdrawn.");

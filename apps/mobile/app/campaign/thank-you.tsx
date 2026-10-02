@@ -17,7 +17,7 @@ import { PublicationConsent } from '@/components/PublicationConsent'
 import { PublicationHeldNotice } from '@/components/PublicationHeldNotice'
 import { SignInRequired } from '@/components/SignInRequired'
 import { confirmAction, confirmDestructive } from '@/lib/confirmDestructive'
-import { isPublicationHeld } from '@/lib/publicationDrafts'
+import { isPublicationHeld, publishesOnApproval } from '@/lib/publicationDrafts'
 import {
   THANK_YOU_POLL_MS,
   THANK_YOU_STATUS_LABELS,
@@ -41,6 +41,14 @@ import {
 
 type Styles = ReturnType<typeof makeStyles>
 const EMPTY = thankYouSignature({ subject: '', body: '', signature: '' })
+/**
+ * Publishing on approval sends the campaign's saved draft only if it still
+ * matches the version waiting for review when that is approved; the review
+ * itself stays open whatever happens to the draft.
+ */
+const WAITING_NOTE = "The version waiting for review is sent only if your saved draft still matches it when it's approved."
+const WAITING_DIFFERS = " While it differs from the version waiting for review, that version won't be sent."
+const WAITING_NO_DRAFT = " Without a matching draft, the version waiting for review won't be sent."
 const errorText = (error: unknown, fallback: string) => (error instanceof Error && error.message ? error.message : fallback)
 function formatDate(iso?: string) {
   if (!iso) return ''
@@ -84,7 +92,12 @@ function Composer({ campaignId }: { campaignId: string }) {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   // Held for safety review: a notice, not an error. The draft stays saved.
-  const [held, setHeld] = useState(false)
+  // `automatic`: the approval sends the saved draft, as long as it is unchanged.
+  const [held, setHeld] = useState<'' | 'manual' | 'automatic'>('')
+  // The message waiting for review that its approval is to send (its signature): held on this screen, or
+  // found among the author's reviews when it opens, so the warning holds after leaving and coming back.
+  const [waiting, setWaiting] = useState<string | null>(null)
+  const sent = useRef(false)
   const [preview, setPreview] = useState<DonorThankYouPreview | null>(null)
   const [trackedId, setTrackedId] = useState<string | null>(null)
   const [pollError, setPollError] = useState('')
@@ -112,6 +125,13 @@ function Composer({ campaignId }: { campaignId: string }) {
     })
     return () => { active = false }
   }, [campaignId, reload])
+
+  useEffect(() => {
+    let active = true
+    // Unless a Send on this screen already said where its message stands.
+    void thankYouApi.waitingForReview(campaignId).then(found => { if (active && !sent.current && found) setWaiting(found) })
+    return () => { active = false }
+  }, [campaignId])
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', setAppState)
@@ -152,7 +172,10 @@ function Composer({ campaignId }: { campaignId: string }) {
     try {
       await thankYouApi.saveDraft(campaignId, content)
       if (!live.current) return
-      setSaved(version); setNotice('Draft saved.')
+      setSaved(version)
+      // The review stays open: its approval sends the draft only if it matches again by then.
+      if (waiting !== null && version !== waiting) { setHeld(''); setNotice(`Draft saved.${WAITING_DIFFERS}`) }
+      else setNotice('Draft saved.')
     } catch (e) { if (live.current) setError(errorText(e, 'Could not save your draft.')) }
     finally { if (live.current) setBusy('') }
   }
@@ -165,7 +188,8 @@ function Composer({ campaignId }: { campaignId: string }) {
       await thankYouApi.discardDraft(campaignId)
       if (!live.current) return
       attempt.current = null
-      setSaved(null); setSubject(''); setBody(''); setSignature(''); setHeld(false); setNotice('Draft discarded.')
+      setSaved(null); setSubject(''); setBody(''); setSignature(''); setHeld('')
+      setNotice(waiting !== null ? `Draft discarded.${WAITING_NO_DRAFT}` : 'Draft discarded.')
     } catch (e) { if (live.current) setError(errorText(e, 'Could not discard your draft.')) }
     finally { if (live.current) setBusy('') }
   }
@@ -184,7 +208,8 @@ function Composer({ campaignId }: { campaignId: string }) {
     // A new key per tap; the same message after an unanswered tap keeps its key, so it cannot go out twice.
     attempt.current = sendAttempt(attempt.current, content)
     const { key } = attempt.current
-    setBusy('send'); setError(''); setNotice(''); setHeld(false)
+    sent.current = true
+    setBusy('send'); setError(''); setNotice(''); setHeld(''); setWaiting(null)
     try {
       // The API sends the saved draft, so save the latest text first.
       if (version !== saved) {
@@ -203,7 +228,12 @@ function Composer({ campaignId }: { campaignId: string }) {
       const unknown = sendOutcomeUnknown(e)
       if (!unknown) attempt.current = null
       if (!live.current) return
-      if (isPublicationHeld(e)) setHeld(true)
+      if (isPublicationHeld(e)) {
+        const automatic = publishesOnApproval(e)
+        setHeld(automatic ? 'automatic' : 'manual')
+        // The server's draft is what was sent: the saved version.
+        if (automatic) setWaiting(version)
+      }
       else setError(unknown
         ? `${errorText(e, 'Could not send your message.')} Tap Send again to retry. Your donors will not get it twice.`
         : errorText(e, 'Could not send your message.'))
@@ -265,7 +295,9 @@ function Composer({ campaignId }: { campaignId: string }) {
         <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} />
         {typed && problem ? <Text style={styles.muted}>{problem}</Text> : null}
         {typed && dirty && !problem ? <Text style={styles.muted}>Not saved yet. Sending saves it first.</Text> : null}
-        {held && <PublicationHeldNotice retry="send the same message again" openSettings />}
+        {held ? <PublicationHeldNotice retry="send the same message again" publishesOnApproval={held === 'automatic'}
+          whenApproved="we email it to your donors automatically, so you don't need to send it again" openSettings /> : null}
+        {waiting !== null ? <Text style={styles.muted}>{WAITING_NOTE}</Text> : null}
         <View style={styles.actions}>
           <Button mode="outlined" icon="content-save-outline" style={styles.action} loading={busy === 'save'} disabled={!!busy || !!problem || !dirty} onPress={() => void save()}>Save draft</Button>
           <Button mode="outlined" icon="eye-outline" style={styles.action} loading={busy === 'preview'} disabled={!!busy || !!problem} onPress={() => void showPreview()}>Preview</Button>

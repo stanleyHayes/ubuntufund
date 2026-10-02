@@ -56,3 +56,57 @@ it('isolates a pending identity save from a switched account and never reloads u
   expect(api.get).toHaveBeenCalledTimes(reads)
   expect(screen.queryByText('Organization profile updated.')).not.toBeInTheDocument()
 })
+
+describe('publishing on approval', () => {
+  const heldAutomatically = () => Object.assign(new Error('Saved privately for safety review. Your content has not been published yet.'), { status: 409, errors: { publication: ['held', 'publishes_on_approval'] } })
+  const workspace = (role: string) => vi.mocked(api.get).mockImplementation(async path =>
+    path.startsWith('/publication-reviews') ? { items: [], total: 0 }
+      : path.endsWith('/mine') ? [{ organizationId: 'org', name: 'Foundation', role, status: 'active' }]
+        : { name: 'Foundation', website: '', role, members: [], campaigns: [{ id: 'campaign', title: 'Community support', status: 'active' }] })
+
+  it('says held organization details publish once approved, keeping them on screen', async () => {
+    workspace('owner')
+    vi.mocked(api.put).mockRejectedValue(heldAutomatically())
+    render(<OrganizationTeamPage />)
+    const name = await screen.findByLabelText('Organization name')
+    fireEvent.change(name, { target: { value: 'Proposed foundation' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save organization details' }))
+    const notice = (await screen.findByText('Waiting for safety review')).closest('[role="status"]')
+    expect(notice).toHaveTextContent("Once a reviewer approves it, it's published automatically, so you don't need to submit it again. Check Publication reviews below for the decision; you can withdraw it there.")
+    expect(name).toHaveValue('Proposed foundation')
+    expect(screen.getByRole('button', { name: 'Refresh publication reviews' })).toBeInTheDocument()
+  })
+
+  it('starts the update composer afresh when its approval will publish the held update', async () => {
+    workspace('editor')
+    vi.mocked(api.post).mockRejectedValue(heldAutomatically())
+    render(<OrganizationTeamPage />)
+    fireEvent.mouseDown(await screen.findByRole('combobox', { name: 'Campaign' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Community support' }))
+    fireEvent.change(screen.getByLabelText('Update title'), { target: { value: 'Roof finished' } })
+    fireEvent.change(screen.getByLabelText('Message to supporters'), { target: { value: 'Thank you for the roof.' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: /Use OpenAI/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Publish update' }))
+    const notice = (await screen.findByText('Waiting for safety review')).closest('[role="status"]')
+    expect(notice).toHaveTextContent("so you don't need to submit it again")
+    expect(api.post).toHaveBeenCalledExactlyOnceWith('/organization-team/org/campaigns/campaign/updates', { title: 'Roof finished', content: 'Thank you for the roof.', automatedReviewConsent: true })
+    expect(screen.getByLabelText('Update title')).toHaveValue('')
+    expect(screen.getByLabelText('Message to supporters')).toHaveValue('')
+    expect(screen.getByRole('checkbox', { name: /Use OpenAI/ })).not.toBeChecked()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('keeps the update to publish again after approval otherwise', async () => {
+    workspace('editor')
+    vi.mocked(api.post).mockRejectedValue(Object.assign(new Error('Saved privately for safety review.'), { status: 409, errors: { publication: ['held'] } }))
+    render(<OrganizationTeamPage />)
+    fireEvent.mouseDown(await screen.findByRole('combobox', { name: 'Campaign' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Community support' }))
+    fireEvent.change(screen.getByLabelText('Update title'), { target: { value: 'Roof finished' } })
+    fireEvent.change(screen.getByLabelText('Message to supporters'), { target: { value: 'Thank you for the roof.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Publish update' }))
+    const notice = (await screen.findByText('Waiting for safety review')).closest('[role="status"]')
+    expect(notice).toHaveTextContent('After a reviewer approves it, publish it again unchanged to publish it.')
+    expect(screen.getByLabelText('Update title')).toHaveValue('Roof finished')
+  })
+})

@@ -115,11 +115,26 @@ Authors are the campaign's organizer, its organization's admins/editors, or its 
 | `PUT /campaigns/:id/thank-you/draft` | `{ subject (3–120), body (10–5000), signature (≤120) }`. Plain text only; the subject is folded to one line. |
 | `DELETE /campaigns/:id/thank-you/draft` | Discard. |
 | `POST /campaigns/:id/thank-you/preview` | Same body → `{ subject, text, html }`: exactly what donors receive, via the same branded template. `html` escapes all author text; render it only in a sandboxed frame. |
-| `POST /campaigns/:id/thank-you/send` | Header `Idempotency-Key` (16–100 chars, new per user action; keep it for retries of the same click); body `{ automatedReviewConsent?: boolean }`. Returns `202` with `DonorThankYouView` (status `queued`), or `200` for a replay. The message may be held for safety review: `409` with `errors.publication = ['held']`. Show the existing "Waiting for safety review" notice, then send the same draft again after approval. Other `409`s: not eligible or already sent. |
+| `POST /campaigns/:id/thank-you/send` | Header `Idempotency-Key` (16–100 chars, new per user action; keep it for retries of the same click); body `{ automatedReviewConsent?: boolean }`. Returns `202` with `DonorThankYouView` (status `queued`), or `200` for a replay. The message may be held for safety review (`409`, see "Held messages" below): `errors.publication = ['held', 'publishes_on_approval']` means the approval sends it, so show the waiting notice and nothing needs sending again; `['held']` alone means send the same draft again after approval. Before anything is held, the sender is checked: `401` 'Account authorization changed. Sign in again.', `428` 'Accept the current account agreement before publishing.', `403` 'Publishing is restricted. Contact support@ujimora.com to appeal.' or `403` "Publishing is restricted for this campaign's organizer, so messages to its donors are paused." Other `409`s: not eligible, already sent, 'Save your message before sending it.', 'Your draft changed while it was being checked. Review it and send again.' or 'This version is already published.'. |
 | `GET /campaigns/:id/thank-you/:thankYouId` | Progress: `status` (`queued` → `sending` → `sent` \| `partially_sent` \| `failed`), `recipientCount`, `sentCount`, `failedCount`, `skippedCount`, `retryableCount`. Poll every few seconds while `queued`/`sending`. |
 | `POST /campaigns/:id/thank-you/:thankYouId/retry` | Re-queues retryable failures only → `{ requeued }`. |
 
 Authors only ever see counts, never recipients.
+
+**Held messages (2 October 2026).** With `PUBLISH_ON_APPROVAL_ENABLED` on, a staff approval sends a held message without the author pressing Send again (see `docs/compliance/PUBLICATION_REVIEWS.md`, "Publishing on approval").
+
+- **The checks.** The approval queues the message exactly as the author's Send would at that moment, through the same transaction and checks:
+  - the sender's account, sign-in, agreement and restriction;
+  - their role now: owner, active admin or editor of the running organization, or the beneficiary with accepted consent;
+  - a restriction on the organizer;
+  - eligibility;
+  - the draft still holding exactly the reviewed message;
+  - the send limit.
+- **Queued once.** It is queued once, under the key `publication-review-<reviewId>`. The existing worker then emails each eligible donor once, skipping donors refunded or unsubscribed by then.
+- **Editing a waiting message.** Saving or discarding the draft does not close the review: its approval compares the draft at that moment and sends the reviewed message only if the draft still holds it exactly. While the draft differs (or is gone), the reviewed version is not sent, and the author is told it changed after they submitted it; changed back before the approval, it is sent. The composers on web and in the app say so, also after the author leaves and comes back (they find the waiting version among the author's own `GET /publication-reviews`, by `resourceId`). A newer Send for the same campaign replaces an earlier held one.
+- **What the author sees.** The history shows the queued message. The inbox gets "Your thank-you message was approved" ("Approved; we're emailing your donors and will send you a delivery summary."), and the delivery notice follows as before.
+- **When it is not sent.** If a check fails, the author gets "Your thank-you message wasn't published" with the reason, for example "This campaign has already sent the most thank-you messages allowed."
+- **Messages held earlier.** Messages held before the switch, or while it is off, keep "send the same draft again after approval".
 
 Donors:
 

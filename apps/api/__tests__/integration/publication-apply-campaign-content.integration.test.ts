@@ -500,7 +500,7 @@ it('does not publish after a password change or after two-step verification is t
   expect((await decide(id).expect(200)).body.data.publication).toMatchObject({ state: 'not_published', reason: 'credentials_changed' });
   expect(await CampaignCommentModel.countDocuments({ campaignId })).toBe(0);
   expect(await NotificationModel.findOne({ userId: author.id, title: "Your comment wasn't published" }).lean()).toMatchObject({
-    body: expect.stringMatching(/^Your sign-in details changed since you submitted it \(a password or two-step verification change\)\. Post it again before .+ to publish it straight away\.$/),
+    body: 'Your sign-in details changed since you submitted it (a password or two-step verification change). Post it again if you still want it published.',
   });
   // Within the approval, the author's own request with the new session publishes it at once.
   const renewed = { ...author, auth: `Bearer ${changed.body.data.tokens.accessToken}` };

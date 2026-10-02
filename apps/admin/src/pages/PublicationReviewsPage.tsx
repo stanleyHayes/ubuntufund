@@ -16,8 +16,9 @@ import { api } from '@/lib/api'
 import { ApiError } from '@/lib/apiError'
 import { useAuth } from '@/context/AuthContext'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
-import { exportText, parseSubmission, type PublicationReviewItem, type ReviewQueue } from '@/lib/publicationReview'
-import { PAGE_INTRO, guidanceFor, type Phrase } from '@/lib/reviewGuidance'
+import { parseSubmission, type PublicationReviewItem, type ReviewQueue } from '@/lib/publicationReview'
+import { publicationReviewColumns } from '@/lib/exports/publicationReviews'
+import { autoPublishingIn, decisionConfirmation, decisionResultOf, guidanceFor, pageIntro, type DecisionConfirmation } from '@/lib/reviewGuidance'
 
 type Kind = 'publication-reviews' | 'tip-content-reviews' | 'donation-content-reviews'
 
@@ -64,9 +65,11 @@ export default function PublicationReviewsPage() {
   // When the list loaded: cards describe dates relative to it, so nothing reads the clock while rendering.
   const [loadedAt, setLoadedAt] = useState(0)
   const [campaignReviewGoal, setCampaignReviewGoal] = useState<number | undefined>(undefined)
+  // Publishing on approval is on: the last list that could tell had a version that publishes by itself. Kept while the next one loads.
+  const [autoPublishing, setAutoPublishing] = useState(false)
   // A failed decision belongs to its card; the page-level error is only for a failed load.
   const [decisionError, setDecisionError] = useState<DecisionError | null>(null)
-  const [confirmation, setConfirmation] = useState<Phrase | null>(null)
+  const [confirmation, setConfirmation] = useState<DecisionConfirmation | null>(null)
   const confirmationRef = useRef<HTMLDivElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const refreshRef = useRef<HTMLButtonElement>(null)
@@ -78,7 +81,10 @@ export default function PublicationReviewsPage() {
     try {
       const data = await api.get<{ items: PublicationReviewItem[]; total: number; campaignReviewGoalGhs?: number }>(`${endpoint}?status=${status}&page=${page}&pageSize=${pageSize}`)
       if (current !== revision.current) return
-      setItems(Array.isArray(data.items) ? data.items : [])
+      const list = Array.isArray(data.items) ? data.items : []
+      setItems(list)
+      const shown = autoPublishingIn(list)
+      if (shown !== null) setAutoPublishing(shown)
       setTotal(data.total)
       setCampaignReviewGoal(typeof data.campaignReviewGoalGhs === 'number' ? data.campaignReviewGoalGhs : undefined)
       setLoadedAt(Date.now())
@@ -121,14 +127,21 @@ export default function PublicationReviewsPage() {
     setConfirmation(null)
     setDecisionError(null)
     const decidedAt = Date.now()
-    try { await api.put(`${endpoint}/${item.id}/review`, { decision, notes: notes[item.id]?.[versionOf(item)], ...(item.version ? { version: item.version } : {}) }) }
+    let response: unknown
+    try { response = await api.put<unknown>(`${endpoint}/${item.id}/review`, { decision, notes: notes[item.id]?.[versionOf(item)], ...(item.version ? { version: item.version } : {}) }) }
     catch (e) {
       setDecisionError({ id: item.id, message: e instanceof Error && e.message ? e.message : 'Could not save review', status: e instanceof ApiError ? e.status : undefined, code: e instanceof ApiError ? e.errors?.review?.[0] : undefined })
       setBusy('')
       return
     }
-    let message: Phrase = [decision === 'approved' ? 'Approved.' : 'Declined.']
-    try { message = guidanceFor(item, parseSubmission(item.action, item.text, item.mediaUrls), { queue, now: decidedAt, campaignReviewGoalGhs: campaignReviewGoal }).confirmation[decision] } catch { /* The decision is saved; keep the short confirmation. */ }
+    let message: DecisionConfirmation = { severity: 'success', message: [decision === 'approved' ? 'Approved.' : 'Declined.'] }
+    try {
+      // The answer says whether this approval published by itself (publishing on approval may have been switched since the list loaded).
+      const result = queue === 'publication' ? decisionResultOf(response) : null
+      const decided = result ? { ...item, publishOnApproval: result.publishOnApproval } : item
+      const guidance = guidanceFor(decided, parseSubmission(item.action, item.text, item.mediaUrls), { queue, now: decidedAt, campaignReviewGoalGhs: campaignReviewGoal })
+      message = decisionConfirmation(decided, decision, result, guidance)
+    } catch { /* The decision is saved; keep the short confirmation. */ }
     setConfirmation(message)
     try { await latestLoad.current() } finally { setBusy('') }
   }
@@ -138,14 +151,14 @@ export default function PublicationReviewsPage() {
       <TextField optionContext="publication" select sx={{ maxWidth: { sm: 420 } }} label="Content queue" value={kind} disabled={!!busy} onChange={event => { setKind(event.target.value as Kind); setPage(1); setNotes({}); setConfirmation(null); setDecisionError(null) }}><MenuItem value="publication-reviews">Publication proposals</MenuItem><MenuItem value="tip-content-reviews">Supporter names and messages</MenuItem><MenuItem value="donation-content-reviews">Campaign donor names and messages</MenuItem></TextField>
       <TextField optionContext="publication" select sx={{ maxWidth: { sm: 280 } }} label="Review status" value={status} disabled={!!busy} onChange={e => { setStatus(e.target.value); setPage(1); setConfirmation(null) }}>{STATUSES.map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}</TextField>
       <Button ref={refreshRef} variant="outlined" startIcon={<RefreshRoundedIcon />} disabled={loading || !!busy} onClick={() => reload({ refresh: true })}>Refresh publication reviews</Button>
-      <ExportMenu title="Publication reviews" disabled={loading || !!error} getReport={async progress => ({ title: "Publication reviews", filters: [`Queue: ${kind}`, `Status: ${status}`], tables: [exportTable("Publication reviews", await loadAll<PublicationReviewItem>(`${endpoint}?status=${status}`, progress), { ID: r => r.id, Action: r => r.action, Author: r => r.actorId, Status: r => r.status, Reason: r => r.reason, Text: r => exportText(r.action, r.text), Notes: r => r.reviewNotes })] })} />
+      <ExportMenu title="Publication reviews" disabled={loading || !!error} getReport={async progress => ({ title: "Publication reviews", filters: [`Queue: ${kind}`, `Status: ${status}`], tables: [exportTable("Publication reviews", await loadAll<PublicationReviewItem>(`${endpoint}?status=${status}`, progress), publicationReviewColumns(queue, Date.now()))] })} />
     </ReviewQueueToolbar>
 
-    <Typography>{PAGE_INTRO[queue]}</Typography>
+    <Typography>{pageIntro(queue, autoPublishing)}</Typography>
     {error && <Alert severity="error">{error}</Alert>}
-    {confirmation && <Alert ref={confirmationRef} severity="success" role="status" tabIndex={-1} onClose={closeConfirmation}>
+    {confirmation && <Alert ref={confirmationRef} severity={confirmation.severity} role="status" tabIndex={-1} onClose={closeConfirmation}>
       {/* A quoted campaign title is the author's text: isolate it from the sentence around it. */}
-      {confirmation.map((part, index) => (typeof part === 'string' ? part : <Isolated key={index}>{part.value}</Isolated>))}
+      {confirmation.message.map((part, index) => (typeof part === 'string' ? part : <Isolated key={index}>{part.value}</Isolated>))}
     </Alert>}
 
     {loading ? <ReviewQueueSkeleton label="Loading publication reviews" /> : items.map(item => <PublicationReviewCard
@@ -163,6 +176,7 @@ export default function PublicationReviewsPage() {
       onDecide={decision => void decide(item, decision)}
       onRefresh={() => reload({ itemId: item.id })}
       campaignReviewGoalGhs={campaignReviewGoal}
+      autoPublishing={autoPublishing}
     />)}
     {!loading && !items.length && !error && <ReviewQueueEmpty title="No submissions in this queue." description="New proposals appear here when they need review. Choose another queue or status to see earlier decisions." icon={<FactCheckRoundedIcon />} />}
     {!loading && !error && <ReviewQueuePagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={setPageSize} disabled={loading || !!busy} />}

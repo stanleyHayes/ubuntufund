@@ -20,6 +20,8 @@ import VolunteerActivismRoundedIcon from '@mui/icons-material/VolunteerActivismR
 import { BrandedTextField as TextField, ErrorState, ItemNotFound, LoadingDots, SHAPE } from '@ubuntu-fund/ui'
 import {
   DONOR_THANK_YOU_LIMITS,
+  parsePublicationReviewPage,
+  waitingThankYou,
   type DonorThankYouContent,
   type DonorThankYouPreview,
   type DonorThankYouState,
@@ -30,7 +32,7 @@ import { PublicationConsent } from '@/components/safety/PublicationConsent'
 import { PublicationHeldNotice } from '@/components/safety/PublicationHeldNotice'
 import { useCampaign } from '@/hooks/useCampaigns'
 import { api } from '@/lib/api'
-import { isPublicationHeld } from '@/lib/publicationDrafts'
+import { publicationHold, type PublicationHold } from '@/lib/publicationDrafts'
 import { useSeo } from '@/lib/seo'
 import {
   EMPTY_THANK_YOU,
@@ -44,6 +46,16 @@ import {
 
 /** How often delivery progress is read while a message is queued or sending. */
 const POLL_MS = 4000
+/** The author's latest submissions (the list API's largest page), where a message waiting for review is found. */
+const REVIEWS_PAGE = '/publication-reviews?page=1&pageSize=100'
+/**
+ * Publishing on approval sends the campaign's saved draft only if it still
+ * matches the version waiting for review when that is approved; the review
+ * itself stays open whatever happens to the draft.
+ */
+const WAITING_NOTE = "The version waiting for review is sent only if your saved draft still matches it when it's approved."
+const WAITING_DIFFERS = "Draft saved. While it differs from the version waiting for review, that version won't be sent."
+const WAITING_NO_DRAFT = "Draft discarded. Without a matching draft, the version waiting for review won't be sent."
 const ALL_TOUCHED = { subject: true, body: true, signature: true }
 
 type Field = keyof DonorThankYouContent
@@ -92,7 +104,11 @@ function ThankDonorsContent({ campaignId }: { campaignId: string }) {
   const [busy, setBusy] = useState<'save' | 'preview' | 'discard' | 'send' | 'retry' | null>(null)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState<{ message: string; canRetry: boolean } | null>(null)
-  const [held, setHeld] = useState(false)
+  const [held, setHeld] = useState<PublicationHold | null>(null)
+  // The message waiting for review that its approval is to send (as normalized JSON): held on this page, or
+  // found among the author's reviews when it opens, so the warning holds after leaving and coming back.
+  const [waiting, setWaiting] = useState<string | null>(null)
+  const sent = useRef(false)
   const [preview, setPreview] = useState<DonorThankYouPreview | null>(null)
   const [confirmSend, setConfirmSend] = useState(false)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
@@ -123,6 +139,18 @@ function ThankDonorsContent({ campaignId }: { campaignId: string }) {
       })
     return () => { active = false }
   }, [campaignId, revision])
+
+  useEffect(() => {
+    let active = true
+    api.get<unknown>(REVIEWS_PAGE)
+      .then((page) => {
+        const found = waitingThankYou(parsePublicationReviewPage(page)?.items ?? [], campaignId)
+        // Unless a Send on this page already said where its message stands.
+        if (active && !sent.current && found) setWaiting(JSON.stringify(normalizeThankYou(found)))
+      })
+      .catch(() => { /* Best effort: only the warning depends on it. */ })
+    return () => { active = false }
+  }, [campaignId])
 
   const shown = latest ?? state?.history[0] ?? null
   const shownId = shown?.id
@@ -156,9 +184,12 @@ function ThankDonorsContent({ campaignId }: { campaignId: string }) {
     attempt.current = null
   }
 
-  async function saveDraft(): Promise<void> {
+  /** Saves what is on screen; resolves to the draft as the server stored it (what an approval compares). */
+  async function saveDraft(): Promise<DonorThankYouContent> {
     const draft = await api.put<DonorThankYouView>(`/campaigns/${campaignId}/thank-you/draft`, normalized)
-    setSaved(draft ? contentOf(draft) : normalized)
+    const stored = draft ? contentOf(draft) : normalized
+    setSaved(stored)
+    return stored
   }
 
   async function handleSave() {
@@ -166,8 +197,10 @@ function ThankDonorsContent({ campaignId }: { campaignId: string }) {
     if (!valid) return
     setBusy('save'); setError(null); setNotice('')
     try {
-      await saveDraft()
-      setNotice('Draft saved.')
+      const stored = await saveDraft()
+      // The review stays open: its approval sends the draft only if it matches again by then.
+      if (waiting !== null && waiting !== JSON.stringify(normalizeThankYou(stored))) { setHeld(null); setNotice(WAITING_DIFFERS) }
+      else setNotice('Draft saved.')
     } catch (err) {
       setError({ message: messageOf(err, 'Could not save your draft. Please try again.'), canRetry: false })
     } finally {
@@ -196,7 +229,8 @@ function ThankDonorsContent({ campaignId }: { campaignId: string }) {
       setSaved(null)
       setTouched({})
       attempt.current = null
-      setNotice('Draft discarded.')
+      if (waiting !== null) { setHeld(null); setNotice(WAITING_NO_DRAFT) }
+      else setNotice('Draft discarded.')
     } catch (err) {
       setError({ message: messageOf(err, 'Could not discard the draft. Please try again.'), canRetry: false })
     } finally {
@@ -209,7 +243,8 @@ function ThankDonorsContent({ campaignId }: { campaignId: string }) {
     const fingerprint = JSON.stringify(normalized)
     if (!retrying || attempt.current?.content !== fingerprint) attempt.current = { key: crypto.randomUUID(), content: fingerprint }
     const key = attempt.current.key
-    setBusy('send'); setError(null); setHeld(false); setNotice('')
+    sent.current = true
+    setBusy('send'); setError(null); setHeld(null); setWaiting(null); setNotice('')
     try {
       // The server sends the saved draft, so save what is on screen first.
       if (dirty) await saveDraft()
@@ -222,10 +257,13 @@ function ThankDonorsContent({ campaignId }: { campaignId: string }) {
       setNotice('Your thank-you is on its way. Ujimora emails it to your donors.')
       setRevision((value) => value + 1)
     } catch (err) {
-      if (isPublicationHeld(err)) {
-        // Held for safety review: after approval, a new Send sends the same draft.
+      const hold = publicationHold(err)
+      if (hold) {
+        // Held for safety review: its approval sends the saved draft, or, without
+        // publishing on approval, a new Send after approval sends the same draft.
         attempt.current = null
-        setHeld(true)
+        setHeld(hold)
+        setWaiting(hold.publishesOnApproval ? fingerprint : null)
       } else {
         const status = statusOf(err)
         // Only an unknown outcome is worth retrying with the same key.
@@ -370,6 +408,11 @@ function ThankDonorsContent({ campaignId }: { campaignId: string }) {
               You have unsaved changes.
             </Typography>
           )}
+          {waiting !== null && (
+            <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 1 }}>
+              {WAITING_NOTE}
+            </Typography>
+          )}
         </Box>
       )}
 
@@ -384,7 +427,7 @@ function ThankDonorsContent({ campaignId }: { campaignId: string }) {
           {error.message}
         </Alert>
       )}
-      {held && <PublicationHeldNotice retry="select Send to donors again with the same message" sx={{ mt: 3 }} />}
+      {held && <PublicationHeldNotice {...held} whenApproved="we email it to your donors automatically, so you don't need to send it again" retry="select Send to donors again with the same message" sx={{ mt: 3 }} />}
 
       {shown && <DeliveryCard view={shown} retrying={busy === 'retry'} disabled={busy !== null} onRetry={() => void retryFailed(shown)} />}
 

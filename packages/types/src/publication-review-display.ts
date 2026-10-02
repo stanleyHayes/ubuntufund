@@ -2,9 +2,13 @@
  * How an author's own publication reviews read on the website and in the app:
  * a plain name for each kind of change, a one-line subject taken from the
  * submitted version, and a short tracker (Submitted → In review → Approved or
- * Declined) with the next step in words. Shared so both clients describe a
- * review the same way. Pure; nothing here throws on malformed data.
+ * Declined, then Published when the approval publishes it by itself) with the
+ * next step in words. Shared so both clients describe a review the same way.
+ * Pure; nothing here throws on malformed data.
  */
+
+import type { DonorThankYouContent } from './donor-thank-you'
+import { publicationOutcomeCopy, type PublicationOutcomeState } from './publication-publishing'
 
 /** Every kind of public change the safety review can hold (the API's PublicationReviewModel `action`). */
 export const PUBLICATION_ACTIONS = [
@@ -30,10 +34,26 @@ export const PUBLICATION_SUPPORT_EMAIL = 'support@ujimora.com'
 /** Longest subject a review card shows, in characters, ellipsis included. */
 export const PUBLICATION_REVIEW_SUBJECT_MAX = 80
 
+/**
+ * Where publishing a version stands, as the API reports it to its author.
+ * Kept as sent: a state or reason this client does not know yet still shows,
+ * as itself, and never reads as one it does know.
+ */
+export interface PublicationReviewPublication {
+  /** `publishing`, `published`, `not_published`, `superseded` or `withdrawn` (a PublicationOutcomeState). */
+  state: string
+  /** Why it was not published, replaced or withdrawn (a PublicationOutcomeReason). */
+  reason?: string
+  /** When it got there; while publishing, when it was approved. */
+  at?: string
+}
+
 /** One entry of the author's own list, `GET /publication-reviews`. */
 export interface PublicationReviewItem {
   id: string
   action: string
+  /** What the version is for: the campaign, the account, or the update being edited (as the API stores it). */
+  resourceId?: string
   /** The complete proposed public version, as the API bound it for review. */
   text: string
   status: string
@@ -43,6 +63,16 @@ export interface PublicationReviewItem {
   approvalExpiresAt?: string
   /** When this exact version was first submitted. */
   createdAt?: string
+  /** An approval publishes this version by itself: the author doesn't submit it again. */
+  publishOnApproval?: boolean
+  /**
+   * Where publishing this version stands. Absent while it waits for a
+   * decision, once it is declined, and while the author still publishes an
+   * approval by submitting the version again.
+   */
+  publication?: PublicationReviewPublication
+  /** The author can still withdraw this version (`POST /publication-reviews/:id/withdraw`). */
+  canWithdraw?: boolean
 }
 
 export interface PublicationReviewPage {
@@ -51,18 +81,33 @@ export interface PublicationReviewPage {
 }
 
 /**
- * Where a review stands. `other` is a status this client does not know yet;
- * later stages (published, couldn't publish, superseded) join this union.
+ * Where a review stands. `publishing`, `published` and `not_published` follow
+ * an approval that publishes the version by itself; `superseded` (replaced by
+ * a newer version) and `withdrawn` close a version before or after its
+ * approval. `other` is a status, or a publication state, this client does not
+ * know yet.
  */
-export type PublicationReviewPhase = 'in_review' | 'approved' | 'approval_expired' | 'declined' | 'other'
+export type PublicationReviewPhase =
+  | 'in_review'
+  | 'approved'
+  | 'approval_expired'
+  | 'declined'
+  | 'publishing'
+  | 'published'
+  | 'not_published'
+  | 'superseded'
+  | 'withdrawn'
+  | 'other'
 
-export type PublicationStepState = 'complete' | 'current' | 'upcoming' | 'failed'
+/** `skipped`: the version stopped there unpublished (replaced or withdrawn), which is neither done nor failed. */
+export type PublicationStepState = 'complete' | 'current' | 'upcoming' | 'failed' | 'skipped'
 
 export interface PublicationReviewStep {
-  key: 'submitted' | 'review' | 'decision'
+  /** `publish` follows the decision when the approval publishes the version by itself. */
+  key: 'submitted' | 'review' | 'decision' | 'publish'
   label: string
   state: PublicationStepState
-  /** A few words shown under the step: when it was submitted, or that an approval expired. */
+  /** A few words shown under the step: when it was submitted or published, or that an approval expired. */
   detail?: string
 }
 
@@ -70,7 +115,10 @@ export interface PublicationReviewStage {
   phase: PublicationReviewPhase
   /** The phase in words, e.g. for the tracker's accessible name. */
   label: string
-  /** In order; render any number, so a later step (Published) slots in. */
+  /**
+   * In order; render any number: three, four when the approval publishes the
+   * version by itself, two for a version closed before any decision.
+   */
   steps: PublicationReviewStep[]
   /** What happens next, in a sentence or two; empty when there is nothing to add. */
   hint: string
@@ -89,9 +137,9 @@ export interface PublicationReviewDisplay {
 }
 
 export interface PublicationReviewDisplayOptions {
-  /** The moment an approval deadline is judged against. Defaults to now. */
+  /** The moment an approval deadline, and how long publishing has taken, are judged against. Defaults to now. */
   now?: Date
-  /** Formats the submitted date. Defaults to the device locale, e.g. "30 Sep". */
+  /** Formats the submitted and published dates. Defaults to the device locale, e.g. "30 Sep". */
   formatDate?: (date: Date) => string
   /** Formats the approval deadline. Defaults to the device locale, e.g. "7 Oct, 14:00". */
   formatDateTime?: (date: Date) => string
@@ -230,34 +278,107 @@ const shortDate = (date: Date) => date.toLocaleDateString(undefined, { day: 'num
 const shortDateTime = (date: Date) =>
   date.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
 
+/** How long publishing an approved version may take before the tracker says it is taking longer than usual. */
+export const PUBLICATION_PUBLISHING_SLOW_MS = 10 * 60 * 1000
+
+/** A version that stopped unpublished, replaced or withdrawn, as its step reads. */
+const CLOSED_LABEL = { superseded: 'Replaced', withdrawn: 'Withdrawn' } as const
+
 /**
  * Where a review stands, as tracker steps plus the next step in words.
  * An approval only authorizes the same version until its deadline; the API
- * treats a missing deadline as expired, and so does this.
+ * treats a missing deadline as expired, and so does this. When the approval
+ * publishes the version by itself, a Published step follows it, and the API's
+ * `publication` says how far that got; without one, an approval reads as it
+ * always has: the author publishes it by submitting it again.
  */
 export function publicationReviewStage(
-  review: Pick<PublicationReviewItem, 'id' | 'action' | 'status' | 'approvalExpiresAt' | 'createdAt'>,
+  review: Pick<PublicationReviewItem, 'id' | 'action' | 'status' | 'approvalExpiresAt' | 'createdAt' | 'publishOnApproval' | 'publication'>,
   options: PublicationReviewDisplayOptions = {},
 ): PublicationReviewStage {
   const { now = new Date(), formatDate = shortDate, formatDateTime = shortDateTime } = options
   const words = copyFor(review.action)
   const submittedAt = dateOf(review.createdAt)
+  const step = (key: PublicationReviewStep['key'], label: string, state: PublicationStepState, detail = ''): PublicationReviewStep => ({
+    key,
+    label,
+    state,
+    ...(detail ? { detail } : {}),
+  })
+  const submitted = step('submitted', 'Submitted', 'complete', submittedAt ? formatDate(submittedAt) : '')
   const steps = (reviewState: PublicationStepState, decisionState: PublicationStepState, decision: string, decisionDetail = ''): PublicationReviewStep[] => [
-    { key: 'submitted', label: 'Submitted', state: 'complete', ...(submittedAt ? { detail: formatDate(submittedAt) } : {}) },
-    { key: 'review', label: 'In review', state: reviewState },
-    { key: 'decision', label: decision, state: decisionState, ...(decisionDetail ? { detail: decisionDetail } : {}) },
+    submitted,
+    step('review', 'In review', reviewState),
+    step('decision', decision, decisionState, decisionDetail),
   ]
+  /** The author's words for where publishing ended up, its reason included (publicationOutcomeCopy). */
+  const outcome = (state: PublicationOutcomeState, deadline?: string) =>
+    publicationOutcomeCopy({ action: review.action, state, reason: review.publication?.reason, ...(deadline ? { deadline } : {}) }).body
   switch (review.status) {
     case 'pending':
+      if (review.publishOnApproval === true) {
+        return {
+          phase: 'in_review',
+          label: 'In review',
+          steps: [...steps('current', 'upcoming', 'Approved'), step('publish', 'Published', 'upcoming')],
+          hint: "A person is checking it. It's published automatically once approved.",
+        }
+      }
       return { phase: 'in_review', label: 'In review', steps: steps('current', 'upcoming', 'Approved'), hint: 'A person is checking it.' }
     case 'approved': {
       const expiresAt = dateOf(review.approvalExpiresAt)
-      if (expiresAt && expiresAt.getTime() > now.getTime()) {
+      /** The approval's deadline while it lasts. */
+      const deadline = expiresAt && expiresAt.getTime() > now.getTime() ? expiresAt : undefined
+      const { publication } = review
+      if (publication) {
+        const approvedThen = (label: string, state: PublicationStepState, detail = '', approvalDetail = '') => [
+          ...steps('complete', 'complete', 'Approved', approvalDetail),
+          step('publish', label, state, detail),
+        ]
+        const at = dateOf(publication.at)
+        const { state } = publication
+        switch (state) {
+          case 'publishing': {
+            const slow = !!at && now.getTime() - at.getTime() >= PUBLICATION_PUBLISHING_SLOW_MS
+            return {
+              phase: 'publishing',
+              label: 'Publishing',
+              steps: approvedThen('Publishing', 'current'),
+              hint: slow ? "Approved. Publishing is taking longer than usual; we'll keep trying." : outcome('publishing'),
+            }
+          }
+          case 'published':
+            return {
+              phase: 'published',
+              label: 'Published',
+              steps: approvedThen('Published', 'complete', at ? formatDate(at) : ''),
+              hint: outcome('published'),
+            }
+          case 'not_published':
+            // Submitting the same version again publishes it straight away only while the approval lasts;
+            // once it has run out, it only reopens the version for a new review (the hint says which).
+            return {
+              phase: 'not_published',
+              label: 'Not published',
+              steps: approvedThen("Couldn't publish", 'failed', '', deadline ? '' : 'Expired'),
+              hint: outcome('not_published', deadline && formatDateTime(deadline)),
+            }
+          case 'superseded':
+          case 'withdrawn':
+            return { phase: state, label: CLOSED_LABEL[state], steps: approvedThen(CLOSED_LABEL[state], 'skipped'), hint: outcome(state) }
+          default: {
+            // A state this client does not know yet: shown as itself, without guessing what it means.
+            const label = humanize(state) || 'Updated'
+            return { phase: 'other', label, steps: approvedThen(label, 'current'), hint: '' }
+          }
+        }
+      }
+      if (deadline) {
         return {
           phase: 'approved',
           label: 'Approved',
           steps: steps('complete', 'complete', 'Approved'),
-          hint: `Approved. If ${words.notYet}, ${words.resubmit} before ${formatDateTime(expiresAt)}.`,
+          hint: `Approved. If ${words.notYet}, ${words.resubmit} before ${formatDateTime(deadline)}.`,
         }
       }
       // Still approved on the tracker, marked so it never reads as ready to publish.
@@ -267,6 +388,12 @@ export function publicationReviewStage(
         steps: steps('complete', 'complete', 'Approved', 'Expired'),
         hint: `Approval expired. If ${words.notYet}, ${words.again} to request a new review.`,
       }
+    }
+    case 'superseded':
+    case 'withdrawn': {
+      // Closed before any decision: replaced by a newer version, or taken back by its author.
+      const label = CLOSED_LABEL[review.status]
+      return { phase: review.status, label, steps: [submitted, step('decision', label, 'skipped')], hint: outcome(review.status) }
     }
     case 'rejected':
       return {
@@ -297,25 +424,73 @@ export function describePublicationReview(
   }
 }
 
+/**
+ * Still to be published by its approval, without its author: waiting for a
+ * decision that publishes it by itself, or approved and being published now.
+ * Never true while publishing on approval is switched off: the API then
+ * marks nothing as publishing by itself.
+ */
+export function publishesWhenApproved(review: Pick<PublicationReviewItem, 'status' | 'publishOnApproval' | 'publication'>): boolean {
+  if (review.status === 'pending') return review.publishOnApproval === true
+  return review.status === 'approved' && review.publication?.state === 'publishing'
+}
+
+/**
+ * The author's thank-you message for one campaign that its approval is still
+ * to send by itself: the newest such version in `reviews` (the API lists the
+ * newest first). It is sent only if the campaign's saved draft still matches
+ * it when it is approved. Null when there is none, or its text can't be read.
+ */
+export function waitingThankYou(reviews: readonly PublicationReviewItem[], campaignId: string): DonorThankYouContent | null {
+  const waiting = reviews.find(review => review.action === 'thank_you.send' && review.resourceId === campaignId && publishesWhenApproved(review))
+  const fields = waiting ? asRecord(parseJson(waiting.text)) : undefined
+  if (!fields || typeof fields.subject !== 'string' || typeof fields.body !== 'string') return null
+  return { subject: fields.subject, body: fields.body, signature: typeof fields.signature === 'string' ? fields.signature : '' }
+}
+
+/** A `publication` without a readable state is dropped, and so is a malformed reason or date in it. */
+function parsePublication(value: unknown): PublicationReviewPublication | undefined {
+  const fields = asRecord(value)
+  if (!fields || typeof fields.state !== 'string' || !fields.state) return undefined
+  const { state, reason, at } = fields
+  return {
+    state,
+    ...(typeof reason === 'string' && reason ? { reason } : {}),
+    ...(typeof at === 'string' && at ? { at } : {}),
+  }
+}
+
 function parseReviewItem(value: unknown): PublicationReviewItem | null {
   if (!value || typeof value !== 'object') return null
-  const { id, action, text, status, mediaUrls, reviewNotes, approvalExpiresAt, createdAt } = value as Record<string, unknown>
+  const { id, action, resourceId, text, status, mediaUrls, reviewNotes, approvalExpiresAt, createdAt, publishOnApproval, publication, canWithdraw } =
+    value as Record<string, unknown>
   if (typeof id !== 'string' || typeof action !== 'string' || typeof text !== 'string' || typeof status !== 'string') return null
   if (![reviewNotes, approvalExpiresAt, createdAt].every(field => field == null || typeof field === 'string')) return null
   if (mediaUrls != null && !(Array.isArray(mediaUrls) && mediaUrls.every(url => typeof url === 'string'))) return null
+  const published = parsePublication(publication)
   return {
     id,
     action,
+    // Read leniently too: only a form that looks up its own item needs it.
+    ...(typeof resourceId === 'string' && resourceId ? { resourceId } : {}),
     text,
     status,
     ...(Array.isArray(mediaUrls) ? { mediaUrls: mediaUrls as string[] } : {}),
     ...(typeof reviewNotes === 'string' ? { reviewNotes } : {}),
     ...(typeof approvalExpiresAt === 'string' ? { approvalExpiresAt } : {}),
     ...(typeof createdAt === 'string' ? { createdAt } : {}),
+    // Publishing on approval, read leniently: a malformed field is left out, and the version still lists as it would without it.
+    ...(typeof publishOnApproval === 'boolean' ? { publishOnApproval } : {}),
+    ...(published ? { publication: published } : {}),
+    ...(typeof canWithdraw === 'boolean' ? { canWithdraw } : {}),
   }
 }
 
-/** A `GET /publication-reviews` page, or null when any part of it is malformed. */
+/**
+ * A `GET /publication-reviews` page, or null when any part of it is malformed.
+ * The publishing fields are the exception: a malformed one is left out of its
+ * item, never failing the page.
+ */
 export function parsePublicationReviewPage(value: unknown): PublicationReviewPage | null {
   if (!value || typeof value !== 'object') return null
   const { items, total } = value as { items?: unknown; total?: unknown }

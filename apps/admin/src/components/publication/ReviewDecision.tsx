@@ -1,13 +1,17 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { Alert, AlertTitle, Box, Button, Stack, Typography } from '@mui/material'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
 import BlockRoundedIcon from '@mui/icons-material/BlockRounded'
 import HistoryEduRoundedIcon from '@mui/icons-material/HistoryEduRounded'
+import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded'
+import AutorenewRoundedIcon from '@mui/icons-material/AutorenewRounded'
+import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded'
+import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded'
 import TextField from '@/components/AdminTextField'
-import { approvalValidUntil, humanizeKey, reasonView, type PublicationReviewItem, type ReviewQueue } from '@/lib/publicationReview'
+import { approvalClosed, approvalValidUntil, humanizeKey, reasonView, type PublicationReviewItem, type ReviewQueue } from '@/lib/publicationReview'
 import { formatDateTime, formatRelative } from '@/lib/reviewDates'
-import type { ReviewGuidance } from '@/lib/reviewGuidance'
+import { publicationStatusLine, type ReviewGuidance, type StatusTone } from '@/lib/reviewGuidance'
 import { EvidenceText } from './ReviewParts'
 
 export interface ReviewLinks {
@@ -20,7 +24,11 @@ export interface DecisionError {
   id: string
   message: string
   status?: number
-  /** Why a 409 happened, from the API's `errors.review`: decided, changed or author_restricted. */
+  /**
+   * Why the decision was refused, from the API's `errors.review`: decided,
+   * changed or author_restricted, withdrawn or superseded (409), or conflict
+   * (403: the reviewer manages what it is for).
+   */
   code?: string
 }
 
@@ -35,6 +43,8 @@ interface Props {
   own: boolean
   /** Tip or donation content sent to the reviewer's own page or campaign. */
   ownRecipient: boolean
+  /** For a campaign the reviewer created: the API refuses their decision (conflict of interest). */
+  ownCampaign?: boolean
   notes: string
   onNotesChange: (value: string) => void
   /** Notes were written for an earlier version of this content, which has changed since. */
@@ -56,7 +66,18 @@ function errorTitle(error: DecisionError, author: string): string {
   if (error.code === 'decided') return 'Already decided'
   if (error.code === 'changed') return 'Content changed'
   if (error.code === 'author_restricted') return `${author} can’t publish`
+  // Closed before any decision: nobody decided it, so it must not read as "Already decided".
+  if (error.code === 'withdrawn') return 'Withdrawn by the author'
+  if (error.code === 'superseded') return 'Replaced by a newer version'
+  if (error.code === 'conflict') return 'Conflict of interest'
   return error.status === 403 ? 'Not allowed' : 'Decision not saved'
+}
+
+const STATUS_TONES: Record<StatusTone, { color: string; icon: ReactNode }> = {
+  success: { color: 'var(--text-success)', icon: <CheckCircleOutlineRoundedIcon /> },
+  info: { color: 'var(--text-info)', icon: <AutorenewRoundedIcon /> },
+  warning: { color: 'var(--text-warning)', icon: <ErrorOutlineRoundedIcon /> },
+  neutral: { color: 'text.secondary', icon: <ScheduleRoundedIcon /> },
 }
 
 const VERBS: Record<string, string> = { approved: 'Approved', rejected: 'Declined' }
@@ -75,10 +96,13 @@ function Decided({ item, queue, guidance, now, links }: Pick<Props, 'item' | 'qu
   const reviewer = reviewerName(item)
   const exact = formatDateTime(item.reviewedAt)
   const relative = formatRelative(item.reviewedAt, now)
-  const validUntil = queue === 'publication' && item.status === 'approved' ? approvalValidUntil(item) : undefined
+  // A published, replaced or withdrawn version's approval can never be used again: its expiry says nothing.
+  const validUntil = queue === 'publication' && item.status === 'approved' && !approvalClosed(item) ? approvalValidUntil(item) : undefined
   const validUntilExact = formatDateTime(validUntil)
   const stillValid = !!validUntil && Date.parse(validUntil) > now
   const validRelative = formatRelative(validUntil, now)
+  const publication = queue === 'publication' ? publicationStatusLine(item, now) : null
+  const tone = publication ? STATUS_TONES[publication.tone] : null
   return <Box component="section" sx={sectionSx}>
     <Stack spacing={1.5}>
       <Typography component="h3" variant="subtitle1" fontWeight={700}>Decision</Typography>
@@ -86,6 +110,10 @@ function Decided({ item, queue, guidance, now, links }: Pick<Props, 'item' | 'qu
         {verb}{reviewer ? ` by ${reviewer}` : ''}
         {exact && <> · <time dateTime={item.reviewedAt}>{exact}</time>{relative ? ` (${relative})` : ''}</>}
       </Typography>
+      {publication && tone && <Stack direction="row" spacing={0.75} alignItems="flex-start" sx={{ color: tone.color, minWidth: 0 }}>
+        <Box component="span" aria-hidden sx={{ display: 'inline-flex', pt: '1px', '& svg': { fontSize: 18 } }}>{tone.icon}</Box>
+        <Typography variant="body2" sx={{ color: 'inherit', fontWeight: 600, minWidth: 0 }}>{publication.text}</Typography>
+      </Stack>}
       {validUntilExact && (stillValid
         ? <Typography variant="body2">Approval valid until {validUntilExact}{validRelative ? ` (${validRelative})` : ''}</Typography>
         : <Typography variant="body2" color="text.secondary">Approval expired {validUntilExact}</Typography>)}
@@ -102,14 +130,25 @@ function Decided({ item, queue, guidance, now, links }: Pick<Props, 'item' | 'qu
   </Box>
 }
 
+/** What approving does: an alert with a title, a warning note when it can't be taken back, otherwise one sentence. */
+function ApprovalGuidance({ approval }: { approval: ReviewGuidance['approval'] }) {
+  if (approval.title) return <Alert severity="info" role="note">
+    <AlertTitle>{approval.title}</AlertTitle>
+    {approval.lead}
+    {!!approval.bullets?.length && <Box component="ul" sx={{ m: 0, mt: 1, pl: 2.5, '& > li + li': { mt: 0.5 } }}>{approval.bullets.map(bullet => <li key={bullet}>{bullet}</li>)}</Box>}
+  </Alert>
+  if (approval.tone === 'warning') return <Alert severity="warning" role="note">{approval.lead}</Alert>
+  return <Typography variant="body2">{approval.lead}</Typography>
+}
+
 /** The decision area of a review card: guidance, notes and the two decisions, or the recorded decision. */
-export function ReviewDecision({ item, queue, guidance, now, own, ownRecipient, notes, onNotesChange, earlierVersionNotes, busy, error, onDecide, onRefresh, links }: Props) {
+export function ReviewDecision({ item, queue, guidance, now, own, ownRecipient, ownCampaign = false, notes, onNotesChange, earlierVersionNotes, busy, error, onDecide, onRefresh, links }: Props) {
   const errorRef = useRef<HTMLDivElement>(null)
   // The buttons are disabled while saving, which drops keyboard focus; a failure brings it to the explanation.
   useEffect(() => { if (error) errorRef.current?.focus() }, [error])
   if (item.status !== 'pending') return <Decided item={item} queue={queue} guidance={guidance} now={now} links={links} />
   const trimmed = notes.trim().length
-  const blocked = own || ownRecipient || !!busy || trimmed < MIN_NOTES
+  const blocked = own || ownRecipient || ownCampaign || !!busy || trimmed < MIN_NOTES
   const reason = reasonView(item.reason)
   const { approval } = guidance
   const contentOwner = item.action === 'donation.public_content' ? 'donor' : 'supporter'
@@ -123,12 +162,10 @@ export function ReviewDecision({ item, queue, guidance, now, own, ownRecipient, 
       {/* The API refuses self-review; say why before the reviewer writes notes. */}
       {own && <Alert severity="info" role="note">You submitted this. Another administrator must review it.</Alert>}
       {!own && ownRecipient && <Alert severity="info" role="note">This was sent to your own campaign or creator page. Another administrator must review it.</Alert>}
+      {/* The API refuses decisions on content for a campaign the reviewer manages; creating it is the case the card can see. */}
+      {!own && !ownRecipient && ownCampaign && <Alert severity="info" role="note">This is for a campaign you created. Another administrator must review it.</Alert>}
       {queue === 'publication' && reason.explanation && <Typography variant="body2"><Box component="span" sx={{ fontWeight: 700 }}>Why it is here:</Box> {reason.explanation}</Typography>}
-      {approval.title ? <Alert severity="info" role="note">
-        <AlertTitle>{approval.title}</AlertTitle>
-        {approval.lead}
-        {!!approval.bullets?.length && <Box component="ul" sx={{ m: 0, mt: 1, pl: 2.5, '& > li + li': { mt: 0.5 } }}>{approval.bullets.map(bullet => <li key={bullet}>{bullet}</li>)}</Box>}
-      </Alert> : <Typography variant="body2">{approval.lead}</Typography>}
+      <ApprovalGuidance approval={approval} />
       {item.reviewNotes && <Box>
         <Typography sx={noteLabelSx}>Notes from an earlier decision</Typography>
         <EvidenceText text={item.reviewNotes} expandNoun="notes" />

@@ -52,6 +52,15 @@ const E = LEGAL_ENTITY.emails
  */
 const REVISED_25_SEPTEMBER_2026 = '25 September 2026'
 const REVISED_29_SEPTEMBER_2026 = '29 September 2026'
+/**
+ * Publishing on approval (docs/compliance/PUBLICATION_REVIEWS.md). The text is
+ * true whether PUBLISH_ON_APPROVAL_ENABLED is on or off, so it ships with the
+ * releases rather than on the switch-on day, and installed app builds (which
+ * keep the text they were built with) stay true through a switch-off. The day
+ * it is first deployed to production; if that day moves, this date moves with
+ * it (docs/compliance/LEGAL_REVISIONS.md).
+ */
+const REVISED_2_OCTOBER_2026 = '2 October 2026'
 
 /**
  * The registered-company clause used in the opening section of the Terms and the
@@ -252,12 +261,12 @@ Circumvention of subscription, campaign, payment or risk controls.`,
     panelBody: 'This notice covers account data, campaign records, payments, security, retention, and your rights under Act 843.',
     introduction:
       'At Ujimora, we are committed to protecting your privacy and the security of your personal information. This notice explains how we collect, use, share, retain, and protect data when you use the platform.',
-    effectiveDate: REVISED_29_SEPTEMBER_2026,
+    effectiveDate: REVISED_2_OCTOBER_2026,
     sections: [
       { title: "Blockchain and crypto payment information", content: "Where you use crypto checkout, payment records may include wallet addresses, network, asset, transaction hash, memo or tag, quote, campaign-currency value and provider references. We use relevant records to match and confirm contributions, investigate failures and support required compliance checks with payment partners. Blockchain transactions can be public and persistent; hiding your name on a campaign does not make a blockchain transfer anonymous. We cannot erase records on public blockchains." },
       {
         title: 'AI writing and safety screening',
-        content: 'For account and organization identity changes, creator-page changes, campaign creation, campaign URL changes, comments, campaign updates and thank-you messages to donors, automated text screening is optional and requires your permission for that submission. If you opt in, the proposed public text is sent to OpenAI for safety screening. Otherwise staff review it; flagged text and attached media also require staff review. Proposed versions and decisions stay in a private publication-review record for up to 30 days, with scheduled deletion, and operational review records are removed on account closure. An approved version must be submitted again within seven days; an approval does not authorize changed content, a campaign goal or any payment. Staff audit records may be retained separately for accountability. When you explicitly request AI writing, your text, instructions and generated draft are processed by OpenAI for writing assistance and safety screening. Flagged drafts are withheld; unavailable screening does not approve a draft. Ujimora records usage and your request-specific permission without storing raw writing input or output in its usage log. A result fingerprint lets us validate safety reports. If you choose Report on a suggestion, the original generated text and your report are saved in the restricted moderation queue for review and follow-up. Review suggestions before using them. Automated checks can make mistakes and do not verify facts or replace human moderation; contact support if a request needs review.',
+        content: 'For account and organization identity changes, creator-page changes, campaign creation, campaign URL changes, comments, campaign updates, live-session titles and thank-you messages to donors, automated text screening is optional and requires your permission for that submission. If you opt in, the proposed public text is sent to OpenAI for safety screening. Otherwise staff review it; flagged text and attached media also require staff review. Proposed versions and decisions stay in a private publication-review record for up to 30 days, with scheduled deletion, and operational review records are removed on account closure. When automatic publishing applies to a held version, staff approval publishes it, after the same checks as when you publish it yourself, and you are told the outcome in your notification inbox. It is not published if a newer version was submitted or the item changed after you submitted it, if you withdrew it, or if your password or two-step verification settings changed since then. For that check, a one-way fingerprint of your sign-in settings is stored with such a version and deleted with its review record. Otherwise, and always for live-session titles, which are published only when the host starts the session, an approved version must be submitted again within seven days of approval. Publication reviews and your notification inbox show which applies. An approval does not authorize changed content, a campaign goal or any payment. Staff audit records may be retained separately for accountability. When you explicitly request AI writing, your text, instructions and generated draft are processed by OpenAI for writing assistance and safety screening. Flagged drafts are withheld; unavailable screening does not approve a draft. Ujimora records usage and your request-specific permission without storing raw writing input or output in its usage log. A result fingerprint lets us validate safety reports. If you choose Report on a suggestion, the original generated text and your report are saved in the restricted moderation queue for review and follow-up. Review suggestions before using them. Automated checks can make mistakes and do not verify facts or replace human moderation; contact support if a request needs review.',
       },
       {
         title: '1. Controller and scope',
@@ -660,7 +669,7 @@ Attempts to bypass KYC/KYB, campaign limits, payment restrictions, subscription 
     panelBody: 'This notice lists what Ujimora keeps in your browser, how long it stays and how to clear it.',
     introduction:
       'This notice explains the cookies and similar technologies used on Ujimora web properties. We do not currently set cookies; we use your browser’s local and session storage only for the purposes listed below.',
-    effectiveDate: REVISED_29_SEPTEMBER_2026,
+    effectiveDate: REVISED_2_OCTOBER_2026,
     sections: [
       {
         title: '1. Scope',
@@ -671,7 +680,7 @@ Attempts to bypass KYC/KYB, campaign limits, payment restrictions, subscription 
         content: `Ujimora web properties do not currently set cookies or use third-party analytics, tracking or advertising technologies. We use your browser’s local storage and, where marked, session storage (cleared when you close the tab) for:
 • Sign-in (uf_tokens, uf_tokens:received, uf_user, accessToken, uf_last_activity) to keep you signed in. Removed when you sign out. After an hour without activity they are removed straight away if a Ujimora page is open, or otherwise the next time you open the site; until then they stay in your browser.
 • Display preferences (uf_color_mode, uf_skin), kept until you clear site data.
-• Unsent drafts (ujimora:publication-draft:*): the campaign form until the campaign is created, and profile images held for safety review, so the exact version held for review can be submitted again once approved. Saved per account. A draft older than 30 days is deleted the next time its page is opened, and all drafts are deleted when you sign out. They are not deleted when a session ends through inactivity.
+• Unsent drafts (ujimora:publication-draft:*): the campaign form until the campaign is created, and profile images held for safety review, so the same image can be saved again if approval does not publish it. Saved per account. A draft older than 30 days is deleted the next time its page is opened, and all drafts are deleted when you sign out. They are not deleted when a session ends through inactivity.
 • Payment recovery, so the confirmation page can pick up your payment after the payment provider sends you back. Donation handoffs (uf_pending_donations, session storage) are removed once the payment succeeds, fails or expires. Wallet top-up references (ujimora-topup-*) stay in session storage until you close the tab. Tip attempts (ujimora:tip-attempt:*) are removed once the payment is resolved. Subscription checkouts (uf_pending_subscriptions) are removed once the checkout is settled, fails or expires, or when you clear site data.
 • Checkout retry keys (ujimora:checkout-attempt:*, session storage): opaque codes that stop a retried donation from being charged twice. They contain no amounts or personal details.
 • Beneficiary invitations (uf_beneficiary_invitation, session storage): if you open an invitation to accept a campaign run for you and need to sign in first, the invitation code is kept so you can return to it. Removed once you accept or decline it, or when you close the tab.

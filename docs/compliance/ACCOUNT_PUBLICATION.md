@@ -20,7 +20,28 @@ Seventeen publication integration tests pass, including held public name/avatar,
 
 - Removing an avatar or cover (setting it to empty) publishes nothing new, so it applies at once without admission, consent, current agreement or an unrestricted account. The identity-version check and the account write still run. A removal combined with any other public change is reviewed as before. Creator-page photo removal behaves the same way.
 - Only newly proposed images are submitted as media. An unchanged, already-public avatar or cover stays in the fingerprinted text, so a name or country change by an account with a photo goes to text screening (when consented) rather than the staff media queue. A new image is still always held for staff.
-- Web and native keep a held image or identity change in the browser/device (per account, 30 days, cleared on sign-out) so the exact version can be saved again after approval instead of re-uploaded under a new URL.
+- Web and native keep a held image or identity change in the browser/device (per account, 30 days, cleared on sign-out) so the exact version can be saved again instead of re-uploaded under a new URL: after approval for a version held before publishing on approval, or when an approval could not publish it (see below).
+
+## Publishing on approval (2 October 2026)
+
+With `PUBLISH_ON_APPROVAL_ENABLED` on, a staff approval publishes a held identity version by itself (see `PUBLICATION_REVIEWS.md`, "Publishing on approval"). Nobody resubmits it.
+
+- **The same write as the author's own save.** `MongoAccountProfileWrite.applyApproved` runs the shared `commit`, inside the transaction that records the publication. It checks:
+  - the account's credential version and closure;
+  - the exact identity version the change was proposed against (otherwise it ends as `superseded` / `edited_since_submitted`);
+  - the publishing restriction and the current agreement;
+  - plus the publishing check that the author's sign-in details are unchanged since submission.
+
+  A newly approved avatar is recorded as `reviewedAvatarUrl`, as on the author's own save, so later comments carry it as screened text.
+- **Private settings are no longer held back.** When the identity part of a save is held, the private settings sent with it are saved at once:
+  - phone, account biography, currency, language, dark mode, anonymous donations, leaderboards and notification preferences, never `publicProfile`;
+  - in their own fenced write, which leaves the identity and its revision alone, so the held version stays current;
+  - the 409 adds `errors.saved: ['private']`.
+- **No revision bump without a change.**
+  - Saving the current name, country or photo again leaves the identity revision as it is. This happens when an older app saves again after an approval published the change, and it keeps a held version current.
+  - If the request's identity is already published, only its private settings are saved, and the account is returned.
+- **Taking something down always counts as a change.** A photo sent empty, or the profile sent private, bumps the revision even if the account already reads that way. So it takes back a held photo or a held "make it public": that version's approval ends as `superseded` instead of publishing it.
+- **Single-use.** An approval is consumed by whichever publishes the version first: the approval itself, or the author's own save. The same identity is never published twice while its record exists.
 
 ## Interfaces
 

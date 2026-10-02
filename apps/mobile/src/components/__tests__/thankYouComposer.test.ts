@@ -40,7 +40,9 @@ vi.mock('@/components/KeyboardAvoider', () => ({ KeyboardAvoider: m.el('div') })
 vi.mock('@/components/GlassSurface', () => ({ GlassSurface: m.el('div') }))
 vi.mock('@/components/ProgressBar', () => ({ ProgressBar: () => null }))
 vi.mock('@/components/PublicationConsent', () => ({ PublicationConsent: () => null }))
-vi.mock('@/components/PublicationHeldNotice', () => ({ PublicationHeldNotice: () => createElement('p', {}, 'Waiting for safety review') }))
+vi.mock('@/components/PublicationHeldNotice', () => ({
+  PublicationHeldNotice: ({ publishesOnApproval, whenApproved }: Props) => createElement('p', {}, publishesOnApproval ? `Waiting for safety review; once approved, ${whenApproved as string}` : 'Waiting for safety review'),
+}))
 vi.mock('@/components/SignInRequired', () => ({ SignInRequired: () => createElement('p', {}, 'Sign in') }))
 import ThankDonorsScreen from '../../../app/campaign/thank-you'
 
@@ -52,8 +54,8 @@ const view = (fields: Partial<DonorThankYouView>): DonorThankYouView => ({
 const state = (fields: Partial<DonorThankYouState> = {}): DonorThankYouState => ({ eligible: true, trigger: 'campaign_ended', estimatedRecipients: 3, sendsUsed: 0, sendsAllowed: 1, history: [], ...fields })
 const failure = (status: number, text: string, errors?: Record<string, string[]>) => Object.assign(new Error(text), { status, errors })
 
-/** The API's state and one message's progress, answered by path. */
-const server = { state: state(), summaries: [] as DonorThankYouView[] }
+/** The API's state, one message's progress and the author's publication reviews, answered by path. */
+const server = { state: state(), summaries: [] as DonorThankYouView[], reviews: [] as unknown[] }
 const summaryCalls = () => vi.mocked(api.get).mock.calls.filter(([path]) => path === '/campaigns/c1/thank-you/t1').length
 const sendCalls = () => vi.mocked(api.post).mock.calls.filter(([path]) => path === '/campaigns/c1/thank-you/send')
 
@@ -61,9 +63,10 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(api.post).mockReset(); vi.mocked(api.delete).mockReset()
   m.user = { id: 'org' }
-  server.state = state(); server.summaries = []
+  server.state = state(); server.summaries = []; server.reviews = []
   vi.mocked(api.get).mockImplementation((async (path: string) => {
     if (path === '/campaigns/c1/thank-you') return server.state
+    if (path === '/publication-reviews?page=1&pageSize=100') return { items: server.reviews, total: server.reviews.length }
     if (path === '/campaigns/c1/thank-you/t1') return server.summaries.length > 1 ? server.summaries.shift() : server.summaries[0]
     throw new Error(`unexpected ${path}`)
   }) as never)
@@ -77,6 +80,8 @@ async function write() {
   fireEvent.change(screen.getByLabelText('Signature (optional)'), { target: { value: message.signature } })
 }
 const sendButton = () => screen.getByText('Send to donors') as HTMLButtonElement
+const WAITING_NOTE = "The version waiting for review is sent only if your saved draft still matches it when it's approved."
+const heldAutomatically = () => failure(409, 'Saved privately for safety review. Your content has not been published yet. It will be published automatically once a reviewer approves it; check Publication reviews for the decision.', { publication: ['held', 'publishes_on_approval'] })
 
 describe('thank-you composer', () => {
   it('restores the saved draft, explains who receives it and keeps Send locked until the campaign can thank donors', async () => {
@@ -122,9 +127,75 @@ describe('thank-you composer', () => {
     fireEvent.click(sendButton())
     await screen.findByText('Waiting for safety review')
     expect((screen.getByLabelText('Message') as HTMLTextAreaElement).value).toBe(message.body)
+    expect(screen.queryByText(WAITING_NOTE)).toBeNull()
     fireEvent.click(sendButton())
     await vi.waitFor(() => expect(sendCalls()).toHaveLength(2))
     expect(sendCalls()[1][2]).not.toEqual(sendCalls()[0][2])
+  })
+
+  it('leaves a held message for its approval to send, and warns that changing it means it is not sent', async () => {
+    vi.mocked(api.post).mockRejectedValue(heldAutomatically())
+    render(createElement(ThankDonorsScreen))
+    await write()
+    fireEvent.click(sendButton())
+    await screen.findByText("Waiting for safety review; once approved, we email it to your donors automatically, so you don't need to send it again")
+    expect(screen.getByText(WAITING_NOTE)).toBeTruthy()
+    // The draft on the server is the waiting version, so the fields keep it.
+    expect((screen.getByLabelText('Message') as HTMLTextAreaElement).value).toBe(message.body)
+    expect(api.put).toHaveBeenCalledTimes(1)
+
+    fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'The roof is fixed and painted. Thank you!' } })
+    fireEvent.click(screen.getByText('Save draft'))
+    await screen.findByText("Draft saved. While it differs from the version waiting for review, that version won't be sent.")
+    expect(api.put).toHaveBeenLastCalledWith('/campaigns/c1/thank-you/draft', { ...message, body: 'The roof is fixed and painted. Thank you!' })
+    expect(screen.queryByText(/^Waiting for safety review/)).toBeNull()
+    // The review is still open: changing it back before the approval still sends it.
+    expect(screen.getByText(WAITING_NOTE)).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Message'), { target: { value: message.body } })
+    fireEvent.click(screen.getByText('Save draft'))
+    await screen.findByText('Draft saved.')
+  })
+
+  it('says a discarded draft means the waiting message is not sent', async () => {
+    vi.mocked(api.post).mockRejectedValue(heldAutomatically())
+    vi.mocked(api.delete).mockResolvedValue(null)
+    render(createElement(ThankDonorsScreen))
+    await write()
+    fireEvent.click(sendButton())
+    await screen.findByText(WAITING_NOTE)
+    fireEvent.click(screen.getByText('Discard'))
+    await screen.findByText("Draft discarded. Without a matching draft, the version waiting for review won't be sent.")
+    expect(api.delete).toHaveBeenCalledWith('/campaigns/c1/thank-you/draft')
+    expect(screen.queryByText(/^Waiting for safety review/)).toBeNull()
+    expect(screen.getByText(WAITING_NOTE)).toBeTruthy()
+  })
+
+  it('still warns about a message waiting for review after the screen was left and opened again', async () => {
+    const waiting = { id: 'r1', action: 'thank_you.send', resourceId: 'c1', status: 'pending', publishOnApproval: true, canWithdraw: true, text: JSON.stringify(message) }
+    server.reviews = [{ ...waiting, id: 'r0', resourceId: 'c2', text: JSON.stringify({ ...message, subject: 'Another campaign' }) }, waiting]
+    server.state = state({ draft: view({ id: 'd1', status: 'draft' }) })
+    render(createElement(ThankDonorsScreen))
+    expect(await screen.findByText(WAITING_NOTE)).toBeTruthy()
+    expect(api.get).toHaveBeenCalledWith('/publication-reviews?page=1&pageSize=100')
+    fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'Fixed a typo. Thank you!' } })
+    fireEvent.click(screen.getByText('Save draft'))
+    await screen.findByText("Draft saved. While it differs from the version waiting for review, that version won't be sent.")
+  })
+
+  it('warns about nothing when no message waits to be sent by its approval', async () => {
+    // Switched off, an approval sends nothing by itself; another campaign's message is not this one's.
+    server.reviews = [
+      { id: 'r1', action: 'thank_you.send', resourceId: 'c1', status: 'pending', publishOnApproval: false, canWithdraw: false, text: JSON.stringify(message) },
+      { id: 'r2', action: 'thank_you.send', resourceId: 'c2', status: 'pending', publishOnApproval: true, canWithdraw: true, text: JSON.stringify(message) },
+    ]
+    server.state = state({ draft: view({ id: 'd1', status: 'draft' }) })
+    render(createElement(ThankDonorsScreen))
+    await screen.findByLabelText('Subject')
+    await vi.waitFor(() => expect(api.get).toHaveBeenCalledWith('/publication-reviews?page=1&pageSize=100'))
+    fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'Fixed a typo. Thank you!' } })
+    fireEvent.click(screen.getByText('Save draft'))
+    await screen.findByText('Draft saved.')
+    expect(screen.queryByText(WAITING_NOTE)).toBeNull()
   })
 
   it('does not send when the author cancels the confirmation', async () => {

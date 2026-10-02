@@ -34,6 +34,7 @@ import { SHAPE } from '@ubuntu-fund/ui'
 import { useAuth } from '@/context/AuthContext'
 import PageHeader from '@/components/PageHeader'
 import { api, credentialApi } from '@/lib/api'
+import { heldChangeNotice, heldChangeOf, type HeldChange } from '@/lib/reviewGuidance'
 
 // ─── Animations ──────────────────────────────────────────────────────────────
 
@@ -116,6 +117,8 @@ function AdminProfileForViewer() {
   useEffect(() => { live.current = true; return () => { live.current = false } }, [])
   const [automatedReviewConsent, setAutomatedReviewConsent] = useState(false)
   const [identityError, setIdentityError] = useState('')
+  // A public name or country held for review: not a failure, and the private fields sent with it may be saved.
+  const [identityHold, setIdentityHold] = useState<HeldChange | null>(null)
   const savedIdentity = useRef({ name: '', country: '' })
   const { user, updateName, replaceTokens } = useAuth()
 
@@ -135,7 +138,7 @@ function AdminProfileForViewer() {
 
   // UI state
   const [saving, setSaving] = useState(false)
-  const [snack, setSnack] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' })
+  const [snack, setSnack] = useState<{ open: boolean; message: string; severity: 'success' | 'info' | 'error' }>({ open: false, message: '', severity: 'success' })
   const [passwordError, setPasswordError] = useState('')
 
   const [loading, setLoading] = useState(true)
@@ -158,7 +161,7 @@ function AdminProfileForViewer() {
   }, [revision])
 
   async function handleSaveProfile() {
-    setSaving(true); setIdentityError('')
+    setSaving(true); setIdentityError(''); setIdentityHold(null)
     try {
       const result = await api.put<{ name: string }>('/profile', { ...(name.trim() !== savedIdentity.current.name ? { name: name.trim() } : {}), phone: phone.trim(), ...(country.trim() && country.trim() !== savedIdentity.current.country ? { country: country.trim() } : {}), bio: bio.trim(), automatedReviewConsent })
       if (!live.current) return
@@ -168,6 +171,12 @@ function AdminProfileForViewer() {
       setSnack({ open: true, message: 'Profile updated successfully', severity: 'success' })
     } catch (error) {
       if (!live.current) return
+      const held = heldChangeOf(error)
+      if (held) {
+        setIdentityHold(held)
+        setSnack({ open: true, message: 'Saved privately for safety review', severity: 'info' })
+        return
+      }
       setIdentityError(error instanceof Error ? error.message : 'Failed to update profile')
       setSnack({ open: true, message: error instanceof Error ? error.message : 'Failed to update profile', severity: 'error' })
     } finally {
@@ -330,7 +339,8 @@ function AdminProfileForViewer() {
               />
               <FormControlLabel control={<Checkbox checked={automatedReviewConsent} onChange={event => setAutomatedReviewConsent(event.target.checked)} />} label="Use OpenAI to check this public identity (optional)" />
               <Typography variant="body2">Only the proposed public name, country and images are reviewed. Phone numbers and biography are excluded. Without permission, staff review the identity.</Typography>
-              {identityError && <Alert severity="error">{identityError} After approval, save the same version here. <Button href="/publication-reviews" target="_blank" rel="noopener noreferrer">Open review queue in a new tab</Button></Alert>}
+              {identityHold && <Alert severity="info">{heldChangeNotice(identityHold)} <Button href="/publication-reviews" target="_blank" rel="noopener noreferrer">Open review queue in a new tab</Button></Alert>}
+              {identityError && <Alert severity="error">{identityError}</Alert>}
               <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <Button
                   variant="contained"

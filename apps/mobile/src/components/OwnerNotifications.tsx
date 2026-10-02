@@ -3,12 +3,15 @@ import { resolveNativePath } from '@/navigation/resolvePath'
 import { View } from 'react-native'
 import { Text, Icon } from 'react-native-paper'
 import { useNotifications } from '@/context/NotificationContext'
+import { useAuth } from '@/context/AuthContext'
 import { usePalette } from '@/context/ColorModeContext'
 import { Button, Skeleton } from './Loading'
 import { EmptyState } from './EmptyState'
 import { GlassSurface } from './GlassSurface'
 export function OwnerNotifications({ showTitle = true }: { showTitle?: boolean }) {
   const { items, error, loading, refresh, markRead } = useNotifications()
+  // Some web pages are more than one screen in the app; the account's role picks which.
+  const role = useAuth().user?.role
   const palette = usePalette()
   return (
     <View style={{ padding: 16, gap: 16 }}>
@@ -54,7 +57,7 @@ export function OwnerNotifications({ showTitle = true }: { showTitle?: boolean }
             </Text>
             <Text style={{ marginTop: 8, color: palette.textSecondary }}>{n.message}</Text>
             {n.createdAt && <Text style={{ color: palette.textSecondary, marginTop: 8 }}>{new Date(n.createdAt).toLocaleString()}</Text>}
-            {n.path?.startsWith('/') && !n.path.startsWith('//') && <Button onPress={() => router.push(resolveNativePath(n.path!) as never)}>View details</Button>}
+            {n.path?.startsWith('/') && !n.path.startsWith('//') && <Button onPress={() => router.push(resolveNativePath(n.path!, { role }) as never)}>View details</Button>}
             {!n.read && (
               <Button
                 onPress={() => void markRead(n.id)}
