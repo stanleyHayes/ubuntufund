@@ -35,8 +35,8 @@ This comes with publishing on approval (see `PUBLICATION_REVIEWS.md`, "Publishin
 
 The effective date is the day this text is first deployed to production, not the switch-on day: the text is true before the switch is turned on, while it is on and after it is turned off. If the deploy day moves, change `REVISED_2_OCTOBER_2026` in `legal.ts`, this record and the fingerprints in `legalClaims.test.ts`. Turning the switch on or off needs no revision.
 
-- Deployed to production: _not yet recorded_
-- Switched on (`PUBLISH_ON_APPROVAL_ENABLED=true` on Render): _not yet recorded_
+- Deployed to production: 2 October 2026 (PR #14, merge commit `65863705`)
+- Switched on (`PUBLISH_ON_APPROVAL_ENABLED=true` on Render): 2 October 2026, by the `chore/publish-on-approval-on` change to `render.yaml`
 
 ## 29 September 2026 revision
 
