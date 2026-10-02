@@ -122,7 +122,8 @@ export function RegisterForm() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { register } = useAuth()
-  // DB-backed plans (seeded from SUBSCRIPTION_PLANS so the picker never flashes empty).
+  // Live public plans only (GET /plans/public), never the code seed: the picker
+  // shows skeletons until they load, and a retry if they fail.
   const { plans, error: plansError, retry: retryPlans } = useSignupPlans()
 
   const [step, setStep] = useState(0)

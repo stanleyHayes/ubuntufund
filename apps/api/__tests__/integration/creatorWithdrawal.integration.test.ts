@@ -144,7 +144,7 @@ describe('Creator withdrawal — transfer rail', () => {
     const owner = await creatorWithBalance(200)
     const other = await creatorWithBalance(200)
     const key = randomUUID()
-    const body = { amount: 100, expectedFeePercent: 3, idempotencyKey: key, recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }
+    const body = { amount: 100, expectedFeePercent: 3.5, idempotencyKey: key, recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }
     await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send(body).expect(201)
     const payout = await CreatorPayoutModel.findOne({ requestKey: key }).lean()
     expect(payout).not.toBeNull()
@@ -185,7 +185,7 @@ describe('Creator withdrawal — transfer rail', () => {
         await KYCVerificationModel.create({ userId: owner.userId, verificationType: 'identity', status: state === 'pending renewal' ? 'pending' : 'rejected', documents: [], riskLevel: 'low', createdAt: new Date(Date.now() + 1000) })
       const callsBefore = vi.mocked(fetch).mock.calls.length
       const res = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
-        .send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+        .send({ amount: 100, expectedFeePercent: 3.5, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
         .expect(409)
       expect(res.body.message).toMatch(/identity/i)
       expect(vi.mocked(fetch).mock.calls.length).toBe(callsBefore)
@@ -199,7 +199,7 @@ describe('Creator withdrawal — transfer rail', () => {
     await UserModel.updateOne({ _id: owner.userId }, { emailVerified: false })
     const callsBefore = vi.mocked(fetch).mock.calls.length
     const res = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
-      .send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+      .send({ amount: 100, expectedFeePercent: 3.5, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
       .expect(409)
     expect(res.body.message).toMatch(/^Verify your email address before withdrawing creator funds/)
     expect(res.body.message).not.toMatch(/identity/i)
@@ -215,7 +215,7 @@ describe('Creator withdrawal — transfer rail', () => {
     await KYCVerificationModel.updateMany({ userId: owner.userId }, { $set: { 'personalInfo.fullName': legalName } })
     // The typed name matches the provider's ("With Draw"), so the account is name_matched.
     const res = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
-      .send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+      .send({ amount: 100, expectedFeePercent: 3.5, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
       .expect(201)
     const payout = await CreatorPayoutModel.findOne({ providerRef: res.body.data.reference }).orFail()
     expect(await AuditLogModel.countDocuments({ action: 'creator_withdrawal.destination_not_legal_name', resource: payout.id })).toBe(entries)
@@ -225,13 +225,13 @@ describe('Creator withdrawal — transfer rail', () => {
     const owner = await creatorWithBalance(100)
     const recipient = { type: 'mobile_money', accountNumber: '0557654321', bankCode: 'MTN' }
     const refused = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
-      .send({ amount: 50, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { ...recipient, accountName: 'Someone Else' } })
+      .send({ amount: 50, expectedFeePercent: 3.5, idempotencyKey: randomUUID(), recipient: { ...recipient, accountName: 'Someone Else' } })
       .expect(422)
     expect(refused.body.message).toMatch(/did not match/i)
     expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
     // The provider holds "With Draw"; "DRAW WITH" is the same person, surname first.
     await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
-      .send({ amount: 50, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { ...recipient, accountName: 'DRAW WITH' } })
+      .send({ amount: 50, expectedFeePercent: 3.5, idempotencyKey: randomUUID(), recipient: { ...recipient, accountName: 'DRAW WITH' } })
       .expect(201)
     expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(50)
   })
@@ -241,7 +241,7 @@ describe('Creator withdrawal — transfer rail', () => {
     rejectTransfer = true
     try {
       const res = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
-        .send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+        .send({ amount: 100, expectedFeePercent: 3.5, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
         .expect(502)
       expect(res.body.message).toMatch(/balance has been restored/i)
     } finally { rejectTransfer = false }
@@ -256,7 +256,7 @@ describe('Creator withdrawal — transfer rail', () => {
     const transfersBefore = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length
     try {
       await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
-        .send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+        .send({ amount: 100, expectedFeePercent: 3.5, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
         .expect(503)
     } finally { platformBalanceMinor = 100_000_000 }
     expect(await CreatorPayoutModel.countDocuments({ creatorUserId: owner.userId })).toBe(0)
@@ -276,7 +276,7 @@ describe('Creator withdrawal — transfer rail', () => {
     }
     try {
       await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
-        .send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+        .send({ amount: 100, expectedFeePercent: 3.5, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
         .expect(201)
     } finally { duringTransfer = undefined }
     expect(approvals).toEqual([200])
@@ -288,7 +288,7 @@ describe('Creator withdrawal — transfer rail', () => {
     let reference = ''
     try {
       const started = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
-        .send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+        .send({ amount: 100, expectedFeePercent: 3.5, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
         .expect(201)
       reference = started.body.data.reference
     } finally { failTransfer = false }
@@ -335,7 +335,7 @@ describe('Creator withdrawal — transfer rail', () => {
     const transfersBefore = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length
     try {
       await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
-        .send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+        .send({ amount: 100, expectedFeePercent: 3.5, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
         .expect(409)
     } finally { transaction.mockRestore() }
     expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
@@ -347,9 +347,9 @@ describe('Creator withdrawal — transfer rail', () => {
     const owner = await creatorWithBalance(100)
     await KYCVerificationModel.deleteMany({ userId: owner.userId })
     await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
-      .send({ amount: 100, expectedFeePercent: 3, destination: 'ujimora_wallet', idempotencyKey: randomUUID() })
+      .send({ amount: 100, expectedFeePercent: 3.5, destination: 'ujimora_wallet', idempotencyKey: randomUUID() })
       .expect(201)
-    expect((await WalletModel.findOne({ userId: owner.userId }))?.balance).toBe(97)
+    expect((await WalletModel.findOne({ userId: owner.userId }))?.balance).toBe(96.5)
   })
 
   it.each([
@@ -358,7 +358,7 @@ describe('Creator withdrawal — transfer rail', () => {
   ] as const)('refuses a withdrawal of %s below the minimum (%s) without reserving anything', async (amount, destination) => {
     const owner = await creatorWithBalance(100)
     const res = await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`)
-      .send({ amount, expectedFeePercent: 3, destination, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
+      .send({ amount, expectedFeePercent: 3.5, destination, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } })
       .expect(422)
     expect(res.body.message).toMatch(/minimum withdrawal/i)
     expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
@@ -373,7 +373,7 @@ describe('Creator withdrawal — transfer rail', () => {
       return original.call(this, input)
     })
     try {
-      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3, destination: 'ujimora_wallet', idempotencyKey: randomUUID() }).expect(401)
+      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3.5, destination: 'ujimora_wallet', idempotencyKey: randomUUID() }).expect(401)
     } finally { transfer.mockRestore() }
     expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
     expect(await CreatorPayoutModel.countDocuments({ creatorUserId: owner.userId })).toBe(0)
@@ -389,7 +389,7 @@ describe('Creator withdrawal — transfer rail', () => {
     })
     const transfersBefore = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length
     try {
-      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }).expect(401)
+      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3.5, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }).expect(401)
     } finally { transaction.mockRestore() }
     expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
     expect(await CreatorPayoutModel.countDocuments({ creatorUserId: owner.userId })).toBe(0)
@@ -405,7 +405,7 @@ describe('Creator withdrawal — transfer rail', () => {
     })
     const before = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length
     try {
-      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }).expect(409)
+      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3.5, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }).expect(409)
     } finally { transaction.mockRestore() }
     expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
     expect(await CreatorPayoutModel.countDocuments({ creatorUserId: owner.userId })).toBe(0)
@@ -414,7 +414,7 @@ describe('Creator withdrawal — transfer rail', () => {
 
   it('rolls back reservation and payout when the processing transition fails, then permits retry', async () => {
     const owner = await creatorWithBalance(100)
-    const body = { amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }
+    const body = { amount: 100, expectedFeePercent: 3.5, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }
     const transition = vi.spyOn(MongoCreatorPayoutRepository.prototype, 'transitionToProcessing').mockResolvedValueOnce(null)
     const transfersBefore = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length
     try {
@@ -430,7 +430,7 @@ describe('Creator withdrawal — transfer rail', () => {
 
   it('commits the processing reference before the provider call and pays once for concurrent identical requests', async () => {
     const owner = await creatorWithBalance(100)
-    const body = { amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }
+    const body = { amount: 100, expectedFeePercent: 3.5, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }
     const before = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length
     const responses = await Promise.all([0, 1].map(() => request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send(body)))
     expect(responses.map(response => response.status)).toEqual([201, 201])
@@ -451,7 +451,7 @@ describe('Creator withdrawal — transfer rail', () => {
     })
     const before = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length
     try {
-      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }).expect(409)
+      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3.5, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }).expect(409)
     } finally { transaction.mockRestore() }
     expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
     expect(await CreatorPayoutModel.countDocuments({ creatorUserId: owner.userId })).toBe(0)
@@ -469,7 +469,7 @@ describe('Creator withdrawal — transfer rail', () => {
     })
     const before = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length
     try {
-      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }).expect(409)
+      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3.5, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }).expect(409)
     } finally {
       transaction.mockRestore()
       await SubscriptionPlanModel.updateOne({ tier: 'starter' }, { $set: { platformFeePercent: plan!.platformFeePercent } })
@@ -489,7 +489,7 @@ describe('Creator withdrawal — transfer rail', () => {
       return original.call(this, input)
     })
     try {
-      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3, destination: 'ujimora_wallet', idempotencyKey: randomUUID() }).expect(409)
+      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3.5, destination: 'ujimora_wallet', idempotencyKey: randomUUID() }).expect(409)
     } finally {
       transfer.mockRestore()
       await SubscriptionPlanModel.updateOne({ tier: 'starter' }, { $set: { platformFeePercent: plan!.platformFeePercent } })
@@ -514,7 +514,7 @@ describe('Creator withdrawal — transfer rail', () => {
       })
       const before = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length
       try {
-        await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3, destination, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }).expect(409)
+        await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3.5, destination, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }).expect(409)
         expect(lock.mock.calls.length).toBeGreaterThanOrEqual(2)
       } finally {
         lock.mockRestore()
@@ -533,9 +533,9 @@ describe('Creator withdrawal — transfer rail', () => {
     const free = await SubscriptionPlanModel.findOne({ tier: 'free' }).lean()
     await SubscriptionPlanModel.deleteOne({ tier: 'free' })
     try {
-      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3.5, destination, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }).expect(201)
+      await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 5, destination, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }).expect(201)
       expect(await SubscriptionModel.findOne({ userId: owner.userId }).lean()).toMatchObject({ tier: 'free', consumptionWriteVersion: 1 })
-      expect(await SubscriptionPlanModel.findOne({ tier: 'free' }).lean()).toMatchObject({ platformFeePercent: 3.5, consumptionWriteVersion: 1 })
+      expect(await SubscriptionPlanModel.findOne({ tier: 'free' }).lean()).toMatchObject({ platformFeePercent: 5, consumptionWriteVersion: 1 })
     } finally {
       if (free) await SubscriptionPlanModel.updateOne({ tier: 'free' }, { $set: { platformFeePercent: free.platformFeePercent } })
     }
@@ -555,10 +555,10 @@ describe('Creator withdrawal — transfer rail', () => {
       })
       const before = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/transfer')).length
       try {
-        await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 3.5, destination, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }).expect(409)
+        await request(app).post('/api/v1/creators/withdraw').set('Authorization', `Bearer ${owner.token}`).send({ amount: 100, expectedFeePercent: 5, destination, idempotencyKey: randomUUID(), recipient: { type: 'mobile_money', accountNumber: '0551234567', bankCode: 'MTN', accountName: 'With Draw' } }).expect(409)
       } finally {
         lock.mockRestore()
-        await SubscriptionPlanModel.updateOne({ tier: 'free' }, { $set: { platformFeePercent: 3.5 } })
+        await SubscriptionPlanModel.updateOne({ tier: 'free' }, { $set: { platformFeePercent: 5 } })
       }
       expect((await CreatorBalanceModel.findOne({ userId: owner.userId }))?.availableBalance).toBe(100)
       expect((await WalletModel.findOne({ userId: owner.userId }))?.balance).toBe(0)
@@ -569,12 +569,12 @@ describe('Creator withdrawal — transfer rail', () => {
 
   it('transfers net earnings to the owner wallet once through the authenticated endpoint', async () => {
     const {token,userId}=await creatorWithBalance(100)
-    const body={amount:100,expectedFeePercent:3,destination:'ujimora_wallet',idempotencyKey:randomUUID()}
+    const body={amount:100,expectedFeePercent:3.5,destination:'ujimora_wallet',idempotencyKey:randomUUID()}
     for(let i=0;i<2;i++) {
       const response=await request(app).post('/api/v1/creators/withdraw').set('Authorization',`Bearer ${token}`).send(body).expect(201)
-      expect(response.body.data).toMatchObject({status:'PAID',fee:3,netAmount:97})
+      expect(response.body.data).toMatchObject({status:'PAID',fee:3.5,netAmount:96.5})
     }
-    expect((await WalletModel.findOne({userId,type:'local',currency:'GHS'}))?.balance).toBe(97)
+    expect((await WalletModel.findOne({userId,type:'local',currency:'GHS'}))?.balance).toBe(96.5)
     expect((await CreatorBalanceModel.findOne({userId}))?.availableBalance).toBe(0)
     expect(await CreatorPayoutModel.countDocuments({creatorUserId:userId,provider:'ujimora_wallet'})).toBe(1)
   })
@@ -586,7 +586,7 @@ describe('Creator withdrawal — transfer rail', () => {
       .post('/api/v1/creators/withdraw')
       .set('Authorization', `Bearer ${token}`)
       .send({
-        expectedFeePercent: 3,
+        expectedFeePercent: 3.5,
         idempotencyKey: randomUUID(),
         amount: 120,
         recipient: {
@@ -598,8 +598,8 @@ describe('Creator withdrawal — transfer rail', () => {
       })
       .expect(201)
     expect(wd.body.data.status).toBe('PROCESSING')
-    expect(wd.body.data).toMatchObject({ amount: 120, fee: 3.6, feePercent: 3, netAmount: 116.4 })
-    expect(transferAmount).toBe(11640)
+    expect(wd.body.data).toMatchObject({ amount: 120, fee: 4.2, feePercent: 3.5, netAmount: 115.8 })
+    expect(transferAmount).toBe(11580)
     const reference = wd.body.data.reference as string
     expect(reference.startsWith('cpay-')).toBe(true)
 
@@ -621,7 +621,7 @@ describe('Creator withdrawal — transfer rail', () => {
 
     bal = await CreatorBalanceModel.findOne({ userId })
     expect(bal?.availableBalance).toBe(80)
-    expect(bal?.paidOutBalance).toBe(116.4)
+    expect(bal?.paidOutBalance).toBe(115.8)
 
     // Duplicate webhook is a no-op.
     await request(app)
@@ -631,7 +631,7 @@ describe('Creator withdrawal — transfer rail', () => {
       .send(raw)
       .expect(200)
     bal = await CreatorBalanceModel.findOne({ userId })
-    expect(bal?.paidOutBalance).toBe(116.4)
+    expect(bal?.paidOutBalance).toBe(115.8)
   })
 
   it('rejects a withdrawal above the available balance with 400', async () => {
@@ -640,7 +640,7 @@ describe('Creator withdrawal — transfer rail', () => {
       .post('/api/v1/creators/withdraw')
       .set('Authorization', `Bearer ${token}`)
       .send({
-        expectedFeePercent: 3,
+        expectedFeePercent: 3.5,
         idempotencyKey: randomUUID(),
         amount: 100,
         recipient: {
@@ -659,7 +659,7 @@ describe('Creator withdrawal — transfer rail', () => {
       .post('/api/v1/creators/withdraw')
       .set('Authorization', `Bearer ${token}`)
       .send({
-        expectedFeePercent: 3,
+        expectedFeePercent: 3.5,
         idempotencyKey: randomUUID(),
         amount: 100,
         recipient: {
@@ -697,8 +697,8 @@ describe('Creator withdrawal — transfer rail', () => {
       .expect(200)
 
     const bal = await CreatorBalanceModel.findOne({ userId })
-    expect(bal?.paidOutBalance).toBe(97) // reconciled to PAID
-    expect(bal?.payoutFees).toBe(3)
+    expect(bal?.paidOutBalance).toBe(96.5) // reconciled to PAID
+    expect(bal?.payoutFees).toBe(3.5)
     expect(bal?.availableBalance).toBe(0)
   })
 
@@ -710,7 +710,7 @@ describe('Creator withdrawal — transfer rail', () => {
         .post('/api/v1/creators/withdraw')
         .set('Authorization', `Bearer ${token}`)
         .send({
-          expectedFeePercent: 3,
+          expectedFeePercent: 3.5,
           idempotencyKey: randomUUID(),
           amount: 40,
           recipient: {
@@ -738,7 +738,7 @@ describe('Creator withdrawal — transfer rail', () => {
       .post('/api/v1/creators/withdraw')
       .set('Authorization', `Bearer ${token}`)
       .send({
-        expectedFeePercent: 3,
+        expectedFeePercent: 3.5,
         idempotencyKey: randomUUID(),
         amount: 50,
         recipient: {
@@ -778,16 +778,16 @@ describe('Creator withdrawal — transfer rail', () => {
     await request(app)
       .post('/api/v1/creators/withdraw')
       .set('Authorization', `Bearer ${token}`)
-      .send({ ...body, expectedFeePercent: 3, idempotencyKey: randomUUID() })
+      .send({ ...body, expectedFeePercent: 3.5, idempotencyKey: randomUUID() })
       .expect(409)
     expect((await CreatorBalanceModel.findOne({ userId }))?.availableBalance).toBe(100)
     const wd = await request(app)
       .post('/api/v1/creators/withdraw')
       .set('Authorization', `Bearer ${token}`)
-      .send({ ...body, expectedFeePercent: 3.5, idempotencyKey: randomUUID() })
+      .send({ ...body, expectedFeePercent: 5, idempotencyKey: randomUUID() })
       .expect(201)
-    expect(wd.body.data).toMatchObject({ amount: 100, fee: 3.5, netAmount: 96.5 })
-    expect(transferAmount).toBe(9650)
+    expect(wd.body.data).toMatchObject({ amount: 100, fee: 5, netAmount: 95 })
+    expect(transferAmount).toBe(9500)
     for (const event of [
       'transfer.success',
       'transfer.success',
@@ -803,8 +803,8 @@ describe('Creator withdrawal — transfer rail', () => {
         .expect(200)
       const balance = await CreatorBalanceModel.findOne({ userId })
       if (event === 'transfer.success') {
-        expect(balance?.paidOutBalance).toBe(96.5)
-        expect(balance?.payoutFees).toBe(3.5)
+        expect(balance?.paidOutBalance).toBe(95)
+        expect(balance?.payoutFees).toBe(5)
       } else {
         expect(balance?.availableBalance).toBe(100)
         expect(balance?.paidOutBalance).toBe(0)
@@ -822,7 +822,7 @@ describe('Creator withdrawal — transfer rail', () => {
         .post('/api/v1/creators/withdraw')
         .set('Authorization', `Bearer ${token}`)
         .send({
-          expectedFeePercent: 3,
+          expectedFeePercent: 3.5,
           idempotencyKey: randomUUID(),
           amount: 100,
           recipient: {
@@ -848,7 +848,7 @@ describe('Creator withdrawal — transfer rail', () => {
       .set('Content-Type', 'application/json')
       .send(raw)
       .expect(200)
-    expect((await CreatorBalanceModel.findOne({ userId }))?.paidOutBalance).toBe(97)
+    expect((await CreatorBalanceModel.findOne({ userId }))?.paidOutBalance).toBe(96.5)
   })
 
   it('uses live admin plan fees and keeps the payout snapshot after the plan changes', async () => {

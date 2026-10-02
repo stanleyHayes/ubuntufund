@@ -45,17 +45,36 @@ describe('subscription return UI',()=>{
    vi.mocked(api.post).mockResolvedValue({id:'checkout',status:'pending',tier:'pro',finalAmount:149,currency:'GHS'})
    vi.mocked(api.get).mockResolvedValue({id:'checkout',status:'pending',tier:'pro',finalAmount:149,currency:'GHS'})
    render(<MemoryRouter initialEntries={['/subscription/callback?checkout=checkout']}><SubscriptionCallbackPage/></MemoryRouter>)
+   // Stored-status reads only; the page also loads the plan names once.
+   const statusReads = () => vi.mocked(api.get).mock.calls.filter(([path]) => path === '/subscriptions/checkout/checkout').length
    await act(async()=>{await vi.advanceTimersByTimeAsync(0)})
    expect(api.post).toHaveBeenCalledTimes(1)
    await act(async()=>{await vi.advanceTimersByTimeAsync(2000)})
    expect(api.get).toHaveBeenCalledWith('/subscriptions/checkout/checkout')
    await act(async()=>{await vi.advanceTimersByTimeAsync(2999)})
-   expect(api.get).toHaveBeenCalledTimes(1) // second gap is 3s, not 2s
+   expect(statusReads()).toBe(1) // second gap is 3s, not 2s
    await act(async()=>{await vi.advanceTimersByTimeAsync(1)})
-   expect(api.get).toHaveBeenCalledTimes(2)
+   expect(statusReads()).toBe(2)
    await act(async()=>{await vi.advanceTimersByTimeAsync(5000)})
    expect(api.post).toHaveBeenCalledTimes(2) // 4th check asks Paystack again
   } finally { vi.useRealTimers() }
+ });
+ it('names the plan from the live plans, not the code seed',async()=>{
+  vi.mocked(api.get).mockImplementation(async path => path === '/plans' ? [{tier:'starter',name:'Starter',priceMonthly:9.99,priceYearly:99}] : undefined)
+  vi.mocked(api.post).mockResolvedValue({id:'checkout',status:'succeeded',tier:'starter',finalAmount:9.99,currency:'GHS'})
+  render(<MemoryRouter initialEntries={['/subscription/callback?checkout=checkout']}><SubscriptionCallbackPage/></MemoryRouter>)
+  expect(await screen.findByText('Your Starter plan is now active')).toBeInTheDocument()
+  expect(screen.getByText('Your GH₵9.99 payment is confirmed.')).toBeInTheDocument()
+  expect(screen.queryByText(/Plus/)).not.toBeInTheDocument()
+  expect(api.get).toHaveBeenCalledWith('/plans')
+ });
+ it('asks the API for nothing when there is no checkout to confirm',async()=>{
+  // Open to signed-out visitors: a 401 from GET /plans would read as 'session expired'.
+  render(<MemoryRouter initialEntries={['/subscription/callback']}><SubscriptionCallbackPage/></MemoryRouter>)
+  expect(await screen.findByText(/couldn't find a checkout to confirm/)).toBeInTheDocument()
+  await act(async()=>{})
+  expect(api.get).not.toHaveBeenCalled()
+  expect(api.post).not.toHaveBeenCalled()
  });
  it('keeps the annual plan on payment retry without claiming no debit',async()=>{
   vi.mocked(api.post).mockResolvedValue({id:'checkout',status:'failed',tier:'enterprise',billingCycle:'yearly',finalAmount:999,currency:'GHS'})

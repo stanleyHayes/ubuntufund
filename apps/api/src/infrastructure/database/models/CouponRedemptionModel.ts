@@ -27,7 +27,10 @@ const couponRedemptionSchema = new Schema<CouponRedemptionDocument>(
     code: { type: String, required: true },
     userId: { type: String, required: true, index: true },
     subscriptionId: { type: String },
-    checkoutId: { type: String },
+    // Looked up by checkout (findByCheckoutId) on every coupon preview while the
+    // member has open checkouts, and when a checkout's seat is released. Sparse:
+    // donation and payout-fee redemptions have no checkout.
+    checkoutId: { type: String, index: true, sparse: true },
     // Absent on rows written before surfaces existed — all subscriptions.
     surface: {
       type: String,

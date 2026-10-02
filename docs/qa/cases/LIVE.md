@@ -69,15 +69,15 @@ Go-live studio, LiveKit video and screen share, overlays, realtime totals, priva
 
 *Surfaces:* admin, api, web  ·  *Type:* functional
 
-**Before:** Four hosts, each with an active campaign: Community (free), Plus (starter), Pro (active) and a Pro subscription that is cancelled or expired. Check in admin Plans (or the DB) that liveStreaming is false for Community and Plus and true for Pro, Organization and Enterprise.
+**Before:** Four hosts, each with an active campaign: Free, Starter, Pro (active) and a Pro subscription that is cancelled or expired. Check in admin Plans (or the DB) that liveStreaming is false for Free and Starter and true for Pro, Organization and Enterprise.
 
 **Steps:**
 
 1. Each host opens /campaigns/<id>/live, ticks the publication consent and clicks 'Go LIVE'.
-2. Admin: toggle liveStreaming on for Plus in the plans configuration; the Plus host retries.
+2. Admin: toggle liveStreaming on for Starter in the plans configuration; the Starter host retries.
 3. Revert the plan change.
 
-**Expect:** Community, Plus and the lapsed Pro host get 403 'Your <Plan name> plan does not include LIVE streaming. Upgrade to unlock it.' and no livesessions document is created. Active Pro starts. After the admin plan edit, Plus can start.
+**Expect:** Free, Starter and the lapsed Pro host get 403 'Your <Plan name> plan does not include LIVE streaming. Upgrade to unlock it.' and no livesessions document is created. Active Pro starts. After the admin plan edit, Starter can start.
 
 **Needs:** OpenAI key (automated screening), LiveKit
 
@@ -628,7 +628,7 @@ Go-live studio, LiveKit video and screen share, overlays, realtime totals, priva
 
 *Surfaces:* android, api, ios  ·  *Type:* cross-platform
 
-**Before:** Community-plan host with an active campaign. App Store sandbox tester and Play license tester. Store billing configured on the API.
+**Before:** Free-plan host with an active campaign. App Store sandbox tester and Play license tester. Store billing configured on the API.
 
 **Steps:**
 

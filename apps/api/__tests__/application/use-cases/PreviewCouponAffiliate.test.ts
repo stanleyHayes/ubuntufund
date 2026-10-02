@@ -12,7 +12,13 @@ import { AppError } from '../../../src/infrastructure/adapters/inbound/middlewar
  */
 
 const planService = {
-  getPlan: vi.fn(async () => ({ priceMonthly: 200, priceYearly: 2000 })),
+  getPlan: vi.fn(async () => ({
+    tier: SubscriptionTier.PRO,
+    active: true,
+    isPublic: true,
+    priceMonthly: 200,
+    priceYearly: 2000,
+  })),
 } as never;
 
 function affiliatePricing(percent = 20) {

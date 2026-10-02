@@ -16,9 +16,9 @@ import type { CouponRedemptionRepositoryPort } from '../../domain/ports/outbound
 import type { UserRepositoryPort } from '../../domain/ports/outbound/UserRepositoryPort.js';
 import type { PaymentGatewayPort } from '../../domain/ports/outbound/PaymentGatewayPort.js';
 import type { CouponService } from '../services/CouponService.js';
-import type { PlanService } from '../services/PlanService.js';
+import { isSelfServePlan, type PlanService } from '../services/PlanService.js';
 import type { SettleSubscriptionUseCase } from './SettleSubscriptionUseCase.js';
-import { roundToCurrency } from '../../domain/value-objects/Money.js';
+import { roundToCurrency, toMinorUnits } from '../../domain/value-objects/Money.js';
 import type {
   AffiliateCodePricing,
   AffiliateCodeQuote,
@@ -26,7 +26,9 @@ import type {
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
 import type { BillingOwnershipPort } from '../../domain/ports/outbound/BillingOwnershipPort.js';
 import type { SubscriptionRepositoryPort } from '../../domain/ports/outbound/SubscriptionRepositoryPort.js';
-import { SubscriptionCheckoutResolver, type CheckoutResolution } from '../services/SubscriptionCheckoutResolver.js';
+import {
+  OPEN_CHECKOUTS_PER_PURCHASE, SubscriptionCheckoutResolver, type CheckoutResolution,
+} from '../services/SubscriptionCheckoutResolver.js';
 import { isPaidPlanInForce } from '../../domain/services/subscriptionStatus.js';
 
 /** Platform billing currency; subscription plan prices are quoted in GHS. */
@@ -44,6 +46,35 @@ const OPEN_CHECKOUT_HOLD_MS = 60 * 60 * 1000;
 /** Coupon and affiliate codes are matched case-insensitively. */
 const sameCode = (a?: string, b?: string) =>
   (a?.trim().toUpperCase() || undefined) === (b?.trim().toUpperCase() || undefined);
+
+/**
+ * An amount as the checkout dialog shows it: whole cedis without decimals
+ * (GH₵299), anything else with two (GH₵26.99).
+ */
+function formatAmount(amount: number, currency: string): string {
+  const minimumFractionDigits = Number.isInteger(Math.round(amount * 100) / 100) ? 0 : 2;
+  try {
+    return new Intl.NumberFormat('en-GH', { style: 'currency', currency, minimumFractionDigits, maximumFractionDigits: 2 })
+      .format(amount);
+  } catch {
+    return `${currency} ${amount.toFixed(minimumFractionDigits)}`;
+  }
+}
+
+/** What a purchase costs once its code (if any) is applied. */
+interface CodePricing {
+  discountAmount: number;
+  finalAmount: number;
+  currency: string;
+  couponId?: string;
+  couponCode?: string;
+  /** Carried from the priced coupon so the seat claim knows the cap. */
+  perUserLimit?: number;
+  /** Snapshot so settlement never depends on the coupon still existing. */
+  commissionBase?: CouponCommissionBase;
+  /** Set instead when the code turned out to be an affiliate's, not a coupon's. */
+  affiliateCode: AffiliateCodeQuote | null;
+}
 
 /**
  * Opens a paid-subscription checkout for the authenticated user — the
@@ -98,9 +129,10 @@ export class CreateSubscriptionCheckoutUseCase {
       );
     }
 
-    // Price from the DB-backed plan (admin-editable), with the code defaults as
-    // the safe fallback baked into PlanService.
-    const plan = await this.planService.getPlan(tier);
+    // Price from the DB-backed plan (admin-editable). Strict: when the plan
+    // cannot be read the checkout fails, instead of charging the code default
+    // price, which is not the price the admin set.
+    const plan = await this.planService.getPlan(tier, true);
     // Tier ids are free-form (admins can add tiers), so validate the requested
     // tier resolves to a REAL, active plan — getPlan falls back to the free plan
     // for an unknown tier, so a mismatch means the tier does not exist. This stops
@@ -109,8 +141,9 @@ export class CreateSubscriptionCheckoutUseCase {
       throw new AppError('That subscription plan is not available', 400);
     }
     // Enterprise and internal (non-public) plans are negotiated, never bought
-    // self-serve at the list price. Mirrors the store rail's isPublic check.
-    if (plan.isPublic === false || tier === SubscriptionTier.ENTERPRISE) {
+    // self-serve at the list price. The coupon preview and the store rail
+    // apply the same rule.
+    if (!isSelfServePlan(plan)) {
       throw new AppError('This plan is arranged through our sales team. Contact sales@ujimora.com.', 403);
     }
     const baseAmount = roundToCurrency(
@@ -132,7 +165,7 @@ export class CreateSubscriptionCheckoutUseCase {
     }
 
     // ── Never open a second charge over an unresolved or active purchase ──
-    const resumable = await this.resolveOpenCheckouts(userId, input);
+    const resumable = await this.resolveOpenCheckouts(userId, input, baseAmount);
     await this.assertCanBuyOverCurrentPlan(userId, tier, plan.name, input.replaceCurrentPlan === true);
     if (resumable) {
       // The member backed out of this exact purchase and asked again: send them
@@ -153,64 +186,9 @@ export class CreateSubscriptionCheckoutUseCase {
     }
 
     // ── Price it (with a coupon when supplied; 422 propagates on invalid) ──
-    let discountAmount = 0;
-    let finalAmount = roundToCurrency(baseAmount, DEFAULT_CURRENCY);
-    let currency = DEFAULT_CURRENCY;
-    let couponId: string | undefined;
-    let couponCode: string | undefined;
-    /** Carried from the priced coupon so the seat claim below knows the cap. */
-    let perUserLimit: number | undefined;
-    /** Snapshot so settlement never depends on the coupon still existing. */
-    let commissionBase: CouponCommissionBase | undefined;
-    /** Set instead when the code turned out to be an affiliate's, not a coupon's. */
-    let affiliateCode: AffiliateCodeQuote | null = null;
-    if (input.couponCode?.trim()) {
-      try {
-        const pricing = await this.couponService.validateAndPrice({
-          code: input.couponCode,
-          tier,
-          billingCycle,
-          userId,
-          baseAmount,
-        });
-        discountAmount = pricing.discountAmount;
-        finalAmount = pricing.finalAmount;
-        currency = pricing.currency;
-        couponId = pricing.coupon.id;
-        couponCode = pricing.coupon.code;
-        perUserLimit = pricing.coupon.perUserLimit;
-        commissionBase = pricing.coupon.commissionBase;
-      } catch (err) {
-        // Not a coupon? It may be an affiliate's referral code. One box, one
-        // code: the referee gets the discount and the referrer still earns.
-        //
-        // Only a genuinely unknown code falls through. A coupon that exists but
-        // was refused — expired, exhausted, wrong plan — must keep its own
-        // message, or a customer sees "invalid code" for a coupon that is
-        // merely out of date.
-        const unknownCode =
-          err instanceof AppError && err.message === 'Coupon not found';
-        const quote = unknownCode
-          ? await this.affiliateCodePricing?.quote(
-              input.couponCode,
-              userId,
-              baseAmount,
-              currency
-            )
-          : null;
-        if (!quote) throw err;
-
-        discountAmount = quote.discountAmount;
-        finalAmount = quote.finalAmount;
-        affiliateCode = quote;
-        // Record the code even though there is no coupon record behind it.
-        // Without it the checkout persists a non-zero discountAmount attached
-        // to nothing, and neither the admin console nor finance can say where
-        // the money went. couponId stays unset on purpose — settlement keys
-        // coupon redemption off it, and this is not a coupon.
-        couponCode = quote.code;
-      }
-    }
+    const {
+      discountAmount, finalAmount, currency, couponId, couponCode, perUserLimit, commissionBase, affiliateCode,
+    } = await this.priceCode(input, userId, baseAmount);
 
     const preview = { baseAmount, discountAmount, finalAmount, currency };
 
@@ -360,19 +338,145 @@ export class CreateSubscriptionCheckoutUseCase {
   }
 
   /**
+   * What the purchase costs with its code: a coupon, else an affiliate's
+   * referral code, else no discount. A code that does not apply throws (422).
+   * `exceptCheckoutId` re-quotes an open checkout's own code without counting
+   * the coupon seat that checkout holds.
+   */
+  private async priceCode(
+    input: CreateSubscriptionCheckoutInput,
+    userId: string,
+    baseAmount: number,
+    exceptCheckoutId?: string
+  ): Promise<CodePricing> {
+    const listPrice: CodePricing = {
+      discountAmount: 0,
+      finalAmount: roundToCurrency(baseAmount, DEFAULT_CURRENCY),
+      currency: DEFAULT_CURRENCY,
+      affiliateCode: null,
+    };
+    if (!input.couponCode?.trim()) return listPrice;
+    try {
+      const pricing = await this.couponService.validateAndPrice({
+        code: input.couponCode,
+        tier: input.tier,
+        billingCycle: input.billingCycle,
+        userId,
+        baseAmount,
+        exceptCheckoutIds: exceptCheckoutId ? [exceptCheckoutId] : undefined,
+      });
+      return {
+        discountAmount: pricing.discountAmount,
+        finalAmount: pricing.finalAmount,
+        currency: pricing.currency,
+        couponId: pricing.coupon.id,
+        couponCode: pricing.coupon.code,
+        perUserLimit: pricing.coupon.perUserLimit,
+        commissionBase: pricing.coupon.commissionBase,
+        affiliateCode: null,
+      };
+    } catch (err) {
+      // Not a coupon? It may be an affiliate's referral code. One box, one
+      // code: the referee gets the discount and the referrer still earns.
+      //
+      // Only a genuinely unknown code falls through. A coupon that exists but
+      // was refused — expired, exhausted, wrong plan — must keep its own
+      // message, or a customer sees "invalid code" for a coupon that is
+      // merely out of date.
+      const unknownCode =
+        err instanceof AppError && err.message === 'Coupon not found';
+      const quote = unknownCode
+        ? await this.affiliateCodePricing?.quote(
+            input.couponCode,
+            userId,
+            baseAmount,
+            listPrice.currency
+          )
+        : null;
+      if (!quote) throw err;
+
+      return {
+        ...listPrice,
+        discountAmount: quote.discountAmount,
+        finalAmount: quote.finalAmount,
+        affiliateCode: quote,
+        // Record the code even though there is no coupon record behind it.
+        // Without it the checkout persists a non-zero discountAmount attached
+        // to nothing, and neither the admin console nor finance can say where
+        // the money went. couponId stays unset on purpose — settlement keys
+        // coupon redemption off it, and this is not a coupon.
+        couponCode: quote.code,
+      };
+    }
+  }
+
+  /**
+   * What an open checkout's purchase costs now: its code re-quoted today,
+   * without the coupon seat that checkout holds. Null when the code would be
+   * refused today (retired, expired, used up). An admin may have changed the
+   * coupon's or the affiliate discount since the payment page opened.
+   */
+  private async quoteNow(
+    checkout: SubscriptionCheckout,
+    input: CreateSubscriptionCheckoutInput,
+    userId: string,
+    baseAmount: number
+  ): Promise<CodePricing | null> {
+    try {
+      return await this.priceCode(input, userId, baseAmount, checkout.id);
+    } catch (error) {
+      // A refused code is a price answer: its discount no longer applies.
+      // Anything else (a failed read) is not.
+      if (error instanceof AppError && error.statusCode < 500) return null;
+      throw error;
+    }
+  }
+
+  /**
+   * The refusal for an open payment page of this same purchase that no longer
+   * charges what the purchase costs now. Finishing that page would charge an
+   * amount the checkout dialog no longer shows, so the member is told both
+   * amounts and offered only to cancel it. `checkout_in_progress` stays in the
+   * codes so clients that predate `checkout_price_changed` still offer that.
+   */
+  private priceChanged(checkout: SubscriptionCheckout, now: CodePricing | null): AppError {
+    const charged = formatAmount(checkout.finalAmount, checkout.currency);
+    const sameTotal = !!now && now.currency === checkout.currency &&
+      toMinorUnits(now.finalAmount, now.currency) === toMinorUnits(checkout.finalAmount, checkout.currency);
+    const message = !now
+      ? `That payment page charges ${charged} with a discount that no longer applies. Cancel it to continue.`
+      : sameTotal
+        ? 'That payment page was opened at an earlier plan price. Cancel it to pay the current price.'
+        : `That payment page charges ${charged}, but this purchase now costs ${formatAmount(now.finalAmount, now.currency)}. Cancel it to pay the current price.`;
+    return new AppError(message, 409, {
+      checkoutId: [checkout.id],
+      code: ['checkout_in_progress', 'checkout_price_changed'],
+      chargedAmount: [String(checkout.finalAmount)],
+      ...(now ? { currentAmount: [String(now.finalAmount)] } : {}),
+      currency: [checkout.currency],
+    });
+  }
+
+  /**
    * Settle, fail or expire the member's earlier PENDING checkouts before a new
    * charge opens. A paid one (webhook still in flight) is activated and the new
    * purchase refused; an abandoned older one is expired, freeing its coupon
    * seat. One that could still be paid — opened within the last hour, or still
    * processing — is returned for resuming when it is this same purchase (plan,
-   * cycle and code) with a payment page to go back to; any other open one
-   * refuses the new purchase, naming the checkout so the member can cancel it.
+   * cycle and code) with a payment page to go back to, at the list price and
+   * total its code gives now. The same purchase at another price (an admin
+   * changed the price or the code's discount, or the code no longer applies)
+   * is refused as `checkout_price_changed`: its page would charge an amount the
+   * plans page and checkout dialog no longer show. Any other open checkout
+   * refuses the new purchase as `checkout_in_progress`. Both name the checkout
+   * so the member can cancel it.
    */
   private async resolveOpenCheckouts(
     userId: string,
-    input: CreateSubscriptionCheckoutInput
+    input: CreateSubscriptionCheckoutInput,
+    baseAmount: number
   ): Promise<SubscriptionCheckout | null> {
-    const open = await this.subscriptionCheckoutRepo.findPendingByUser(userId, 5);
+    const open = await this.subscriptionCheckoutRepo.findPendingByUser(userId, OPEN_CHECKOUTS_PER_PURCHASE);
     if (!open.length) return null;
     const resolver = new SubscriptionCheckoutResolver(
       this.subscriptionCheckoutRepo, this.paymentGateway, this.settleSubscriptionUseCase, this.couponRedemptionRepo
@@ -402,16 +506,19 @@ export class CreateSubscriptionCheckoutUseCase {
       const samePurchase = !resumable && !!checkout.authorizationUrl &&
         checkout.tier === input.tier && checkout.billingCycle === input.billingCycle &&
         sameCode(checkout.couponCode, input.couponCode);
-      if (samePurchase) {
-        resumable = checkout;
-        continue;
+      if (!samePurchase) {
+        throw new AppError(
+          'You already have a plan payment in progress. Finish it in the payment window, or cancel it before starting another.',
+          409,
+          // The code lets the client offer "cancel it and continue" (…/abandon).
+          { checkoutId: [checkout.id], code: ['checkout_in_progress'] }
+        );
       }
-      throw new AppError(
-        'You already have a plan payment in progress. Finish it in the payment window, or cancel it before starting another.',
-        409,
-        // The code lets the client offer "cancel it and continue" (…/abandon).
-        { checkoutId: [checkout.id], code: ['checkout_in_progress'] }
-      );
+      const now = await this.quoteNow(checkout, input, userId, baseAmount);
+      const chargesSameAsNow = !!now && checkout.baseAmount === baseAmount && now.currency === checkout.currency &&
+        toMinorUnits(now.finalAmount, now.currency) === toMinorUnits(checkout.finalAmount, checkout.currency);
+      if (!chargesSameAsNow) throw this.priceChanged(checkout, now);
+      resumable = checkout;
     }
     return resumable;
   }

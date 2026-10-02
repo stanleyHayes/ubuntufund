@@ -27,7 +27,7 @@ import Chip from '@mui/material/Chip'
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded'
 import { AccountHeading } from '@/components/account/AccountPage'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
-import { SHAPE, LoadingDots } from '@ubuntu-fund/ui'
+import { SHAPE, LoadingDots, formatCurrency } from '@ubuntu-fund/ui'
 import { api } from '@/lib/api'
 
 const INK = 'text.primary'
@@ -260,7 +260,7 @@ function CreatorDashboardForViewer() {
     }
   }
 
-  const fmt = (n: number) => `GH₵${(n ?? 0).toLocaleString()}`
+  const fmt = (n: number) => formatCurrency(n ?? 0)
   const pageUrl = profile ? `${window.location.origin}/creators/${profile.handle}` : ''
 
   if (loading) return <AccountPageSkeleton layout="cards" />

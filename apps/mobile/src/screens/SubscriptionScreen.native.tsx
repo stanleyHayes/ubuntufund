@@ -4,7 +4,7 @@ import { Text } from 'react-native-paper'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { deepLinkToSubscriptions, ErrorCode, fetchProducts, finishTransaction, getAvailablePurchases, restorePurchases,
   useIAP, type ProductSubscription, type Purchase } from 'expo-iap'
-import { BillingCycle, SubscriptionTier, type Subscription } from '@ubuntu-fund/types'
+import { BillingCycle, SubscriptionTier, type Subscription, type SubscriptionPlan } from '@ubuntu-fund/types'
 import { useAuth } from '@/context/AuthContext'
 import { usePalette } from '@/context/ColorModeContext'
 import { Button, PageSkeleton } from '@/components/Loading'
@@ -14,6 +14,7 @@ import { api, ApiError } from '@/lib/api'
 import { sessionSnapshot } from '@/lib/session'
 import { purchaseBinding, storePrice, storePurchaseRequest, verifyAndFinishStorePurchase,
   type StoreCatalog, type StoreCatalogProduct, type BillingStore } from '@/lib/storeBilling'
+import { EXISTING_CAMPAIGN_FEE_NOTE, storePlanSummary } from '@/lib/subscriptionStatus'
 
 const store: BillingStore = Platform.OS === 'ios' ? 'apple' : 'google'
 const storeName = store === 'apple' ? 'App Store' : 'Google Play'
@@ -33,6 +34,7 @@ function StorePlans({ userId }: { userId: string }) {
   const router = useRouter()
   const [catalog, setCatalog] = useState<StoreCatalog | null>(null)
   const [subscription, setSubscription] = useState<Subscription | null>(null)
+  const [freePlanName, setFreePlanName] = useState<string | undefined>()
   const [products, setProducts] = useState<ProductSubscription[]>([])
   const [cycle, setCycle] = useState(BillingCycle.MONTHLY)
   const [busy, setBusy] = useState(false)
@@ -44,10 +46,16 @@ function StorePlans({ userId }: { userId: string }) {
   useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
   const current = useCallback(() => mounted.current && sessionSnapshot()?.user.id === userId, [userId])
   const load = useCallback(async () => {
-    const [nextCatalog, nextSubscription] = await Promise.all([
+    const [nextCatalog, nextSubscription, plans] = await Promise.all([
       api.get<StoreCatalog>(`/store-billing/catalog/${store}`), api.get<Subscription>('/subscriptions/mine'),
+      // Only names the free plan, so a failure here must not block the store.
+      api.get<SubscriptionPlan[]>('/plans/public').catch(() => null),
     ])
-    if (current()) { setCatalog(nextCatalog); setSubscription(nextSubscription); setLoading(false) }
+    if (current()) {
+      setCatalog(nextCatalog); setSubscription(nextSubscription); setLoading(false)
+      const free = Array.isArray(plans) ? plans.find((plan) => plan?.tier === SubscriptionTier.FREE) : undefined
+      if (free?.name) setFreePlanName(free.name)
+    }
   }, [current])
   const processPurchase = useCallback((purchase: Purchase): Promise<boolean> => {
     const key = `${purchase.store}:${purchase.id}`
@@ -164,7 +172,7 @@ function StorePlans({ userId }: { userId: string }) {
     catch { setError(`Could not open ${storeName} subscription settings. Open subscriptions directly in your store account.`) }
   }
   const paid = subscription && subscription.tier !== SubscriptionTier.FREE && subscription.status === 'active' && new Date(subscription.currentPeriodEnd) > new Date()
-  const currentPlanName = catalog?.products.find((entry) => entry.tier === subscription?.tier)?.plan.name ?? (paid ? 'Paid plan' : 'Community')
+  const currentPlanName = catalog?.products.find((entry) => entry.tier === subscription?.tier)?.plan.name ?? (paid ? 'Paid plan' : freePlanName ?? 'Free')
   const foreignProvider = !!catalog?.provider && catalog.provider !== store
   if (loading) return <PageSkeleton />
   return <ScrollView style={{ flex: 1, backgroundColor: p.background }} contentContainerStyle={{ padding: 20, paddingBottom: 40, gap: 16 }}>
@@ -187,6 +195,7 @@ function StorePlans({ userId }: { userId: string }) {
       <View style={{ flexDirection: 'row', gap: 8 }}>
         {[BillingCycle.MONTHLY, BillingCycle.YEARLY].map((option) => <Button key={option} mode={cycle === option ? 'contained' : 'outlined'} accessibilityState={{ selected: cycle === option }} onPress={() => setCycle(option)}>{option === BillingCycle.MONTHLY ? 'Monthly' : 'Yearly'}</Button>)}
       </View>
+      <Text style={{ color: p.textSecondary }}>{EXISTING_CAMPAIGN_FEE_NOTE}</Text>
       {catalog.products.filter((entry) => entry.billingCycle === cycle).map((entry) => {
         const price = storePrice(entry, products.find((item) => item.id === entry.productId))
         const selected = paid && subscription.tier === entry.tier && subscription.billingCycle === entry.billingCycle
@@ -194,7 +203,7 @@ function StorePlans({ userId }: { userId: string }) {
           <Text variant="titleLarge" style={{ color: p.text }}>{entry.plan.name}</Text>
           <Text style={{ color: p.textSecondary }}>{entry.plan.description}</Text>
           <Text variant="headlineSmall" style={{ color: p.text }}>{price ? `${price.displayPrice} / ${cycle === BillingCycle.MONTHLY ? 'month' : 'year'}` : 'Store price unavailable'}</Text>
-          <Text style={{ color: p.textSecondary }}>{entry.plan.maxActiveCampaigns < 0 ? 'Unlimited active campaigns' : `${entry.plan.maxActiveCampaigns} active campaigns`}{entry.plan.liveStreaming ? ' · Live streaming' : ''}{entry.plan.campaignCollaboration ? ' · Campaign collaboration' : ''}{entry.plan.onBehalfCampaigns ? ' · Campaigns on behalf of others' : ''}</Text>
+          <Text style={{ color: p.textSecondary }}>{storePlanSummary(entry.plan)}</Text>
           <Text style={{ color: p.textSecondary }}>Renews automatically at the store price unless cancelled. Any eligible introductory offer, price change or plan-change adjustment is shown by {storeName} before confirmation.</Text>
           <Button mode="contained" loading={busy} disabled={busy || !price || !iap.connected || !!selected} onPress={() => void buy(entry)}>{selected ? 'Current plan' : paid ? 'Change plan' : 'Subscribe'}</Button>
         </GlassSurface>

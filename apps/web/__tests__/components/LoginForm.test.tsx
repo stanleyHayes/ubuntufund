@@ -1,7 +1,8 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation, type InitialEntry } from 'react-router-dom'
 import { LoginForm } from '@/components/auth/LoginForm'
+import { SignInPrompt } from '@/components/auth/SignInPrompt'
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
 import { ApiError } from '@/lib/api'
 
@@ -13,16 +14,47 @@ vi.mock('@/components/auth/AuthLayout', () => ({ AuthLayout: ({ children }: { ch
 
 beforeEach(() => { login.mockReset(); post.mockReset().mockResolvedValue({}) })
 
-function show() {
+function Landed() {
+  const { pathname, search } = useLocation()
+  return <p>Landed at {pathname + search}</p>
+}
+
+function show(entry: InitialEntry = '/login') {
   render(
-    <MemoryRouter initialEntries={['/login']}>
+    <MemoryRouter initialEntries={[entry]}>
       <Routes>
         <Route path="/login" element={<LoginForm />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/dashboard" element={<Landed />} />
+        {/* The plans page as a signed-out visitor sees it: RequireAuth's prompt. */}
+        <Route path="/subscription" element={<><Landed /><SignInPrompt /></>} />
       </Routes>
     </MemoryRouter>,
   )
 }
+
+async function signIn() {
+  login.mockResolvedValue(undefined)
+  fireEvent.change(screen.getByLabelText(/^Email/), { target: { value: 'ama@example.com' } })
+  fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: 'correct-horse' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Sign In' }))
+  await waitFor(() => expect(login).toHaveBeenCalledWith('ama@example.com', 'correct-horse', undefined))
+}
+
+it('returns a signed-out visitor to the plan and billing cycle they picked', async () => {
+  // Marketing's 'Choose Starter' on Yearly links here, and the page asks for sign-in first.
+  show('/subscription?tier=starter&billingCycle=yearly')
+  fireEvent.click(screen.getByRole('link', { name: 'Sign In' }))
+  expect(screen.queryByText(/^Landed at/)).not.toBeInTheDocument()
+  await signIn()
+  expect(await screen.findByText('Landed at /subscription?tier=starter&billingCycle=yearly')).toBeInTheDocument()
+})
+
+it('ignores a return path that would leave the app, query and all', async () => {
+  show({ pathname: '/login', state: { from: { pathname: '//evil.example', search: '?tier=starter' } } })
+  await signIn()
+  expect(await screen.findByText('Landed at /dashboard')).toBeInTheDocument()
+})
 
 it('links to password recovery from sign-in and carries the typed email over', async () => {
   show()

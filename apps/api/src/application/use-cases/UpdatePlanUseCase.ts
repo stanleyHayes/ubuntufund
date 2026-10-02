@@ -5,6 +5,7 @@ import type {
 import type { SubscriptionPlanRepositoryPort } from '../../domain/ports/outbound/SubscriptionPlanRepositoryPort.js';
 import type { AuditLogRepositoryPort } from '../../domain/ports/outbound/AuditLogRepositoryPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import { assertConsistentPlan, assertPlanPrice } from '../services/planValidation.js';
 
 /** Who is making the change, for the audit trail (ADR-5). */
 export interface AuditActor {
@@ -12,7 +13,7 @@ export interface AuditActor {
   role?: string;
 }
 
-/** Money fields that must be zero or positive. */
+/** Money fields: zero or more, and a price checkout can charge exactly. */
 const NON_NEGATIVE_FIELDS: (keyof UpdateSubscriptionPlanInput)[] = [
   'priceMonthly',
   'priceYearly',
@@ -59,8 +60,9 @@ const EDITABLE_FIELDS: (keyof UpdateSubscriptionPlanInput)[] = [
 /**
  * Applies an admin edit to a subscription plan's pricing/limits/benefits. The
  * plan's `tier` is immutable — it identifies the row and is never patched. All
- * numeric inputs are validated (prices ≥ 0, platform fee 0–100%, limits ≥ -1)
- * before anything is written.
+ * numeric inputs are validated (prices 0–1,000,000 in whole pesewas, platform
+ * fee 0–100%, limits ≥ -1), and the plan as it will be saved must hold together
+ * (see {@link assertConsistentPlan}), before anything is written.
  */
 export class UpdatePlanUseCase {
   constructor(
@@ -106,6 +108,9 @@ export class UpdatePlanUseCase {
     }
     // Capture the pre-update state for the audit diff (seeded default if new).
     const before = existing ?? (await this.planRepo.findByTier(tier));
+    // Cross-field rules apply to the plan as it will be saved, not only to the
+    // fields sent. No row (an unknown tier) is answered 404 below.
+    if (before) assertConsistentPlan({ ...before, ...clean });
 
     const updated = await this.planRepo.update(tier, clean);
     if (!updated) {
@@ -145,9 +150,11 @@ export class UpdatePlanUseCase {
   private validate(patch: UpdateSubscriptionPlanInput): void {
     for (const field of NON_NEGATIVE_FIELDS) {
       const value = patch[field];
-      if (typeof value === 'number' && value < 0) {
+      if (typeof value !== 'number') continue;
+      if (value < 0) {
         throw new AppError(`${field} must be zero or greater`, 422);
       }
+      assertPlanPrice(field, value);
     }
 
     if (

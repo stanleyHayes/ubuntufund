@@ -59,12 +59,15 @@ export async function abandonSubscriptionCheckout(id: string): Promise<Subscript
 
 /**
  * The open checkout blocking a new purchase, when the API refused one because
- * an earlier plan payment is still payable (409 `checkout_in_progress`).
+ * an earlier plan payment is still payable (409 `checkout_in_progress`, or
+ * `checkout_price_changed` for the same purchase at an old price, which the
+ * member can only cancel). The sheet offers "Cancel it and continue" for both.
  */
 export function checkoutInProgressId(error: unknown): string | null {
   if (!(error instanceof ApiError) || error.status !== 409) return null
-  if (!error.errors?.code?.includes('checkout_in_progress')) return null
-  return error.errors.checkoutId?.[0] ?? null
+  const codes = error.errors?.code ?? []
+  if (!codes.includes('checkout_in_progress') && !codes.includes('checkout_price_changed')) return null
+  return error.errors?.checkoutId?.[0] ?? null
 }
 
 export async function recoverPendingSubscription(): Promise<void> {

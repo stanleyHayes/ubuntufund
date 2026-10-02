@@ -3,16 +3,29 @@ import { z } from 'zod';
 import type { PlanController } from '../controllers/PlanController.js';
 import { validate } from '../../middleware/validate.js';
 import type { createAuthMiddleware } from '../../middleware/authMiddleware.js';
+import { MAX_PLAN_PRICE } from '../../../../../application/services/planValidation.js';
+
+// A price in whole pesewas, up to a million cedis: checkout charges prices
+// rounded to two decimals, so 9.995 would be shown as one price and charged as
+// another. 0 means that billing cycle is not offered.
+const planPrice = z
+  .number()
+  .min(0)
+  .max(MAX_PLAN_PRICE, `Must be ${MAX_PLAN_PRICE.toLocaleString('en-US')} or less`)
+  .multipleOf(0.01, 'Use at most two decimal places');
 
 // The editable attributes of a plan. `tier` is the immutable key (route param on
-// update / body field on create). Prices ≥ 0, platform fee 0–100%, numeric limits
-// allow -1 (unlimited). Presentation fields (sortOrder/active/isPublic/accentColor/
-// popular) let admins order, hide and colour any tier — including added ones.
+// update / body field on create). Prices 0–1,000,000 with at most 2 decimals,
+// platform fee 0–100%, numeric limits allow -1 (unlimited). Presentation fields
+// (sortOrder/active/isPublic/accentColor/popular) let admins order, hide and
+// colour any tier — including added ones. Rules between fields (yearly vs
+// monthly price, on-behalf limit) are checked by the use cases on the plan as
+// it will be saved.
 const planAttributes = {
   name: z.string().trim().min(1).max(120),
   description: z.string().trim().max(400),
-  priceMonthly: z.number().min(0),
-  priceYearly: z.number().min(0),
+  priceMonthly: planPrice,
+  priceYearly: planPrice,
   platformFeePercent: z.number().min(0).max(100),
   maxActiveCampaigns: z.number().int().min(-1),
   maxCampaignGoal: z.number().min(-1),

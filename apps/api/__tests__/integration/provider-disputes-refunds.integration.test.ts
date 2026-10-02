@@ -117,7 +117,7 @@ describe('Paystack disputes and provider refunds', () => {
     await RefundOperationModel.create({
       _id: randomUUID(), intentId: ours.intentId, campaignId: ours.campaignId, provider: 'paystack', transactionReference: ours.reference,
       requestKey: 'rk', adminId: 'admin', amount: 200, amountMinor: 20000, cumulativeMinor: 20000, maxMinor: 20000, currency: 'GHS',
-      beneficiaryNet: 190, platformFee: 7, processorFee: 3, state: 'provider_pending', active: true,
+      beneficiaryNet: 186.7, platformFee: 10, processorFee: 3.3, state: 'provider_pending', active: true,
     });
     await webhook('refund.processed', { ...refund, transaction_reference: ours.reference, refund_reference: 'rf-2', amount: '20000' }).expect(200);
     expect(await DisputeModel.countDocuments({ campaignId: ours.campaignId })).toBe(0);
@@ -148,7 +148,7 @@ describe('Paystack disputes and provider refunds', () => {
 
   it('tells staff not to refund again and records a dashboard refund without calling Paystack, once', async () => {
     const { campaignId, reference, intentId } = await settledDonation();
-    expect(await CampaignBalanceModel.findOne({ campaignId }).lean()).toMatchObject({ totalRaised: 200, pendingBalance: 189.7 });
+    expect(await CampaignBalanceModel.findOne({ campaignId }).lean()).toMatchObject({ totalRaised: 200, pendingBalance: 186.7 });
     await webhook('refund.processed', { status: 'processed', transaction_reference: reference, refund_reference: 'rf-dash-1', amount: 22000, currency: 'GHS' }).expect(200);
     const [kase] = await DisputeModel.find({ campaignId });
     expect(kase.description).toContain('Do NOT issue another refund');
@@ -193,10 +193,10 @@ describe('Paystack disputes and provider refunds', () => {
     const res = await request(app).post(`/api/v1/disputes/${kase.id}/provider-reversal`).set('Authorization', admin()).send({}).expect(200);
     expect(res.body.data.reversal).toMatchObject({ status: 'PARTIALLY_REFUNDED', amount: 50 });
     expect(await DonationIntentModel.findById(intentId).lean()).toMatchObject({ status: 'PARTIALLY_REFUNDED', refundedAmountMinor: 5000 });
-    // 50 of 200: a quarter of the settled net (189.70) leaves pending.
+    // 50 of 200: a quarter of the settled net (186.70, so 46.68) leaves pending.
     const balance = await CampaignBalanceModel.findOne({ campaignId }).lean();
     expect(balance?.totalRaised).toBe(150);
-    expect(balance?.pendingBalance).toBeCloseTo(142.27, 6);
+    expect(balance?.pendingBalance).toBeCloseTo(140.02, 6);
   });
 
   it('records an accepted chargeback as CHARGEBACK and refuses when the funds were already paid out', async () => {
@@ -214,7 +214,7 @@ describe('Paystack disputes and provider refunds', () => {
     expect(refused.body.message).toContain('manual clawback');
     expect((await DonationIntentModel.findById(intentId).lean())?.refundedAmountMinor ?? 0).toBe(0);
 
-    await CampaignBalanceModel.updateOne({ campaignId }, { $set: { pendingBalance: 189.7 } });
+    await CampaignBalanceModel.updateOne({ campaignId }, { $set: { pendingBalance: 186.7 } });
     const res = await request(app).post(`/api/v1/disputes/${kase.id}/provider-reversal`).set('Authorization', admin()).send({}).expect(200);
     expect(res.body.data.reversal.status).toBe('CHARGEBACK');
     expect((await DonationIntentModel.findById(intentId).lean())?.status).toBe('CHARGEBACK');
@@ -226,7 +226,7 @@ describe('Paystack disputes and provider refunds', () => {
     await RefundOperationModel.create({
       _id: randomUUID(), intentId, campaignId, provider: 'paystack', transactionReference: reference,
       requestKey: 'rk-active', adminId: 'admin', amount: 100, amountMinor: 10000, cumulativeMinor: 10000, maxMinor: 20000, currency: 'GHS',
-      beneficiaryNet: 94.85, platformFee: 3.5, processorFee: 1.65, state: 'provider_unknown', active: true,
+      beneficiaryNet: 93.35, platformFee: 5, processorFee: 1.65, state: 'provider_unknown', active: true,
     });
     await webhook('refund.processed', { status: 'processed', transaction_reference: reference, refund_reference: 'rf-other', amount: 5000, currency: 'GHS' }).expect(200);
     const [kase] = await DisputeModel.find({ campaignId });
@@ -239,7 +239,7 @@ describe('Paystack disputes and provider refunds', () => {
     const op = (d: { intentId: string; campaignId: string; reference: string }, state: string, extra: Record<string, unknown> = {}) => RefundOperationModel.create({
       _id: randomUUID(), intentId: d.intentId, campaignId: d.campaignId, provider: 'paystack', transactionReference: d.reference,
       requestKey: randomUUID(), adminId: 'admin', amount: 20, amountMinor: 2000, cumulativeMinor: 2000, maxMinor: 20000, currency: 'GHS',
-      beneficiaryNet: 18.97, platformFee: 0.7, processorFee: 0.33, state, active: state !== 'completed', ...extra,
+      beneficiaryNet: 18.67, platformFee: 1, processorFee: 0.33, state, active: state !== 'completed', ...extra,
     });
     const refund = (reference: string, ref: string, extra: Record<string, unknown> = {}) =>
       webhook('refund.processed', { status: 'processed', transaction_reference: reference, refund_reference: ref, amount: 2000, currency: 'GHS', ...extra }).expect(200);

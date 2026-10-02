@@ -1,14 +1,19 @@
 import { beforeAll, beforeEach, afterAll, describe, it, expect, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import {
-  BillingCycle, CouponDiscountType, SUBSCRIPTION_PLANS, SubscriptionCheckoutStatus, SubscriptionTier, type SubscriptionPlan,
+  AffiliateStatus, BillingCycle, CouponDiscountType, SUBSCRIPTION_PLANS, SubscriptionCheckoutStatus, SubscriptionTier,
+  type Affiliate, type AffiliateReferral, type SubscriptionPlan,
 } from '@ubuntu-fund/types';
+import { AffiliateCodePricing } from '../../src/application/services/AffiliateCodePricing.js';
+import type { AffiliateRepositoryPort } from '../../src/domain/ports/outbound/AffiliateRepositoryPort.js';
+import type { AffiliateReferralRepositoryPort } from '../../src/domain/ports/outbound/AffiliateReferralRepositoryPort.js';
 import { connectTestDatabase, dropTestDatabase, disconnectTestDatabase } from '../helpers/testDatabase.js';
 import { CreateSubscriptionCheckoutUseCase } from '../../src/application/use-cases/CreateSubscriptionCheckoutUseCase.js';
 import { SettleSubscriptionUseCase } from '../../src/application/use-cases/SettleSubscriptionUseCase.js';
 import { ReconcileSubscriptionCheckoutsUseCase } from '../../src/application/use-cases/ReconcileSubscriptionCheckoutsUseCase.js';
 import { GetSubscriptionCheckoutUseCase } from '../../src/application/use-cases/GetSubscriptionCheckoutUseCase.js';
 import { HandlePaystackWebhookUseCase } from '../../src/application/use-cases/HandlePaystackWebhookUseCase.js';
+import { PreviewCouponUseCase } from '../../src/application/use-cases/PreviewCouponUseCase.js';
 import { CouponService } from '../../src/application/services/CouponService.js';
 import { MongoUnitOfWork } from '../../src/infrastructure/adapters/outbound/persistence/MongoUnitOfWork.js';
 import { MongoBillingOwnership } from '../../src/infrastructure/adapters/outbound/persistence/MongoBillingOwnership.js';
@@ -48,7 +53,26 @@ function paystack() {
   };
 }
 
-function build(plans: Record<string, Partial<SubscriptionPlan>> = {}) {
+/**
+ * Affiliate referral codes as checkout prices them, with the discount rate an
+ * admin can change while a member's payment page is open.
+ */
+function affiliateCodes(code: string) {
+  const rate = { percent: 10 };
+  const referrals = new Map<string, AffiliateReferral>();
+  const affiliate = { id: 'affiliate-1', userId: 'affiliate-owner', referralCode: code, status: AffiliateStatus.ACTIVE } as Affiliate;
+  const pricing = new AffiliateCodePricing(
+    { findByReferralCode: async (referralCode: string) => (referralCode === code ? affiliate : null) } as unknown as AffiliateRepositoryPort,
+    {
+      findByRefereeId: async (refereeId: string) => referrals.get(refereeId) ?? null,
+      create: async (referral: AffiliateReferral) => { referrals.set(referral.refereeId, referral); return referral; },
+    } as unknown as AffiliateReferralRepositoryPort,
+    async () => rate.percent,
+  );
+  return { rate, pricing };
+}
+
+function build(plans: Record<string, Partial<SubscriptionPlan>> = {}, affiliatePricing?: AffiliateCodePricing) {
   const gateway = paystack();
   const checkoutRepo = new MongoSubscriptionCheckoutRepository();
   const subscriptionRepo = new MongoSubscriptionRepository();
@@ -57,9 +81,13 @@ function build(plans: Record<string, Partial<SubscriptionPlan>> = {}) {
   const settle = new SettleSubscriptionUseCase(new MongoUnitOfWork(), checkoutRepo, subscriptionRepo, couponRepo, redemptionRepo);
   const planService = { getPlan: async (tier: string) => ({ ...(seeds[tier] ?? seeds.free), ...plans[tier] }) };
   const users = { findById: async (id: string) => ({ id, email: { value: `${id}@example.test` } }) };
+  const coupons = new CouponService(couponRepo, redemptionRepo, new MongoCouponEligibility());
   const create = new CreateSubscriptionCheckoutUseCase(new MongoBillingOwnership(), checkoutRepo, redemptionRepo, users as never,
-    new CouponService(couponRepo, redemptionRepo, new MongoCouponEligibility()), gateway as never, settle, planService as never,
-    undefined, subscriptionRepo);
+    coupons, gateway as never, settle, planService as never, affiliatePricing, subscriptionRepo);
+  // The checkout dialog's quote, wired as the app wires it.
+  const quote = new PreviewCouponUseCase(coupons, planService as never, affiliatePricing, undefined, checkoutRepo);
+  const preview = (userId: string, code: string, tier = SubscriptionTier.PRO, billingCycle = BillingCycle.MONTHLY) =>
+    quote.execute({ code, tier, billingCycle }, userId);
   const sweep = new ReconcileSubscriptionCheckoutsUseCase(checkoutRepo, gateway as never, settle, redemptionRepo);
   const status = new GetSubscriptionCheckoutUseCase(checkoutRepo, gateway as never, settle, redemptionRepo);
   const webhook = new HandlePaystackWebhookUseCase({ ...gateway, verifyWebhookSignature: () => true } as never, {} as never, {} as never,
@@ -69,7 +97,7 @@ function build(plans: Record<string, Partial<SubscriptionPlan>> = {}) {
     rawBody: Buffer.from(JSON.stringify({ event, data: { reference, amount: Math.round(amount * 100), currency: 'GHS', status: event === 'charge.success' ? 'success' : 'failed' } })) });
   /** A signed charge.success for `reference`, charging `amount` (major units, GHS). */
   const chargeSuccess = (reference: string, amount: number) => charge('charge.success', reference, amount);
-  return { gateway, checkoutRepo, settle, create, sweep, status, charge, chargeSuccess };
+  return { gateway, checkoutRepo, settle, create, preview, sweep, status, charge, chargeSuccess };
 }
 const buy = (s: ReturnType<typeof build>, userId: string, tier = SubscriptionTier.PRO, extra: Record<string, unknown> = {}) =>
   s.create.execute({ tier, billingCycle: BillingCycle.MONTHLY, ...extra }, userId);
@@ -114,6 +142,141 @@ describe('subscription checkout lifecycle', () => {
     expect(s.gateway.verifyTransaction).toHaveBeenCalledWith(first.reference);
     expect(s.gateway.initializeCharge).toHaveBeenCalledTimes(1);
     expect(await SubscriptionCheckoutModel.countDocuments({ userId })).toBe(1);
+  });
+
+  it('does not resume a payment page opened before the price changed', async () => {
+    const prices: Record<string, Partial<SubscriptionPlan>> = { pro: { priceMonthly: 29.99 } };
+    const s = build(prices); const userId = randomUUID();
+    const first = await buy(s, userId);
+    // An admin reprices Pro while the member's first payment page is still open.
+    prices.pro = { priceMonthly: 149 };
+    // Finishing that page would charge the old price, so the member is told both
+    // amounts and offered only to cancel it (older clients still read checkout_in_progress).
+    await expect(buy(s, userId)).rejects.toMatchObject({ statusCode: 409,
+      message: 'That payment page charges GH₵29.99, but this purchase now costs GH₵149. Cancel it to pay the current price.',
+      errors: { checkoutId: [first.checkout.id], code: ['checkout_in_progress', 'checkout_price_changed'],
+        chargedAmount: ['29.99'], currentAmount: ['149'], currency: ['GHS'] } });
+    expect(s.gateway.initializeCharge).toHaveBeenCalledTimes(1);
+    // Cancelling it opens a checkout at the price the plans page now shows.
+    expect((await s.status.abandon(first.checkout.id, userId)).status).toBe('expired');
+    const second = await buy(s, userId);
+    expect(second.resumed).toBeUndefined();
+    expect(second.preview.baseAmount).toBe(149);
+    expect(s.gateway.initializeCharge).toHaveBeenCalledTimes(2);
+  });
+
+  it('resumes a coupon purchase only while the coupon still gives the same total', async () => {
+    const s = build(); const userId = randomUUID();
+    const coupon = await CouponModel.create({ code: `TEN${randomUUID().slice(0, 6)}`.toUpperCase(), discountType: CouponDiscountType.PERCENT,
+      amount: 10, currency: 'GHS', maxRedemptions: 10, perUserLimit: 1 });
+    const first = await buy(s, userId, SubscriptionTier.PRO, { couponCode: coupon.code });
+    expect(first.preview).toMatchObject({ baseAmount: 29.99, finalAmount: 26.99 });
+    // Unchanged, the purchase goes back to its page: the once-per-member seat it holds is its own.
+    await expect(buy(s, userId, SubscriptionTier.PRO, { couponCode: coupon.code.toLowerCase() }))
+      .resolves.toMatchObject({ resumed: true, checkout: { id: first.checkout.id }, preview: { finalAmount: 26.99 } });
+    // An admin raises the discount while that page is open. It still charges 26.99,
+    // while the checkout dialog now quotes 23.99.
+    await CouponModel.updateOne({ _id: coupon._id }, { $set: { amount: 20 } });
+    await expect(buy(s, userId, SubscriptionTier.PRO, { couponCode: coupon.code })).rejects.toMatchObject({ statusCode: 409,
+      message: 'That payment page charges GH₵26.99, but this purchase now costs GH₵23.99. Cancel it to pay the current price.',
+      errors: { checkoutId: [first.checkout.id], code: ['checkout_in_progress', 'checkout_price_changed'],
+        chargedAmount: ['26.99'], currentAmount: ['23.99'] } });
+    expect(s.gateway.initializeCharge).toHaveBeenCalledTimes(1);
+    // Cancelling it charges the total the dialog shows.
+    expect((await s.status.abandon(first.checkout.id, userId)).status).toBe('expired');
+    const second = await buy(s, userId, SubscriptionTier.PRO, { couponCode: coupon.code });
+    expect(second.resumed).toBeUndefined();
+    expect(second.preview).toMatchObject({ baseAmount: 29.99, discountAmount: 6, finalAmount: 23.99 });
+    expect(s.gateway.initializeCharge).toHaveBeenCalledTimes(2);
+  });
+
+  it('previews a once-per-member coupon held by the member\'s own open checkout at the price Continue charges', async () => {
+    const s = build(); const userId = randomUUID();
+    const coupon = await CouponModel.create({ code: `HELD${randomUUID().slice(0, 6)}`.toUpperCase(), discountType: CouponDiscountType.PERCENT,
+      amount: 10, currency: 'GHS', maxRedemptions: 10, perUserLimit: 1 });
+    const first = await buy(s, userId, SubscriptionTier.PRO, { couponCode: coupon.code });
+    // The member backs out of payment and reopens the dialog with the same code.
+    // The seat their open checkout holds is that checkout's own, not a used coupon.
+    const shown = await s.preview(userId, coupon.code.toLowerCase());
+    expect(shown).toMatchObject({ valid: true, baseAmount: 29.99, discountAmount: 3, finalAmount: 26.99 });
+    const charged = await buy(s, userId, SubscriptionTier.PRO, { couponCode: coupon.code });
+    expect(charged).toMatchObject({ resumed: true, checkout: { id: first.checkout.id, finalAmount: shown.finalAmount } });
+    expect(charged.preview).toEqual({ baseAmount: shown.baseAmount, discountAmount: shown.discountAmount, finalAmount: shown.finalAmount,
+      currency: shown.currency });
+    expect(s.gateway.initializeCharge).toHaveBeenCalledTimes(1);
+    // Paid, the use is consumed: the dialog says so at the full price, and checkout refuses the coupon.
+    await pay(s, first.reference!);
+    await expect(s.preview(userId, coupon.code)).resolves.toMatchObject({ valid: false, discountAmount: 0, finalAmount: 29.99,
+      reason: 'You have already used this coupon the maximum number of times' });
+    await expect(buy(s, userId, SubscriptionTier.PRO, { couponCode: coupon.code })).rejects.toMatchObject({ statusCode: 422,
+      message: 'You have already used this coupon the maximum number of times' });
+  });
+
+  it('previews that coupon for another purchase at the price charged once the open checkout is cancelled', async () => {
+    const s = build(); const userId = randomUUID();
+    const coupon = await CouponModel.create({ code: `SWAP${randomUUID().slice(0, 6)}`.toUpperCase(), discountType: CouponDiscountType.PERCENT,
+      amount: 10, currency: 'GHS', maxRedemptions: 10, perUserLimit: 1 });
+    const monthly = await buy(s, userId, SubscriptionTier.PRO, { couponCode: coupon.code });
+    const yearly = { billingCycle: BillingCycle.YEARLY, couponCode: coupon.code };
+    const shown = await s.preview(userId, coupon.code, SubscriptionTier.PRO, BillingCycle.YEARLY);
+    expect(shown).toMatchObject({ valid: true, baseAmount: 299, discountAmount: 29.9, finalAmount: 269.1 });
+    // Continue first asks the member to finish or cancel the open monthly checkout...
+    await expect(buy(s, userId, SubscriptionTier.PRO, yearly)).rejects.toMatchObject({ statusCode: 409,
+      message: 'You already have a plan payment in progress. Finish it in the payment window, or cancel it before starting another.',
+      errors: { checkoutId: [monthly.checkout.id], code: ['checkout_in_progress'] } });
+    // ...and cancelling it frees the seat, so the yearly plan costs what the dialog showed.
+    expect((await s.status.abandon(monthly.checkout.id, userId)).status).toBe('expired');
+    const charged = await buy(s, userId, SubscriptionTier.PRO, yearly);
+    expect(charged.preview).toEqual({ baseAmount: 299, discountAmount: 29.9, finalAmount: 269.1, currency: 'GHS' });
+    expect(s.gateway.initializeCharge).toHaveBeenLastCalledWith(expect.objectContaining({ amount: shown.finalAmount }));
+  });
+
+  it('still counts another member\'s paid use: an open checkout is not quoted below a coupon that has run out', async () => {
+    const s = build(); const member = randomUUID(), other = randomUUID();
+    const coupon = await CouponModel.create({ code: `LAST${randomUUID().slice(0, 6)}`.toUpperCase(), discountType: CouponDiscountType.PERCENT,
+      amount: 10, currency: 'GHS', maxRedemptions: 1, perUserLimit: 1 });
+    const open = await buy(s, member, SubscriptionTier.PRO, { couponCode: coupon.code });
+    // Another member pays first and takes the coupon's only redemption.
+    const paid = await buy(s, other, SubscriptionTier.PRO, { couponCode: coupon.code });
+    await pay(s, paid.reference!);
+    await expect(s.preview(member, coupon.code)).resolves.toMatchObject({ valid: false, finalAmount: 29.99,
+      reason: 'This coupon has reached its redemption limit' });
+    // Continue does not send the member back to the open page at the discounted price either.
+    const refused = await buy(s, member, SubscriptionTier.PRO, { couponCode: coupon.code }).catch((error: unknown) => error);
+    expect(refused).toMatchObject({ statusCode: 409,
+      message: 'That payment page charges GH₵26.99 with a discount that no longer applies. Cancel it to continue.',
+      errors: { checkoutId: [open.checkout.id], code: ['checkout_in_progress', 'checkout_price_changed'] } });
+    // A refused code has no current total to state.
+    expect((refused as { errors: Record<string, unknown> }).errors.currentAmount).toBeUndefined();
+  });
+
+  it('does not resume a coupon purchase once the coupon no longer applies', async () => {
+    const s = build(); const userId = randomUUID();
+    const coupon = await CouponModel.create({ code: `OFF${randomUUID().slice(0, 6)}`.toUpperCase(), discountType: CouponDiscountType.PERCENT,
+      amount: 10, currency: 'GHS', maxRedemptions: 10 });
+    const first = await buy(s, userId, SubscriptionTier.PRO, { couponCode: coupon.code });
+    await CouponModel.updateOne({ _id: coupon._id }, { $set: { active: false } });
+    // Its open page still charges the discounted 26.99, which no checkout would quote now.
+    await expect(buy(s, userId, SubscriptionTier.PRO, { couponCode: coupon.code })).rejects.toMatchObject({ statusCode: 409,
+      message: 'That payment page charges GH₵26.99 with a discount that no longer applies. Cancel it to continue.',
+      errors: { checkoutId: [first.checkout.id], code: ['checkout_in_progress', 'checkout_price_changed'] } });
+    expect((await s.status.abandon(first.checkout.id, userId)).status).toBe('expired');
+    await expect(buy(s, userId, SubscriptionTier.PRO, { couponCode: coupon.code }))
+      .rejects.toMatchObject({ statusCode: 422, message: 'This coupon is no longer active' });
+    expect(s.gateway.initializeCharge).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not resume an affiliate-code purchase after the affiliate discount changed', async () => {
+    const codes = affiliateCodes('ama-gh');
+    const s = build({}, codes.pricing); const userId = randomUUID();
+    const first = await buy(s, userId, SubscriptionTier.PRO, { couponCode: 'AMA-GH' });
+    expect(first.preview).toMatchObject({ discountAmount: 3, finalAmount: 26.99 });
+    await expect(buy(s, userId, SubscriptionTier.PRO, { couponCode: 'AMA-GH' })).resolves.toMatchObject({ resumed: true });
+    codes.rate.percent = 20;
+    await expect(buy(s, userId, SubscriptionTier.PRO, { couponCode: 'AMA-GH' })).rejects.toMatchObject({ statusCode: 409,
+      message: 'That payment page charges GH₵26.99, but this purchase now costs GH₵23.99. Cancel it to pay the current price.',
+      errors: { checkoutId: [first.checkout.id], code: ['checkout_in_progress', 'checkout_price_changed'] } });
+    expect(s.gateway.initializeCharge).toHaveBeenCalledTimes(1);
   });
 
   it('refuses a different purchase while the first could still be paid, until the member cancels it', async () => {

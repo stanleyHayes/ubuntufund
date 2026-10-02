@@ -1,4 +1,20 @@
 import { test, expect } from '@playwright/test'
+// Live-shaped GET /plans rows (names, prices and sort order as production stores them), so the
+// Subscriptions tier filter lists real plan names; the admin never falls back to the code seed.
+const plan = (tier: string, name: string, priceMonthly: number, priceYearly: number, platformFeePercent: number, sortOrder: number) => ({
+  tier, name, description: `${name} plan`, priceMonthly, priceYearly, platformFeePercent, sortOrder,
+  maxActiveCampaigns: 3, maxCampaignGoal: 25000, maxMediaPerCampaign: 10, maxTeamMembers: 2, maxPayoutAccounts: 2, maxCollaboratorsPerCampaign: 0,
+  featuredListing: false, prioritySupport: false, advancedAnalytics: false, customBranding: false, escrowSupport: false, liveStreaming: false,
+  campaignCollaboration: false, onBehalfCampaigns: false, maxOnBehalfCampaigns: 0, onBehalfFeePercent: 0,
+  active: true, isPublic: true, accentColor: '#78909C', popular: false,
+})
+const plans = [
+  plan('free', 'Free', 0, 0, 5, 0),
+  plan('starter', 'Starter', 9.99, 99, 3.5, 1),
+  plan('pro', 'Pro', 29.99, 299, 2, 2),
+  plan('organization', 'Organization', 399, 3990, 2, 3),
+  plan('enterprise', 'Enterprise', 999.99, 9999.9, 1, 3),
+]
 const cases = [
   { path: 'kyc-review', choices: ['Pending', 'Identity'] },
   { path: 'campaigns', choices: ['Active', 'Education'] },
@@ -23,7 +39,7 @@ for (const width of [390, 1440]) for (const item of cases) test(`${item.path} de
     if (path.endsWith('/rbac/me')) data = { permissions: ['verifications:read', 'campaigns:read', 'disputes:read', 'subscriptions:read', 'contact_submissions:read', 'users:read', 'reports:read'], roleName: 'Administrator' }
     else if (path.endsWith('/notifications/unread-count')) data = { count: 0 }
     else if (path.endsWith('/admin/action-center')) data = { items: [] }
-    else if (path.endsWith('/plans')) data = []
+    else if (path.endsWith('/plans')) data = plans
     await route.fulfill({ json: { data } })
   })
   await page.goto(`/${item.path}`)

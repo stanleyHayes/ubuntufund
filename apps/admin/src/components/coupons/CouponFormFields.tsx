@@ -1,7 +1,9 @@
 import TextField, { AdminSelect as Select } from '@/components/AdminTextField'
 import type { Dispatch, SetStateAction } from 'react'
 import {
+  Alert,
   Box,
+  Button,
   MenuItem,
   InputAdornment,
   OutlinedInput,
@@ -10,6 +12,7 @@ import {
   FormControl,
   InputLabel,
   FormControlLabel,
+  Skeleton,
   Switch,
 } from '@mui/material'
 import { BrandedDatePicker } from '@ubuntu-fund/ui'
@@ -21,22 +24,52 @@ import {
   CouponSurface,
   CouponCommissionBase,
 } from '@ubuntu-fund/types'
-import { type CouponForm, PAID_TIERS, planLabel, SURFACE_LABEL, SURFACE_HINT } from './couponForm'
+import { formatPlanPrice } from '@/lib/money'
+import { isSalesOnly, isSelfServe, SALES_ONLY_HINT } from '@/lib/plans'
+import type { PlanMap } from '@/lib/subscriptionMetrics'
+import {
+  type CouponForm,
+  type CouponPlans,
+  couponTierOptions,
+  planLabel,
+  SURFACE_LABEL,
+  SURFACE_HINT,
+} from './couponForm'
+
+/** What a tier option in the picker describes: its web checkout prices, or why it is not sold there. */
+function tierHint(tier: string, plans: PlanMap): string {
+  const plan = plans[tier]
+  if (!plan) return 'Not a live plan; kept because this coupon already names it.'
+  if (plan.active === false) return 'Retired: not sold at web checkout.'
+  if (isSalesOnly(plan)) return `Sales only: ${SALES_ONLY_HINT.toLowerCase()}.`
+  const prices = [
+    plan.priceMonthly > 0 && `${formatPlanPrice(plan.priceMonthly)}/mo`,
+    plan.priceYearly > 0 && `${formatPlanPrice(plan.priceYearly)}/yr`,
+  ].filter(Boolean)
+  // Prices are only stated where checkout sells the plan (the API's self-serve rule).
+  return isSelfServe(plan) && prices.length ? `${prices.join(' · ')} at web checkout.` : 'No price: coupons never apply to it.'
+}
 
 export default function CouponFormFields({
   form,
   setForm,
   editing = false,
   step,
+  plans,
+  savedTiers,
 }: {
   form: CouponForm
   setForm: Dispatch<SetStateAction<CouponForm>>
   editing?: boolean
   step?: number
+  plans: CouponPlans
+  /** Tiers the saved coupon already names: always offered, so they can be kept or removed. */
+  savedTiers?: string[]
 }) {
   const codeInvalid = form.code.length > 50
   const amountInvalid =
     form.amount <= 0 || (form.discountType === CouponDiscountType.PERCENT && form.amount > 100)
+  const tierOptions = couponTierOptions(plans.byTier, savedTiers)
   return (
     <>
       {(step === undefined || step === 0) && (
@@ -110,38 +143,51 @@ export default function CouponFormFields({
       )}
       {(step === undefined || step === 1) && (
         <>
-          <FormControl fullWidth size="small">
-            <InputLabel shrink id="coupon-tiers-label">
-              Applies to Tiers
-            </InputLabel>
-            <Select optionContext="coupon"
-              labelId="coupon-tiers-label"
-              displayEmpty
-              multiple
-              value={form.appliesToTiers}
-              onChange={(e) => setForm({ ...form, appliesToTiers: e.target.value as string[] })}
-              input={
-                <OutlinedInput
-                  label="Applies to Tiers"
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <LocalOfferRoundedIcon fontSize="small" />
-                    </InputAdornment>
-                  }
-                />
-              }
-              renderValue={(selected) =>
-                selected.length === 0 ? 'All tiers' : selected.map((t) => planLabel(t)).join(', ')
-              }
+          {plans.isLoading ? (
+            <Skeleton variant="rounded" height={40} />
+          ) : plans.error ? (
+            <Alert
+              severity="error"
+              action={<Button color="inherit" size="small" onClick={plans.retry}>Retry</Button>}
             >
-              {PAID_TIERS.map((t) => (
-                <MenuItem key={t} value={t}>
-                  <Checkbox checked={form.appliesToTiers.includes(t)} size="small" />
-                  <ListItemText primary={planLabel(t)} />
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+              Plans could not be loaded, so tiers cannot be chosen right now.{' '}
+              {editing ? "Saving keeps this coupon's current plans." : 'Retry to choose them.'}{' '}
+              {plans.error}
+            </Alert>
+          ) : (
+            <FormControl fullWidth size="small">
+              <InputLabel shrink id="coupon-tiers-label">
+                Applies to Tiers
+              </InputLabel>
+              <Select optionContext="coupon"
+                labelId="coupon-tiers-label"
+                displayEmpty
+                multiple
+                value={form.appliesToTiers}
+                onChange={(e) => setForm({ ...form, appliesToTiers: e.target.value as string[] })}
+                input={
+                  <OutlinedInput
+                    label="Applies to Tiers"
+                    startAdornment={
+                      <InputAdornment position="start">
+                        <LocalOfferRoundedIcon fontSize="small" />
+                      </InputAdornment>
+                    }
+                  />
+                }
+                renderValue={(selected) =>
+                  selected.length === 0 ? 'All tiers' : selected.map((t) => planLabel(t, plans.byTier)).join(', ')
+                }
+              >
+                {tierOptions.map((t) => (
+                  <MenuItem key={t} value={t}>
+                    <Checkbox checked={form.appliesToTiers.includes(t)} size="small" />
+                    <ListItemText primary={planLabel(t, plans.byTier)} secondary={tierHint(t, plans.byTier)} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
           <FormControl fullWidth size="small">
             <InputLabel shrink id="coupon-cycles-label">
               Applies to Billing Cycles

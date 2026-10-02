@@ -207,11 +207,11 @@ describe('Donation Intents Integration', () => {
     expect(campaignDebit?.amount).toBe(500)
 
     // Campaign balance read model: beneficiary-net pending, tip tracked.
-    // The creator is on the Free plan (3.5% platform fee): net = 500 - 17.50.
+    // The creator is on the Free plan (5% platform fee): net = 500 - 25.00.
     const balance = await CampaignBalanceModel.findOne({ campaignId })
     expect(balance?.totalRaised).toBe(500)
-    expect(balance?.pendingBalance).toBe(482.5) // 500 - 17.50 platform (Free 3.5%)
-    expect(balance?.platformFees).toBe(17.5)
+    expect(balance?.pendingBalance).toBe(475) // 500 - 25.00 platform (Free 5%)
+    expect(balance?.platformFees).toBe(25)
     expect(balance?.availableBalance).toBe(0)
     expect(balance?.tips).toBe(50)
 
@@ -261,10 +261,10 @@ describe('Donation Intents Integration', () => {
       .send({ campaignId, amount: 500, provider: 'wallet', isAnonymous: false })
     expect(res.status).toBe(201)
 
-    // The 3.5% creation rate applies on wallet and hosted payments alike.
+    // The Free plan's 5% creation rate (not Pro's 2%) applies on wallet and hosted payments alike.
     const balance = await CampaignBalanceModel.findOne({ campaignId })
-    expect(balance?.platformFees).toBe(17.5)
-    expect(balance?.pendingBalance).toBe(482.5)
+    expect(balance?.platformFees).toBe(25)
+    expect(balance?.pendingBalance).toBe(475)
   })
 
   it('is idempotent: the same Idempotency-Key never charges twice', async () => {

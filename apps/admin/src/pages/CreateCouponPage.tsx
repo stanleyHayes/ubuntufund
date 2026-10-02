@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Alert, Box, Button, LinearProgress, Typography } from '@mui/material'
 import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
@@ -19,6 +19,8 @@ import {
 } from '@/components/coupons/couponForm'
 import { raisedSurface, insetSurface } from '@/lib/surfaces'
 import { api } from '@/lib/api'
+import { useAdminPlans } from '@/hooks/useApiData'
+import { buildPlanMap } from '@/lib/subscriptionMetrics'
 
 const steps = [
   {
@@ -53,6 +55,19 @@ export default function CreateCouponPage() {
   const heading = useRef<HTMLHeadingElement>(null)
   const current = steps[step]
   const Icon = current.icon
+  // Tier names and the tier picker come from the live plans, never the code seed.
+  const livePlans = useAdminPlans()
+  const planMap = useMemo(() => buildPlanMap(livePlans.data), [livePlans.data])
+  const plans = {
+    byTier: planMap,
+    isLoading: livePlans.isLoading,
+    error: livePlans.error,
+    // A refusal to leave the tier step names the failed load, so it is stale once retried.
+    retry: () => {
+      setError('')
+      livePlans.retry()
+    },
+  }
   const moveTo = (next: number) => {
     setError('')
     setStep(next)
@@ -62,7 +77,7 @@ export default function CreateCouponPage() {
     })
   }
   const next = () => {
-    const message = validateCouponStep(form, step)
+    const message = validateCouponStep(form, step, plans)
     if (message) {
       setError(message)
       return
@@ -72,7 +87,7 @@ export default function CreateCouponPage() {
   const create = async () => {
     if (submitting.current) return
     for (let index = 0; index < 3; index++) {
-      const message = validateCouponStep(form, index)
+      const message = validateCouponStep(form, index, plans)
       if (message) {
         moveTo(index)
         setError(message)
@@ -119,7 +134,7 @@ export default function CreateCouponPage() {
     ],
     [
       'Plans',
-      form.appliesToTiers.length ? form.appliesToTiers.map(planLabel).join(', ') : 'All paid plans',
+      form.appliesToTiers.length ? form.appliesToTiers.map((t) => planLabel(t, planMap)).join(', ') : 'All paid plans',
     ],
     ['Billing cycles', form.appliesToBillingCycles.join(', ') || 'All cycles'],
     [
@@ -224,7 +239,7 @@ export default function CreateCouponPage() {
         )}
         {step < 3 ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-            <CouponFormFields form={form} setForm={setForm} step={step} />
+            <CouponFormFields form={form} setForm={setForm} step={step} plans={plans} />
           </Box>
         ) : (
           <Box

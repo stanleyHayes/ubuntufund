@@ -35,8 +35,12 @@ export function LoginForm() {
     setSubmitting(true)
     try {
       await login(email, password, mfaCode || undefined)
-      const destination = location.state?.from?.pathname
-      navigate(typeof destination === 'string' && destination.startsWith('/') && !destination.startsWith('//') && !destination.includes('\\') ? destination : '/dashboard', { replace: true })
+      // Back to the page that asked for sign-in, query included, so a deep link
+      // such as /subscription?tier=starter&billingCycle=yearly survives.
+      const from = location.state?.from
+      const destination = from?.pathname
+      const search = typeof from?.search === 'string' && from.search.startsWith('?') ? from.search : ''
+      navigate(typeof destination === 'string' && destination.startsWith('/') && !destination.startsWith('//') && !destination.includes('\\') ? destination + search : '/dashboard', { replace: true })
     } catch (err) {
       if (err instanceof Error && /authenticator code/i.test(err.message)) setMfaRequired(true)
       setError(err instanceof Error ? err.message : 'Login failed. Please try again.')

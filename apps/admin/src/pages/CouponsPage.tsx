@@ -4,7 +4,7 @@ import { exportTable } from '@/lib/exports/report'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import CouponFormFields from '@/components/coupons/CouponFormFields'
 import { type CouponForm, emptyForm, parseEmails, planLabel } from '@/components/coupons/couponForm'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   Box, Typography, MenuItem, InputAdornment, Button, Skeleton,
   Dialog, DialogTitle, DialogContent, DialogActions, IconButton,
@@ -24,6 +24,8 @@ import {
 } from '@ubuntu-fund/types'
 import type { Coupon, UpdateCouponInput } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
+import { useAdminPlans } from '@/hooks/useApiData'
+import { buildPlanMap } from '@/lib/subscriptionMetrics'
 import { useAdminPermissions } from '@/context/AdminPermissionContext'
 import { usePagination } from '@/hooks/usePagination'
 import PaginationBar from '@/components/PaginationBar'
@@ -93,6 +95,11 @@ export default function CouponsPage() {
   }, [])
 
   useEffect(() => fetchCoupons(), [fetchCoupons])
+
+  // Tier names and the tier picker come from the live plans, never the code seed.
+  const livePlans = useAdminPlans()
+  const planMap = useMemo(() => buildPlanMap(livePlans.data), [livePlans.data])
+  const plans = { byTier: planMap, isLoading: livePlans.isLoading, error: livePlans.error, retry: livePlans.retry }
 
   const openEdit = (coupon: Coupon) => {
     setEditing(coupon)
@@ -279,7 +286,7 @@ export default function CouponsPage() {
               pagination.page.map((c) => {
                 const limitLabel = c.maxRedemptions && c.maxRedemptions > 0 ? c.maxRedemptions.toLocaleString() : '∞'
                 const appliesTiers = c.appliesToTiers?.length
-                  ? c.appliesToTiers.map((t) => planLabel(t)).join(', ')
+                  ? c.appliesToTiers.map((t) => planLabel(t, planMap)).join(', ')
                   : 'All tiers'
                 return (
                   <Box key={c.id} sx={{
@@ -321,7 +328,7 @@ export default function CouponsPage() {
 
                     {/* Applies to */}
                     <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {appliesTiers}
+                      {livePlans.isLoading && c.appliesToTiers?.length ? <Skeleton width={80} /> : appliesTiers}
                     </Typography>
 
                     {/* Status */}
@@ -362,7 +369,7 @@ export default function CouponsPage() {
       >
         <DialogTitle sx={{ fontWeight: 800 }}>Edit Coupon</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}>
-          <CouponFormFields form={form} setForm={setForm} editing />
+          <CouponFormFields form={form} setForm={setForm} editing plans={plans} savedTiers={editing?.appliesToTiers} />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setDialogOpen(false)} sx={{ textTransform: 'none' }} disabled={saving}>Cancel</Button>

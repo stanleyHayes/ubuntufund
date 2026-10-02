@@ -579,7 +579,7 @@ Balances, top-ups, history, ledger integrity, refunds and recovery, disputes and
 
 *Surfaces:* api  ·  *Type:* negative/edge
 
-**Before:** A Paystack donation of 100.00 with platform fee 3.50 and processor fee F (read from the intent). Admin JWT.
+**Before:** A Paystack donation of 100.00 to a Starter-plan campaign, with platform fee 3.50 (3.5%) and processor fee F (read from the intent). Admin JWT.
 
 **Steps:**
 

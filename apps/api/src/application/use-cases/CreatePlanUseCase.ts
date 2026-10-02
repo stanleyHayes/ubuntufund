@@ -1,6 +1,7 @@
 import type { CreatePlanInput, SubscriptionPlan } from '@ubuntu-fund/types';
 import type { SubscriptionPlanRepositoryPort } from '../../domain/ports/outbound/SubscriptionPlanRepositoryPort.js';
 import { AppError } from '../../infrastructure/adapters/inbound/middleware/errorHandler.js';
+import { assertConsistentPlan, assertPlanPrice } from '../services/planValidation.js';
 
 /** Numeric limits where -1 means "unlimited" (floor -1); the rest floor at 0. */
 const LIMIT_FIELDS: (keyof CreatePlanInput)[] = [
@@ -16,7 +17,8 @@ const LIMIT_FIELDS: (keyof CreatePlanInput)[] = [
  * Creates a NEW subscription plan/tier from the admin dashboard (v6 §16 — plans
  * are admin-managed, not hard-coded). The `tier` is a free-form id that becomes
  * the plan's immutable key; a duplicate id is rejected with 409. All monetary and
- * limit inputs are validated before anything is written.
+ * limit inputs, and the rules between them ({@link assertConsistentPlan}), are
+ * validated before anything is written.
  */
 export class CreatePlanUseCase {
   constructor(private readonly planRepo: SubscriptionPlanRepositoryPort) {}
@@ -32,6 +34,8 @@ export class CreatePlanUseCase {
     if (input.priceMonthly < 0 || input.priceYearly < 0) {
       throw new AppError('Prices must be zero or greater', 422);
     }
+    assertPlanPrice('priceMonthly', input.priceMonthly);
+    assertPlanPrice('priceYearly', input.priceYearly);
     if (input.platformFeePercent < 0 || input.platformFeePercent > 100) {
       throw new AppError('platformFeePercent must be between 0 and 100', 422);
     }
@@ -44,6 +48,7 @@ export class CreatePlanUseCase {
         throw new AppError(`${field} must be -1 (unlimited) or greater`, 422);
       }
     }
+    assertConsistentPlan(input);
 
     const created = await this.planRepo.create({ ...input, tier });
     if (!created) {

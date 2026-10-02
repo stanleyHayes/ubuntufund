@@ -212,3 +212,16 @@ it('does not delay a newer notification when an older provider lookup fails', as
   await billing.reconcileNotifications(1);
   expect(await StoreBillingNotificationModel.countDocuments()).toBe(0);
 });
+
+it('offers and prepares only plans web checkout also sells, whatever the product catalog maps', async () => {
+  const actor = await user();
+  // Enterprise is active and public in live data, but sold only through sales.
+  const enterprise = { store: 'google' as const, productId: 'enterprise', basePlanId: 'monthly', tier: 'enterprise', billingCycle: BillingCycle.MONTHLY };
+  configSpy.mockReturnValue({ ...runtime, products: [...runtime.products, enterprise] });
+  const withEnterprise = await createTestApp();
+  const catalog = await request(withEnterprise).get('/api/v1/store-billing/catalog/google').set('Authorization', actor.token).expect(200);
+  expect(catalog.body.data.products.map((product: { tier: string }) => product.tier)).toEqual(['pro']);
+  await request(withEnterprise).post('/api/v1/store-billing/prepare').set('Authorization', actor.token)
+    .send({ store: 'google', productId: 'enterprise', basePlanId: 'monthly' }).expect(422);
+  expect((await StoreBillingAccountModel.findOne({ userId: actor.id }))?.provider).toBeUndefined();
+});
