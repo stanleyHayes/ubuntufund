@@ -1,7 +1,7 @@
 # Deployment
 
-The backend deploys to **Render** (via Blueprint; currently the free instance
-type — read the limitations below) and the frontends deploy to **Vercel**.
+The backend deploys to **Render** (via Blueprint, on the always-on Starter
+instance) and the frontends deploy to **Vercel**.
 
 ## 1. Database — MongoDB Atlas
 
@@ -22,7 +22,7 @@ Render has no MongoDB, so the API uses Atlas:
 ## 2. Backend — Render Blueprint
 
 [render.yaml](render.yaml) at the repo root defines the `ujimora-api`
-web service (free plan, health check on `/health/ready`, runs `tsx src/main.ts`).
+web service (Starter plan, health check on `/health/ready`, runs `tsx src/main.ts`).
 
 1. In the Render dashboard: **New → Blueprint**, connect this GitHub repo.
 2. Render reads `render.yaml`; when prompted, paste the Atlas URI into
@@ -34,28 +34,24 @@ web service (free plan, health check on `/health/ready`, runs `tsx src/main.ts`)
    publicly as `https://api.ujimora.com`, which is what the frontends and the
    `vercel.json` rewrites call.
 
-### Free-plan limitations (`plan: free` in render.yaml)
+### Instance plan (`plan: starter` in render.yaml)
 
-Render's free instance type is not meant for production, and this API runs
-money-moving background work in-process:
+The owner moved the API to Render's **Starter** instance (0.5 CPU, 512 MB, always
+on) on 2026-10-02. The service no longer spins down, so the money-moving
+background work that runs in-process (payment/payout reconciliation, account and
+activity email delivery, outbox retries, store-billing and live-safety sweeps)
+runs continuously, and webhooks are answered without a cold start.
 
-- It **spins down after 15 minutes without inbound traffic**; the next request
-  (a donor, or a Paystack webhook) waits about a minute while it starts.
-  Webhooks are delayed, not lost: the request wakes the service, Paystack
-  retries failed deliveries, and the reconciliation sweeps backfill.
-- While asleep, **every in-process job stops**: payment/payout reconciliation,
-  account and activity email delivery, outbox retries, store-billing and
-  live-safety sweeps. They resume on the next wake-up.
-- Render may restart a free service at any time. A restart drops open SSE
-  streams, the live-event replay buffer and the in-memory rate-limit counters.
-- Free services share **750 instance-hours per workspace per month**; past
-  that, all free services are suspended until the month ends.
+- Deploys and restarts still drop open SSE streams, the live-event replay
+  buffer and the in-memory rate-limit counters; clients reconnect.
+- If you change the plan in the dashboard, change `render.yaml` too, or the
+  next Blueprint sync reverts it.
+- Keep a single instance: the SSE event bus and the rate limiters are
+  per-process.
 
-Moving to an always-on paid instance (`plan: starter`, the smallest) removes
-all of the above; it is a billing decision, so the Blueprint still says
-`free`. If you change the plan in the dashboard, change `render.yaml` too, or
-the next Blueprint sync reverts it. Keep a single instance either way: the SSE
-event bus and the rate limiters are per-process.
+Before 2026-10-02 the API ran on the free instance type, which sleeps after 15
+minutes without traffic, pauses every in-process job while asleep, and shares
+750 free instance-hours per workspace per month.
 
 ### Health checks and monitoring
 
@@ -67,9 +63,8 @@ event bus and the rate limiters are per-process.
   checks and restarts the instance after ~60 s). It is not rate-limited and
   returns no internals.
 - Point an external uptime monitor with alerting at
-  `https://api.ujimora.com/health/ready`. On the free plan a 5-minute check
-  also keeps the service awake — which then uses ~744 of the 750 monthly free
-  hours, so only if it is the workspace's only free service.
+  `https://api.ujimora.com/health/ready`. (On Starter the service is always on;
+  the check is for alerting, not for keeping it awake.)
 - Uncaught exceptions and unhandled promise rejections are logged as `fatal`
   through the structured logger, then the process exits for Render to restart.
 - There is no error tracking (Sentry or similar) yet; it needs an account and
