@@ -1550,7 +1550,7 @@ function CampaignFormForViewer({ userId, viewer }: { userId: string | null; view
 
       {step === 3 && <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} note={CAMPAIGN_SCREENING_NOTE} />}
       {/* A version declined in a publication or campaign review is refused: its notes are here. */}
-      {step === 3 && (submitError || submitHeld) && <PublicationReviews />}
+      {step === 3 && (submitError || submitHeld) && <PublicationReviews actions={['campaign.create']} />}
 
       {/* Inline submit error — keeps the wizard on the review step on failure */}
       {step === 3 && options && (

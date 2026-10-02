@@ -97,7 +97,7 @@ export default function BroadcastStudio() {
         <Button mode="contained" disabled={busy} loading={busy} onPress={() => Alert.alert('End broadcast?', 'This closes the live session for viewers.', [{ text: 'Cancel', style: 'cancel' }, { text: 'End broadcast', style: 'destructive', onPress: () => void update({ status: 'ended' }) }])}>End broadcast</Button>
       </View>
     </> : <View style={{ ...neu.raised, backgroundColor: p.surface, borderRadius: 24, padding: 20, gap: 16 }}>
-      <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} /><PublicationReviews />
+      <PublicationConsent value={automatedReviewConsent} onChange={setAutomatedReviewConsent} /><PublicationReviews actions={['live.start']} />
       <TextInput label="Broadcast title" value={title} onChangeText={setTitle} maxLength={200} /><TextInput label="Session goal (GHS, optional)" keyboardType="decimal-pad" value={target} onChangeText={setTarget} />
       <Text>Start a session, then connect your camera and microphone. Your campaign must be active and your plan must include live streaming.</Text>
       {!enabled && <Text>Live broadcasting is not configured yet.</Text>}

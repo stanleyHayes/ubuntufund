@@ -46,9 +46,13 @@ it('withholds unreviewed attribution, preserves private donor history and binds 
   const queue = (await request(app).get(path).set('Authorization', staffAuth).expect(200)).body.data;
   const item = queue.items.find((row: { id: string }) => row.id === donation.id);
   expect(JSON.stringify(queue)).not.toContain('private@example.com');
+  // Staff see the campaign the content would appear on and its owner, so they can spot their own campaign.
+  expect(item).toMatchObject({ ownerId: id, recipient: { kind: 'campaign', id: campaign.id, name: 'Attribution fixture' } });
+  expect(item.createdAt).toEqual(expect.any(String));
   const actions = (await request(app).get('/api/v1/admin/action-center').set('Authorization', staffAuth).expect(200)).body.data.items;
   expect(actions.find((row: { id: string }) => row.id === 'donation-content-reviews')).toMatchObject({ count: 1, href: '/publication-reviews?queue=donation-content-reviews' });
-  await request(app).put(`${path}/${donation.id}/review`).set('Authorization', staffAuth).send({ version: '0'.repeat(64), decision: 'approved', notes: 'Reviewed this donor name and message in full.' }).expect(409);
+  const stale = await request(app).put(`${path}/${donation.id}/review`).set('Authorization', staffAuth).send({ version: '0'.repeat(64), decision: 'approved', notes: 'Reviewed this donor name and message in full.' }).expect(409);
+  expect(stale.body.errors).toEqual({ review: ['changed'] });
   await request(app).put(`${path}/${donation.id}/review`).set('Authorization', staffAuth).send({ version: item.version, decision: 'approved', notes: 'Reviewed this donor name and message in full.' }).expect(200);
   expect((await recent())[0]).toMatchObject({ donorName: 'Submitted alias', amount: 25, isAnonymous: false });
   expect((await status()).contentReviewStatus).toBe('approved');

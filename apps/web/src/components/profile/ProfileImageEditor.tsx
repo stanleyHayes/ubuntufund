@@ -74,8 +74,8 @@ export function ProfileImageEditor({ kind, currentUrl, onClose, onSaved }: {
     <DialogTitle id="image-editor-title">Update {title}</DialogTitle>
     <DialogContent>
       <Typography color="text.secondary" sx={{ mb: 2 }}>Choose a JPG, PNG or WebP image, up to {MAX_IMAGE_UPLOAD_MB} MB. {kind === 'coverUrl' ? 'A wide landscape image works best.' : 'A square image works best.'}</Typography>
-      {error && <><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><PublicationReviews /></>}
-      {held && <><PublicationHeldNotice retry="save the same image again" reviews="below" sx={{ mb: 2 }} /><PublicationReviews /></>}
+      {error && <><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><PublicationReviews actions={['account.profile']} /></>}
+      {held && <><PublicationHeldNotice retry="save the same image again" reviews="below" sx={{ mb: 2 }} /><PublicationReviews actions={['account.profile']} /></>}
       {heldUrl && url === heldUrl && <Alert severity="info" sx={{ mb: 2 }}>This is the image you last submitted. If it is waiting for review, save it again after it is approved.</Alert>}
       <Typography sx={{ mb: 2 }}>New images need staff review. A held image is kept in this browser; after approval, save the same image again. Removing your image with “Use default image” takes effect right away.</Typography>
       <ImageUpload

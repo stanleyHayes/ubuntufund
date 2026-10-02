@@ -30,6 +30,7 @@ export { payoutAccountBrand, payoutInstitutionName } from './payoutBrand'
 
 export * from './legal-acceptance'
 export * from './organization-kyc-help'
+export * from './publication-review-display'
 
 export * from './activity-alerts'
 

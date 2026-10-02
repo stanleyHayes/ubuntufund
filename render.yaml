@@ -124,7 +124,10 @@ services:
       - key: PAYMENTS_FLUTTERWAVE_ENABLED
         value: "false"
       - key: PAYMENTS_INTERNATIONAL_CARDS_ENABLED
-        value: "false"
+        # ON since 2026-09-30: the owner enabled international payments on the
+        # Paystack dashboard. Cards are still charged in GHS; multi-currency below
+        # stays OFF until a currency picker and Flutterwave keys exist.
+        value: "true"
       - key: PAYMENTS_MULTI_CURRENCY_ENABLED
         value: "false"
       - key: PAYMENTS_DEFAULT_PROVIDER
