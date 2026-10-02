@@ -134,3 +134,30 @@ it('lists only creators whose public page a visitor can open', async () => {
     expect(res.text, `${hidden} must not be listed`).not.toContain(hidden)
   }
 })
+
+/**
+ * Organization profiles (/organizations/:slug) are public pages for NGOs,
+ * churches and schools, and were missing from the sitemap entirely. They must
+ * be listed exactly as the profile endpoint resolves them: one URL per slug,
+ * owned by the oldest organization with that name, and never for an account
+ * whose profile answers 404.
+ */
+it('lists each visible organization profile once, under the slug that resolves to it', async () => {
+  const organization = async (organizationName: string, extra: Record<string, unknown> = {}) =>
+    String((await UserModel.create({ name: organizationName, email: `${randomUUID()}@example.test`, passwordHash: 'unused', role: 'organization', organizationName, ...extra }))._id)
+  const visible = await organization('Accra Food Bank')
+  const restricted = await organization('Restricted Relief Trust')
+  await organization('Deleted Hope Fund', { deletedAt: new Date() })
+  // A newer namesake shares the slug, which still resolves to the older one.
+  await organization('Accra  Food Bank!')
+  await ContentRestrictionModel.create({ userId: restricted, reason: 'Moderation fixture', restrictedBy: 'moderator' })
+
+  const res = await request(app).get('/sitemap.xml').expect(200)
+  expect(res.text.match(/<loc>https:\/\/app\.ujimora\.com\/organizations\/accra-food-bank<\/loc>/g)).toHaveLength(1)
+  expect(visible).toBeTruthy()
+  for (const hidden of ['restricted-relief-trust', 'deleted-hope-fund']) {
+    expect(res.text, `${hidden} must not be listed`).not.toContain(hidden)
+  }
+  // Still well-formed with the new entries.
+  expect((res.text.match(/<url>/g) ?? []).length).toBe((res.text.match(/<\/url>/g) ?? []).length)
+})

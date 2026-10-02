@@ -1,0 +1,7 @@
+# admin.ujimora.com is the staff console and must never appear in search
+# results. Every response carries "X-Robots-Tag: noindex, nofollow" (vercel.json)
+# and the page carries the same meta tag. Crawlers are allowed to fetch on
+# purpose: a Disallow here would stop them seeing the noindex, and a blocked URL
+# can still be listed from links alone.
+User-agent: *
+Allow: /

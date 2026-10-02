@@ -28,6 +28,18 @@ import LockIcon from '@mui/icons-material/Lock'
 import SyncAltIcon from '@mui/icons-material/SyncAlt'
 import PolicyIcon from '@mui/icons-material/Policy'
 import MenuBookIcon from '@mui/icons-material/MenuBook'
+import LocalHospitalIcon from '@mui/icons-material/LocalHospital'
+import SchoolIcon from '@mui/icons-material/School'
+import LocalFloristIcon from '@mui/icons-material/LocalFlorist'
+import ChurchIcon from '@mui/icons-material/Church'
+import HolidayVillageIcon from '@mui/icons-material/HolidayVillage'
+import WarningAmberIcon from '@mui/icons-material/WarningAmber'
+import PublicIcon from '@mui/icons-material/Public'
+import FlagIcon from '@mui/icons-material/Flag'
+import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff'
+import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone'
+import ShieldIcon from '@mui/icons-material/Shield'
+import CompareArrowsIcon from '@mui/icons-material/CompareArrows'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { scrollToHash } from '@/lib/scroll'
 import { SHAPE } from '@ubuntu-fund/ui'
@@ -47,13 +59,36 @@ const footerSections = [
   {
     title: 'Platform',
     links: [
-      { label: 'How It Works', to: '/#how-it-works', anchor: true, icon: <TimelineIcon sx={{ fontSize: 15 }} /> },
+      { label: 'How It Works', to: '/how-it-works', icon: <TimelineIcon sx={{ fontSize: 15 }} /> },
       { label: 'Crypto Contribution Guide', to: '/crypto', icon: <SyncAltIcon sx={{ fontSize: 15 }} /> },
       { label: 'Features', to: '/features', icon: <CategoryIcon sx={{ fontSize: 15 }} /> },
       { label: 'Campaign Types', to: '/#campaign-types', anchor: true, icon: <CategoryIcon sx={{ fontSize: 15 }} /> },
       { label: 'Affiliate program', to: '/affiliates', icon: <BusinessIcon sx={{ fontSize: 15 }} /> },
       { label: 'Pricing', to: '/pricing', icon: <DiamondIcon sx={{ fontSize: 15 }} /> },
       { label: 'For Organizations', to: '/for-organizations', icon: <BusinessIcon sx={{ fontSize: 15 }} /> },
+    ],
+  },
+  {
+    title: 'Fundraise for',
+    links: [
+      { label: 'Medical bills', to: '/medical-fundraising', icon: <LocalHospitalIcon sx={{ fontSize: 15 }} /> },
+      { label: 'School fees', to: '/education-fundraising', icon: <SchoolIcon sx={{ fontSize: 15 }} /> },
+      { label: 'Funerals', to: '/funeral-fundraising', icon: <LocalFloristIcon sx={{ fontSize: 15 }} /> },
+      { label: 'Church projects', to: '/church-fundraising', icon: <ChurchIcon sx={{ fontSize: 15 }} /> },
+      { label: 'Community projects', to: '/community-fundraising', icon: <HolidayVillageIcon sx={{ fontSize: 15 }} /> },
+      { label: 'Emergencies', to: '/emergency-fundraising', icon: <WarningAmberIcon sx={{ fontSize: 15 }} /> },
+    ],
+  },
+  {
+    title: 'Guides',
+    links: [
+      { label: 'Crowdfunding in Ghana', to: '/crowdfunding-ghana', icon: <PublicIcon sx={{ fontSize: 15 }} /> },
+      { label: 'Start a fundraiser', to: '/start-a-fundraiser', icon: <FlagIcon sx={{ fontSize: 15 }} /> },
+      { label: 'Give from abroad', to: '/donate-to-ghana-from-abroad', icon: <FlightTakeoffIcon sx={{ fontSize: 15 }} /> },
+      { label: 'Mobile money donations', to: '/mobile-money-donations', icon: <PhoneIphoneIcon sx={{ fontSize: 15 }} /> },
+      { label: 'Trust & safety', to: '/trust-and-safety', icon: <ShieldIcon sx={{ fontSize: 15 }} /> },
+      { label: 'GoFundMe in Ghana', to: '/gofundme-alternative-ghana', icon: <CompareArrowsIcon sx={{ fontSize: 15 }} /> },
+      { label: 'All guides', to: '/guides', icon: <MenuBookIcon sx={{ fontSize: 15 }} /> },
     ],
   },
   {
@@ -303,7 +338,7 @@ function Footer() {
         {/* Link columns */}
         <Grid container spacing={3} sx={{ mb: { xs: 4, md: 6 } }}>
           {footerSections.map((section) => (
-            <Grid size={{ xs: 6, sm: 3 }} key={section.title}>
+            <Grid size={{ xs: 6, sm: 4, md: 2 }} key={section.title}>
               <Typography
                 variant="subtitle2"
                 sx={{
@@ -372,7 +407,9 @@ function Footer() {
             gap: 2,
           }}
         >
-          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.75rem' }}>
+          {/* The year is baked in at build time; a page built in December and
+              read in January differs by one, which is expected, not a bug. */}
+          <Typography variant="caption" suppressHydrationWarning sx={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.75rem' }}>
             &copy; {new Date().getFullYear()} Ujimora. All rights reserved.
           </Typography>
 

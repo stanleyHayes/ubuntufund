@@ -5,7 +5,7 @@ import { checkoutAttemptKey, forgetCheckoutAttempt, isDefinitiveRejection } from
 import { useAnonymousDonationDefault } from '@/hooks/useAnonymousDonationDefault'
 import { CampaignOrganizer } from '@/components/campaigns/CampaignOrganizer'
 import { CampaignCashout } from '@/components/campaigns/CampaignCashout'
-import { LoadingDots, sizedImageUrl, breadcrumbList } from '@ubuntu-fund/ui'
+import { LoadingDots, sizedImageUrl } from '@ubuntu-fund/ui'
 import { useState, useEffect } from 'react'
 import { Link as RouterLink, useParams, useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -57,34 +57,12 @@ import { CampaignDonationHistory } from '@/components/campaigns/CampaignDonation
 import { api } from '@/lib/api'
 import { acceptsCampaignDonation, validWalletDonationAmount, walletDonationProviders } from '@/lib/campaignDetailPolicy'
 import { useEnabledPaymentProviders } from '@/hooks/useEnabledPaymentProviders'
-import { useSeo, SITE_ORIGIN } from '@/lib/seo'
+import { useSeo } from '@/lib/seo'
+import { campaignSeo } from '@/lib/publicPageSeo'
 import { SplitDisclosure } from '@/components/campaigns/SplitDisclosure'
 
 function formatCategory(category: string): string {
   return category.charAt(0).toUpperCase() + category.slice(1).replace(/_/g, ' ')
-}
-
-/** Statuses a campaign page must never be indexed in — it is not public yet, or no longer is. */
-const UNINDEXED_STATUSES: CampaignStatus[] = [
-  CampaignStatus.DRAFT,
-  CampaignStatus.PENDING_REVIEW,
-  CampaignStatus.BLOCKED,
-]
-
-/** Collapse whitespace and trim to `max` characters at a word boundary. */
-function clip(text: string, max: number): string {
-  const clean = text.replace(/\s+/g, ' ').trim()
-  if (clean.length <= max) return clean
-  const cut = clean.slice(0, max - 1)
-  const space = cut.lastIndexOf(' ')
-  return `${(space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s.,;:\u2014-]+$/, '')}\u2026`
-}
-
-/** Meta description built from the organizer's own story, topped up when it is very short. */
-function campaignDescription(story: string): string {
-  const blurb = clip(story || '', 155)
-  if (blurb.length >= 100) return blurb
-  return `${blurb ? `${blurb} ` : ''}Donate by mobile money or card on Ujimora.`
 }
 
 /** Where the money goes, for a manager who cannot request payouts on a campaign run for someone else. */
@@ -166,27 +144,12 @@ function CampaignDetailContent() {
   // /campaigns/:id, /c/:slug and /c/:id all resolve to this same campaign, so
   // every one of them declares the slug form canonical — one public URL rather
   // than three competing for the same ranking signals.
-  const cover = campaign?.imageUrls?.[0]
-  useSeo({
-    title: campaign ? `${clip(campaign.title, 46)} | Ujimora` : 'Campaign | Ujimora',
-    description: campaign
-      ? campaignDescription(campaign.description)
-      : 'Read the story behind this fundraiser on Ujimora, see how close it is to its cedi goal, and donate securely by mobile money or card in seconds.',
-    path: campaign
-      ? `/c/${encodeURIComponent(campaign.slug || campaign.id)}`
-      : `/campaigns/${encodeURIComponent(id ?? '')}`,
+  // The same head middleware.ts gives crawlers for this campaign (publicPageSeo.ts).
+  useSeo(campaign ? campaignSeo(campaign) : {
+    title: 'Campaign | Ujimora',
+    description: 'Read the story behind this fundraiser on Ujimora, see how close it is to its cedi goal, and donate securely by mobile money or card in seconds.',
+    path: `/campaigns/${encodeURIComponent(id ?? '')}`,
     type: 'article',
-    image: cover && /^https?:\/\//i.test(cover) ? cover : undefined,
-    robots: campaign && UNINDEXED_STATUSES.includes(campaign.status) ? 'noindex, follow' : undefined,
-    // The trail replaces the bare URL under the search result, so a campaign
-    // shows its path through the site rather than `app.ujimora.com/c/...`.
-    jsonLd: campaign
-      ? breadcrumbList(SITE_ORIGIN, [
-          { name: 'Home', path: '/' },
-          { name: 'Explore', path: '/explore' },
-          { name: campaign.title },
-        ])
-      : undefined,
   })
 
   const walletProviders = walletDonationProviders(enabledProviders)

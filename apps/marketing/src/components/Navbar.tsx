@@ -29,6 +29,12 @@ import SupportAgentIcon from '@mui/icons-material/SupportAgent'
 import GavelIcon from '@mui/icons-material/Gavel'
 import LockIcon from '@mui/icons-material/Lock'
 import SyncAltIcon from '@mui/icons-material/SyncAlt'
+import FlagIcon from '@mui/icons-material/Flag'
+import LocalHospitalIcon from '@mui/icons-material/LocalHospital'
+import SchoolIcon from '@mui/icons-material/School'
+import LocalFloristIcon from '@mui/icons-material/LocalFlorist'
+import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff'
+import MenuBookIcon from '@mui/icons-material/MenuBook'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { keyframes } from '@emotion/react'
 import { SHAPE } from '@ubuntu-fund/ui'
@@ -61,9 +67,21 @@ const menus: NavMenu[] = [
     label: 'Product',
     items: [
       { icon: <AutoAwesomeIcon />, title: 'Features', description: 'Creator tips, collaboration, payments, and more', href: '/features' },
-      { icon: <TimelineIcon />, title: 'How It Works', description: 'Three-step process from creation to impact', href: '/#how-it-works', anchor: true },
+      { icon: <TimelineIcon />, title: 'How It Works', description: 'From verifying your ID to your first payout', href: '/how-it-works' },
       { icon: <VolunteerActivismIcon />, title: 'Campaign Types', description: 'Medical, education, community, and more', href: '/#campaign-types', anchor: true },
-      { icon: <ShieldIcon />, title: 'Trust System', description: 'Multi-level verification and scoring', href: '/#features', anchor: true },
+      { icon: <ShieldIcon />, title: 'Trust & Safety', description: 'How we verify organizers and screen campaigns', href: '/trust-and-safety' },
+    ],
+  },
+  {
+    label: 'Guides',
+    items: [
+      { icon: <PublicIcon />, title: 'Crowdfunding in Ghana', description: 'How online fundraising works here', href: '/crowdfunding-ghana' },
+      { icon: <FlagIcon />, title: 'Start a fundraiser', description: 'Step by step, from ID to payout', href: '/start-a-fundraiser' },
+      { icon: <LocalHospitalIcon />, title: 'Medical bills', description: 'Surgery, treatment and hospital costs', href: '/medical-fundraising' },
+      { icon: <SchoolIcon />, title: 'School fees', description: 'Fees, books and school projects', href: '/education-fundraising' },
+      { icon: <LocalFloristIcon />, title: 'Funerals', description: 'Collect contributions from the family', href: '/funeral-fundraising' },
+      { icon: <FlightTakeoffIcon />, title: 'Give from abroad', description: 'Support family and causes by card', href: '/donate-to-ghana-from-abroad' },
+      { icon: <MenuBookIcon />, title: 'All guides', description: 'Every cause, plus giving and safety', href: '/guides' },
     ],
   },
   {
@@ -209,9 +227,18 @@ function MegaDropdown({
                 const active = isActive(item.href, pathname)
                 return (
                   <Box
+                    component="a"
                     key={item.title}
-                    onClick={() => { onNavigate(item.href); onClose() }}
+                    href={item.href}
+                    onClick={(event: React.MouseEvent) => {
+                      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+                      event.preventDefault()
+                      onNavigate(item.href)
+                      onClose()
+                    }}
                     sx={{
+                      textDecoration: 'none',
+                      color: 'inherit',
                       display: 'flex',
                       gap: 1.25,
                       px: 1.25,
@@ -303,9 +330,16 @@ function MobileMenuGroup({ menu, pathname, onNavigate }: { menu: NavMenu; pathna
             const itemActive = isActive(item.href, pathname)
             return (
               <Box
+                component="a"
                 key={item.title}
-                onClick={() => onNavigate(item.href)}
+                href={item.href}
+                onClick={(event: React.MouseEvent) => {
+                  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+                  event.preventDefault()
+                  onNavigate(item.href)
+                }}
                 sx={{
+                  textDecoration: 'none', color: 'inherit',
                   display: 'flex', gap: 1.5, px: 3, py: 1.25, cursor: 'pointer',
                   bgcolor: itemActive ? 'action.selected' : 'transparent',
                   '&:hover': { bgcolor: 'action.hover' },

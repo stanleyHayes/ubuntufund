@@ -1,6 +1,6 @@
-import { Suspense } from 'react'
+import { Suspense, useEffect } from 'react'
 import { Box } from '@mui/material'
-import { BrowserRouter, Routes, Route, useLocation, Outlet } from 'react-router-dom'
+import { Routes, Route, useLocation, Outlet } from 'react-router-dom'
 import PageTransitions from './components/PageTransitions'
 import { AfricanBanner } from '@ubuntu-fund/ui'
 import { ColorModeProvider } from '@/context/ColorModeContext'
@@ -28,10 +28,14 @@ import LegalIndexPage from './pages/LegalIndexPage'
 import LegalPolicyPage from './pages/LegalPolicyPage'
 import AffiliateProgramPage from './pages/AffiliateProgramPage'
 import ForOrganizationsPage from './pages/ForOrganizationsPage'
+import GuidePage from './pages/GuidePage'
+import GuidesIndexPage from './pages/GuidesIndexPage'
+import { GUIDES } from './data/guides'
 import { LEGAL_POLICIES } from './data/legal'
 import NotFoundPage from './pages/NotFoundPage'
 import SplashScreen from './components/SplashScreen'
 import { PageErrorBoundary } from './components/PageErrorBoundary'
+import { RESTYLE_ATTRIBUTE, endHydration } from './lib/hydration'
 
 const BANNER_CONFIG: Record<string, { title: string; subtitle?: string; description?: string; accentWord?: string; icon?: React.ReactNode }> = {
   '/about': {
@@ -108,7 +112,8 @@ function InnerPageLayout() {
   const bannerProps = getBannerConfig(pathname)
   const legalRoutes = ['/legal', ...LEGAL_POLICIES.map((p) => p.route)]
   const hasEditorialHero =
-    ['/affiliates', '/crypto', '/features', '/about', '/blog', '/contact', '/pricing', '/help', '/for-organizations'].includes(pathname) ||
+    ['/affiliates', '/crypto', '/features', '/about', '/blog', '/contact', '/pricing', '/help', '/for-organizations', '/guides'].includes(pathname) ||
+    GUIDES.some((guide) => guide.path === pathname) ||
     legalRoutes.includes(pathname)
 
   return (
@@ -129,44 +134,68 @@ function InnerPageLayout() {
   )
 }
 
-function App() {
+/**
+ * Ends the first render (lib/hydration). A passive effect, so every layout
+ * effect of that render, the hero's intro check included, has already run.
+ * It sits inside the Suspense boundary with the page: React hydrates a
+ * boundary's content in a later pass than the shell around it, and outside it
+ * this ran before the page had hydrated, so the hero replayed its intro.
+ * It also reveals a page the index.html script hid for a visitor whose saved
+ * theme is not the prerendered one; main.tsx rendered it fresh in that theme.
+ */
+function FirstRenderDone() {
+  useEffect(() => {
+    endHydration()
+    document.documentElement.removeAttribute(RESTYLE_ATTRIBUTE)
+  }, [])
+  return null
+}
+
+/**
+ * Everything inside the router. The browser wraps it in BrowserRouter
+ * (main.tsx) and the build in StaticRouter (entry-server.tsx); keeping the two
+ * trees otherwise identical is what lets the browser adopt the prerendered HTML.
+ */
+export function AppTree() {
   return (
     <ColorModeProvider>
       <Suspense fallback={<SplashScreen />}>
-        <BrowserRouter>
-          <PageTransitions>{location => (
-          <Routes location={location}>
-            {/* Landing page is fully self-contained — no banner */}
-            <Route path="/" element={<PageErrorBoundary resetKey="/"><LandingPage /></PageErrorBoundary>} />
-            {/* Inner pages get the banner */}
-            <Route element={<InnerPageLayout />}>
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="/contact" element={<ContactPage />} />
-              <Route path="/crypto" element={<CryptoGuidePage />} />
-              <Route path="/features" element={<FeaturesPage />} />
-              <Route path="/pricing" element={<PricingPage />} />
-              <Route path="/blog" element={<BlogPage />} />
-              <Route path="/blog/:slug" element={<BlogDetailPage />} />
-              <Route path="/help" element={<HelpPage />} />
-              <Route path="/affiliates" element={<AffiliateProgramPage />} />
-              <Route path="/for-organizations" element={<ForOrganizationsPage />} />
-              {/* Legal & policy pages — hub + one route per policy, all sourced from data/legal */}
-              <Route path="/legal" element={<LegalIndexPage />} />
-              {LEGAL_POLICIES.map((policy) => (
-                <Route
-                  key={policy.slug}
-                  path={policy.route}
-                  element={<LegalPolicyPage slug={policy.slug} />}
-                />
-              ))}
-            </Route>
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-          )}</PageTransitions>
-        </BrowserRouter>
+        <PageTransitions>{location => (
+        <Routes location={location}>
+          {/* Landing page is fully self-contained — no banner */}
+          <Route path="/" element={<PageErrorBoundary resetKey="/"><LandingPage /></PageErrorBoundary>} />
+          {/* Inner pages get the banner */}
+          <Route element={<InnerPageLayout />}>
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/crypto" element={<CryptoGuidePage />} />
+            <Route path="/features" element={<FeaturesPage />} />
+            <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/blog" element={<BlogPage />} />
+            <Route path="/blog/:slug" element={<BlogDetailPage />} />
+            <Route path="/help" element={<HelpPage />} />
+            <Route path="/affiliates" element={<AffiliateProgramPage />} />
+            <Route path="/for-organizations" element={<ForOrganizationsPage />} />
+            {/* Search guides: the hub, then one route per guide from data/guides */}
+            <Route path="/guides" element={<GuidesIndexPage />} />
+            {GUIDES.map((guide) => (
+              <Route key={guide.path} path={guide.path} element={<GuidePage guide={guide} />} />
+            ))}
+            {/* Legal & policy pages — hub + one route per policy, all sourced from data/legal */}
+            <Route path="/legal" element={<LegalIndexPage />} />
+            {LEGAL_POLICIES.map((policy) => (
+              <Route
+                key={policy.slug}
+                path={policy.route}
+                element={<LegalPolicyPage slug={policy.slug} />}
+              />
+            ))}
+          </Route>
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+        )}</PageTransitions>
+        <FirstRenderDone />
       </Suspense>
     </ColorModeProvider>
   )
 }
-
-export default App

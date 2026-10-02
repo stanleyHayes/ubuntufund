@@ -3,6 +3,9 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { SHAPE } from '../theme'
 
+/** Two decimals: enough for an SVG coordinate, and identical on server and browser. */
+const round2 = (value: number) => Math.round(value * 100) / 100
+
 // ─── Keyframes ───────────────────────────────────────────────────────────────
 
 const keyframes = `
@@ -206,10 +209,12 @@ function AfricanSun() {
       <g style={{ transformOrigin: '100px 100px', animation: 'sunRays 40s linear infinite' }}>
         {Array.from({ length: 12 }, (_, i) => {
           const angle = (i * 30 * Math.PI) / 180
-          const x1 = 100 + 40 * Math.cos(angle)
-          const y1 = 100 + 40 * Math.sin(angle)
-          const x2 = 100 + 90 * Math.cos(angle)
-          const y2 = 100 + 90 * Math.sin(angle)
+          // Rounded: sin/cos can differ in the last digit between the server
+          // that prerenders the page and the browser that adopts it.
+          const x1 = round2(100 + 40 * Math.cos(angle))
+          const y1 = round2(100 + 40 * Math.sin(angle))
+          const x2 = round2(100 + 90 * Math.cos(angle))
+          const y2 = round2(100 + 90 * Math.sin(angle))
           return (
             <line
               key={i}

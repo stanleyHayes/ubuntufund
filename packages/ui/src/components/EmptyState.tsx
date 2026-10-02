@@ -4,6 +4,9 @@ import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 import { keyframes } from '@mui/material/styles'
 
+/** Two decimals: enough for an SVG coordinate, and identical when a server prerenders it. */
+const round2 = (value: number) => Math.round(value * 100) / 100
+
 // ---------------------------------------------------------------------------
 // MUI keyframes (for Box sx usage)
 // ---------------------------------------------------------------------------
@@ -111,10 +114,10 @@ function ErrorIllustration() {
         {/* Gear teeth */}
         {[0, 60, 120, 180, 240, 300].map((deg) => {
           const rad = (deg * Math.PI) / 180
-          const x1 = 140 + Math.cos(rad) * 12
-          const y1 = 140 + Math.sin(rad) * 12
-          const x2 = 140 + Math.cos(rad) * 17
-          const y2 = 140 + Math.sin(rad) * 17
+          const x1 = round2(140 + Math.cos(rad) * 12)
+          const y1 = round2(140 + Math.sin(rad) * 12)
+          const x2 = round2(140 + Math.cos(rad) * 17)
+          const y2 = round2(140 + Math.sin(rad) * 17)
           return <line key={deg} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#5E8F72" strokeWidth="2.5" strokeLinecap="round" className={`${id}-dot`} />
         })}
       </g>
@@ -308,8 +311,8 @@ function EmptyIllustration() {
           {/* Petals */}
           {[0, 72, 144, 216, 288].map((deg) => {
             const rad = (deg * Math.PI) / 180
-            const px = 90 + Math.cos(rad) * 14
-            const py = 42 + Math.sin(rad) * 14
+            const px = round2(90 + Math.cos(rad) * 14)
+            const py = round2(42 + Math.sin(rad) * 14)
             return <circle key={deg} cx={px} cy={py} r="4" fill="#DCC07E" opacity=".5" />
           })}
           <circle cx="90" cy="42" r="5" fill="#C7A24A" />

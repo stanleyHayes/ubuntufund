@@ -1,4 +1,5 @@
 import { LEGAL_POLICIES } from '@ubuntu-fund/types/src/legal'
+import { GUIDES, GUIDES_INDEX, type Guide } from '../data/guides.ts'
 
 /**
  * Title and description for every marketing route, in one place.
@@ -17,14 +18,20 @@ export interface PageHead {
   /** Root-relative, no trailing slash (except '/'). Becomes the canonical. */
   path: string
   type?: 'website' | 'article'
+  /** The fields below match useSeo's, so a page's own head can be written as is. */
+  canonicalUrl?: string
+  robots?: string
+  image?: string
+  imageAlt?: string
+  jsonLd?: object | object[]
 }
 
 type StaticPath = '/' | '/about' | '/contact' | '/crypto' | '/features' | '/pricing' | '/blog' | '/help' | '/affiliates' | '/for-organizations' | '/legal'
 
 const STATIC_PAGES: Record<StaticPath, Omit<PageHead, 'path'>> = {
   '/': {
-    title: "Ujimora - Ghana's Trust Infrastructure for Giving",
-    description: "Ghana's crowdfunding platform built on trust: reviewed campaigns, verified organizers, transparent donation records and cedi-first giving. Together, we fund what matters.",
+    title: 'Ujimora | Crowdfunding & Online Fundraising in Ghana',
+    description: 'Raise money in Ghana for medical bills, school fees, funerals and community projects. Verified organizers, donations in cedis by MoMo or card.',
   },
   '/about': {
     title: 'About Ujimora: our mission, model and team',
@@ -73,6 +80,17 @@ export function pageHead(path: StaticPath): PageHead {
 }
 
 export const STATIC_PATHS = Object.keys(STATIC_PAGES) as StaticPath[]
+
+/** A search guide's head (src/data/guides.ts). */
+export function guideHead(guide: Pick<Guide, 'title' | 'description' | 'path'>): PageHead {
+  return { title: guide.title, description: guide.description, path: guide.path, type: 'article' }
+}
+
+/** The guides index and every guide. */
+export const GUIDE_HEADS: PageHead[] = [
+  { title: GUIDES_INDEX.title, description: GUIDES_INDEX.description, path: GUIDES_INDEX.path, type: 'website' },
+  ...GUIDES.map(guideHead),
+]
 
 /**
  * Search-result copy, one entry per policy route. The shared policy data carries

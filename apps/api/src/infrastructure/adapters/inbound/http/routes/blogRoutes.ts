@@ -2,6 +2,7 @@ import { Router, type RequestHandler } from 'express'
 import mongoose from 'mongoose'
 import { z } from 'zod'
 import { BlogPostModel } from '../../../../database/models/BlogPostModel.js'
+import { blogPublicPages } from '../../../../seo/publicPages.js'
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js'
 import { AppError } from '../../middleware/errorHandler.js'
 const draftSchema = z
@@ -66,14 +67,9 @@ export function createBlogRoutes(auth: RequestHandler, admin: RequestHandler) {
   router.get(
     '/sitemap.xml',
     wrap(async (_req, res) => {
-      const posts = await BlogPostModel.find({ publishedSlug: { $exists: true } })
-        .select('publishedSlug publishedContentAt publishedAt updatedAt')
-        .lean()
-      const urls = posts
-        .map(
-          (post) =>
-            `<url><loc>https://ujimora.com/blog/${encodeURIComponent(post.publishedSlug!)}</loc><lastmod>${(post.publishedContentAt ?? post.publishedAt ?? post.updatedAt).toISOString()}</lastmod></url>`,
-        )
+      // The same list IndexNow announces (seo/publicPages.ts).
+      const urls = (await blogPublicPages())
+        .map((post) => `<url><loc>${post.url}</loc><lastmod>${post.lastmod.toISOString()}</lastmod></url>`)
         .join('')
       res
         .type('application/xml')

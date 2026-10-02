@@ -1,4 +1,4 @@
-import { useLayoutEffect } from 'react'
+import { createContext, useContext, useLayoutEffect } from 'react'
 
 /**
  * Per-route document head for a Vite SPA.
@@ -131,6 +131,15 @@ export function applySeo(meta: SeoMeta, origin: string, defaults: { image: strin
 }
 
 /**
+ * Receives each `useSeo` call while a page renders on the server.
+ *
+ * Effects never run during server rendering, so a build that prerenders pages
+ * provides this to learn the head each page declares. The last call wins, which
+ * is the page's own: parents render before their children. Null in the browser.
+ */
+export const SeoCollectorContext = createContext<((meta: SeoMeta) => void) | null>(null)
+
+/**
  * Build a `useSeo` hook bound to one app's origin and share-card defaults.
  *
  * `useLayoutEffect` rather than `useEffect`: the title should change in the same
@@ -138,6 +147,8 @@ export function applySeo(meta: SeoMeta, origin: string, defaults: { image: strin
  */
 export function createUseSeo(origin: string, defaults: { image: string; imageAlt: string }) {
   return function useSeo(meta: SeoMeta): void {
+    const collect = useContext(SeoCollectorContext)
+    collect?.(meta)
     const { title, description, path, canonicalUrl, image, imageAlt, type, robots, jsonLd } = meta
     const jsonLdKey = jsonLd ? JSON.stringify(jsonLd) : ''
     useLayoutEffect(() => {

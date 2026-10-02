@@ -80,8 +80,8 @@ describe('link-preview middleware', () => {
     return fetchMock
   }
 
-  it('only runs for campaign share paths', () => {
-    expect(config.matcher).toEqual(['/c/:slug', '/c/:slug/donate', '/campaigns/:id'])
+  it('only runs for public record paths', () => {
+    expect(config.matcher).toEqual(['/c/:slug', '/c/:slug/donate', '/campaigns/:id', '/organizations/:slug', '/creators/:handle'])
   })
 
   it('leaves browsers alone without calling the API', async () => {
@@ -130,7 +130,7 @@ describe('link-preview middleware on Vercel', () => {
   function runInNode(script: string) {
     const dir = mkdtempSync(join(tmpdir(), 'ujimora-middleware-'))
     try {
-      for (const file of ['middleware.ts', 'src/lib/shareMeta.ts']) {
+      for (const file of ['middleware.ts', 'src/lib/shareMeta.ts', 'src/lib/crawlerPages.ts', 'src/lib/publicPageSeo.ts']) {
         const out = join(dir, file.replace(/\.ts$/, '.js'))
         mkdirSync(dirname(out), { recursive: true })
         const source = readFileSync(resolve(process.cwd(), file), 'utf8')
@@ -166,5 +166,19 @@ describe('link-preview middleware on Vercel', () => {
     `)
     expect(result.stderr).toBe('')
     expect(JSON.parse(result.stdout)).toEqual({ status: 200, card: true })
+  })
+
+  it('serves search crawlers the full campaign page under Node.js ESM', () => {
+    const result = runInNode(`
+      import { readFileSync } from 'node:fs'
+      const html = readFileSync('./index.html', 'utf8')
+      globalThis.fetch = async (input) => String(input).endsWith('/index.html') ? new Response(html) : Response.json({ data: ${JSON.stringify({ ...campaign, status: 'active', goalAmount: 20000, raisedAmount: 5000, category: 'medical' })} })
+      const { default: middleware } = await import('./middleware.js')
+      const response = await middleware(new Request('https://app.ujimora.com/c/kofi-surgery', { headers: { 'user-agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' } }))
+      const body = await response.text()
+      console.log(JSON.stringify({ status: response.status, h1: body.includes('<h1>Kofi &quot;Junior&quot; &lt;Asante&gt; &amp; family'), canonical: body.includes('<link rel="canonical" href="https://app.ujimora.com/c/kofi-surgery" />') }))
+    `)
+    expect(result.stderr).toBe('')
+    expect(JSON.parse(result.stdout)).toEqual({ status: 200, h1: true, canonical: true })
   })
 })

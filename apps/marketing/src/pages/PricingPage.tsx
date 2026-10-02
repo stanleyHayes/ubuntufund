@@ -12,7 +12,7 @@ import Accordion from '@mui/material/Accordion'
 import AccordionSummary from '@mui/material/AccordionSummary'
 import AccordionDetails from '@mui/material/AccordionDetails'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import { SHAPE, breadcrumbList, formatCurrency } from '@ubuntu-fund/ui'
+import { SHAPE, breadcrumbList, faqPage, formatCurrency } from '@ubuntu-fund/ui'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import { InternalPageHero } from '../components/InternalPageHero'
@@ -24,6 +24,7 @@ import {
 } from '@ubuntu-fund/types'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 import { pageHead } from '@/lib/pageSeo'
+import { usePrerenderedData } from '@/lib/prerenderData'
 
 // Use semantic colours so accents remain readable in every skin and mode.
 function accentOf() {
@@ -102,7 +103,7 @@ function formatCellValue(value: unknown, format?: string): React.ReactNode {
     if (value === -1) return <Typography sx={{ fontSize: '0.82rem', fontWeight: 700, color: 'primary.main' }}>Unlimited</Typography>
     if (value === 0 && format === 'unlimited') return <CloseRoundedIcon sx={{ fontSize: 18, color: 'text.disabled' }} />
     if (format === 'fee') return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>{value}%</Typography>
-    if (format === 'goal') return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>GH₵ {value.toLocaleString()}</Typography>
+    if (format === 'goal') return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>GH₵ {value.toLocaleString('en-GH')}</Typography>
     return <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>{value}</Typography>
   }
   // A limit the plan does not state (older plan rows lack some fields).
@@ -157,7 +158,12 @@ const faqsFor = (freePlanName: string) => [
 
 function PricingPage() {
   const [yearly, setYearly] = useState(false)
-  const [plans, setPlans] = useState<SubscriptionPlan[] | null>(null)
+  // The live plans the build fetched, so the prerendered page lists real prices
+  // instead of skeletons. The request below still refreshes them.
+  const prerenderedPlans = usePrerenderedData<SubscriptionPlan[]>('plans')
+  const [plans, setPlans] = useState<SubscriptionPlan[] | null>(() =>
+    Array.isArray(prerenderedPlans) && prerenderedPlans.length ? prerenderedPlans : null,
+  )
   const [error, setError] = useState(false)
   const [retry, setRetry] = useState(0)
   useEffect(() => {
@@ -170,31 +176,40 @@ function PricingPage() {
     }).catch(() => { if (active) setError(true) })
     return () => { active = false }
   }, [retry])
+  // The copy names the free plan as its card does.
+  const freePlanName = plans?.find(plan => plan.tier === SubscriptionTier.FREE)?.name ?? 'Free'
+  const faqs = faqsFor(freePlanName)
   // Before the early return below: the head must be set even while plans load.
   useSeo({
     ...pageHead('/pricing'),
-    jsonLd: breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'Pricing' }]),
+    jsonLd: [
+      breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: 'Pricing' }]),
+      // Only once the answers are on the page: the FAQ below renders with the plans.
+      ...(plans ? [faqPage(faqs)] : []),
+    ],
   })
-  if (!plans) return <Container maxWidth="lg" sx={{ py: 8 }}>
-    <Typography variant="h3" sx={{ mb: 3 }}>Plans and pricing</Typography>
-    {error ? <Alert severity="error" action={<Button onClick={() => { setError(false); setRetry(value => value + 1) }}>Retry</Button>}>Current pricing could not be loaded. Please try again.</Alert> : <Box aria-busy="true" aria-label="Loading current pricing" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 3 }}>{[0, 1, 2].map(i => <Skeleton key={i} variant="rounded" height={400} />)}</Box>}</Container>
+  // The hero names the page in both states, so a page prerendered while plans
+  // could not load still has its heading and introduction.
+  const hero = (
+    <InternalPageHero
+      eyebrow="Plans and limits"
+      title="Clear pricing without hidden promises"
+      description="Start with a personal cause, grow your fundraising, or give your organisation room to do more."
+      icon={<PaymentsRoundedIcon />}
+      panelLabel="Find your fit"
+      panelTitle="The right tools for every stage of your cause."
+      panelBody="Compare campaign limits, platform fees, and included tools before choosing a plan."
+      primaryAction={{ label: 'Create a free account', href: WEB_APP_REGISTER }}
+    />
+  )
+  if (!plans) return <Box sx={{ flex: 1 }}>{hero}<Container maxWidth="lg" sx={{ py: 8 }}>
+    <Typography variant="h3" component="h2" sx={{ mb: 3 }}>Plans and pricing</Typography>
+    {error ? <Alert severity="error" action={<Button onClick={() => { setError(false); setRetry(value => value + 1) }}>Retry</Button>}>Current pricing could not be loaded. Please try again.</Alert> : <Box aria-busy="true" aria-label="Loading current pricing" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 3 }}>{[0, 1, 2].map(i => <Skeleton key={i} variant="rounded" height={400} />)}</Box>}</Container></Box>
   const PLANS = [...plans].sort(bySortOrder)
-  // The copy names the free plan as its card does.
-  const freePlanName = PLANS.find(plan => plan.tier === SubscriptionTier.FREE)?.name ?? 'Free'
-  const faqs = faqsFor(freePlanName)
 
   return (
     <Box sx={{ flex: 1, pb: 10 }}>
-      <InternalPageHero
-        eyebrow="Plans and limits"
-        title="Clear pricing without hidden promises"
-        description="Start with a personal cause, grow your fundraising, or give your organisation room to do more."
-        icon={<PaymentsRoundedIcon />}
-        panelLabel="Find your fit"
-        panelTitle="The right tools for every stage of your cause."
-        panelBody="Compare campaign limits, platform fees, and included tools before choosing a plan."
-        primaryAction={{ label: 'Create a free account', href: WEB_APP_REGISTER }}
-      />
+      {hero}
       <Container maxWidth="lg">
         {/* Header */}
         <Box sx={{ textAlign: 'center', mt: 7, mb: 6 }}>
@@ -308,7 +323,7 @@ function PricingPage() {
                   <Box sx={{ flex: 1, mb: 2.5 }}>
                     {[
                       plan.maxActiveCampaigns === -1 ? 'Unlimited campaigns' : `${plan.maxActiveCampaigns} active campaign${plan.maxActiveCampaigns !== 1 ? 's' : ''}`,
-                      plan.maxCampaignGoal === -1 ? 'No goal limit' : `Up to GH₵ ${plan.maxCampaignGoal.toLocaleString()} goal`,
+                      plan.maxCampaignGoal === -1 ? 'No goal limit' : `Up to GH₵ ${plan.maxCampaignGoal.toLocaleString('en-GH')} goal`,
                       plan.escrowSupport && 'Split proceeds',
                       plan.liveStreaming && 'Live streaming',
                       plan.onBehalfCampaigns && 'Campaigns on behalf of others',

@@ -7,6 +7,7 @@ import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import FormatQuoteRoundedIcon from '@mui/icons-material/FormatQuoteRounded'
 import { useEffect, useState } from 'react'
+import { usePrerenderedData } from '@/lib/prerenderData'
 
 interface TestimonialContent {
   id: string
@@ -38,7 +39,11 @@ const testimonials = [
 ]
 
 function TestimonialsSection() {
-  const [publishedTestimonials, setPublishedTestimonials] = useState<TestimonialContent[]>([])
+  // Published testimonials the build fetched, so the prerendered section shows them.
+  const prerendered = usePrerenderedData<TestimonialContent[]>('testimonials')
+  const [publishedTestimonials, setPublishedTestimonials] = useState<TestimonialContent[]>(() =>
+    Array.isArray(prerendered) ? prerendered : [],
+  )
 
   useEffect(() => {
     let cancelled = false

@@ -117,6 +117,17 @@ services:
         # publish become plain ones and their authors are told to submit
         # again. See docs/compliance/PUBLICATION_REVIEWS.md.
         value: "true"
+      - key: INDEXNOW_ENABLED
+        # Every 15 minutes the API tells IndexNow engines (Bing, Yandex, Seznam,
+        # Naver…; Bing also feeds ChatGPT search and Copilot) which public pages
+        # changed: campaigns, creator and organization pages, and blog posts.
+        # Google is not part of IndexNow and keeps using the sitemaps.
+        value: "true"
+      - key: INDEXNOW_KEY
+        # Public by design, not a secret: engines verify a submission by fetching
+        # https://<host>/<key>.txt, which apps/web/public and
+        # apps/marketing/public serve. Changing it means renaming both files.
+        value: "961cedf5c88cfcab8f6220f03c3ae9e6"
       - key: LOG_LEVEL
         value: info
       # Preview/estimate fees only — the real Paystack fee comes from the webhook.

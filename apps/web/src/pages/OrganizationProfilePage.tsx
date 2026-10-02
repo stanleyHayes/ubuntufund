@@ -21,7 +21,7 @@ import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
 import ShareRoundedIcon from '@mui/icons-material/ShareRounded'
 import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded'
 import { keyframes } from '@mui/material/styles'
-import { CurrencyDisplay, EmptyState, ItemNotFound, SHAPE, breadcrumbList, organization } from '@ubuntu-fund/ui'
+import { CurrencyDisplay, EmptyState, ItemNotFound, SHAPE } from '@ubuntu-fund/ui'
 import { CampaignCategory } from '@ubuntu-fund/types'
 import type { Campaign } from '@ubuntu-fund/types'
 import { api } from '@/lib/api'
@@ -29,7 +29,8 @@ import { useAuth } from '@/context/AuthContext'
 import { ProfileImageEditor } from '@/components/profile/ProfileImageEditor'
 import PhotoCameraRoundedIcon from '@mui/icons-material/PhotoCameraRounded'
 import { CampaignCard } from '@/components/campaigns/CampaignCard'
-import { useSeo, SITE_ORIGIN } from '@/lib/seo'
+import { useSeo } from '@/lib/seo'
+import { organizationSeo } from '@/lib/publicPageSeo'
 import { UserSafetyControls } from '@/components/safety/UserSafetyControls'
 
 interface Organization {
@@ -74,22 +75,6 @@ const fadeIn = keyframes`
 
 function formatCategory(c: string) {
   return c.charAt(0).toUpperCase() + c.slice(1).replace(/_/g, ' ')
-}
-
-/** Collapse whitespace and trim to `max` characters at a word boundary. */
-function clip(text: string, max: number): string {
-  const clean = text.replace(/\s+/g, ' ').trim()
-  if (clean.length <= max) return clean
-  const cut = clean.slice(0, max - 1)
-  const space = cut.lastIndexOf(' ')
-  return `${(space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s.,;:\u2014-]+$/, '')}\u2026`
-}
-
-/** Meta description built from the organization's own words, topped up when they are very short. */
-function organizationDescription(org: Organization): string {
-  const blurb = clip(org.description || org.impactStatement || '', 155)
-  if (blurb.length >= 95) return blurb
-  return `${blurb ? `${blurb} ` : ''}See their campaigns and total raised in cedis on Ujimora.`
 }
 
 // ─── Component ──────────────────────────────────────────────
@@ -139,36 +124,11 @@ function OrganizationProfileForViewer() {
     return () => { cancelled = true; window.removeEventListener('focus', refresh); window.clearInterval(timer) }
   }, [slug])
 
-  const orgImage = org?.coverUrl || org?.logoUrl
-  useSeo({
-    title: org ? `${clip(org.name, 44)} | Ujimora` : 'Organization | Ujimora',
-    description: org
-      ? organizationDescription(org)
-      : 'Open an organization on Ujimora to see who they are, where in Ghana they work, what they have raised in cedis and which campaigns are running.',
-    path: `/organizations/${encodeURIComponent(org?.slug || slug || '')}`,
-    image: orgImage && /^https?:\/\//i.test(orgImage) ? orgImage : undefined,
-    // An organization profile is a real entity claim, so it gets an identity
-    // node alongside the trail. Only fields the record actually holds are
-    // emitted — `organization()` drops the rest rather than asserting blanks.
-    jsonLd: org
-      ? [
-          breadcrumbList(SITE_ORIGIN, [
-            { name: 'Home', path: '/' },
-            { name: 'Organizations', path: '/organizations' },
-            { name: org.name },
-          ]),
-          organization({
-            name: org.name,
-            url: `${SITE_ORIGIN}/organizations/${encodeURIComponent(org.slug)}`,
-            description: org.description || org.impactStatement || undefined,
-            logo: org.logoUrl && /^https?:\/\//i.test(org.logoUrl) ? org.logoUrl : undefined,
-            areaServed: org.country || undefined,
-            // The organization declared this itself; a guessed social handle
-            // would be an assertion that two entities are the same.
-            sameAs: org.website ? [org.website] : undefined,
-          }),
-        ]
-      : undefined,
+  // The same head middleware.ts gives crawlers for this profile (publicPageSeo.ts).
+  useSeo(org ? organizationSeo(org) : {
+    title: 'Organization | Ujimora',
+    description: 'Open an organization on Ujimora to see who they are, where in Ghana they work, what they have raised in cedis and which campaigns are running.',
+    path: `/organizations/${encodeURIComponent(slug || '')}`,
   })
 
   if (!slug || isLoading) {

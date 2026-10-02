@@ -375,6 +375,8 @@ import { auditMutation } from './infrastructure/adapters/inbound/middleware/audi
 import { createAuthRoutes } from './infrastructure/adapters/inbound/http/routes/authRoutes.js'
 import { createCampaignRoutes } from './infrastructure/adapters/inbound/http/routes/campaignRoutes.js'
 import { createSitemapRoutes } from './infrastructure/adapters/inbound/http/routes/sitemapRoutes.js'
+import { IndexNowNotifier } from './infrastructure/seo/indexNow.js'
+import { appPublicPages, blogPublicPages } from './infrastructure/seo/publicPages.js'
 import {
   createCampaignQrRoutes,
   createShortLinkPublicRoutes,
@@ -2108,7 +2110,26 @@ export function createApp(options: {
   // Served from the API because campaigns are dynamic; exposed at
   // app.ujimora.com/sitemap.xml via a rewrite, since a sitemap may only list
   // URLs on the host that serves it.
-  app.use('/', createSitemapRoutes(publicProfileVisibility))
+  app.use('/', createSitemapRoutes(publicProfileVisibility, organizationRepo))
+  // IndexNow (seo/indexNow.ts): every 15 minutes, tell search engines which of
+  // the pages the sitemaps list changed since the last successful run. Guarded
+  // against overlap; a run that fails is simply retried by the next one.
+  if (config.indexNow.enabled && config.nodeEnv !== 'test') {
+    const indexNow = new IndexNowNotifier(config.indexNow.key, async () => [
+      ...(await appPublicPages(publicProfileVisibility, organizationRepo)),
+      ...(await blogPublicPages()),
+    ])
+    let announcing = false
+    const indexNowTimer = setInterval(() => {
+      if (announcing) return
+      announcing = true
+      void indexNow.run()
+        .then((submitted) => { if (submitted) logger.info({ submitted }, 'IndexNow: announced changed pages') })
+        .catch((err: unknown) => logger.warn({ err }, 'IndexNow run failed'))
+        .finally(() => { announcing = false })
+    }, 15 * 60_000)
+    indexNowTimer.unref()
+  }
   app.use('/', createShortLinkPublicRoutes(shortLinkController))
 
   app.use(errorHandler)

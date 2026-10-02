@@ -3,6 +3,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import GlobalStyles from '@mui/material/GlobalStyles'
 import { createUjimoraTheme, ttSquaresFontFace, applySkinVars, revealThemeChange, themeTransitionStyles, reducedMotionStyles, type ThemeSkin } from '@ubuntu-fund/ui'
+import { COLOR_MODE_KEY, SKIN_KEY, readStoredLook } from '@/lib/hydration'
 
 interface ColorModeValue {
   darkMode: boolean
@@ -12,7 +13,6 @@ interface ColorModeValue {
 }
 
 const ColorModeContext = createContext<ColorModeValue | null>(null)
-const SKINS: ThemeSkin[] = ['neumorphism', 'claymorphism', 'glassmorphism', 'minimal']
 
 // Minimal + glass define surfaces with a border; glass also frosts over a
 // non-flat ground. Scoped so the embossed skins keep their borderless surfaces.
@@ -32,11 +32,11 @@ const skinGlobalStyles = {
 } as const
 
 export function ColorModeProvider({ children }: { children: ReactNode }) {
-  const [darkMode, setDarkModeState] = useState(() => localStorage.getItem('uf_color_mode') === 'dark')
-  const [skin, setSkinState] = useState<ThemeSkin>(() => {
-    const s = localStorage.getItem('uf_skin')
-    return s && (SKINS as string[]).includes(s) ? (s as ThemeSkin) : 'neumorphism'
-  })
+  // On the server (no storage) this is the default look, which every page is
+  // prerendered in. main.tsx only hydrates when the stored look is that same
+  // default, so this first render always matches the HTML it adopts.
+  const [darkMode, setDarkModeState] = useState(() => readStoredLook().darkMode)
+  const [skin, setSkinState] = useState<ThemeSkin>(() => readStoredLook().skin)
   const theme = useMemo(() => createUjimoraTheme(darkMode ? 'dark' : 'light', skin), [darkMode, skin])
 
   useLayoutEffect(() => {
@@ -49,12 +49,12 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
     // through to a plain swap without View Transitions or under
     // prefers-reduced-motion.
     revealThemeChange(() => setDarkModeState(enabled))
-    try { localStorage.setItem('uf_color_mode', enabled ? 'dark' : 'light') } catch { /* private mode */ }
+    try { localStorage.setItem(COLOR_MODE_KEY, enabled ? 'dark' : 'light') } catch { /* private mode */ }
   }, [])
 
   const setSkin = useCallback((next: ThemeSkin) => {
     setSkinState(next)
-    try { localStorage.setItem('uf_skin', next) } catch { /* private mode */ }
+    try { localStorage.setItem(SKIN_KEY, next) } catch { /* private mode */ }
   }, [])
 
   return (

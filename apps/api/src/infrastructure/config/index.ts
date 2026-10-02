@@ -191,6 +191,12 @@ export interface AppConfig {
    * to submit again; they stay that way if it is switched on again.
    */
   publishOnApprovalEnabled: boolean;
+  /**
+   * IndexNow (seo/indexNow.ts): tell search engines when public pages change.
+   * The key is public by design (served at https://<host>/<key>.txt by the web
+   * and marketing sites), so it is a committed value, not a secret.
+   */
+  indexNow: { enabled: boolean; key: string };
   /** Crypto donation rail (Crypto Donations plan). Default OFF: needs provider
    * onboarding + Ghana legal/compliance sign-off (§16) before production. */
   crypto: CryptoConfig;
@@ -364,6 +370,11 @@ export const config: AppConfig = {
   },
   splitProceedsEnabled: process.env.SPLIT_PROCEEDS_ENABLED === 'true',
   publishOnApprovalEnabled: process.env.PUBLISH_ON_APPROVAL_ENABLED === 'true',
+  indexNow: {
+    // Only with a key the protocol accepts (8–128 letters, digits or dashes).
+    enabled: process.env.INDEXNOW_ENABLED === 'true' && /^[a-zA-Z0-9-]{8,128}$/.test(process.env.INDEXNOW_KEY ?? ''),
+    key: process.env.INDEXNOW_KEY ?? '',
+  },
   // Crypto rail defaults OFF (§22/§23). The sandbox `mock` provider is the
   // default so dev/tests exercise the full flow without an external account.
   crypto: {

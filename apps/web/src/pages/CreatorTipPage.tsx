@@ -19,9 +19,10 @@ import { BrandedTextField as TextField } from '@ubuntu-fund/ui'
 import Alert from '@mui/material/Alert'
 import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
 import VolunteerActivismRoundedIcon from '@mui/icons-material/VolunteerActivismRounded'
-import { SHAPE, LoadingDots, breadcrumbList } from '@ubuntu-fund/ui'
+import { SHAPE, LoadingDots } from '@ubuntu-fund/ui'
 import { api, ApiError } from '@/lib/api'
-import { useSeo, SITE_ORIGIN } from '@/lib/seo'
+import { useSeo } from '@/lib/seo'
+import { creatorSeo } from '@/lib/publicPageSeo'
 
 const FOREST = '#2E3D2F'
 const INK = 'text.primary'
@@ -41,23 +42,6 @@ interface CreatorPage {
   supporterCount: number
   totalReceived: number
   recentTips: Array<{ id: string; supporterName: string; amount: number; message?: string }>
-}
-
-/** Collapse whitespace and trim to `max` characters at a word boundary. */
-function clip(text: string, max: number): string {
-  const clean = text.replace(/\s+/g, ' ').trim()
-  if (clean.length <= max) return clean
-  const cut = clean.slice(0, max - 1)
-  const space = cut.lastIndexOf(' ')
-  return `${(space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s.,;:\u2014-]+$/, '')}\u2026`
-}
-
-/** Meta description built from the creator's own tagline or bio, topped up when it is very short. */
-function creatorDescription(creator: CreatorPage): string {
-  const blurb = clip(creator.tagline || creator.bio || '', 155)
-  if (blurb.length >= 95) return blurb
-  const firstName = clip(creator.displayName.split(' ')[0] || creator.displayName, 18)
-  return `${blurb ? `${blurb} ` : ''}Send ${firstName} a tip on Ujimora \u2014 no account needed.`
 }
 
 export function CreatorTipPage() {
@@ -117,17 +101,11 @@ function CreatorTipForViewer() {
     return () => { requestVersion.current++; window.clearInterval(timer); window.removeEventListener('focus', refresh) }
   }, [load, reloadKey])
 
-  const creatorImage = page?.coverUrl || page?.avatarUrl
-  useSeo({
-    title: page ? `Support ${clip(page.displayName, 34)} | Ujimora` : 'Support a creator | Ujimora',
-    description: page
-      ? creatorDescription(page)
-      : 'Back a creator on Ujimora: pick an amount in cedis, add a message of support, and pay by mobile money or card. No account needed to send a tip.',
-    path: `/creators/${encodeURIComponent(page?.handle || handle)}`,
-    image: creatorImage && /^https?:\/\//i.test(creatorImage) ? creatorImage : undefined,
-    jsonLd: page
-      ? breadcrumbList(SITE_ORIGIN, [{ name: 'Home', path: '/' }, { name: page.displayName }])
-      : undefined,
+  // The same head middleware.ts gives crawlers for this creator (publicPageSeo.ts).
+  useSeo(page ? creatorSeo(page) : {
+    title: 'Support a creator | Ujimora',
+    description: 'Back a creator on Ujimora: pick an amount in cedis, add a message of support, and pay by mobile money or card. No account needed to send a tip.',
+    path: `/creators/${encodeURIComponent(handle ?? '')}`,
   })
 
   /**

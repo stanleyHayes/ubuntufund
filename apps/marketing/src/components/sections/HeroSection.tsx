@@ -1,5 +1,6 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { gsap } from 'gsap'
+import { isHydrating } from '@/lib/hydration'
 import { useGSAP } from '@gsap/react'
 import { SplitText } from 'gsap/SplitText'
 import { keyframes } from '@emotion/react'
@@ -31,10 +32,14 @@ const twinkle = keyframes`
 
 function Sparkle({ top, left, size, delay }: { top: string; left: string; size: number; delay: number }) {
   return (
+    // A span: the sparkles sit inside the tagline paragraph, and a <div> there
+    // would make the browser close the <p> early.
     <Box
+      component="span"
       aria-hidden
       className="hero-sparkle"
       sx={{
+        display: 'block',
         position: 'absolute', top, left, width: size, height: size, pointerEvents: 'none',
         opacity: 0,
         animation: `${twinkle} 2.6s ease-in-out ${delay}s infinite`,
@@ -50,9 +55,13 @@ function Sparkle({ top, left, size, delay }: { top: string; left: string; size: 
 
 function HeroSection() {
   const root = useRef<HTMLDivElement>(null)
+  // A visitor who lands here already sees the prerendered headline; replaying
+  // the intro would hide it and fade it back in. Read once, at first render.
+  const [landedHere] = useState(isHydrating)
 
   useGSAP(
     () => {
+      if (landedHere) return
       const mm = gsap.matchMedia()
       mm.add('(prefers-reduced-motion: no-preference)', () => {
         const split = new SplitText('.hero-title', { type: 'words', wordsClass: 'hero-word' })
@@ -116,8 +125,11 @@ function HeroSection() {
         >
           {/* Text Content */}
           <Box sx={{ flex: 1, textAlign: { xs: 'center', md: 'left' } }}>
+            {/* The page's one h1 names what Ujimora is, in the words people search
+                for. The tagline below keeps the h1 look but is a paragraph. */}
             <Typography
               variant="overline"
+              component="h1"
               className="hero-overline"
               sx={{
                 color: '#C7A24A',
@@ -132,6 +144,7 @@ function HeroSection() {
             </Typography>
             <Typography
               variant="h1"
+              component="p"
               className="hero-title"
               sx={{
                 position: 'relative',
@@ -149,10 +162,14 @@ function HeroSection() {
                 sx={{
                   position: 'relative',
                   color: '#DCC07E',
-                  // Gold text with a bright light-sweep — the "sparkle".
+                  // Gold text with a bright light-sweep — the "sparkle". Two
+                  // layers: the moving band, over a solid gold base. With the
+                  // band alone, the shimmer keyframes moved the only layer
+                  // clear of the text, and "we fund what matters" vanished for
+                  // most of every cycle.
                   backgroundImage:
-                    'linear-gradient(100deg, #DCC07E 38%, #FFF4D2 50%, #DCC07E 62%)',
-                  backgroundSize: '250% 100%',
+                    'linear-gradient(100deg, transparent 38%, #FFF4D2 50%, transparent 62%), linear-gradient(#DCC07E, #DCC07E)',
+                  backgroundSize: '250% 100%, 100% 100%',
                   backgroundRepeat: 'no-repeat',
                   WebkitBackgroundClip: 'text',
                   backgroundClip: 'text',
@@ -183,9 +200,9 @@ function HeroSection() {
                 fontSize: { xs: '1.1rem', md: '1.25rem' },
               }}
             >
-              Ghana's trust infrastructure for giving. Raise funds for what matters
-              with campaign review workflows, accountable records, and
-              transparent progress updates.
+              Ghana's trust infrastructure for giving. Raise money for medical bills,
+              school fees, funerals and community projects, with verified organizers,
+              donations in cedis by mobile money or card, and updates everyone can see.
             </Typography>
             <Stack
               direction={{ xs: 'column', sm: 'row' }}

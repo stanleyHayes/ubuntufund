@@ -212,7 +212,7 @@ function AboutPage() {
               <Typography sx={{ color: 'text.secondary', fontSize: '.75rem', mr: .5 }}>Connect</Typography>
               {leader.socials?.map(social => {
                 const Icon = SOCIAL_ICONS[social.label as keyof typeof SOCIAL_ICONS] ?? OpenInNewRoundedIcon
-                return <Box component="a" key={social.label} href={social.href} aria-label={`${leader.name} on ${social.label}`} title={social.label} target="_blank" rel="noopener noreferrer" sx={{ display: 'grid', placeItems: 'center', width: 44, height: 44, color: 'primary.main', borderRadius: SHAPE.sm, bgcolor: 'action.hover', '&:hover': { bgcolor: 'primary.main', color: 'primary.contrastText' }, '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 3 } }}><Icon sx={{ fontSize: 21 }} /></Box>
+                return <Box component="a" key={social.href} href={social.href} aria-label={`${leader.name} on ${social.label}`} title={social.label} target="_blank" rel="noopener noreferrer" sx={{ display: 'grid', placeItems: 'center', width: 44, height: 44, color: 'primary.main', borderRadius: SHAPE.sm, bgcolor: 'action.hover', '&:hover': { bgcolor: 'primary.main', color: 'primary.contrastText' }, '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 3 } }}><Icon sx={{ fontSize: 21 }} /></Box>
               })}
             </Box>
           </Box>

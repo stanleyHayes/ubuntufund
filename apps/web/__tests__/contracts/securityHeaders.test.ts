@@ -12,7 +12,8 @@ describe('frontend security headers', () => {
     ['admin', 'DENY', "frame-ancestors 'none'"],
     ['marketing', 'SAMEORIGIN', "frame-ancestors 'self'"],
   ])('%s pages cannot be framed by other sites and are not MIME-sniffed', (app, frame, ancestors) => {
-    const rules = load(app).headers ?? []
+    // One rule carries the security headers; robots rules (below) are separate.
+    const rules = (load(app).headers ?? []).filter((candidate) => candidate.headers.some(({ key }) => key === 'X-Frame-Options'))
     expect(rules).toHaveLength(1)
     const [rule] = rules
     const values = Object.fromEntries(rule.headers.map(({ key, value }) => [key, value]))
@@ -28,5 +29,21 @@ describe('frontend security headers', () => {
     expect(matches.test('/settings')).toBe(true)
     expect(matches.test('/')).toBe(true)
     expect(matches.test('/api/v1/live-sessions/x/overlay/view')).toBe(false)
+  })
+
+  it('keeps the admin console out of search results on every path', () => {
+    const robots = (load('admin').headers ?? []).find((rule) => rule.headers.some(({ key }) => key === 'X-Robots-Tag'))
+    expect(robots?.headers).toEqual([{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }])
+    const matches = new RegExp(`^${robots!.source}$`)
+    for (const path of ['/', '/login', '/campaigns/abc', '/robots.txt']) expect(matches.test(path), path).toBe(true)
+  })
+
+  it('marks the marketing fallback pages noindex when requested directly', () => {
+    const robots = (load('marketing').headers ?? []).find((rule) => rule.headers.some(({ key }) => key === 'X-Robots-Tag'))
+    expect(robots?.headers).toEqual([{ key: 'X-Robots-Tag', value: 'noindex' }])
+    const matches = new RegExp(`^${robots!.source}$`)
+    expect(matches.test('/app-shell.html')).toBe(true)
+    expect(matches.test('/404.html')).toBe(true)
+    expect(matches.test('/pricing')).toBe(false)
   })
 })

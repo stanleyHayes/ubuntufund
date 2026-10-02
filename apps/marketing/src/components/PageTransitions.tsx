@@ -13,9 +13,13 @@ export default function PageTransitions({ children }: { children: (location: Loc
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const [displayed, setDisplayed] = useState(location)
   const [keyboard, setKeyboard] = useState(false)
+  // The page a visitor lands on arrives as finished HTML and is already
+  // readable, so only pages reached by navigating inside the site fade in.
+  const [navigated, setNavigated] = useState(false)
   const immediate = reduceMotion || keyboard
   const changingPage = location.pathname !== displayed.pathname
   const visibleLocation = immediate || !changingPage ? location : displayed
+  if (changingPage && !navigated) setNavigated(true)
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDisplayed(location), changingPage && !immediate ? 150 : 0)
@@ -59,7 +63,7 @@ export default function PageTransitions({ children }: { children: (location: Loc
       '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
     }}>
       <Box key={visibleLocation.pathname} sx={{
-        animation: immediate ? 'none' : `${enter} 380ms cubic-bezier(.22,1,.36,1) both`,
+        animation: immediate || !navigated ? 'none' : `${enter} 380ms cubic-bezier(.22,1,.36,1) both`,
         '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
       }}>
         {children(visibleLocation)}

@@ -42,7 +42,8 @@ import {
   campaignPublicPath,
 } from '@/lib/fundraising'
 import { getCryptoAssets } from '@/lib/crypto'
-import { useSeo, SITE_ORIGIN } from '@/lib/seo'
+import { useSeo } from '@/lib/seo'
+import { campaignDonateSeo } from '@/lib/publicPageSeo'
 import { useAuth } from '@/context/AuthContext'
 import { useCouponPreview } from '@/hooks/useCouponPreview'
 import { CouponSurface } from '@ubuntu-fund/types'
@@ -144,16 +145,10 @@ export function DonatePage() {
   const [paymentsDisabled, setPaymentsDisabled] = useState(false)
   const [touchedEmail, setTouchedEmail] = useState(false)
 
-  useSeo({
-    title: campaign ? `Donate to ${campaign.title} | Ujimora` : 'Donate | Ujimora',
-    description:
-      'Choose an amount in cedis and give securely by mobile money or card. No account needed. Review your donation details after payment.',
-    // A checkout form has nothing to rank for on its own, and it splits signals
-    // with the campaign page that links to it — so it points there instead.
-    path: `/c/${encodeURIComponent(slug ?? '')}/donate`,
-    canonicalUrl: `${SITE_ORIGIN}/c/${encodeURIComponent(slug ?? '')}`,
-    robots: 'noindex, follow',
-  })
+  // A checkout form has nothing to rank for on its own, and it splits signals
+  // with the campaign page that links to it, so it points there instead. The
+  // same head middleware.ts gives crawlers (publicPageSeo.ts).
+  useSeo(campaignDonateSeo(campaign, slug ?? ''))
 
   // Seed the amount from ?amount= (once, if valid)
   useEffect(() => {

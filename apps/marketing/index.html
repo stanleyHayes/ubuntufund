@@ -4,6 +4,25 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+    <!-- Pages ship prerendered in the default look (light, neumorphism). For a
+         visitor who saved a different theme, src/main.tsx renders the page
+         fresh in their theme; until then this keeps the prerendered page
+         hidden instead of flashing the wrong one. The 3s reveal is a backstop
+         in case the app never starts. Mirrors prefersNonDefaultLook() in
+         src/lib/hydration.ts (a test holds the two together). -->
+    <script>
+      try {
+        var mode = localStorage.getItem('uf_color_mode'), skin = localStorage.getItem('uf_skin');
+        if (mode === 'dark') document.documentElement.setAttribute('data-restyle', 'dark');
+        else if (skin === 'claymorphism' || skin === 'glassmorphism' || skin === 'minimal') document.documentElement.setAttribute('data-restyle', 'skin');
+      } catch (e) {}
+    </script>
+    <style>
+      html[data-restyle] #root { visibility: hidden; animation: uf-restyle-reveal 0s linear 3s forwards; }
+      html[data-restyle='dark'] body { background-color: #172019; }
+      @keyframes uf-restyle-reveal { to { visibility: visible; } }
+    </style>
+
     <!-- Primary Meta Tags -->
     <title>Ujimora - Ghana's Trust Infrastructure for Giving</title>
     <meta name="title" content="Ujimora - Ghana's Trust Infrastructure for Giving" />
@@ -48,7 +67,6 @@
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@ujimora" />
     <meta name="twitter:url" content="https://ujimora.com/" />
     <meta name="twitter:title" content="Ujimora - Ghana's Trust Infrastructure for Giving" />
     <meta name="twitter:description" content="Ghana's crowdfunding platform built on trust: reviewed campaigns, verified organizers and transparent donation records." />
@@ -58,8 +76,11 @@
     <!-- Canonical -->
     <link rel="canonical" href="https://ujimora.com/" />
 
-    <!-- Structured data: Organization + WebSite (rich results / knowledge panel) -->
-    <script type="application/ld+json">
+    <!-- Structured data: Organization + WebSite, on every page. The build
+         (scripts/prerender.ts) adds `sameAs` from the social profiles set in
+         Admin → Content → Contact; a profile URL is only ever claimed here once
+         the owner has entered it there. -->
+    <script type="application/ld+json" id="site-jsonld">
     {
       "@context": "https://schema.org",
       "@graph": [
@@ -68,17 +89,12 @@
           "@id": "https://ujimora.com/#organization",
           "name": "Ujimora",
           "url": "https://ujimora.com/",
-          "logo": "https://ujimora.com/favicon-512x512.png",
+          "logo": { "@type": "ImageObject", "url": "https://ujimora.com/favicon-512x512.png", "width": 512, "height": 512 },
           "image": "https://ujimora.com/og-image.png",
           "description": "Ghana's crowdfunding platform built on trust: reviewed campaigns, verified organizers and transparent donation records.",
           "email": "info@ujimora.com",
-          "areaServed": { "@type": "Country", "name": "Ghana" },
-          "sameAs": [
-            "https://facebook.com/ujimora",
-            "https://x.com/ujimora",
-            "https://instagram.com/ujimora",
-            "https://linkedin.com/company/ujimora"
-          ]
+          "contactPoint": { "@type": "ContactPoint", "contactType": "customer support", "email": "support@ujimora.com", "areaServed": "GH", "availableLanguage": "en" },
+          "areaServed": { "@type": "Country", "name": "Ghana" }
         },
         {
           "@type": "WebSite",

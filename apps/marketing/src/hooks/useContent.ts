@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { usePrerenderedData } from '@/lib/prerenderData'
 
 /**
  * Runtime CMS consumer.
@@ -15,9 +16,16 @@ import { useEffect, useState } from 'react'
  * The API response envelope is `{ data: SiteContentRecord, message, status }` and the
  * record itself is `{ key, type, data, updatedAt, updatedBy? }` — so the block payload we
  * want lives at `json.data.data`.
+ *
+ * The first render uses the block the build fetched when there is one (see
+ * lib/prerenderData), so prerendered pages carry the live copy rather than the
+ * fallback, and the browser's first render matches that HTML.
  */
 export function useContent<T>(key: string, fallback: T, accept?: (payload: unknown) => boolean): T {
-  const [content, setContent] = useState<T>(fallback)
+  const prerendered = usePrerenderedData<unknown>(`content:${key}`)
+  const [content, setContent] = useState<T>(() =>
+    prerendered != null && (!accept || accept(prerendered)) ? (prerendered as T) : fallback,
+  )
 
   useEffect(() => {
     let cancelled = false

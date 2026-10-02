@@ -5,6 +5,7 @@ import Typography from '@mui/material/Typography'
 import Grid from '@mui/material/Grid'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
+import Link from '@mui/material/Link'
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital'
 import SchoolIcon from '@mui/icons-material/School'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
@@ -14,23 +15,26 @@ import ChurchIcon from '@mui/icons-material/Church'
 import PaletteIcon from '@mui/icons-material/Palette'
 import { SHAPE } from '@ubuntu-fund/ui'
 
-const campaignTypes = [
+const campaignTypes: { icon: typeof LocalHospitalIcon; title: string; description: string; accent: string; href?: string }[] = [
   {
     icon: LocalHospitalIcon,
     title: 'Medical',
     description: 'Healthcare costs, surgeries, treatments, and medical emergencies.',
+    href: '/medical-fundraising',
     accent: 'primary.main',
   },
   {
     icon: SchoolIcon,
     title: 'Education',
     description: 'School fees, scholarships, learning materials, and university funding.',
+    href: '/education-fundraising',
     accent: 'secondary.main',
   },
   {
     icon: WarningAmberIcon,
     title: 'Emergency',
     description: 'Disaster relief, urgent needs, and crisis response for communities.',
+    href: '/emergency-fundraising',
     accent: 'primary.main',
   },
   {
@@ -43,12 +47,14 @@ const campaignTypes = [
     icon: HolidayVillageIcon,
     title: 'Community',
     description: 'Infrastructure, clean water, sanitation, and community development projects.',
+    href: '/community-fundraising',
     accent: 'primary.main',
   },
   {
     icon: ChurchIcon,
     title: 'Religious',
     description: 'Places of worship, religious events, missions, and faith-based initiatives.',
+    href: '/church-fundraising',
     accent: 'secondary.main',
   },
   {
@@ -119,8 +125,12 @@ function CampaignTypesSection() {
                   >
                     <type.icon sx={{ fontSize: 28 }} />
                   </Box>
-                  <Typography variant="h6" sx={{ mb: 1, fontSize: '1rem' }}>
-                    {type.title}
+                  <Typography variant="h6" component="h3" sx={{ mb: 1, fontSize: '1rem' }}>
+                    {/* A guide for the cause, where there is one: a crawlable link
+                        from the homepage to the page that ranks for it. */}
+                    {type.href ? (
+                      <Link href={type.href} underline="hover" color="inherit">{type.title}</Link>
+                    ) : type.title}
                   </Typography>
                   <Typography
                     variant="body2"
@@ -137,6 +147,14 @@ function CampaignTypesSection() {
             </Grid>
           ))}
         </Grid>
+
+        <Typography sx={{ mt: 5, textAlign: 'center', color: 'text.secondary' }}>
+          Planning for a funeral or giving from abroad? Read our{' '}
+          <Link href="/funeral-fundraising">funeral fundraising</Link>,{' '}
+          <Link href="/donate-to-ghana-from-abroad">diaspora giving</Link> and{' '}
+          <Link href="/mobile-money-donations">mobile money</Link> guides, or{' '}
+          <Link href="/guides">see all fundraising guides</Link>.
+        </Typography>
       </Container>
     </Box>
   )
