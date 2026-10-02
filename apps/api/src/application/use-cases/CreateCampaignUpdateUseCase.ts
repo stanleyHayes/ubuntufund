@@ -51,7 +51,8 @@ export class CreateCampaignUpdateUseCase {
     }
 
     if (!this.admission) throw new AppError('Publication review is unavailable', 503);
-    const submission: PublicationSubmission = { actorId: authorId, action: 'update.create', resourceId: campaignId, text: JSON.stringify([input.title, input.content, input.type]), mediaUrls: input.mediaUrls ?? [], automatedReviewConsent: input.automatedReviewConsent };
+    const submission: PublicationSubmission = { actorId: authorId, action: 'update.create', resourceId: campaignId, text: JSON.stringify([input.title, input.content, input.type]), mediaUrls: input.mediaUrls ?? [], automatedReviewConsent: input.automatedReviewConsent,
+      authVersion, applyOptions: { isPinned: input.isPinned ?? false } };
     await this.admission.assertAllowed(submission);
     const now = new Date();
     const update = new CampaignUpdateEntity({

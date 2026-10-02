@@ -28,6 +28,11 @@ import type { PublicationAdmissionPort } from './domain/ports/outbound/Publicati
 import { MongoPublicationAdmission } from './infrastructure/adapters/outbound/persistence/MongoPublicationAdmission.js'
 import { OpenAiPublicationScreener } from './infrastructure/adapters/outbound/ai/OpenAiPublicationScreener.js'
 import { createPublicationReviewRoutes } from './infrastructure/adapters/inbound/http/routes/publicationReviewRoutes.js'
+import type { PublicationApplyHandlers } from './domain/ports/outbound/PublicationApplyPort.js'
+import { PublicationApplier } from './application/services/PublicationApplier.js'
+import { MongoPublicationApplyStore } from './infrastructure/adapters/outbound/persistence/MongoPublicationApplyStore.js'
+import { MongoPublicationReviewDecision } from './infrastructure/adapters/outbound/persistence/MongoPublicationReviewDecision.js'
+import { createPublicationApplyHandlers } from './infrastructure/adapters/outbound/persistence/publication-apply/registry.js'
 import { createDataRightsRoutes, createDataRightsAdminRoutes } from './infrastructure/adapters/inbound/http/routes/dataRightsRoutes.js'
 import { MongoLiveSafety } from './infrastructure/adapters/outbound/persistence/MongoLiveSafety.js'
 import { createSafetyReportRoutes, createAdminSafetyReportRoutes } from './infrastructure/adapters/inbound/http/routes/safetyReportRoutes.js'
@@ -480,13 +485,21 @@ export function createApp(options: {
   emailSender?: ActivityEmailSender
   /** Tests only: the account-email encryption key (normally AUTH_EMAIL_ENCRYPTION_KEY_BASE64). */
   accountEmailKey?: Buffer
+  /** Tests only: whether publishing on approval is switched on (normally PUBLISH_ON_APPROVAL_ENABLED). */
+  publishOnApproval?: () => boolean
+  /** Tests only: the handlers that publish each action on its approval. */
+  publicationApplyHandlers?: PublicationApplyHandlers
+  /** Tests only: how long a staff decision waits for its publication before answering "publishing". */
+  publicationDecisionWaitMs?: number
 } = {}): express.Express {
   if (config.nodeEnv === 'production' && !config.aiWriting.apiKey && !options.publicationAdmission) {
     // Non-fatal so deploys proceed, but loud: every consented submission now
     // waits for staff instead of automated screening.
     logger.error('OPENAI_API_KEY missing: publication screening disabled; opted-in submissions go to staff review')
   }
-  const publicationAdmission = options.publicationAdmission ?? new MongoPublicationAdmission(new OpenAiPublicationScreener(config.aiWriting.apiKey))
+  // Read on every use, so submissions, decisions and the sweep follow the same switch.
+  const publishOnApproval = options.publishOnApproval ?? (() => config.publishOnApprovalEnabled)
+  const publicationAdmission = options.publicationAdmission ?? new MongoPublicationAdmission(new OpenAiPublicationScreener(config.aiWriting.apiKey), { publishOnApproval })
   // ── Outbound adapters ────────────────────────────────────────────────
   const campaignRepo = new MongoCampaignRepository()
   const userRepo = new MongoUserRepository()
@@ -1236,7 +1249,8 @@ export function createApp(options: {
   )
 
   const getProfileUseCase = new GetProfileUseCase(userRepo, profileRepo, donationRepo, campaignRepo, refundRepo, kycRepo)
-  const updateProfileUseCase = new UpdateProfileUseCase(new MongoAccountProfileWrite(new MongoUnitOfWork(), publicationAdmission))
+  const accountProfileWrite = new MongoAccountProfileWrite(new MongoUnitOfWork(), publicationAdmission)
+  const updateProfileUseCase = new UpdateProfileUseCase(accountProfileWrite)
   const getPublicUserProfileUseCase = new GetPublicUserProfileUseCase(userRepo, publicProfileVisibility, kycRepo)
   const accountErasure = new MongoAccountErasure()
   if (config.nodeEnv === 'production') {
@@ -1271,6 +1285,22 @@ export function createApp(options: {
     publicationAdmission,
     new MongoCommentCreation(),
   )
+
+  // Publishing on approval (docs/compliance/PUBLICATION_REVIEWS.md): a staff
+  // approval publishes the held version by itself, re-running the author's own
+  // checks in the action's own transaction. Nothing is claimed while
+  // PUBLISH_ON_APPROVAL_ENABLED is off. The thank-you settings lookup is a
+  // closure because commercialConfigService is declared further down.
+  const publicationApplier = new PublicationApplier(
+    new MongoPublicationApplyStore(),
+    options.publicationApplyHandlers ?? createPublicationApplyHandlers({
+      uow: new MongoUnitOfWork(), planLimits: planLimitsService, creatorProfiles: creatorProfileRepo, creatorBalances: creatorBalanceRepo,
+      accountProfileWrite, donorThankYous, thankYouConfig: { resolveThankYouConfig: () => commercialConfigService.resolveThankYouConfig() },
+      campaignRepo, campaignUpdateRepo, commentRepo: campaignCommentRepo, userBlocks: userBlockRepo,
+    }),
+    { enabled: publishOnApproval },
+  )
+  const publicationDecisions = new MongoPublicationReviewDecision({ applier: publicationApplier, publishOnApproval, waitMs: options.publicationDecisionWaitMs })
 
   const shareCampaignUseCase = new ShareCampaignUseCase(shareRepo, campaignRepo)
   const reportCampaignUseCase = new ReportCampaignUseCase(campaignRepo, reportRepo)
@@ -1773,6 +1803,24 @@ export function createApp(options: {
     }, 60_000)
     timer.unref()
   }
+  // Approved versions waiting to publish: retried with backoff, and taken over
+  // when an attempt's lease expires (a crashed instance). Claims are atomic,
+  // so several instances can sweep at once. Switched off, the sweep returns
+  // them to their authors as plain approvals instead.
+  let publicationSweepRunning = false
+  app.locals.sweepPublicationApplies = async (): Promise<number> => {
+    if (publicationSweepRunning) return 0
+    publicationSweepRunning = true
+    try { return await publicationApplier.sweep() }
+    finally { publicationSweepRunning = false }
+  }
+  app.locals.publicationApplier = publicationApplier
+  if (config.nodeEnv !== 'test') {
+    const publicationTimer = setInterval(() => {
+      void app.locals.sweepPublicationApplies().catch(() => logger.error('Publication sweep failed; approved versions stay queued'))
+    }, 30_000)
+    publicationTimer.unref()
+  }
   app.locals.clearTerminalTipCheckouts = () => tipRepo.clearTerminalCheckoutCredentials()
   app.locals.accountErasure = accountErasure
   app.locals.reconcileLiveSafety = () => liveSafety.reconcile(liveVideo)
@@ -1876,10 +1924,10 @@ export function createApp(options: {
   api.use('/profile', thankYouRoutes.profile)
   api.use('/admin/donor-thank-yous', thankYouRoutes.admin)
   api.use('/campaigns', createCampaignUpdateRoutes(campaignUpdateController, authMiddleware, optionalAuthMiddleware))
-  api.use('/publication-reviews', createPublicationReviewRoutes(authMiddleware))
+  api.use('/publication-reviews', createPublicationReviewRoutes(authMiddleware, undefined, { publishOnApproval }))
   api.use('/admin/donation-content-reviews', createDonationContentReviewRoutes(authMiddleware, requireAdmin))
   api.use('/admin/tip-content-reviews', createTipContentReviewRoutes(authMiddleware, requireAdmin))
-  api.use('/admin/publication-reviews', createPublicationReviewRoutes(authMiddleware, requireAdmin))
+  api.use('/admin/publication-reviews', createPublicationReviewRoutes(authMiddleware, requireAdmin, { decisions: publicationDecisions, publishOnApproval }))
   api.use('/safety', createSafetyReportRoutes(authMiddleware))
   api.use('/admin/safety-reports', createAdminSafetyReportRoutes(authMiddleware, requireAdmin, id => liveSafety.stop(id, liveVideo), () => liveSafety.reconcile(liveVideo)))
   api.use('/safety', createUserSafetyRoutes(userBlockRepo, userRepo, authMiddleware, (first, second) => liveSafety.enforceBlock(first, second, liveVideo)))

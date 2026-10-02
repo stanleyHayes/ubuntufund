@@ -133,14 +133,14 @@ export class CreateCampaignUseCase {
     // Fingerprinted exactly as it is stored (Money keeps the currency's
     // precision), so a decline rebuilt from the stored campaign binds this
     // same submission. The route already refuses more than two decimals.
-    const submission = campaignCreationSubmission({ ...input, goalAmount: roundToCurrency(input.goalAmount, input.currency) }, creatorId);
+    const expectedAuthVersion = user.toPlain().authVersion ?? '';
+    const submission = campaignCreationSubmission({ ...input, goalAmount: roundToCurrency(input.goalAmount, input.currency) }, creatorId, expectedAuthVersion);
     // Refuses an unavailable, restricted or not-yet-agreed account, oversized
     // content and a version staff already declined, before anything is
     // written. Otherwise it decides: screened text goes live under the usual
     // rules, and content a person must check is saved as pending_review below.
     const admission = await this.admission.admitCampaign(submission);
     const contentReviewReason = admission.outcome === 'staff_review' ? admission.reason : undefined;
-    const expectedAuthVersion = user.toPlain().authVersion ?? '';
     let outcome: { entity: CampaignEntity; replayed: boolean };
     try {
       outcome = await this.creation.run(creatorId, expectedAuthVersion, async () => {

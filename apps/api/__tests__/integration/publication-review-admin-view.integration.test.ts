@@ -104,13 +104,15 @@ it('marks a closed author account', async () => {
   expect(find(await list(), id).author).toMatchObject({ id: closed.id, closed: true });
 });
 
-it('keeps the author view of their own reviews unchanged', async () => {
+it('keeps the author view of their own reviews to its own fields', async () => {
   const own = await review({ actorId: author.id, action: 'campaign.create', resourceId: author.id, baseVersion: 'base' });
   const page = await list('', author.auth, AUTHOR);
   expect(page).not.toHaveProperty('campaignReviewGoalGhs');
   expect(page.items.map(item => item.id)).toContain(own);
-  const allowed = new Set(['id', 'action', 'resourceId', 'text', 'mediaUrls', 'status', 'reason', 'createdAt', 'reviewNotes', 'approvalExpiresAt']);
+  // Publishing on approval adds where each version stands and whether the author can still withdraw it.
+  const allowed = new Set(['id', 'action', 'resourceId', 'text', 'mediaUrls', 'status', 'reason', 'createdAt', 'reviewNotes', 'approvalExpiresAt', 'publishOnApproval', 'publication', 'canWithdraw']);
   for (const item of page.items) expect(Object.keys(item).filter(key => !allowed.has(key))).toEqual([]);
+  expect(page.items.find(item => item.id === own)).toMatchObject({ publishOnApproval: false, canWithdraw: false });
 });
 
 it('looks up a whole page of context in batched queries', async () => {

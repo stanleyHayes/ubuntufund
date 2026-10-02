@@ -65,7 +65,7 @@ export class SaveCreatorProfileUseCase {
       const newMedia = (['avatarUrl', 'coverUrl'] as const).filter(key => fields[key] && fields[key] !== before[key]).map(key => fields[key]);
       await this.admission.assertAllowed({ actorId: userId, action: 'creator.profile', resourceId: userId,
         baseVersion: current ? String(current.revision) : 'new', text: JSON.stringify(fields),
-        mediaUrls: newMedia, automatedReviewConsent: input.automatedReviewConsent });
+        mediaUrls: newMedia, automatedReviewConsent: input.automatedReviewConsent, authVersion });
       await this.plans.assertCreatorDonations(userId);
     }
     if (!this.uow) throw new AppError('Creator profile persistence is unavailable', 503);

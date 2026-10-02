@@ -292,7 +292,7 @@ export function createOrganizationTeamRoutes(auth: RequestHandler, admission: Pu
       if (!admission || !uow) throw new AppError('Organization publication review is unavailable', 503)
       if (await ContentRestrictionModel.exists({ userId: organizationId })) throw new AppError('Publishing for this organization is restricted', 403)
       await admission.assertAllowed({ actorId: req.userId!, action: 'organization.profile', resourceId: organizationId, baseVersion,
-        text: JSON.stringify(fields), mediaUrls: [], automatedReviewConsent: input.automatedReviewConsent })
+        text: JSON.stringify(fields), mediaUrls: [], automatedReviewConsent: input.automatedReviewConsent, authVersion: req.authVersion })
       await uow.run(async () => {
         // Real writes fence concurrent credential changes, closure and membership revocation.
         const actor = await UserModel.findOneAndUpdate({ _id: req.userId, deletedAt: null,
@@ -340,7 +340,8 @@ export function createOrganizationTeamRoutes(auth: RequestHandler, admission: Pu
           content: z.string().trim().min(1).max(5000),
         })
         .parse(req.body)
-      const submission = { actorId: req.userId!, action: 'update.create' as const, resourceId: campaignId, text: JSON.stringify([input.title, input.content, 'general']), mediaUrls: [], automatedReviewConsent: input.automatedReviewConsent }
+      const submission = { actorId: req.userId!, action: 'update.create' as const, resourceId: campaignId, text: JSON.stringify([input.title, input.content, 'general']), mediaUrls: [], automatedReviewConsent: input.automatedReviewConsent,
+        authVersion: req.authVersion, applyOptions: { isPinned: false } }
       await admission.assertAllowed(submission)
       if (!admission.assertCurrent) throw new AppError('Update publication verification is unavailable', 503)
       return new MongoCampaignContentWrite().run(req.userId!, req.authVersion ?? '', campaignId, organizationId, async () => {

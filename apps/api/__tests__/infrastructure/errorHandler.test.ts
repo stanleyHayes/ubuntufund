@@ -26,6 +26,15 @@ describe('errorHandler', () => {
     expect(respond(new AppError('Nope', 404)).status).toBe(404);
     expect(respond(Object.assign(new Error('x'), { code: 112 })).status).toBe(500);
   });
+
+  it('never sends an AppError code to the client', () => {
+    const error = new AppError('The item changed during review.', 409, { publication: ['held'] }, 'stale_version');
+    expect(error.code).toBe('stale_version');
+    const { status, body } = respond(error);
+    expect(status).toBe(409);
+    expect(body).toEqual({ message: 'The item changed during review.', status: 409, errors: { publication: ['held'] } });
+    expect(JSON.stringify(body)).not.toContain('stale_version');
+  });
 });
 
 describe('isDuplicateKeyError', () => {

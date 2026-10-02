@@ -33,6 +33,16 @@ async function fixture() {
   return { owner, admin, other, campaign, comments: `/api/v1/campaigns/${campaign.id}/comments`, updates: `/api/v1/campaigns/${campaign.id}/updates` };
 }
 const notes = 'Reviewed the complete proposed public version against community rules.';
+/**
+ * Screening approves this exact comment without posting it. Comment approvals
+ * are single-use: once a comment is posted, the identical comment again is the
+ * same post, so an approval meant to expire unused is created directly.
+ */
+async function screenedComment(actorId: string, campaignId: string, content: string) {
+  await new MongoPublicationAdmission({ screen }).assertAllowed({ actorId, action: 'comment.create', resourceId: campaignId,
+    text: JSON.stringify({ authorName: 'Publication reviewer', comment: content }), mediaUrls: [], automatedReviewConsent: true });
+  expect(await PublicationReviewModel.findOne({ actorId, action: 'comment.create' }).lean()).toMatchObject({ status: 'approved', reviewedBy: 'automated:openai' });
+}
 it('keeps reviewed comment attribution stable and never projects live identity for legacy comments', async () => {
   const f = await fixture();
   const created = await request(app).post(f.comments).set('Authorization', f.other.auth).send({ content: 'Reviewed attribution', automatedReviewConsent: true }).expect(201);
@@ -316,7 +326,7 @@ it('rejects declined and expired versions, refuses self-review and erases privat
   await request(app).put(path).set('Authorization', f.admin.auth).send({ decision: 'rejected', notes }).expect(200);
   await request(app).post(f.comments).set('Authorization', f.owner.auth).send(input).expect(422);
   const clean = { content: 'Previously allowed content', automatedReviewConsent: true };
-  await request(app).post(f.comments).set('Authorization', f.other.auth).send(clean).expect(201);
+  await screenedComment(f.other.id, f.campaign.id, clean.content);
   await PublicationReviewModel.updateOne({ actorId: f.other.id }, { $set: { approvalExpiresAt: new Date(0) } });
   // The expired approval never authorizes the version again: it is re-screened.
   screen.mockResolvedValueOnce('flagged');
@@ -332,7 +342,7 @@ it('rejects declined and expired versions, refuses self-review and erases privat
 it('re-queues an expired approval for a fresh decision instead of refusing that version until it is purged', async () => {
   const f = await fixture();
   const consented = { content: 'Weekly live title', automatedReviewConsent: true };
-  await request(app).post(f.comments).set('Authorization', f.other.auth).send(consented).expect(201);
+  await screenedComment(f.other.id, f.campaign.id, consented.content);
   const expire = () => PublicationReviewModel.updateOne({ actorId: f.other.id }, { $set: { approvalExpiresAt: new Date(Date.now() - 1000) } });
   await expire();
   // Consented: screened again and, when allowed, admitted at once.

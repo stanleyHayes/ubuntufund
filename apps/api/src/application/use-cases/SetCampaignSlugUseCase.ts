@@ -9,6 +9,8 @@ import { slugify, isReservedSlug, isValidSlug } from '../utils/slug.js';
 export interface SetCampaignSlugRequester {
   userId: string;
   role?: string;
+  /** The credential version the request was authenticated with (`req.authVersion`). */
+  authVersion?: string;
 }
 
 function toDTO(entity: CampaignEntity): Campaign {
@@ -77,7 +79,7 @@ export class SetCampaignSlugUseCase {
         throw new AppError('That slug is already taken', 409);
       }
       if (!this.admission) throw new AppError('Campaign safety review is unavailable', 503);
-      await this.admission.assertAllowed({ actorId: requester.userId, action: 'campaign.slug', resourceId: campaignId, baseVersion: campaign.slug, text: slug, mediaUrls: [], automatedReviewConsent });
+      await this.admission.assertAllowed({ actorId: requester.userId, action: 'campaign.slug', resourceId: campaignId, baseVersion: campaign.slug, text: slug, mediaUrls: [], automatedReviewConsent, authVersion: requester.authVersion });
       if (!isOwner && (await this.userRepo?.findById(requester.userId))?.role !== 'admin') throw new AppError('Administrator access changed during review', 403);
       const updated = await this.campaignRepo.setSlug(campaignId, campaign.slug, slug);
       if (!updated) throw new AppError('The campaign URL changed while being reviewed. Reload and retry.', 409);

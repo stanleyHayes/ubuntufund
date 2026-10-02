@@ -36,7 +36,7 @@ export class MongoAccountProfileWrite implements AccountProfileWritePort {
     if (publicChange && !withdrawalOnly) {
       if (!this.admission) throw new AppError('Account identity review is unavailable', 503);
       await this.admission.assertAllowed({ actorId: userId, action: 'account.profile', resourceId: userId, baseVersion,
-        text: JSON.stringify(proposed), mediaUrls: newMedia, automatedReviewConsent: changes.automatedReviewConsent });
+        text: JSON.stringify(proposed), mediaUrls: newMedia, automatedReviewConsent: changes.automatedReviewConsent, authVersion });
     }
     return this.uow.run(async () => {
       if (versionBound) {

@@ -61,7 +61,7 @@ export class UpdateCampaignUpdateUseCase {
     });
 
     if (!this.admission) throw new AppError('Publication review is unavailable', 503);
-    const submission: PublicationSubmission = { actorId: userId, action: 'update.edit', resourceId: updateId, baseVersion, text: JSON.stringify([update.title, update.content, update.type]), mediaUrls: update.mediaUrls, automatedReviewConsent: input.automatedReviewConsent };
+    const submission: PublicationSubmission = { actorId: userId, action: 'update.edit', resourceId: updateId, baseVersion, text: JSON.stringify([update.title, update.content, update.type]), mediaUrls: update.mediaUrls, automatedReviewConsent: input.automatedReviewConsent, authVersion };
     await this.admission.assertAllowed(submission);
     if (!this.publication || !this.admission.assertCurrent) throw new AppError('Update publication verification is unavailable', 503);
     return this.publication.run(userId, authVersion, campaignId, campaign.creatorId, async () => {

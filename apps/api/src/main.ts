@@ -62,6 +62,10 @@ async function bootstrap(): Promise<void> {
   // periodic sweep also retries it. No payment or acknowledgement is invented.
   void app.locals.reconcileActivityAlerts?.().catch(() => logger.error('Activity notification boot sweep failed; work remains queued'));
   void app.locals.reconcileStoreBilling?.().catch(() => logger.error('Store billing boot sweep failed; work remains queued'));
+  // Approved versions a previous instance left queued, or mid-attempt under an
+  // expired lease. While publishing on approval is switched off it claims
+  // nothing and returns them to their authors as plain approvals instead.
+  void app.locals.sweepPublicationApplies?.().catch(() => logger.error('Publication boot sweep failed; approved versions stay queued'));
 
   // Bound request lifetimes (slowloris / hung-connection protection).
   server.requestTimeout = 30_000;

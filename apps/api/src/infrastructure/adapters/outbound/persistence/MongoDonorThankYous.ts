@@ -260,7 +260,7 @@ export class MongoDonorThankYous {
     const submission: PublicationSubmission = {
       actorId: actor.userId, action: 'thank_you.send', resourceId: campaignId, mediaUrls: [],
       text: JSON.stringify({ subject: draft.subject, body: draft.body, signature: draft.signature }),
-      automatedReviewConsent: options.automatedReviewConsent,
+      automatedReviewConsent: options.automatedReviewConsent, authVersion: actor.authVersion,
     };
     await this.deps.admission.assertAllowed(submission);
     try {

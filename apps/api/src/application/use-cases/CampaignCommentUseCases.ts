@@ -57,7 +57,7 @@ export class CampaignCommentUseCases {
     const reviewedAvatar = author.hasReviewedAvatar;
     const submission: PublicationSubmission = { actorId: authorId, action: 'comment.create', resourceId: campaignId,
       text: JSON.stringify({ authorName: author.name, ...(reviewedAvatar ? { authorAvatarUrl: author.avatarUrl } : {}), comment: content }),
-      mediaUrls: author.avatarUrl && !reviewedAvatar ? [author.avatarUrl] : [], automatedReviewConsent: input.automatedReviewConsent };
+      mediaUrls: author.avatarUrl && !reviewedAvatar ? [author.avatarUrl] : [], automatedReviewConsent: input.automatedReviewConsent, authVersion };
     await this.admission.assertAllowed(submission);
     if (!this.creation || !this.admission.assertCurrent) throw new AppError('Comment publication verification is unavailable', 503);
     return this.creation.run(authorId, authVersion, campaignId, campaign.creatorId, async () => {

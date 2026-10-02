@@ -5,7 +5,14 @@ export class AppError extends Error {
   constructor(
     message: string,
     public readonly statusCode: number = 500,
-    public readonly errors?: Record<string, string[]>
+    public readonly errors?: Record<string, string[]>,
+    /**
+     * Internal reason for code that maps a refusal to an outcome (e.g. a
+     * publication fence: `stale_version`). Never sent to clients: the error
+     * handler serializes only the message, status and `errors`, and the
+     * logger keeps only allowlisted codes.
+     */
+    public readonly code?: string
   ) {
     super(message);
     this.name = 'AppError';

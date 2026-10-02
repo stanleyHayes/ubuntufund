@@ -19,7 +19,7 @@ export type CampaignPublicVersion = Pick<CreateCampaignInput, 'title' | 'descrip
  * (fields, their order or formatting) changes every fingerprint: approvals and
  * declines stored before the change would stop matching. A test pins it.
  */
-export function campaignCreationSubmission(input: CampaignPublicVersion, creatorId: string): PublicationSubmission {
+export function campaignCreationSubmission(input: CampaignPublicVersion, creatorId: string, authVersion?: string): PublicationSubmission {
   const onBehalf = input.onBehalf;
   return {
     actorId: creatorId, action: 'campaign.create', resourceId: creatorId,
@@ -30,6 +30,8 @@ export function campaignCreationSubmission(input: CampaignPublicVersion, creator
       ...(onBehalf ? { onBehalf: { beneficiaryName: onBehalf.beneficiaryName, beneficiaryType: onBehalf.beneficiaryType,
         relationship: onBehalf.relationship, reason: onBehalf.reason, payoutArrangement: onBehalf.payoutArrangement } } : {}) }),
     mediaUrls: input.imageUrls ?? [], automatedReviewConsent: input.automatedReviewConsent,
+    // The organizer's own request; never part of the version or its fingerprint.
+    ...(authVersion !== undefined ? { authVersion } : {}),
   };
 }
 

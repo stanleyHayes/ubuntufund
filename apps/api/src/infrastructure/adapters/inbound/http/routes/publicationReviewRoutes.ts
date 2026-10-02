@@ -4,16 +4,16 @@ import { z } from 'zod';
 import type { AuthenticatedRequest } from '../../middleware/authMiddleware.js';
 import { AppError } from '../../middleware/errorHandler.js';
 import { PublicationReviewModel } from '../../../../database/models/PublicationReviewModel.js';
-import { AuditLogModel } from '../../../../database/models/AuditLogModel.js';
 import { UserModel } from '../../../../database/models/UserModel.js';
 import { CampaignModel } from '../../../../database/models/CampaignModel.js';
 import { CampaignUpdateModel } from '../../../../database/models/CampaignUpdateModel.js';
 import { STAFF_REVIEW_GOAL_GHS } from '../../../../../domain/services/campaignApproval.js';
-import { MongoUnitOfWork } from '../../../outbound/persistence/MongoUnitOfWork.js';
+import { canWithdrawPublication, isPublicationOutcomeReason } from '@ubuntu-fund/types';
+import { withdrawPublicationReview } from '../../../outbound/persistence/MongoPublicationAdmission.js';
+import { MongoPublicationReviewDecision } from '../../../outbound/persistence/MongoPublicationReviewDecision.js';
+import { publicationProgressOf } from '../../../outbound/persistence/MongoPublicationApplyStore.js';
 
 const OBJECT_ID = /^[a-f0-9]{24}$/i;
-/** Why a decision was refused with 409, for the admin card's title (`errors.review`). */
-const DECIDED = { review: ['decided'] };
 const AUTOMATED_REVIEWER = 'automated:openai';
 /** Actions whose resourceId is the campaign; update.edit reaches its campaign through the update. */
 const CAMPAIGN_ACTIONS = new Set(['comment.create', 'update.create', 'live.start', 'campaign.slug', 'thank_you.send']);
@@ -67,7 +67,63 @@ async function adminContext(rows: ReviewRow[]) {
   };
 }
 
-export function createPublicationReviewRoutes(auth: RequestHandler, admin?: RequestHandler) {
+/** The publication lifecycle fields of a review record the projections read. */
+type PublicationFields = {
+  action: string; status: string; publishOnApproval?: boolean | null; publishState?: string | null; publishReason?: string | null;
+  publishStateAt?: Date | null; publishedVia?: string | null; publishedResourceId?: string | null; publishAttempts?: number | null;
+  publishNextAt?: Date | null; applyOptions?: { isPinned?: boolean | null } | null; supersededBy?: string | null; closedAt?: Date | null;
+};
+
+/**
+ * The author's view of publishing on approval: whether an approval publishes
+ * the version by itself, where that stands, and whether they can still
+ * withdraw it. While publishing on approval is switched off, an approval
+ * still waiting to publish reads as a plain approval (the author publishes it
+ * by submitting it again), and nothing promises to publish by itself.
+ */
+function authorPublication(item: PublicationFields, switchedOn: boolean) {
+  const progress = publicationProgressOf(item);
+  const shown = progress && !(progress.state === 'publishing' && !switchedOn) ? progress : null;
+  return {
+    publishOnApproval: switchedOn && item.publishOnApproval === true,
+    ...(shown ? { publication: shown } : {}),
+    canWithdraw: canWithdrawPublication(item),
+  };
+}
+
+/**
+ * The staff view: the raw publication state and its attempts. Never the
+ * credential digest or the lease (neither is ever read here).
+ */
+function adminPublication(item: PublicationFields, switchedOn: boolean) {
+  return {
+    publishOnApproval: switchedOn && item.publishOnApproval === true,
+    ...(item.publishState ? { publication: {
+      state: item.publishState,
+      ...(isPublicationOutcomeReason(item.publishReason) ? { reason: item.publishReason } : {}),
+      ...(item.publishStateAt ? { at: item.publishStateAt } : {}),
+      ...(item.publishedVia ? { via: item.publishedVia } : {}),
+      ...(typeof item.publishAttempts === 'number' ? { attempts: item.publishAttempts } : {}),
+      ...(item.publishNextAt ? { nextAttemptAt: item.publishNextAt } : {}),
+      ...(item.publishedResourceId ? { resourceId: item.publishedResourceId } : {}),
+    } } : {}),
+    ...(item.applyOptions ? { applyOptions: { isPinned: item.applyOptions.isPinned === true } } : {}),
+    ...(item.supersededBy ? { supersededBy: item.supersededBy } : {}),
+  };
+}
+
+/** `publishing` covers both queued and running attempts. */
+const PUBLISH_STATE_FILTERS = ['publishing', 'queued', 'applying', 'published', 'not_published', 'superseded', 'withdrawn'] as const;
+
+export interface PublicationReviewRouteOptions {
+  /** The staff decision (admin mount). */
+  decisions?: MongoPublicationReviewDecision;
+  /** PUBLISH_ON_APPROVAL_ENABLED. */
+  publishOnApproval?: () => boolean;
+}
+
+export function createPublicationReviewRoutes(auth: RequestHandler, admin?: RequestHandler, options: PublicationReviewRouteOptions = {}) {
+  const switchedOn = options.publishOnApproval ?? (() => false);
   const router = Router();
   router.use(auth, (_req, res, next) => { res.set('Cache-Control', 'private, no-store'); next(); });
   if (admin) router.use(admin);
@@ -78,43 +134,45 @@ export function createPublicationReviewRoutes(auth: RequestHandler, admin?: Requ
       const status = z.enum(['pending', 'approved', 'rejected']).catch('pending').parse(req.query.status);
       // Staff may narrow the queue to one kind of content (new campaign proposals, say); an invalid value is ignored like status.
       const action = admin ? z.string().max(40).regex(/^[a-z_]+\.[a-z_]+$/).optional().catch(undefined).parse(req.query.action) : undefined;
-      const filter = admin ? { status, ...(action ? { action } : {}) } : { actorId: req.userId };
+      // …or to where approved versions stand on their way to publication.
+      const publishState = admin ? z.enum(PUBLISH_STATE_FILTERS).optional().catch(undefined).parse(req.query.publishState) : undefined;
+      const filter = admin ? {
+        status, ...(action ? { action } : {}),
+        ...(publishState ? { publishState: publishState === 'publishing' ? { $in: ['queued', 'applying'] } : publishState } : {}),
+      } : { actorId: req.userId };
       const [items, total] = await Promise.all([
         PublicationReviewModel.find(filter).sort({ createdAt: -1 }).skip((page - 1) * pageSize).limit(pageSize).lean(),
         PublicationReviewModel.countDocuments(filter),
       ]);
       const context = admin ? await adminContext(items) : null;
+      const on = switchedOn();
       res.json({ data: { total, items: items.map(item => ({
         id: String(item._id), action: item.action, resourceId: item.resourceId, text: item.text,
         mediaUrls: item.mediaUrls, status: item.status, reason: item.reason, createdAt: item.createdAt,
         reviewNotes: item.reviewNotes, approvalExpiresAt: item.approvalExpiresAt,
         ...(context ? {
           actorId: item.actorId, reviewedBy: item.reviewedBy, baseVersion: item.baseVersion,
-          reviewedAt: item.reviewedAt, purgeAt: item.purgeAt, ...context(item),
-        } : {}),
+          reviewedAt: item.reviewedAt, purgeAt: item.purgeAt, ...context(item), ...adminPublication(item, on),
+        } : authorPublication(item, on)),
       })), ...(admin ? { campaignReviewGoalGhs: STAFF_REVIEW_GOAL_GHS } : {}) } });
     } catch (error) { next(error); }
   });
-  if (admin) router.put('/:id/review', async (req: AuthenticatedRequest, res, next) => {
+  // The author takes back a version that is waiting, or approved and not yet published (author mount only).
+  if (!admin) router.post('/:id/withdraw', async (req: AuthenticatedRequest, res, next) => {
     try {
-      const input = z.object({ decision: z.enum(['approved', 'rejected']), notes: z.string().trim().min(20).max(2000) }).parse(req.body);
-      await new MongoUnitOfWork().run(async () => {
-        const current = await PublicationReviewModel.findById(req.params.id);
-        if (!current) throw new AppError('Publication review not found', 404);
-        if (current.actorId === req.userId) throw new AppError('Another administrator must review your content', 403);
-        if (current.status !== 'pending') {
-          if (current.status === input.decision && current.reviewedBy === req.userId && current.reviewNotes === input.notes) return;
-          throw new AppError('A final decision already exists for this version', 409, DECIDED);
-        }
-        const changed = await PublicationReviewModel.updateOne({ _id: current._id, status: 'pending' }, { $set: {
-          status: input.decision, reviewedBy: req.userId, reviewedAt: new Date(), reviewNotes: input.notes,
-          ...(input.decision === 'approved' ? { approvalExpiresAt: new Date(Date.now() + 7 * 86400000) } : {}),
-        } });
-        if (!changed.modifiedCount) throw new AppError('Another reviewer already decided this submission', 409, DECIDED);
-        await AuditLogModel.create({ actorId: req.userId, actorRole: 'admin', action: `publication.${input.decision}`, resource: String(current._id), details: 'Publication version reviewed', reason: input.notes, severity: 'info', method: 'PUT', path: '/admin/publication-reviews/:id/review', statusCode: 200 });
-      });
-      res.json({ data: { reviewed: true } });
-    } catch (error) { next(error instanceof z.ZodError ? new AppError('Choose a decision and enter at least 20 characters of review notes', 400) : error); }
+      res.json({ data: await withdrawPublicationReview(String(req.params.id), req.userId!) });
+    } catch (error) { next(error); }
   });
+  if (admin) {
+    // The decision, its audit and notice, and any publication it starts (MongoPublicationReviewDecision).
+    const decisions = options.decisions ?? new MongoPublicationReviewDecision({ publishOnApproval: switchedOn });
+    router.put('/:id/review', async (req: AuthenticatedRequest, res, next) => {
+      try {
+        const input = z.object({ decision: z.enum(['approved', 'rejected']), notes: z.string().trim().min(20).max(2000) }).parse(req.body);
+        const result = await decisions.decide({ reviewId: String(req.params.id), staffId: req.userId!, authVersion: req.authVersion, decision: input.decision, notes: input.notes });
+        res.json({ data: result });
+      } catch (error) { next(error instanceof z.ZodError ? new AppError('Choose a decision and enter at least 20 characters of review notes', 400) : error); }
+    });
+  }
   return router;
 }
