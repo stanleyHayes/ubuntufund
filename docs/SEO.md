@@ -22,6 +22,8 @@ The marketing site is a React single-page app, but every route ships as complete
 4. On Vercel builds (`VERCEL=1`, or locally `PRERENDER_DATA=1`) the plugin first fetches what the pages read from the API: CMS blocks, blog posts, live plans and testimonials. Pages render with that data, and each page embeds only the data it read, so the browser's first render matches the HTML. Pages still refresh from the API after loading. A failed fetch never fails the build; that page renders its fallback.
 5. The browser adopts the HTML (`hydrateRoot` in `src/main.tsx`) instead of drawing it again. Visitors who saved dark mode or another skin get a fresh render in their look; an inline script in `index.html` keeps the page hidden until then so it never flashes the wrong theme.
 
+Content edited in the admin after a deploy (blog posts, help answers, the About page) appears in the browser straight away, but in the prerendered HTML only from the next deploy. After a large content change, redeploy the marketing project on Vercel, or connect a Vercel Deploy Hook to automate it.
+
 Also written by the build: `404.html` (served with HTTP 404 for unknown URLs), `app-shell.html` (only for blog posts published after the last deploy) and `llms.txt` (a plain summary for AI assistants).
 
 Rules that keep hydration working, enforced by `__tests__/ssrRender.test.tsx` and a browser check:
