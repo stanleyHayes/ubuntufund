@@ -3,22 +3,19 @@
 # connecting the GitHub repo. MongoDB is not offered on Render: create a
 # MongoDB Atlas cluster and paste its URI into MONGODB_URI.
 #
-# PLAN: `plan: free` below is Render's free instance type, which Render says
-# not to use for production. It spins down after 15 min without traffic (the
-# next request waits ~1 min, webhooks included), may restart at any time, and
-# counts against 750 free instance-hours per workspace per month, after which
-# free services are suspended. While asleep, every in-process job stops:
-# payment/payout reconciliation, email delivery, outbox retries, store-billing
-# and live-safety sweeps. Restarts drop open SSE streams and the in-memory
-# rate-limit and live-event state. Moving to an always-on paid instance
-# (`plan: starter`) is a billing decision for the owner — see DEPLOYMENT.md.
-# Keep ONE instance either way: the SSE event bus and rate limiters are
-# per-process.
+# PLAN: `plan: starter` (0.5 CPU, 512 MB), Render's smallest always-on paid
+# instance, chosen by the owner on 2026-10-02. It never sleeps, so the
+# in-process jobs (payment/payout reconciliation, email delivery, outbox
+# retries, store-billing and live-safety sweeps) run continuously. Deploys
+# and restarts still drop open SSE streams and the in-memory rate-limit and
+# live-event state. Keep this line in step with the dashboard: a Blueprint
+# sync applies it. Keep ONE instance: the SSE event bus and rate limiters are
+# per-process. See DEPLOYMENT.md.
 services:
   - type: web
     name: ujimora-api
     runtime: node
-    plan: free
+    plan: starter
     buildCommand: npx --yes npm@12.0.2 ci
     startCommand: npm start -w @ubuntu-fund/api
     # Readiness, not liveness: 503 unless MongoDB answers a ping, so Render
