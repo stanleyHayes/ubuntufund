@@ -71,7 +71,7 @@ const UPDATED = '2026-10-02'
 const VERIFY_ID = 'a Ghana Card, passport or driver’s licence'
 const PLAN_FEES = '5% on Free, 3.5% on Starter, 2% on Pro and Organization, and 1% on Enterprise'
 const FOREIGN_CARDS = 'Donations are charged in cedis and the card issuer converts the amount; some cards issued outside Ghana may not be accepted.'
-const ON_BEHALF = 'Plans marked “Campaigns on behalf of others” on the pricing page let you name the person you are raising for as the beneficiary. We email them an invitation to confirm, and payouts go to them unless they agree that the funds may be paid to you.'
+const ON_BEHALF = 'On any plan you can organize the campaign yourself: say who benefits, receive the payouts and use them as the story says. To name the person as the beneficiary instead, so that payouts go to them, use a plan marked “Campaigns on behalf of others” on the pricing page; we email them an invitation to confirm, and payouts go to them unless they agree that the funds may be paid to you.'
 
 export const GUIDES: Guide[] = [
   {
@@ -309,7 +309,7 @@ export const GUIDES: Guide[] = [
     faqs: [
       { question: 'How much does it cost to start a fundraiser?', answer: 'Nothing upfront on the Free plan. Ujimora takes a platform fee from each donation, 5% on Free and less on paid plans, and payment-processing charges are shown before anyone pays.' },
       { question: 'Do I need a Ghana Card to start a fundraiser?', answer: 'You need to verify your identity with a government ID. A Ghana Card works, and so does a passport or driver’s licence.' },
-      { question: 'Can I start a fundraiser for someone else?', answer: `Yes, with their permission. Describe who benefits in your campaign and use the funds as the story says. ${ON_BEHALF}` },
+      { question: 'Can I start a fundraiser for someone else?', answer: `Yes, with their permission. ${ON_BEHALF}` },
       { question: 'How long does approval take?', answer: 'There is no fixed review time. Depending on your goal and whether your campaign has photos or videos, it goes live straight away after screening or waits for staff approval.' },
       { question: 'Can I change my goal after the campaign starts?', answer: 'No. After you submit, the goal, story, images and end date cannot be edited. Post an update if circumstances change, and contact support if something material changes.' },
       { question: 'What if I raise more than my goal?', answer: 'A campaign that reaches its goal keeps accepting donations until its end date. Tell supporters in an update how any extra money will be used.' },
@@ -361,7 +361,7 @@ export const GUIDES: Guide[] = [
         heading: 'Respect the patient’s privacy and consent',
         paragraphs: [
           'Get the patient’s permission before you share their story, and agree what you will say. For a child, the parent or guardian should agree. Share only what supporters need to understand the need.',
-          `If you are raising money for someone else, describe who benefits and use the funds as the story says. ${ON_BEHALF}`,
+          `When you raise money for someone else, there are two ways to run it. ${ON_BEHALF}`,
         ],
       },
       {
@@ -389,7 +389,7 @@ export const GUIDES: Guide[] = [
       ],
     },
     faqs: [
-      { question: 'Can I raise money for someone else’s surgery?', answer: 'Yes, with their permission, or a parent’s or guardian’s for a child. Describe who benefits and use the funds as the story says. Plans marked “Campaigns on behalf of others” on the pricing page let you name the patient as the beneficiary, who confirms by email and receives the payouts.' },
+      { question: 'Can I raise money for someone else’s surgery?', answer: 'Yes, with their permission, or a parent’s or guardian’s for a child. On any plan you can organize the campaign yourself and use the payouts as the story says. With a plan marked “Campaigns on behalf of others” on the pricing page, you can instead name the patient as the beneficiary, who confirms by email and receives the payouts.' },
       { question: 'Does Ujimora check medical campaigns?', answer: 'Every organizer verifies their identity, and every campaign is screened before it goes live. Medical claims can receive enhanced review, and staff may ask for supporting documents. Screening cannot confirm every claim, so supporters should still read the campaign before giving.' },
       { question: 'How quickly can I get the money?', answer: 'Donations count as soon as the payment provider confirms them. Payouts follow verification and reconciliation checks, and provider timing varies, so no date is guaranteed. Optional early payouts may be available for a fee shown before you confirm.' },
       { question: 'Can relatives abroad donate to a medical campaign?', answer: `Yes, by debit or credit card. ${FOREIGN_CARDS}` },
@@ -429,7 +429,7 @@ export const GUIDES: Guide[] = [
         heading: 'Agree who manages the money',
         paragraphs: [
           'Before you share anything, agree as a family who will organize the campaign. That person verifies their identity, receives the payouts to their bank account or mobile money wallet, and accounts for the money. Say clearly in the story who is organizing and who the funds are for, such as the family of the deceased.',
-          'If the funds should go to someone else, such as a surviving spouse, plans marked “Campaigns on behalf of others” on the pricing page let you name them as the beneficiary. They confirm by email, and payouts go to them.',
+          'If the payouts should go straight to someone else, such as a surviving spouse, use a plan marked “Campaigns on behalf of others” on the pricing page to name them as the beneficiary. They confirm by email, and payouts go to them.',
         ],
       },
       {
