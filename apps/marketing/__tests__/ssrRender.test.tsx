@@ -66,6 +66,8 @@ describe('server rendering', () => {
     expect(page.head?.path).toBe('/blog/a-post')
     expect(page.head?.robots).toBeUndefined()
     expect(Object.keys(page.data).sort()).toEqual(['blog', 'blog:a-post'])
+    const article = ([] as { '@type': string; datePublished?: string; author?: { name: string } }[]).concat(page.head?.jsonLd as never).find((node) => node['@type'] === 'BlogPosting')
+    expect(article).toMatchObject({ datePublished: '2026-02-18T00:00:00.000Z', author: { name: 'Ama Mensah' } })
   })
 
   it('uses CMS content the build fetched', () => {

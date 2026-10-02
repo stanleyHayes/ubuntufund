@@ -1,6 +1,13 @@
 import type { EmotionCache } from '@emotion/cache'
 
 /**
+ * CSS for inside a <style> element. A value that reaches a style (an image URL
+ * from the CMS, say) must not be able to close the element; `<\/style` is the
+ * same text to the CSS parser.
+ */
+const safeCss = (css: string) => css.replace(/<\/(style)/gi, '<\\/$1')
+
+/**
  * The `<style>` tags for one server render, ready for `<head>`.
  *
  * The same extraction @emotion/server performs, kept here so the build does
@@ -27,9 +34,9 @@ export function emotionStyleTags(cache: EmotionCache, html: string): string {
       ids.push(id)
       css += rules
     } else {
-      globals.push(`<style data-emotion="${cache.key}-global ${id}">${rules}</style>`)
+      globals.push(`<style data-emotion="${cache.key}-global ${id}">${safeCss(rules)}</style>`)
     }
   }
   // Class rules after the globals, as Emotion orders them in the browser.
-  return `${globals.join('')}<style data-emotion="${cache.key} ${ids.join(' ')}">${css}</style>`
+  return `${globals.join('')}<style data-emotion="${cache.key} ${ids.join(' ')}">${safeCss(css)}</style>`
 }

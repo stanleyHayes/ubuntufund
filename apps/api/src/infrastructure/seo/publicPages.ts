@@ -28,6 +28,7 @@ export interface PublicPage {
 const MAX_CAMPAIGNS = 20_000;
 const MAX_CREATORS = 5_000;
 const MAX_ORGANIZATIONS = 5_000;
+const MAX_BLOG_POSTS = 45_000;
 
 /**
  * Only campaigns a visitor may actually open. Draft, pending-review and blocked
@@ -124,6 +125,8 @@ export async function appPublicPages(
 export async function blogPublicPages(): Promise<{ url: string; lastmod: Date }[]> {
   const posts = await BlogPostModel.find({ publishedSlug: { $exists: true } })
     .select('publishedSlug publishedContentAt publishedAt updatedAt')
+    .sort({ publishedAt: -1 })
+    .limit(MAX_BLOG_POSTS)
     .lean();
   return posts.map((post) => ({
     url: `${MARKETING_ORIGIN}/blog/${encodeURIComponent(post.publishedSlug!)}`,

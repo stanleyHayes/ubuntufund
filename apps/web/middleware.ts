@@ -35,6 +35,16 @@ const CRAWLER_TIMEOUT_MS = 2500
 
 const CACHE = 'public, max-age=0, s-maxage=300, stale-while-revalidate=600'
 
+/**
+ * The deployment's own index.html. A protected preview deployment answers this
+ * request only with the protection bypass the visitor's request carried, so it
+ * is passed along; production deployments are public and get none.
+ */
+function fetchShell(request: Request, url: URL, signal: AbortSignal): Promise<Response> {
+  const bypass = request.headers.get('x-vercel-protection-bypass')
+  return fetch(new URL('/index.html', url), { signal, headers: bypass ? { 'x-vercel-protection-bypass': bypass } : {} })
+}
+
 type CrawlerPages = typeof import('./src/lib/crawlerPages.js')
 
 async function crawlerPage(request: Request, pages: CrawlerPages): Promise<Response | undefined> {
@@ -44,7 +54,7 @@ async function crawlerPage(request: Request, pages: CrawlerPages): Promise<Respo
   const signal = AbortSignal.timeout(CRAWLER_TIMEOUT_MS)
   const [recordResponse, pageResponse] = await Promise.all([
     fetch(`${API_ORIGIN}${pages.apiPathFor(route)}`, { headers: { accept: 'application/json' }, signal }),
-    fetch(new URL('/index.html', url), { signal }),
+    fetchShell(request, url, signal),
   ])
   // Only a definite "not found" becomes a 404; any other API trouble leaves the page alone.
   if (!pageResponse.ok || (!recordResponse.ok && recordResponse.status !== 404)) return undefined
@@ -88,7 +98,7 @@ export default async function middleware(request: Request): Promise<Response | u
     const signal = AbortSignal.timeout(TIMEOUT_MS)
     const [campaignResponse, pageResponse] = await Promise.all([
       fetch(`${API_ORIGIN}/api/v1/campaigns/slug/${encodeURIComponent(key)}/public`, { headers: { accept: 'application/json' }, signal }),
-      fetch(new URL('/index.html', url), { signal }),
+      fetchShell(request, url, signal),
     ])
     if (!campaignResponse.ok || !pageResponse.ok) return undefined
     const campaign = (await campaignResponse.json() as { data?: Parameters<typeof campaignShareMeta>[0] }).data

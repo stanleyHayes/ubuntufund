@@ -13,7 +13,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
 import { useParams, useNavigate, useLocation, Link as RouterLink } from 'react-router-dom'
-import { SHAPE, ItemNotFound, breadcrumbList } from '@ubuntu-fund/ui'
+import { SHAPE, ItemNotFound, blogPosting, breadcrumbList } from '@ubuntu-fund/ui'
 import { CATEGORY_COLORS } from './BlogPage'
 import { useSeo, SITE_ORIGIN } from '@/lib/seo'
 import { blogPostHead } from '@/lib/pageSeo'
@@ -40,11 +40,22 @@ function BlogDetailPage() {
     }),
     robots: post ? undefined : 'noindex, follow',
     jsonLd: post
-      ? breadcrumbList(SITE_ORIGIN, [
-          { name: 'Home', path: '/' },
-          { name: 'Blog', path: '/blog' },
-          { name: post.title },
-        ])
+      ? [
+          breadcrumbList(SITE_ORIGIN, [
+            { name: 'Home', path: '/' },
+            { name: 'Blog', path: '/blog' },
+            { name: post.title },
+          ]),
+          blogPosting({
+            headline: post.title,
+            description: post.excerpt,
+            url: `${SITE_ORIGIN}/blog/${post.slug}`,
+            datePublished: post.publishedAt,
+            authorName: post.authorName,
+            image: post.image && /^https:\/\//i.test(post.image) ? post.image : undefined,
+            publisherId: `${SITE_ORIGIN}/#organization`,
+          }),
+        ]
       : undefined,
   })
 

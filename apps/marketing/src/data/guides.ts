@@ -71,7 +71,7 @@ const UPDATED = '2026-10-02'
 const VERIFY_ID = 'a Ghana Card, passport or driver’s licence'
 const PLAN_FEES = '5% on Free, 3.5% on Starter, 2% on Pro and Organization, and 1% on Enterprise'
 const FOREIGN_CARDS = 'Donations are charged in cedis and the card issuer converts the amount; some cards issued outside Ghana may not be accepted.'
-const ON_BEHALF = 'Plans marked “Campaigns on behalf of others” let you name the person you are raising for as the beneficiary. We email them an invitation to confirm, and payouts go to them unless they agree that the funds may be paid to you.'
+const ON_BEHALF = 'Plans marked “Campaigns on behalf of others” on the pricing page let you name the person you are raising for as the beneficiary. We email them an invitation to confirm, and payouts go to them unless they agree that the funds may be paid to you.'
 
 export const GUIDES: Guide[] = [
   {
@@ -389,7 +389,7 @@ export const GUIDES: Guide[] = [
       ],
     },
     faqs: [
-      { question: 'Can I raise money for someone else’s surgery?', answer: 'Yes, with their permission, or a parent’s or guardian’s for a child. Describe who benefits and use the funds as the story says. Plans marked “Campaigns on behalf of others” let you name the patient as the beneficiary, who confirms by email and receives the payouts.' },
+      { question: 'Can I raise money for someone else’s surgery?', answer: 'Yes, with their permission, or a parent’s or guardian’s for a child. Describe who benefits and use the funds as the story says. Plans marked “Campaigns on behalf of others” on the pricing page let you name the patient as the beneficiary, who confirms by email and receives the payouts.' },
       { question: 'Does Ujimora check medical campaigns?', answer: 'Every organizer verifies their identity, and every campaign is screened before it goes live. Medical claims can receive enhanced review, and staff may ask for supporting documents. Screening cannot confirm every claim, so supporters should still read the campaign before giving.' },
       { question: 'How quickly can I get the money?', answer: 'Donations count as soon as the payment provider confirms them. Payouts follow verification and reconciliation checks, and provider timing varies, so no date is guaranteed. Optional early payouts may be available for a fee shown before you confirm.' },
       { question: 'Can relatives abroad donate to a medical campaign?', answer: `Yes, by debit or credit card. ${FOREIGN_CARDS}` },
@@ -429,7 +429,7 @@ export const GUIDES: Guide[] = [
         heading: 'Agree who manages the money',
         paragraphs: [
           'Before you share anything, agree as a family who will organize the campaign. That person verifies their identity, receives the payouts to their bank account or mobile money wallet, and accounts for the money. Say clearly in the story who is organizing and who the funds are for, such as the family of the deceased.',
-          'If the funds should go to someone else, such as a surviving spouse, plans marked “Campaigns on behalf of others” let you name them as the beneficiary. They confirm by email, and payouts go to them.',
+          'If the funds should go to someone else, such as a surviving spouse, plans marked “Campaigns on behalf of others” on the pricing page let you name them as the beneficiary. They confirm by email, and payouts go to them.',
         ],
       },
       {
@@ -1004,7 +1004,7 @@ export const GUIDE_BY_PATH: Readonly<Record<string, Guide>> = Object.fromEntries
 export const GUIDES_INDEX = {
   path: '/guides',
   title: 'Fundraising Guides for Ghana | Ujimora',
-  description: 'Practical guides to raising money in Ghana: medical bills, school fees, funerals, churches, community projects, emergencies, mobile money and giving from abroad.',
+  description: 'Practical guides to raising money in Ghana: medical bills, school fees, funerals, churches, community projects, emergencies and giving from abroad.',
   name: 'Fundraising guides',
   updated: UPDATED,
 } as const

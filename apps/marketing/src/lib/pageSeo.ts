@@ -136,6 +136,13 @@ export function brandedTitle(title: string): string {
   return branded.length <= 60 ? branded : clampText(title, 60)
 }
 
-export function blogPostHead(post: { slug: string; title: string; excerpt: string }): PageHead {
-  return { title: brandedTitle(post.title), description: clampText(post.excerpt, 158), path: `/blog/${post.slug}`, type: 'article' }
+export function blogPostHead(post: { slug: string; title: string; excerpt: string; image?: string; imageAlt?: string }): PageHead {
+  return {
+    title: brandedTitle(post.title),
+    description: clampText(post.excerpt, 158),
+    path: `/blog/${post.slug}`,
+    type: 'article',
+    // The cover is the share image, when it is an absolute https URL.
+    ...(post.image && /^https:\/\//i.test(post.image) ? { image: post.image, imageAlt: post.imageAlt || post.title } : {}),
+  }
 }
